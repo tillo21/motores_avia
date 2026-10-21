@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVIA Chispa - Constelación de Consenso</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; background: #1A1A2E; }
+    #root { height: 100vh; width: 100vw; }
+    
+    @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+    @keyframes sparkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.2); } }
+    @keyframes wave { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(20deg); } 75% { transform: rotate(-20deg); } }
+    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.5); } 50% { box-shadow: 0 0 40px rgba(255,215,0,0.8); } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-100px); } }
+    @keyframes particle { 0% { opacity: 0; transform: scale(0); } 50% { opacity: 1; transform: scale(1.5); } 100% { opacity: 0; transform: scale(0); } }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+    @keyframes starPop { 0% { transform: scale(0) rotate(0deg); } 50% { transform: scale(1.3) rotate(180deg); } 100% { transform: scale(1) rotate(360deg); } }
+    @keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } }
+    @keyframes soundWave { 0%, 100% { height: 40%; } 50% { height: 100%; } }
+    
+    .float-anim { animation: float 3s ease-in-out infinite; }
+    .sparkle-anim { animation: sparkle 1.5s ease-in-out infinite; }
+    .wave-anim { animation: wave 0.5s ease-in-out 3; }
+    .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+    .fade-up { animation: fadeInUp 0.6s ease-out forwards; }
+    .fade-scale { animation: fadeInScale 0.5s ease-out forwards; }
+    .slide-in { animation: slideIn 0.5s ease-out forwards; }
+    .bounce-anim { animation: bounce 1s ease-in-out infinite; }
+    .pulse-anim { animation: pulse 1.5s ease-in-out infinite; }
+    .blink-anim { animation: blink 4s ease-in-out infinite; }
+    .shake-anim { animation: shake 0.3s ease-in-out; }
+    .star-pop { animation: starPop 0.6s ease-out forwards; }
+    .mic-pulse { animation: micPulse 1s ease-in-out infinite; }
+    
+    .screen-enter { animation: slideIn 0.5s ease-out forwards; }
+    .screen-exit { animation: slideOut 0.4s ease-in forwards; }
+    .btn-act { transition: transform 0.15s ease; }
+    .btn-act:hover { transform: scale(1.05); }
+    .btn-act:active { transform: scale(0.95); }
+    .back-btn { position: absolute; top: 20px; left: 20px; z-index: 100; }
+    .fwd-btn { position: absolute; top: 20px; right: 20px; z-index: 100; }
+    
+    .speech-bubble { position: relative; }
+    .speech-bubble::before { content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); border: 12px solid transparent; border-bottom-color: white; }
+    
+    .sound-bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
+    .sound-bar { width: 3px; background: currentColor; border-radius: 2px; animation: soundWave 0.4s ease-in-out infinite; }
+    .sound-bar:nth-child(1) { animation-delay: 0s; }
+    .sound-bar:nth-child(2) { animation-delay: 0.1s; }
+    .sound-bar:nth-child(3) { animation-delay: 0.2s; }
+    .sound-bar:nth-child(4) { animation-delay: 0.3s; }
+  </style>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { 'avia-blue': '#1A1A2E', 'avia-gold': '#FFD700', 'avia-purple': '#4A1A6B' } } } };
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useEffect, createContext, useContext } = React;
+
+    // ════════════════════════════════════════════════════════════
+    // 🛡️ PROTOCOLO DE AUTOCORRECCIÓN DE ERRORES
+    // ════════════════════════════════════════════════════════════
+    const safeCall = (fn, fallback) => {
+      try { return fn(); } catch (e) { console.warn('SafeCall:', e.message); return fallback; }
+    };
+
+    const safeAsync = async (fn, fallback) => {
+      try { return await fn(); } catch (e) { console.warn('SafeAsync:', e.message); return fallback; }
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🔊 AUDIO MANAGER (con fallback seguro)
+    // ════════════════════════════════════════════════════════════
+    const AudioCtx = createContext(null);
+    const useAudio = () => useContext(AudioCtx);
+
+    const createAudio = () => {
+      let ctx = null;
+      let ok = false;
+
+      const init = () => safeCall(() => {
+        if (ctx) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) { ctx = new AC(); ok = true; }
+      });
+
+      const tone = (freq, dur, type, vol) => safeCall(() => {
+        if (!ok || !ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = type || 'sine';
+        gain.gain.setValueAtTime(vol || 0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + dur);
+      });
+
+      return {
+        init,
+        magic: () => [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f,0.4,'sine',0.2), i*100)),
+        click: () => tone(800, 0.1, 'sine', 0.2),
+        back: () => tone(400, 0.15, 'sine', 0.15),
+        success: () => [523,659,784].forEach((f,i) => setTimeout(() => tone(f,0.2,'sine',0.25), i*80)),
+        error: () => tone(200, 0.25, 'sawtooth', 0.12),
+        pop: () => { tone(600,0.08,'sine',0.2); setTimeout(() => tone(900,0.08,'sine',0.15), 50); },
+        flip: () => { tone(300,0.1,'triangle',0.1); setTimeout(() => tone(500,0.1,'triangle',0.1), 50); },
+        star: () => [784,988,1175].forEach((f,i) => setTimeout(() => tone(f,0.25,'sine',0.2), i*100)),
+        celebrate: () => [523,587,659,698,784,880,988,1047].forEach((f,i) => setTimeout(() => tone(f,0.15,'sine',0.2), i*60)),
+      };
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🗣️ SPEECH MANAGER (TTS con fallback)
+    // ════════════════════════════════════════════════════════════
+    const SpeechCtx = createContext(null);
+    const useSpeech = () => useContext(SpeechCtx);
+
+    const createSpeech = () => {
+      let synth = null;
+      let voice = null;
+      let ok = false;
+
+      const init = () => safeCall(() => {
+        if (!window.speechSynthesis) return;
+        synth = window.speechSynthesis;
+        ok = true;
+        const loadVoices = () => {
+          const voices = synth.getVoices();
+          voice = voices.find(v => v.lang.includes('es')) || voices[0];
+        };
+        if (synth.getVoices().length > 0) loadVoices();
+        else synth.onvoiceschanged = loadVoices;
+      });
+
+      const speak = (text) => safeCall(() => {
+        if (!ok || !synth) return;
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.voice = voice;
+        u.rate = 1.0;
+        u.pitch = 1.3;
+        u.lang = 'es-ES';
+        synth.speak(u);
+      });
+
+      const stop = () => safeCall(() => { if (synth) synth.cancel(); });
+
+      return { init, speak, stop, isOk: () => ok };
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🎤 VOICE RECOGNITION (con fallback)
+    // ════════════════════════════════════════════════════════════
+    const VoiceCtx = createContext(null);
+    const useVoice = () => useContext(VoiceCtx);
+
+    const createVoiceRec = () => {
+      let rec = null;
+      let ok = false;
+
+      const init = () => safeCall(() => {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SR) { rec = new SR(); rec.lang = 'es-ES'; rec.continuous = false; ok = true; }
+      });
+
+      const listen = (onRes, onErr) => safeCall(() => {
+        if (!ok || !rec) { onErr && onErr('No disponible'); return; }
+        rec.onresult = (e) => onRes && onRes(e.results[0][0].transcript);
+        rec.onerror = (e) => onErr && onErr(e.error);
+        rec.start();
+      }, () => onErr && onErr('Error'));
+
+      const stop = () => safeCall(() => { if (rec) rec.stop(); });
+
+      return { init, listen, stop, isOk: () => ok };
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🎤 BOTÓN DE VOZ
+    // ════════════════════════════════════════════════════════════
+    const VoiceBtn = ({ onResult }) => {
+      const [listening, setListening] = useState(false);
+      const voice = useVoice();
+      const audio = useAudio();
+
+      const handleClick = () => {
+        if (!voice || !voice.isOk()) { onResult && onResult(''); return; }
+        if (listening) { voice.stop(); setListening(false); return; }
+        audio && audio.click();
+        setListening(true);
+        voice.listen(
+          (t) => { setListening(false); audio && audio.success(); onResult && onResult(t); },
+          () => { setListening(false); }
+        );
+      };
+
+      return (
+        <button onClick={handleClick}
+          className={`w-14 h-14 rounded-full flex items-center justify-center btn-act ${listening ? 'bg-red-500 mic-pulse' : 'bg-white/20 hover:bg-white/30'}`}>
+          <span className="text-2xl">{listening ? '🔴' : '🎤'}</span>
+        </button>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 💬 TOAST DE FEEDBACK
+    // ════════════════════════════════════════════════════════════
+    const Toast = ({ msg, type, onClose }) => {
+      const speech = useSpeech();
+      const audio = useAudio();
+
+      useEffect(() => {
+        if (!msg) return;
+        if (type === 'error') audio && audio.error();
+        else if (type === 'success') audio && audio.success();
+        else audio && audio.pop();
+        speech && speech.speak(msg);
+        const t = setTimeout(() => onClose && onClose(), 5000);
+        return () => clearTimeout(t);
+      }, [msg]);
+
+      if (!msg) return null;
+      const bg = { info: 'from-blue-500 to-blue-600', error: 'from-orange-500 to-red-500', success: 'from-green-500 to-green-600', hint: 'from-purple-500 to-pink-500' };
+      const emoji = { info: '💡', error: '😮', success: '😊', hint: '🤔' };
+
+      return (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full px-4 fade-up">
+          <div className={`bg-gradient-to-r ${bg[type] || bg.info} p-4 rounded-2xl shadow-xl flex items-start gap-3`}>
+            <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center border-2 border-white flex-shrink-0">
+              <span>{emoji[type] || '💡'}</span>
+            </div>
+            <p className="text-white font-medium text-sm flex-1">{msg}</p>
+            <button onClick={onClose} className="text-white/70 hover:text-white">✕</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 📚 EXPLICADOR DE CONCEPTOS
+    // ════════════════════════════════════════════════════════════
+    const ConceptModal = ({ concept, explain, question, answers, correct, onDone, onClose }) => {
+      const [step, setStep] = useState('explain');
+      const [sel, setSel] = useState(null);
+      const speech = useSpeech();
+      const audio = useAudio();
+
+      useEffect(() => { speech && speech.speak(explain); }, []);
+
+      const handleAns = (i) => {
+        setSel(i);
+        if (i === correct) {
+          audio && audio.success();
+          speech && speech.speak('¡Muy bien! ¡Correcto!');
+          setStep('done');
+          setTimeout(() => onDone && onDone(), 2000);
+        } else {
+          audio && audio.error();
+          speech && speech.speak('¡Casi! Intenta de nuevo.');
+          setTimeout(() => setSel(null), 1000);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-indigo-900 to-purple-900 p-6 rounded-3xl max-w-sm w-full shadow-2xl fade-scale border-2 border-yellow-400/30">
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-white float-anim">
+                <span className="text-2xl">💡</span>
+              </div>
+              <button onClick={onClose} className="text-white/50 hover:text-white text-2xl">✕</button>
+            </div>
+
+            {step === 'explain' && (
+              <div>
+                <h3 className="text-xl font-bold text-yellow-400 mb-3">¿Qué es "{concept}"?</h3>
+                <p className="text-white mb-5">{explain}</p>
+                <button onClick={() => { setStep('quiz'); speech && speech.speak(question); }}
+                  className="w-full bg-gradient-to-r from-green-400 to-green-600 text-white py-3 rounded-full font-bold btn-act">
+                  ¡Entendido! 🎯
+                </button>
+              </div>
+            )}
+
+            {step === 'quiz' && (
+              <div>
+                <h3 className="text-lg font-bold text-yellow-400 mb-4">{question}</h3>
+                <div className="space-y-3">
+                  {answers.map((a, i) => (
+                    <button key={i} onClick={() => handleAns(i)} disabled={sel !== null}
+                      className={`w-full p-3 rounded-xl font-medium btn-act text-left ${
+                        sel === i ? (i === correct ? 'bg-green-500 text-white' : 'bg-red-500 text-white shake-anim') : 'bg-white/20 text-white hover:bg-white/30'
+                      }`}>{a}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 'done' && (
+              <div className="text-center py-4">
+                <span className="text-6xl star-pop block mb-4">⭐</span>
+                <h3 className="text-xl font-bold text-yellow-400">¡Excelente!</h3>
+                <p className="text-white mt-2">¡Ya sabes qué es un {concept}!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🔘 BOTONES DE NAVEGACIÓN
+    // ════════════════════════════════════════════════════════════
+    const BackBtn = ({ onClick }) => {
+      const audio = useAudio();
+      return (
+        <button onClick={() => { audio && audio.back(); onClick && onClick(); }}
+          className="back-btn w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center btn-act">
+          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      );
+    };
+
+    const FwdBtn = ({ onClick, disabled }) => {
+      const audio = useAudio();
+      return (
+        <button onClick={() => { if (!disabled) { audio && audio.click(); onClick && onClick(); } }} disabled={disabled}
+          className={`fwd-btn w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center btn-act ${disabled ? 'opacity-50' : ''}`}>
+          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // ✨ EFECTOS VISUALES
+    // ════════════════════════════════════════════════════════════
+    const Particles = ({ count }) => {
+      const [items] = useState(() => Array.from({ length: count || 20 }, (_, i) => ({
+        id: i, x: Math.random() * 100, y: Math.random() * 100, delay: i * 0.08, size: 4 + Math.random() * 6, dur: 2 + Math.random()
+      })));
+      return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {items.map(p => (
+            <div key={p.id} className="absolute rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500"
+              style={{ width: p.size, height: p.size, left: `${p.x}%`, top: `${p.y}%`, animation: `particle ${p.dur}s ease-in-out ${p.delay}s forwards` }} />
+          ))}
+        </div>
+      );
+    };
+
+    const Confetti = ({ count }) => {
+      const colors = ['#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD'];
+      const [items] = useState(() => Array.from({ length: count || 40 }, (_, i) => ({
+        id: i, x: Math.random() * 100, color: colors[i % colors.length], delay: Math.random() * 2, dur: 2 + Math.random() * 2, size: 6 + Math.random() * 8
+      })));
+      return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-50">
+          {items.map(p => (
+            <div key={p.id} className="absolute" style={{ left: `${p.x}%`, top: '-20px', width: p.size, height: p.size, backgroundColor: p.color,
+              borderRadius: Math.random() > 0.5 ? '50%' : '2px', animation: `confetti ${p.dur}s ease-in ${p.delay}s forwards` }} />
+          ))}
+        </div>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🌟 AVATAR DE CHISPA
+    // ════════════════════════════════════════════════════════════
+    const Chispa = ({ state, size, onClick }) => {
+      const [waving, setWaving] = useState(false);
+      const audio = useAudio();
+      const sz = { sm: 'w-20 h-20', md: 'w-32 h-32', lg: 'w-40 h-40', xl: 'w-48 h-48' };
+
+      const handleClick = () => {
+        audio && audio.pop();
+        setWaving(true);
+        setTimeout(() => setWaving(false), 1500);
+        onClick && onClick();
+      };
+
+      return (
+        <div onClick={handleClick} className={`${sz[size] || sz.md} relative cursor-pointer`}>
+          <div className={`w-full h-full rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-orange-400 border-4 border-white shadow-xl flex items-center justify-center
+            ${state === 'HAPPY' ? 'float-anim pulse-glow' : ''} ${state === 'CELEBRATING' ? 'sparkle-anim' : ''} ${state === 'CURIOUS' ? 'bounce-anim' : ''}`}>
+            <div className="flex flex-col items-center justify-center">
+              <div className="flex gap-4 mb-2">
+                <div className={`w-4 h-4 bg-gray-800 rounded-full ${state === 'HAPPY' ? 'blink-anim' : ''}`} />
+                <div className={`w-4 h-4 bg-gray-800 rounded-full ${state === 'HAPPY' ? 'blink-anim' : ''}`} />
+              </div>
+              <div className="w-8 h-4 border-b-4 border-gray-800 rounded-b-full" style={{ transform: state === 'HAPPY' ? 'scaleX(1.2)' : 'scaleX(1)' }} />
+            </div>
+          </div>
+          {['top-0 left-1/2 -translate-x-1/2 -translate-y-1', 'top-1/4 right-0 translate-x-1', 'bottom-1/4 left-0 -translate-x-1', 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1'].map((pos, i) => (
+            <span key={i} className={`absolute ${pos} text-lg sparkle-anim`} style={{ animationDelay: `${i * 0.3}s` }}>✨</span>
+          ))}
+          {(state === 'HAPPY' || waving) && <span className={`absolute -top-2 -right-2 text-2xl fade-scale ${waving ? 'wave-anim' : ''}`}>👋</span>}
+        </div>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 📺 PANTALLAS
+    // ════════════════════════════════════════════════════════════
+    
+    // SPLASH
+    const Splash = ({ onDone }) => {
+      const [showTitle, setShowTitle] = useState(false);
+      const [showSub, setShowSub] = useState(false);
+      const [showStar, setShowStar] = useState(false);
+      const audio = useAudio();
+
+      useEffect(() => {
+        audio && audio.init();
+        setTimeout(() => audio && audio.magic(), 300);
+        setTimeout(() => setShowStar(true), 200);
+        setTimeout(() => setShowTitle(true), 1200);
+        setTimeout(() => setShowSub(true), 1800);
+        setTimeout(() => { audio && audio.flip(); onDone(); }, 3500);
+      }, []);
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue via-indigo-900 to-avia-purple relative overflow-hidden">
+          <Particles count={25} />
+          {showStar && <div className="text-7xl mb-6 z-10 fade-scale">⭐</div>}
+          {showTitle && <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 z-10 text-center fade-up px-4">AVIA CONSTELACIÓN</h1>}
+          {showSub && <p className="text-lg text-yellow-200 mt-3 z-10 fade-up">✨ Aprendiendo juntos ✨</p>}
+          <div className="absolute bottom-16 flex gap-2">
+            {[0,1,2].map(i => <div key={i} className="w-3 h-3 rounded-full bg-yellow-400 pulse-anim" style={{ animationDelay: `${i*0.2}s` }} />)}
+          </div>
+        </div>
+      );
+    };
+
+    // WELCOME
+    const Welcome = ({ onNext }) => {
+      const [showDlg, setShowDlg] = useState(false);
+      const [showBtn, setShowBtn] = useState(false);
+      const [typed, setTyped] = useState('');
+      const audio = useAudio();
+      const speech = useSpeech();
+      const fullText = "¡Hola! Soy Chispa ✨\n¡Vamos a aprender juntos!";
+
+      useEffect(() => { setTimeout(() => setShowDlg(true), 500); }, []);
+
+      useEffect(() => {
+        if (showDlg && typed.length < fullText.length) {
+          const t = setTimeout(() => setTyped(fullText.slice(0, typed.length + 1)), 40);
+          return () => clearTimeout(t);
+        } else if (typed.length === fullText.length) {
+          speech && speech.speak(fullText);
+          setTimeout(() => setShowBtn(true), 300);
+        }
+      }, [showDlg, typed]);
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue via-indigo-900 to-purple-900 p-6">
+          <div className="flex flex-col items-center text-center space-y-6 max-w-md fade-up">
+            <Chispa state="HAPPY" size="xl" />
+            {showDlg && (
+              <div className="bg-white text-gray-800 p-5 rounded-2xl shadow-xl relative speech-bubble min-h-[90px] fade-scale">
+                <p className="text-lg font-bold whitespace-pre-line">{typed}<span className="pulse-anim inline-block">|</span></p>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-yellow-200">
+              <span>🔊</span>
+              <div className="sound-bars text-yellow-400">
+                <div className="sound-bar"></div><div className="sound-bar"></div><div className="sound-bar"></div><div className="sound-bar"></div>
+              </div>
+              <span className="text-sm">Escuchando...</span>
+            </div>
+            {showBtn && (
+              <button onClick={() => { audio && audio.click(); onNext(); }}
+                className="bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg flex items-center gap-3 btn-act fade-up">
+                <span className="pulse-anim">🟢</span>CONTINUAR
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // PERSONALIZATION
+    const Personalization = ({ onNext, onBack, setUser }) => {
+      const [name, setName] = useState('');
+      const [avatar, setAvatar] = useState(null);
+      const [toast, setToast] = useState(null);
+      const [showConcept, setShowConcept] = useState(false);
+      const [learned, setLearned] = useState(false);
+      const audio = useAudio();
+      const speech = useSpeech();
+      const avatars = ['🧒','👧','🧒🏽','👧🏻','����🏿','👧🏾'];
+
+      useEffect(() => { setTimeout(() => speech && speech.speak('Escribe tu nombre y elige tu avatar'), 500); }, []);
+
+      const handleVoice = (t) => { if (t) { setName(t); speech && speech.speak(`¡Hola ${t}!`); } };
+      const handleAvatar = (i) => { audio && audio.pop(); setAvatar(i); speech && speech.speak('¡Bonito avatar!'); setToast(null); };
+
+      const handleContinue = () => {
+        if (!name.trim()) { setToast({ msg: '¡Primero escribe tu nombre! Usa el teclado o el micrófono 🎤', type: 'error' }); return; }
+        if (avatar === null) {
+          setToast({ msg: '¡Elige tu avatar primero! Un avatar es tu imagen digital.', type: 'hint' });
+          if (!learned) setTimeout(() => setShowConcept(true), 2000);
+          return;
+        }
+        audio && audio.success();
+        speech && speech.speak(`¡Perfecto ${name}! ¡Vamos!`);
+        setUser({ name, avatar: avatars[avatar] });
+        setTimeout(onNext, 1000);
+      };
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue to-purple-900 p-6 relative">
+          <BackBtn onClick={onBack} />
+          <Toast msg={toast?.msg} type={toast?.type} onClose={() => setToast(null)} />
+          
+          {showConcept && (
+            <ConceptModal
+              concept="avatar"
+              explain="Un avatar es una imagen que te representa en el mundo digital. ¡Es como tu foto pero más divertida!"
+              question="¿Para qué sirve un avatar?"
+              answers={['🖼️ Para representarte', '🍎 Para comer', '🚗 Para conducir']}
+              correct={0}
+              onDone={() => { setShowConcept(false); setLearned(true); speech && speech.speak('¡Ahora elige tu avatar!'); }}
+              onClose={() => setShowConcept(false)}
+            />
+          )}
+          
+          <div className="flex flex-col items-center space-y-5 max-w-md w-full fade-up">
+            <Chispa state="CURIOUS" size="md" />
+            <h2 className="text-2xl font-bold text-yellow-400 text-center">¡Personaliza tu aventura!</h2>
+            
+            <div className="w-full">
+              <label className="text-yellow-200 mb-2 block">¿Cómo te llamas?</label>
+              <div className="flex gap-2">
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre..."
+                  className={`flex-1 p-4 rounded-2xl bg-white/10 border-2 text-white text-lg placeholder-gray-400 focus:outline-none ${
+                    !name && toast ? 'border-orange-400' : 'border-yellow-400/50 focus:border-yellow-400'
+                  }`} />
+                <VoiceBtn onResult={handleVoice} />
+              </div>
+            </div>
+            
+            <div className="w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <label className="text-yellow-200">Elige tu avatar:</label>
+                <button onClick={() => setShowConcept(true)} className="w-6 h-6 bg-white/20 rounded-full text-xs text-yellow-300">?</button>
+              </div>
+              <div className={`flex justify-center gap-3 flex-wrap p-3 rounded-2xl ${avatar === null && toast ? 'ring-2 ring-orange-400 bg-orange-400/10' : ''}`}>
+                {avatars.map((a, i) => (
+                  <button key={i} onClick={() => handleAvatar(i)}
+                    className={`w-14 h-14 text-3xl rounded-2xl flex items-center justify-center btn-act ${
+                      avatar === i ? 'bg-yellow-400 ring-4 ring-yellow-200 scale-110' : 'bg-white/10 hover:bg-white/20'
+                    }`}>{a}</button>
+                ))}
+              </div>
+              {avatar === null && <p className="text-yellow-200/60 text-sm text-center mt-2">👆 Toca una carita</p>}
+            </div>
+            
+            <button onClick={handleContinue}
+              className={`bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg btn-act ${
+                (!name || avatar === null) ? 'opacity-70' : ''
+              }`}>¡Comenzar! 🚀</button>
+            
+            <div className="flex gap-4 text-sm">
+              <span className={name ? 'text-green-400' : 'text-white/50'}>{name ? '✅' : '⬜'} Nombre</span>
+              <span className={avatar !== null ? 'text-green-400' : 'text-white/50'}>{avatar !== null ? '✅' : '⬜'} Avatar</span>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // EXPLORER
+    const Explorer = ({ onBack, onSelect, user }) => {
+      const [sel, setSel] = useState(null);
+      const [toast, setToast] = useState(null);
+      const audio = useAudio();
+      const speech = useSpeech();
+      const devices = [
+        { emoji: '📱', name: 'Teléfono', color: 'from-blue-400 to-blue-600', info: '¡Para llamar y jugar!' },
+        { emoji: '💻', name: 'Computadora', color: 'from-purple-400 to-purple-600', info: '¡Para tareas y dibujar!' },
+        { emoji: '🎮', name: 'Consola', color: 'from-green-400 to-green-600', info: '¡Para videojuegos!' },
+        { emoji: '📺', name: 'Televisor', color: 'from-red-400 to-red-600', info: '¡Para películas!' },
+      ];
+
+      useEffect(() => { setTimeout(() => speech && speech.speak(`¡Hola ${user?.name || ''}! Elige un dispositivo.`), 500); }, []);
+
+      const handleSelect = (i) => { audio && audio.pop(); setSel(i); speech && speech.speak(`${devices[i].name}! ${devices[i].info}`); };
+      const handleNext = () => {
+        if (sel === null) { setToast({ msg: '¡Primero elige un dispositivo!', type: 'hint' }); return; }
+        audio && audio.success();
+        onSelect(devices[sel]);
+      };
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue to-indigo-900 p-6 relative">
+          <BackBtn onClick={onBack} />
+          <FwdBtn onClick={handleNext} disabled={sel === null} />
+          <Toast msg={toast?.msg} type={toast?.type} onClose={() => setToast(null)} />
+          
+          <div className="flex items-center gap-3 mb-4">
+            <Chispa state="CELEBRATING" size="sm" />
+            {user?.name && <div className="bg-white/20 px-3 py-1 rounded-full text-yellow-200 text-sm">{user.avatar} {user.name}</div>}
+          </div>
+          
+          <h2 className="text-2xl font-bold text-yellow-400 mb-6 text-center fade-up">🎉 ¡Explora dispositivos! 🎉</h2>
+          
+          <div className="grid grid-cols-2 gap-3 max-w-xs">
+            {devices.map((d, i) => (
+              <button key={d.name} onClick={() => handleSelect(i)}
+                className={`bg-gradient-to-br ${d.color} p-5 rounded-2xl shadow-xl flex flex-col items-center btn-act fade-scale ${
+                  sel === i ? 'ring-4 ring-yellow-400 scale-105' : ''
+                }`} style={{ animationDelay: `${0.1 + i * 0.1}s` }}>
+                <span className="text-4xl mb-2">{d.emoji}</span>
+                <span className="text-white font-bold text-sm">{d.name}</span>
+              </button>
+            ))}
+          </div>
+          
+          {sel !== null ? (
+            <div className="mt-4 bg-white/20 p-4 rounded-2xl max-w-xs text-center fade-scale">
+              <p className="text-yellow-200">{devices[sel].emoji} {devices[sel].info}</p>
+              <p className="text-green-300 mt-2 text-sm">Toca ➡️ para más</p>
+            </div>
+          ) : (
+            <p className="text-yellow-200 mt-6 text-center fade-up">¡Toca un dispositivo! ✨</p>
+          )}
+        </div>
+      );
+    };
+
+    // DETAIL
+    const Detail = ({ device, onBack, onNext }) => {
+      const [idx, setIdx] = useState(0);
+      const audio = useAudio();
+      const speech = useSpeech();
+      const facts = {
+        'Teléfono': [{ i: '📞', t: 'Puedes llamar a tu familia' }, { i: '📸', t: 'Toma fotos increíbles' }, { i: '🎵', t: 'Escucha música' }, { i: '🎮', t: 'Juega juegos' }],
+        'Computadora': [{ i: '📝', t: 'Escribe historias' }, { i: '🎨', t: 'Dibuja arte digital' }, { i: '🌐', t: 'Explora internet' }, { i: '📹', t: 'Haz videollamadas' }],
+        'Consola': [{ i: '🕹️', t: 'Controles para jugar' }, { i: '👥', t: 'Juega con amigos' }, { i: '🏆', t: 'Gana trofeos' }, { i: '🌍', t: 'Mundos virtuales' }],
+        'Televisor': [{ i: '📺', t: 'Ve programas' }, { i: '🎬', t: 'Películas en familia' }, { i: '📡', t: 'Conecta dispositivos' }, { i: '🔊', t: 'Sonido envolvente' }],
+      };
+      const list = facts[device?.name] || facts['Teléfono'];
+
+      useEffect(() => { speech && speech.speak(`${device?.name}! ${list[0].t}`); }, []);
+
+      const prev = () => { if (idx > 0) { audio && audio.back(); setIdx(idx - 1); speech && speech.speak(list[idx - 1].t); } };
+      const next = () => { if (idx < list.length - 1) { audio && audio.flip(); setIdx(idx + 1); speech && speech.speak(list[idx + 1].t); } };
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue to-indigo-900 p-6 relative">
+          <BackBtn onClick={onBack} />
+          <FwdBtn onClick={onNext} />
+          
+          <div className="flex flex-col items-center space-y-5 max-w-md w-full">
+            <div className="text-7xl fade-scale">{device?.emoji}</div>
+            <h2 className="text-2xl font-bold text-yellow-400">{device?.name}</h2>
+            
+            <div className="bg-white/10 p-6 rounded-2xl w-full min-h-[130px] flex flex-col items-center justify-center fade-up">
+              <span className="text-5xl mb-3">{list[idx].i}</span>
+              <p className="text-white text-lg text-center font-medium">{list[idx].t}</p>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <button onClick={prev} disabled={idx === 0} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center btn-act disabled:opacity-30">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <div className="flex gap-2">{list.map((_, i) => <div key={i} className={`w-2.5 h-2.5 rounded-full ${i === idx ? 'bg-yellow-400 scale-125' : 'bg-white/30'}`} />)}</div>
+              <button onClick={next} disabled={idx === list.length - 1} className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center btn-act disabled:opacity-30">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+            
+            <Chispa state="CURIOUS" size="sm" />
+            <p className="text-yellow-200 text-sm text-center">Usa las flechas, luego toca ➡️</p>
+          </div>
+        </div>
+      );
+    };
+
+    // QUIZ GAME
+    const Quiz = ({ device, onBack, onDone, user }) => {
+      const [qIdx, setQIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [sel, setSel] = useState(null);
+      const [fb, setFb] = useState(null);
+      const [done, setDone] = useState(false);
+      const audio = useAudio();
+      const speech = useSpeech();
+
+      const qs = {
+        'Teléfono': [{ q: '¿Qué puedes hacer con un teléfono?', a: ['📞 Llamar', '🚗 Conducir', '✈️ Volar'], c: 0 }, { q: '¿Dónde se guarda?', a: ['🎒 Bolsillo', '🌊 Agua', '🔥 Fuego'], c: 0 }],
+        'Computadora': [{ q: '¿Para qué sirve?', a: ['📝 Escribir', '🏊 Nadar', '🍳 Cocinar'], c: 0 }, { q: '¿Qué tiene?', a: ['⌨️ Teclado', '🦷 Dientes', '👂 Orejas'], c: 0 }],
+        'Consola': [{ q: '¿Qué haces con ella?', a: ['🎮 Jugar', '🧹 Barrer', '🛏️ Dormir'], c: 0 }, { q: '¿Qué usas?', a: ['🕹️ Control', '🥄 Cuchara', '📚 Libro'], c: 0 }],
+        'Televisor': [{ q: '¿Qué ves en la TV?', a: ['🎬 Películas', '👃 Olores', '🎵 Solo música'], c: 0 }, { q: '¿Con qué cambias canal?', a: ['📺 Control', '🧲 Imán', '🪥 Cepillo'], c: 0 }],
+      };
+      const list = qs[device?.name] || qs['Teléfono'];
+      const curr = list[qIdx];
+
+      useEffect(() => { speech && speech.speak(`¡Quiz! ${curr.q}`); }, []);
+
+      const handleAns = (i) => {
+        if (sel !== null) return;
+        setSel(i);
+        if (i === curr.c) {
+          audio && audio.success(); setScore(score + 1); setFb('correct'); speech && speech.speak('¡Muy bien!');
+        } else {
+          audio && audio.error(); setFb('wrong'); speech && speech.speak('¡Casi!');
+        }
+        setTimeout(() => {
+          setFb(null); setSel(null);
+          if (qIdx < list.length - 1) { setQIdx(qIdx + 1); speech && speech.speak(list[qIdx + 1].q); }
+          else { audio && audio.celebrate(); setDone(true); }
+        }, 1500);
+      };
+
+      if (done) {
+        return (
+          <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue to-purple-900 p-6 relative">
+            <Confetti count={50} />
+            <BackBtn onClick={onBack} />
+            <div className="flex flex-col items-center space-y-5 text-center z-10">
+              <Chispa state="CELEBRATING" size="lg" />
+              <h2 className="text-2xl font-bold text-yellow-400 fade-up">🎉 ¡Excelente {user?.name}! 🎉</h2>
+              <div className="bg-white/20 p-5 rounded-2xl fade-scale">
+                <p className="text-white text-lg mb-3">¡Completaste el {device?.name}!</p>
+                <p className="text-yellow-300 mb-3">Puntuación: {score}/{list.length}</p>
+                <div className="flex justify-center gap-1">
+                  {[...Array(3)].map((_, i) => <span key={i} className="text-3xl star-pop" style={{ animationDelay: `${i * 0.2}s` }}>{i < Math.ceil((score / list.length) * 3) ? '⭐' : '☆'}</span>)}
+                </div>
+              </div>
+              <button onClick={onDone} className="bg-gradient-to-r from-green-400 to-green-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg btn-act fade-up">¡Continuar! 🚀</button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue to-indigo-900 p-6 relative">
+          <BackBtn onClick={onBack} />
+          <div className="flex flex-col items-center w-full max-w-md">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-3xl">{device?.emoji}</span>
+              <div className="bg-white/20 px-3 py-1 rounded-full text-yellow-300 text-sm">Pregunta {qIdx + 1}/{list.length}</div>
+            </div>
+            <Chispa state={fb === 'correct' ? 'HAPPY' : 'CURIOUS'} size="sm" />
+            <h2 className="text-xl font-bold text-white text-center my-5 fade-up">{curr.q}</h2>
+            {fb && <div className={`mb-3 px-5 py-2 rounded-full font-bold fade-scale ${fb === 'correct' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>{fb === 'correct' ? '¡Correcto! 🎉' : '¡Intenta de nuevo!'}</div>}
+            <div className="flex flex-col gap-3 w-full">
+              {curr.a.map((a, i) => (
+                <button key={i} onClick={() => handleAns(i)} disabled={sel !== null}
+                  className={`p-4 rounded-xl text-lg font-bold btn-act ${
+                    sel === i ? (i === curr.c ? 'bg-green-500 text-white scale-105' : 'bg-red-500 text-white shake-anim') : sel !== null && i === curr.c ? 'bg-green-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}>{a}</button>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-5">{[...Array(list.length)].map((_, i) => <div key={i} className={`w-3 h-3 rounded-full ${i < qIdx ? 'bg-green-400' : i === qIdx ? 'bg-yellow-400 scale-125' : 'bg-white/30'}`} />)}</div>
+          </div>
+        </div>
+      );
+    };
+
+    // COMPLETION
+    const Completion = ({ user, onRestart }) => {
+      const [showCert, setShowCert] = useState(false);
+      const audio = useAudio();
+      const speech = useSpeech();
+
+      useEffect(() => {
+        audio && audio.celebrate();
+        speech && speech.speak(`¡Felicidades ${user?.name}! ¡Completaste el curso!`);
+        setTimeout(() => { audio && audio.star(); setShowCert(true); }, 1500);
+      }, []);
+
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-b from-avia-blue via-purple-900 to-indigo-900 p-6 relative overflow-hidden">
+          <Confetti count={70} />
+          <div className="flex flex-col items-center space-y-5 text-center z-10">
+            <Chispa state="CELEBRATING" size="lg" />
+            <h1 className="text-3xl font-bold text-yellow-400 fade-up">🏆 ¡Felicidades {user?.name}! 🏆</h1>
+            {showCert && (
+              <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 p-6 rounded-2xl shadow-2xl max-w-xs fade-scale">
+                <div className="border-4 border-yellow-500 rounded-xl p-4">
+                  <h3 className="text-yellow-800 font-bold mb-2">📜 CERTIFICADO</h3>
+                  <p className="text-gray-700 mb-3"><span className="text-xl">{user?.avatar}</span> <strong>{user?.name}</strong></p>
+                  <p className="text-gray-600 text-sm mb-3">Completó el curso de<br/><strong className="text-yellow-700">Explorador de Dispositivos</strong></p>
+                  <div className="flex justify-center gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => <span key={i} className="text-xl star-pop" style={{ animationDelay: `${1 + i * 0.15}s` }}>⭐</span>)}
+                  </div>
+                  <p className="text-xs text-gray-500">AVIA Constelación ✨</p>
+                </div>
+              </div>
+            )}
+            <button onClick={onRestart} className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg btn-act fade-up mt-4">🔄 ¡Jugar de nuevo!</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🎬 APP PRINCIPAL
+    // ════════════════════════════════════════════════════════════
+    const App = () => {
+      const [screen, setScreen] = useState('splash');
+      const [trans, setTrans] = useState(false);
+      const [user, setUser] = useState(null);
+      const [device, setDevice] = useState(null);
+      const [audio] = useState(() => createAudio());
+      const [speech] = useState(() => createSpeech());
+      const [voice] = useState(() => createVoiceRec());
+
+      useEffect(() => { speech.init(); voice.init(); }, []);
+
+      const go = (s) => { setTrans(true); setTimeout(() => { setScreen(s); setTrans(false); }, 300); };
+      const restart = () => { audio.magic(); setUser(null); setDevice(null); go('splash'); };
+
+      const render = () => {
+        switch (screen) {
+          case 'splash': return <Splash onDone={() => go('welcome')} />;
+          case 'welcome': return <Welcome onNext={() => go('personal')} />;
+          case 'personal': return <Personalization onNext={() => go('explorer')} onBack={() => go('welcome')} setUser={setUser} />;
+          case 'explorer': return <Explorer onBack={() => go('personal')} onSelect={(d) => { setDevice(d); go('detail'); }} user={user} />;
+          case 'detail': return <Detail device={device} onBack={() => go('explorer')} onNext={() => go('quiz')} />;
+          case 'quiz': return <Quiz device={device} onBack={() => go('detail')} onDone={() => go('complete')} user={user} />;
+          case 'complete': return <Completion user={user} onRestart={restart} />;
+          default: return null;
+        }
+      };
+
+      return (
+        <AudioCtx.Provider value={audio}>
+          <SpeechCtx.Provider value={speech}>
+            <VoiceCtx.Provider value={voice}>
+              <div className="w-full h-full overflow-hidden relative bg-avia-blue">
+                <div className={`h-full w-full ${trans ? 'screen-exit' : 'screen-enter'}`} key={screen}>
+                  {render()}
+                </div>
+              </div>
+            </VoiceCtx.Provider>
+          </SpeechCtx.Provider>
+        </AudioCtx.Provider>
+      );
+    };
+
+    // ════════════════════════════════════════════════════════════
+    // 🚀 INICIALIZACIÓN CON MANEJO DE ERRORES GLOBAL
+    // ════════════════════════════════════════════════════════════
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    } catch (e) {
+      console.error('Init error:', e);
+      document.getElementById('root').innerHTML = '<div style="color:white;padding:20px;text-center">Error al cargar. Recarga la página.</div>';
+    }
+  </script>
+</body>
+</html>

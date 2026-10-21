@@ -1,0 +1,1 @@
+¿quieres saber mas sobre el click inteligente?

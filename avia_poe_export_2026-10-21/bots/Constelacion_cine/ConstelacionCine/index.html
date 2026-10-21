@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constelación Cinematográfica</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --gold: #c9a96e;
+            --gold-light: #e0c992;
+            --gold-dim: #8a7448;
+            --gold-glow: rgba(201,169,110,0.25);
+            --bg: #030303;
+            --surface: #0c0c0c;
+            --surface2: #161616;
+            --surface3: #1e1e1e;
+            --text: #ede8e0;
+            --text-dim: #7a7468;
+            --text-muted: #4a4540;
+            --red: #c0392b;
+            --green: #27ae60;
+            --blue: #2980b9;
+        }
+        html:not(.dark) {
+            --bg: #f0ebe3;
+            --surface: #e8e2d8;
+            --surface2: #ddd6ca;
+            --surface3: #d0c8bb;
+            --text: #1a1612;
+            --text-dim: #6a6458;
+            --text-muted: #9a9488;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Film Grain */
+        .grain {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 9999; opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+        }
+
+        #stars-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+        /* Screens */
+        .screen {
+            position: fixed; inset: 0;
+            z-index: 1; opacity: 0; visibility: hidden;
+            transition: opacity 1s ease, visibility 0s 1s;
+        }
+        .screen.active {
+            opacity: 1; visibility: visible;
+            transition: opacity 1s ease, visibility 0s 0s;
+        }
+        
+        .screen.fade-out {
+            opacity: 0;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .screen.fade-in {
+            opacity: 1;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+        }
+        
+        #landing-screen {
+            display: flex; align-items: center; justify-content: center;
+        }
+        #processing-screen {
+            display: flex; align-items: flex-start; justify-content: center;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 2rem 0;
+        }
+
+        /* === LANDING === */
+        .landing-content {
+            text-align: center; padding: 2rem; max-width: 600px;
+            animation: fadeUp 1.2s ease-out;
+        }
+        .logo-constellation {
+            width: 90px; height: 90px;
+            margin: 0 auto 2rem; position: relative;
+        }
+        .logo-constellation .star-dot {
+            position: absolute; width: 6px; height: 6px;
+            background: var(--gold); border-radius: 50%;
+            box-shadow: 0 0 12px var(--gold-glow);
+            animation: starPulse 3s ease-in-out infinite;
+        }
+        .logo-constellation .star-dot:nth-child(1) { top: 0; left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+        .logo-constellation .star-dot:nth-child(2) { top: 30%; right: 0; animation-delay: 0.5s; }
+        .logo-constellation .star-dot:nth-child(3) { bottom: 10%; right: 15%; animation-delay: 1s; }
+        .logo-constellation .star-dot:nth-child(4) { bottom: 0; left: 20%; animation-delay: 1.5s; }
+        .logo-constellation .star-dot:nth-child(5) { top: 40%; left: 0; animation-delay: 2s; }
+        .logo-constellation svg {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+        }
+        .logo-constellation svg line {
+            stroke: var(--gold-dim); stroke-width: 1; opacity: 0.35;
+            stroke-dasharray: 100; stroke-dashoffset: 100;
+            animation: drawLine 2s ease forwards;
+        }
+        .logo-constellation svg line:nth-child(2) { animation-delay: 0.15s; }
+        .logo-constellation svg line:nth-child(3) { animation-delay: 0.3s; }
+        .logo-constellation svg line:nth-child(4) { animation-delay: 0.45s; }
+        .logo-constellation svg line:nth-child(5) { animation-delay: 0.6s; }
+        .logo-constellation svg line:nth-child(6) { animation-delay: 0.75s; }
+        .logo-constellation svg line:nth-child(7) { animation-delay: 0.9s; }
+
+        .landing-content h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.4rem, 6vw, 3.8rem); font-weight: 700;
+            color: var(--gold); line-height: 1.1;
+            margin-bottom: 1rem; letter-spacing: 0.02em;
+        }
+        .landing-content .subtitle {
+            font-size: 1rem; color: var(--text-dim);
+            margin-bottom: 2.5rem; line-height: 1.6; font-weight: 400;
+        }
+        .landing-content .subtitle strong { color: var(--gold-light); font-weight: 600; }
+
+        .model-tags {
+            display: flex; gap: 0.5rem; justify-content: center;
+            flex-wrap: wrap; margin-bottom: 2.5rem;
+        }
+        .model-tag {
+            padding: 0.3rem 0.8rem; border: 1px solid var(--gold-dim);
+            border-radius: 20px; font-size: 0.72rem; color: var(--gold);
+            font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .cta-btn {
+            display: inline-flex; align-items: center; gap: 0.75rem;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+            color: #0a0804; border: none; border-radius: 50px;
+            font-family: 'Quicksand', sans-serif; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: transform 0.3s, box-shadow 0.3s;
+            letter-spacing: 0.03em;
+        }
+        .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--gold-glow); }
+        .cta-btn:active { transform: translateY(0); }
+        .cta-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .history-btn {
+            position: absolute; top: 1.5rem; right: 1.5rem;
+            width: 42px; height: 42px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(201,169,110,0.1); color: var(--gold);
+            border: 1px solid var(--gold-dim); border-radius: 50%;
+            font-size: 1rem; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .history-btn:hover {
+            background: rgba(201,169,110,0.2);
+            transform: scale(1.05);
+        }
+
+        .waveform {
+            display: flex; align-items: center; justify-content: center;
+            gap: 3px; height: 40px; margin-bottom: 2rem;
+        }
+        .waveform .bar {
+            width: 3px; background: var(--gold-dim); border-radius: 2px;
+            animation: waveAnim 1.2s ease-in-out infinite;
+        }
+        @keyframes waveAnim {
+            0%, 100% { height: 8px; opacity: 0.4; }
+            50% { height: 30px; opacity: 1; }
+        }
+
+        /* === PROCESSING === */
+        .processing-content {
+            width: 100%; max-width: 700px; padding: 2rem;
+            animation: fadeUp 0.8s ease-out;
+        }
+        .processing-content h2 {
+            font-family: 'Cormorant Garamond', serif; font-size: 1.8rem;
+            color: var(--gold); text-align: center;
+            margin-bottom: 1rem; font-weight: 600;
+        }
+        .overall-progress {
+            height: 4px; background: var(--surface2); border-radius: 2px;
+            margin-bottom: 2rem; overflow: hidden;
+        }
+        .overall-progress-fill {
+            height: 100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+            border-radius: 2px; width: 0%; transition: width 0.5s ease;
+        }
+        .steps-container {
+            display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;
+        }
+        .step-row {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 0.85rem 1.1rem; background: var(--surface);
+            border-radius: 12px; border: 1px solid transparent;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .step-row.active { border-color: var(--gold-dim); background: var(--surface2); }
+        .step-row.complete { border-color: var(--green); opacity: 0.7; }
+        .step-row.error-state { border-color: var(--red); }
+        .step-icon {
+            width: 38px; height: 38px; display: flex;
+            align-items: center; justify-content: center;
+            border-radius: 50%; background: var(--surface2);
+            color: var(--text-dim); font-size: 0.85rem; flex-shrink: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .step-row.active .step-icon { background: var(--gold); color: #0a0804; animation: pulse 2s ease-in-out infinite; }
+        .step-row.complete .step-icon { background: var(--green); color: #fff; }
+        .step-info { flex: 1; min-width: 0; }
+        .step-title { font-weight: 600; font-size: 0.88rem; margin-bottom: 0.15rem; }
+        .step-status { font-size: 0.75rem; color: var(--text-dim); }
+        .step-bot { font-size: 0.65rem; color: var(--gold-dim); font-weight: 500; letter-spacing: 0.04em; }
+
+        .scene-previews {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.6rem; margin-top: 1.25rem;
+        }
+        .scene-preview-card {
+            aspect-ratio: 16/9; border-radius: 8px; overflow: hidden;
+            position: relative; background: var(--surface2);
+            border: 1px solid var(--surface3); animation: fadeIn 0.6s ease;
+        }
+        .scene-preview-card img { width: 100%; height: 100%; object-fit: cover; }
+        .scene-preview-card .scene-num {
+            position: absolute; bottom: 4px; left: 6px; font-size: 0.6rem;
+            color: var(--gold-light); background: rgba(0,0,0,0.75);
+            padding: 2px 6px; border-radius: 4px; font-weight: 600;
+        }
+        .proc-log {
+            margin-top: 1.25rem; max-height: 110px; overflow-y: auto;
+            padding: 0.65rem; background: var(--surface); border-radius: 8px;
+            font-size: 0.7rem; color: var(--text-dim); font-family: 'Quicksand', sans-serif;
+        }
+        .proc-log p { margin-bottom: 0.25rem; padding-left: 0.5rem; border-left: 2px solid var(--surface3); }
+        .proc-log p.gold { border-color: var(--gold-dim); color: var(--gold); }
+        .proc-log p.green-log { border-color: var(--green); }
+        .proc-log p.red-log { border-color: var(--red); }
+
+        /* === PLAYER === */
+        .player-wrapper {
+            width: 100%; height: 100vh;
+            display: flex; flex-direction: column; background: #000;
+        }
+        .cinema-frame {
+            flex: 1; position: relative; overflow: hidden;
+            background: #000; cursor: pointer;
+        }
+        .scene-layer {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 1.5s ease;
+        }
+        .scene-media { width: 100%; height: 100%; object-fit: cover; }
+        .scene-media.ken-burns { animation: kenBurns 20s ease-in-out infinite alternate; }
+
+        .vignette {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.6) 100%);
+        }
+        .letterbox {
+            position: absolute; left: 0; right: 0; z-index: 2;
+            pointer-events: none;
+        }
+        .letterbox.top {
+            top: 0; height: 8%;
+            background: linear-gradient(to bottom, #000 60%, transparent);
+        }
+        .letterbox.bottom {
+            bottom: 0; height: 8%;
+            background: linear-gradient(to top, #000 60%, transparent);
+        }
+        .scene-title-overlay {
+            position: absolute; top: 12%; left: 5%; z-index: 3;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(1.1rem, 3vw, 1.8rem);
+            color: rgba(255,255,255,0.85); font-weight: 600; font-style: italic;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+            opacity: 0; transition: opacity 1s ease;
+        }
+        .scene-title-overlay.visible { opacity: 1; }
+
+        .scene-counter {
+            position: absolute; top: 12%; right: 5%; z-index: 3;
+            font-size: 0.75rem; color: rgba(255,255,255,0.5);
+            font-weight: 500; letter-spacing: 0.08em;
+            text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+        }
+
+        .lyrics-overlay {
+            position: absolute; bottom: 12%; left: 50%;
+            transform: translateX(-50%); z-index: 3;
+            text-align: center; max-width: 80%; width: max-content;
+            font-size: clamp(0.85rem, 2.2vw, 1.25rem);
+            color: #fff; font-weight: 500; line-height: 1.6;
+            text-shadow: 0 2px 15px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.6);
+            padding: 0.5rem 1.5rem;
+            background: rgba(0,0,0,0.35); border-radius: 8px;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.8s ease;
+        }
+
+        .vid-progress-badge {
+            position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+            z-index: 3; font-size: 0.7rem; color: var(--gold);
+            background: rgba(0,0,0,0.6); padding: 0.3rem 0.8rem;
+            border-radius: 20px; backdrop-filter: blur(6px);
+            transition: opacity 0.5s ease; opacity: 0;
+            pointer-events: none;
+        }
+        .vid-progress-badge.visible { opacity: 1; }
+
+        .play-overlay {
+            position: absolute; inset: 0; z-index: 4;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.4);
+            transition: opacity 0.4s ease; cursor: pointer;
+        }
+        .play-overlay.hidden { opacity: 0; pointer-events: none; }
+        .play-overlay-btn {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(201,169,110,0.85);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; color: #0a0804;
+            box-shadow: 0 0 40px rgba(201,169,110,0.3);
+            animation: breathe 2s ease-in-out infinite;
+        }
+
+        .end-screen {
+            position: absolute; inset: 0; z-index: 5;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.85); gap: 1.5rem;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.8s ease, visibility 0s 0.8s;
+        }
+        .end-screen.visible {
+            opacity: 1; visibility: visible;
+            transition: opacity 0.8s ease, visibility 0s 0s;
+        }
+        .end-screen h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem; color: var(--gold); font-weight: 600;
+        }
+        .end-screen .end-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+        .end-btn {
+            padding: 0.7rem 1.8rem; border-radius: 30px; border: none;
+            font-family: 'Quicksand', sans-serif; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer; transition: transform 0.2s;
+        }
+        .end-btn:hover { transform: scale(1.05); }
+        .end-btn.primary { background: var(--gold); color: #0a0804; }
+        .end-btn.secondary { background: rgba(255,255,255,0.1); color: var(--text); }
+
+        /* Player Controls */
+        .player-controls {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            background: rgba(0,0,0,0.95);
+            border-top: 1px solid rgba(201,169,110,0.12);
+            z-index: 5;
+        }
+        .ctrl-btn {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: transparent; color: var(--gold);
+            border: none; border-radius: 50%;
+            font-size: 0.85rem; cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            flex-shrink: 0;
+        }
+        .ctrl-btn:hover { background: rgba(201,169,110,0.15); }
+        .ctrl-btn:active { transform: scale(0.92); }
+        .ctrl-btn.play-btn {
+            width: 40px; height: 40px;
+            background: var(--gold); color: #0a0804;
+            font-size: 0.9rem;
+        }
+        .ctrl-btn.play-btn:hover { background: var(--gold-light); }
+        .ctrl-btn.active { color: var(--gold-light); background: rgba(201,169,110,0.2); }
+
+        .ctrl-btn.download-btn {
+            position: relative;
+        }
+        .ctrl-btn.download-btn.downloading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .ctrl-btn.download-btn.downloading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px solid transparent;
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .seek-wrapper { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .seek-bar {
+            width: 100%; height: 6px;
+            background: rgba(255,255,255,0.12); border-radius: 3px;
+            cursor: pointer; position: relative; overflow: visible;
+        }
+        .seek-fill {
+            height: 100%; background: var(--gold); border-radius: 3px;
+            width: 0%; transition: width 0.15s linear; position: relative;
+        }
+        .seek-fill::after {
+            content: ''; position: absolute; right: -5px; top: -2px;
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--gold-light); opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .seek-bar:hover .seek-fill::after,
+        .seek-bar.dragging .seek-fill::after { opacity: 1; }
+        .seek-markers { position: absolute; inset: 0; pointer-events: none; }
+        .seek-marker {
+            position: absolute; top: 0; bottom: 0;
+            width: 1px; background: rgba(255,255,255,0.2);
+        }
+        .time-display {
+            font-size: 0.72rem; color: var(--gold); font-weight: 500;
+            white-space: nowrap; min-width: 80px; text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Volume */
+        .volume-group {
+            display: flex; align-items: center; gap: 0.25rem;
+        }
+        .volume-slider {
+            width: 60px; height: 4px; -webkit-appearance: none;
+            appearance: none; background: rgba(255,255,255,0.15);
+            border-radius: 2px; outline: none; cursor: pointer;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            border-radius: 50%; background: var(--gold); cursor: pointer;
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 12px; height: 12px; border: none;
+            border-radius: 50%; background: var(--gold); cursor: pointer;
+        }
+
+        /* Scene Thumbnails Strip */
+        .scene-strip {
+            display: flex; gap: 3px; padding: 0.4rem 0.75rem;
+            background: rgba(0,0,0,0.95); overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .scene-strip::-webkit-scrollbar { display: none; }
+        .scene-thumb {
+            width: 72px; height: 40px; flex-shrink: 0;
+            border-radius: 4px; overflow: hidden; cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.3s, opacity 0.3s;
+            opacity: 0.45; position: relative;
+        }
+        .scene-thumb.active-thumb { border-color: var(--gold); opacity: 1; }
+        .scene-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .scene-thumb .vid-badge {
+            position: absolute; top: 2px; right: 2px;
+            width: 14px; height: 14px; background: var(--gold);
+            border-radius: 50%; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 5px; color: #000;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            z-index: 10000; display: flex;
+            align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal-box {
+            background: var(--surface2); border: 1px solid var(--surface3);
+            border-radius: 16px; padding: 2rem; max-width: 420px; width: 100%;
+            text-align: center;
+        }
+        .modal-box h3 { font-family: 'Cormorant Garamond', serif; color: var(--gold); font-size: 1.4rem; margin-bottom: 1rem; }
+        .modal-box p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5; }
+        .modal-box textarea {
+            width: 100%; min-height: 120px; background: var(--surface);
+            border: 1px solid var(--surface3); border-radius: 8px;
+            color: var(--text); padding: 0.75rem;
+            font-family: 'Quicksand', sans-serif; font-size: 16px;
+            resize: vertical; margin-bottom: 1rem;
+        }
+        .modal-btn {
+            padding: 0.7rem 2rem; background: var(--gold); color: #0a0804;
+            border: none; border-radius: 30px; font-family: 'Quicksand', sans-serif;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer; margin: 0 0.25rem;
+        }
+        
+        /* Historial Modal */
+        .history-modal .modal-box {
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--surface3);
+            transition: border-color 0.3s;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            border-color: var(--gold-dim);
+        }
+        .history-thumb {
+            width: 80px;
+            height: 45px;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--surface2);
+        }
+        .history-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .history-info {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+        }
+        .history-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-date {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        .history-scenes {
+            font-size: 0.7rem;
+            color: var(--gold-dim);
+        }
+        .history-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+        .history-action-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.8rem;
+        }
+        .history-action-btn:hover {
+            background: rgba(201,169,110,0.15);
+            color: var(--gold);
+        }
+        .history-action-btn.delete:hover {
+            color: var(--red);
+        }
+        .history-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes kenBurns { 0% { transform: scale(1) translate(0,0); } 100% { transform: scale(1.12) translate(-2%,-1.5%); } }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--gold-glow); } 50% { box-shadow: 0 0 0 8px transparent; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes starPulse { 
+            0%,100% { opacity: 0.6; transform: scale(1); } 
+            50% { opacity: 1; transform: scale(1.4); } 
+        }
+        @keyframes drawLine { to { stroke-dashoffset: 0; } }
+        @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .landing-content { padding: 1.5rem; }
+            .landing-content h1 { font-size: 2rem; }
+            .processing-content { padding: 1rem; }
+            .player-controls { padding: 0.5rem 0.6rem; gap: 0.4rem; }
+            .volume-slider { width: 40px; }
+            .scene-strip { padding: 0.3rem 0.5rem; }
+            .scene-thumb { width: 56px; height: 32px; }
+            .letterbox.top, .letterbox.bottom { height: 5%; }
+            .ctrl-btn { width: 32px; height: 32px; font-size: 0.78rem; }
+            .ctrl-btn.play-btn { width: 36px; height: 36px; }
+            .time-display { font-size: 0.65rem; min-width: 70px; }
+            .history-btn { top: 1rem; right: 1rem; width: 38px; height: 38px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="grain"></div>
+    <canvas id="stars-canvas"></canvas>
+
+    <!-- LANDING -->
+    <div id="landing-screen" class="screen active">
+        <button class="history-btn" id="history-btn" title="Historial de sesiones">
+            <i class="fas fa-history"></i>
+        </button>
+        <div class="landing-content">
+            <div class="logo-constellation">
+                <div class="star-dot"></div><div class="star-dot"></div>
+                <div class="star-dot"></div><div class="star-dot"></div>
+                <div class="star-dot"></div>
+                <svg viewBox="0 0 90 90">
+                    <line x1="45" y1="3" x2="84" y2="27"/>
+                    <line x1="84" y1="27" x2="72" y2="72"/>
+                    <line x1="72" y1="72" x2="18" y2="81"/>
+                    <line x1="18" y1="81" x2="6" y2="36"/>
+                    <line x1="6" y1="36" x2="45" y2="3"/>
+                    <line x1="45" y1="3" x2="72" y2="72"/>
+                    <line x1="84" y1="27" x2="18" y2="81"/>
+                </svg>
+            </div>
+            <h1>Constelación<br>Cinematográfica</h1>
+            <p class="subtitle">Experiencia visual generada por IA a partir de la canción de<br><strong>Enrique G. Huete</strong></p>
+            <div class="waveform" id="waveform"></div>
+            <div class="model-tags">
+                <span class="model-tag"><i class="fas fa-microphone"></i> Whisper</span>
+                <span class="model-tag"><i class="fas fa-brain"></i> GPT-5.2</span>
+                <span class="model-tag"><i class="fas fa-image"></i> Imagen-4</span>
+                <span class="model-tag"><i class="fas fa-video"></i> Sora-2</span>
+            </div>
+            <button class="cta-btn" id="start-btn">
+                <i class="fas fa-film"></i> Crear Experiencia Cinematográfica
+            </button>
+        </div>
+    </div>
+
+    <!-- PROCESSING -->
+    <div id="processing-screen" class="screen">
+        <div class="processing-content">
+            <h2><i class="fas fa-cog fa-spin" style="margin-right:0.5rem;font-size:1.1rem"></i> Creando tu experiencia</h2>
+            <div class="overall-progress"><div class="overall-progress-fill" id="overall-progress"></div></div>
+            <div class="steps-container">
+                <div class="step-row" id="step-1">
+                    <div class="step-icon"><i class="fas fa-microphone"></i></div>
+                    <div class="step-info">
+                        <div class="step-title">Transcripción</div>
+                        <div class="step-status" id="status-1">Esperando...</div>
+                        <div class="step-bot">Whisper-V3-Large-T</div>
+                    </div>
+                </div>
+                <div class="step-row" id="step-2">
+                    <div class="step-icon"><i class="fas fa-brain"></i></div>
+                    <div class="step-info">
+                        <div class="step-title">Análisis de escenas</div>
+                        <div class="step-status" id="status-2">Esperando...</div>
+                        <div class="step-bot">GPT-5.2</div>
+                    </div>
+                </div>
+                <div class="step-row" id="step-3">
+                    <div class="step-icon"><i class="fas fa-image"></i></div>
+                    <div class="step-info">
+                        <div class="step-title">Imágenes cinematográficas</div>
+                        <div class="step-status" id="status-3">Esperando...</div>
+                        <div class="step-bot">Imagen-4-Ultra &middot; 16:9</div>
+                    </div>
+                </div>
+                <div class="step-row" id="step-4">
+                    <div class="step-icon"><i class="fas fa-video"></i></div>
+                    <div class="step-info">
+                        <div class="step-title">Vídeos cinematográficos</div>
+                        <div class="step-status" id="status-4">Esperando...</div>
+                        <div class="step-bot">Sora-2 &middot; 8s &middot; 720p</div>
+                    </div>
+                </div>
+            </div>
+            <div id="scene-previews" class="scene-previews"></div>
+            <div id="proc-log" class="proc-log"></div>
+        </div>
+    </div>
+
+    <!-- PLAYER -->
+    <div id="player-screen" class="screen">
+        <div class="player-wrapper">
+            <div class="cinema-frame" id="cinema-frame">
+                <div class="scene-layer" id="layer-a" style="opacity:1"></div>
+                <div class="scene-layer" id="layer-b" style="opacity:0"></div>
+                <div class="vignette"></div>
+                <div class="letterbox top"></div>
+                <div class="letterbox bottom"></div>
+                <div class="scene-title-overlay" id="scene-title-overlay"></div>
+                <div class="scene-counter" id="scene-counter"></div>
+                <div class="vid-progress-badge" id="vid-progress-badge"><i class="fas fa-film"></i> <span id="vid-prog-text"></span></div>
+                <div class="lyrics-overlay" id="lyrics-overlay"></div>
+                <div class="play-overlay" id="play-overlay">
+                    <div class="play-overlay-btn"><i class="fas fa-play" style="margin-left:4px"></i></div>
+                </div>
+                <div class="end-screen" id="end-screen">
+                    <h3>Constelación Cinematográfica</h3>
+                    <p style="color:var(--text-dim);font-size:0.9rem">Enrique G. Huete</p>
+                    <div class="end-btns">
+                        <button class="end-btn primary" id="replay-btn"><i class="fas fa-redo"></i> Repetir</button>
+                        <button class="end-btn secondary" id="back-btn"><i class="fas fa-arrow-left"></i> Inicio</button>
+                    </div>
+                </div>
+            </div>
+            <div class="player-controls">
+                <button class="ctrl-btn play-btn" id="play-btn"><i class="fas fa-play"></i></button>
+                <div class="seek-wrapper">
+                    <div class="seek-bar" id="seek-bar">
+                        <div class="seek-fill" id="seek-fill"></div>
+                        <div class="seek-markers" id="seek-markers"></div>
+                    </div>
+                </div>
+                <span class="time-display" id="time-display">0:00 / 0:00</span>
+                <div class="volume-group">
+                    <button class="ctrl-btn" id="vol-btn"><i class="fas fa-volume-up"></i></button>
+                    <input type="range" class="volume-slider" id="vol-slider" min="0" max="1" step="0.05" value="1">
+                </div>
+                <button class="ctrl-btn download-btn" id="download-btn" title="Descargar video"><i class="fas fa-download"></i></button>
+                <button class="ctrl-btn" id="loop-btn" title="Repetir"><i class="fas fa-redo-alt"></i></button>
+                <button class="ctrl-btn" id="fs-btn" title="Pantalla completa"><i class="fas fa-expand"></i></button>
+            </div>
+            <div class="scene-strip" id="scene-strip"></div>
+        </div>
+    </div>
+
+<script>
+/* SANDBOX STORAGE GUARD */
+(function sandboxGuard() {
+    var noopStorage = {
+        _data: {},
+        getItem: function(k) { return Object.prototype.hasOwnProperty.call(this._data, k) ? this._data[k] : null; },
+        setItem: function(k, v) { this._data[k] = String(v); },
+        removeItem: function(k) { delete this._data[k]; },
+        clear: function() { this._data = {}; },
+        key: function(i) { var keys = Object.keys(this._data); return i < keys.length ? keys[i] : null; },
+        get length() { return Object.keys(this._data).length; }
+    };
+
+    function safeguard(name) {
+        try {
+            var s = window[name];
+            if (s) { s.setItem('__sandbox_test__', '1'); s.removeItem('__sandbox_test__'); }
+        } catch (e) {
+            try {
+                Object.defineProperty(window, name, {
+                    value: Object.create(noopStorage, { _data: { value: {}, writable: true } }),
+                    configurable: true,
+                    writable: true
+                });
+            } catch (ignore) { }
+        }
+    }
+
+    safeguard('localStorage');
+    safeguard('sessionStorage');
+})();
+
+/* DARK MODE */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    document.documentElement.classList.toggle('dark', e.matches);
+});
+
+/* CONFIG */
+var CONFIG = {
+    songUrl: 'https://pfst.cf2.poecdn.net/base/video/8c44fb678e31d0ef2b5afdf08775ad0fc8e84a69fafde59c0c4ac8009f8914f3',
+    targetScenes: 6,
+    imageBot: 'Imagen-4-Ultra',
+    videoBot: 'Sora-2',
+    llmBot: 'GPT-5.2',
+    whisperBot: 'Whisper-V3-Large-T'
+};
+
+/* STATE */
+var state = {
+    phase: 'landing',
+    lyrics: '',
+    scenes: [],
+    audio: null,
+    duration: 0,
+    isPlaying: false,
+    currentScene: -1,
+    imagesReady: 0,
+    videosReady: 0,
+    animFrame: null,
+    activeLayer: 'a',
+    looping: false,
+    overallSteps: 0,
+    sessionId: null
+};
+
+/* HISTORY MANAGER */
+var HistoryManager = {
+    storageKey: 'constelacion_history',
+    maxItems: 20,
+    
+    save: function(sessionData) {
+        try {
+            var history = this.getAll();
+            var entry = {
+                id: sessionData.id || Date.now(),
+                timestamp: Date.now(),
+                lyrics: sessionData.lyrics,
+                scenes: sessionData.scenes,
+                songUrl: sessionData.songUrl
+            };
+            
+            history.unshift(entry);
+            if (history.length > this.maxItems) {
+                history = history.slice(0, this.maxItems);
+            }
+            
+            localStorage.setItem(this.storageKey, JSON.stringify(history));
+            return entry.id;
+        } catch (e) {
+            console.error('Error guardando historial:', e);
+            return null;
+        }
+    },
+    
+    getAll: function() {
+        try {
+            var data = localStorage.getItem(this.storageKey);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('Error cargando historial:', e);
+            return [];
+        }
+    },
+    
+    getById: function(id) {
+        var history = this.getAll();
+        return history.find(function(item) { return item.id === id; });
+    },
+    
+    delete: function(id) {
+        try {
+            var history = this.getAll();
+            history = history.filter(function(item) { return item.id !== id; });
+            localStorage.setItem(this.storageKey, JSON.stringify(history));
+            return true;
+        } catch (e) {
+            console.error('Error eliminando del historial:', e);
+            return false;
+        }
+    },
+    
+    clear: function() {
+        try {
+            localStorage.removeItem(this.storageKey);
+            return true;
+        } catch (e) {
+            console.error('Error limpiando historial:', e);
+            return false;
+        }
+    }
+};
+
+/* STARS */
+function initStars() {
+    var c = document.getElementById('stars-canvas');
+    var ctx = c.getContext('2d');
+    var stars = [];
+    function resize() { c.width = window.innerWidth; c.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+    for (var i = 0; i < 100; i++) {
+        stars.push({ 
+            x: Math.random() * c.width, 
+            y: Math.random() * c.height, 
+            r: Math.random() * 1.5 + 0.4, 
+            a: Math.random(), 
+            sp: Math.random() * 0.005 + 0.002 
+        });
+    }
+    (function draw() {
+        ctx.clearRect(0, 0, c.width, c.height);
+        stars.forEach(function(s) {
+            s.a += s.sp;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(201,169,110,' + (0.25 + Math.sin(s.a) * 0.25) + ')';
+            ctx.fill();
+        });
+        requestAnimationFrame(draw);
+    })();
+}
+
+/* WAVEFORM */
+function initWaveform() {
+    var el = document.getElementById('waveform');
+    for (var i = 0; i < 28; i++) {
+        var b = document.createElement('div');
+        b.className = 'bar';
+        b.style.animationDelay = (i * 0.06) + 's';
+        b.style.height = (8 + Math.random() * 22) + 'px';
+        el.appendChild(b);
+    }
+}
+
+/* SCREEN NAV */
+function showScreen(id) {
+    var current = document.querySelector('.screen.active');
+    var next = document.getElementById(id);
+    
+    if (current) {
+        current.classList.add('fade-out');
+        setTimeout(function() {
+            current.classList.remove('active', 'fade-out');
+        }, 800);
+    }
+    
+    setTimeout(function() {
+        next.classList.add('active', 'fade-in');
+        setTimeout(function() {
+            next.classList.remove('fade-in');
+        }, 1000);
+    }, current ? 200 : 0);
+    
+    state.phase = id.replace('-screen', '');
+}
+
+/* STEP & PROGRESS */
+function updateStep(num, status, text) {
+    var row = document.getElementById('step-' + num);
+    var st = document.getElementById('status-' + num);
+    row.className = 'step-row';
+    if (status === 'active') { row.classList.add('active'); }
+    else if (status === 'complete') { row.classList.add('complete'); state.overallSteps++; }
+    else if (status === 'error') { row.classList.add('error-state'); state.overallSteps++; }
+    st.textContent = text;
+    document.getElementById('overall-progress').style.width = Math.min(100, (state.overallSteps / 4) * 100) + '%';
+}
+
+function procLog(msg, type) {
+    var el = document.getElementById('proc-log');
+    var p = document.createElement('p');
+    if (type) { p.className = type; }
+    p.textContent = msg;
+    el.appendChild(p);
+    el.scrollTop = el.scrollHeight;
+}
+
+/* LYRICS MODAL */
+function showLyricsModal(def) {
+    return new Promise(function(resolve) {
+        var bd = document.createElement('div');
+        bd.className = 'modal-backdrop';
+        bd.innerHTML = '<div class="modal-box"><h3>Letra de la canción</h3><p>No se pudo transcribir. Pega la letra manualmente:</p><textarea id="manual-lyrics" placeholder="Pega la letra aquí...">' + (def || '') + '</textarea><div><button class="modal-btn" id="modal-ok">Continuar</button></div></div>';
+        document.body.appendChild(bd);
+        document.getElementById('modal-ok').addEventListener('click', function() {
+            var v = document.getElementById('manual-lyrics').value.trim();
+            bd.remove();
+            resolve(v);
+        });
+    });
+}
+
+/* HISTORY MODAL */
+function showHistoryModal() {
+    var history = HistoryManager.getAll();
+    
+    var bd = document.createElement('div');
+    bd.className = 'modal-backdrop history-modal';
+    
+    var historyHtml = '';
+    if (history.length === 0) {
+        historyHtml = '<div class="history-empty"><i class="fas fa-film" style="font-size:2rem;margin-bottom:1rem;opacity:0.3"></i><p>No hay sesiones guardadas</p></div>';
+    } else {
+        historyHtml = '<div class="history-list">';
+        history.forEach(function(item) {
+            var date = new Date(item.timestamp);
+            var dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
+                         date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            var firstScene = item.scenes && item.scenes[0];
+            var thumbUrl = firstScene && firstScene.imageUrl ? firstScene.imageUrl : '';
+            var title = firstScene ? firstScene.title : 'Sesión sin título';
+            
+            historyHtml += '<div class="history-item" data-id="' + item.id + '">' +
+                '<div class="history-thumb">' + 
+                    (thumbUrl ? '<img src="' + thumbUrl + '" alt="' + title + '">' : '') +
+                '</div>' +
+                '<div class="history-info">' +
+                    '<div class="history-title">' + title + '</div>' +
+                    '<div class="history-date">' + dateStr + '</div>' +
+                    '<div class="history-scenes">' + (item.scenes ? item.scenes.length : 0) + ' escenas</div>' +
+                '</div>' +
+                '<div class="history-actions">' +
+                    '<button class="history-action-btn load" data-id="' + item.id + '" title="Cargar"><i class="fas fa-play"></i></button>' +
+                    '<button class="history-action-btn delete" data-id="' + item.id + '" title="Eliminar"><i class="fas fa-trash"></i></button>' +
+                '</div>' +
+            '</div>';
+        });
+        historyHtml += '</div>';
+    }
+    
+    bd.innerHTML = '<div class="modal-box">' +
+        '<h3><i class="fas fa-history" style="margin-right:0.5rem"></i> Historial de sesiones</h3>' +
+        '<p>Sesiones cinematográficas guardadas</p>' +
+        historyHtml +
+        '<div><button class="modal-btn" id="history-close">Cerrar</button>' +
+        (history.length > 0 ? '<button class="modal-btn" id="history-clear" style="background:var(--red);margin-left:0.5rem">Limpiar todo</button>' : '') +
+        '</div>' +
+    '</div>';
+    
+    document.body.appendChild(bd);
+    
+    document.getElementById('history-close').addEventListener('click', function() {
+        bd.remove();
+    });
+    
+    if (history.length > 0) {
+        document.getElementById('history-clear').addEventListener('click', function() {
+            if (confirm('¿Eliminar todas las sesiones del historial?')) {
+                HistoryManager.clear();
+                bd.remove();
+                showHistoryModal();
+            }
+        });
+        
+        document.querySelectorAll('.history-action-btn.load').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var id = parseInt(this.getAttribute('data-id'));
+                loadHistorySession(id);
+                bd.remove();
+            });
+        });
+        
+        document.querySelectorAll('.history-action-btn.delete').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var id = parseInt(this.getAttribute('data-id'));
+                if (confirm('¿Eliminar esta sesión?')) {
+                    HistoryManager.delete(id);
+                    bd.remove();
+                    showHistoryModal();
+                }
+            });
+        });
+        
+        document.querySelectorAll('.history-item').forEach(function(item) {
+            item.addEventListener('click', function(e) {
+                if (!e.target.closest('.history-action-btn')) {
+                    var id = parseInt(this.getAttribute('data-id'));
+                    loadHistorySession(id);
+                    bd.remove();
+                }
+            });
+        });
+    }
+    
+    bd.addEventListener('click', function(e) {
+        if (e.target === bd) {
+            bd.remove();
+        }
+    });
+}
+
+function loadHistorySession(id) {
+    var session = HistoryManager.getById(id);
+    if (!session) {
+        alert('No se pudo cargar la sesión');
+        return;
+    }
+    
+    state.lyrics = session.lyrics;
+    state.scenes = session.scenes;
+    state.sessionId = session.id;
+    CONFIG.songUrl = session.songUrl;
+    
+    initPlayer();
+    showScreen('player-screen');
+}
+
+/* MAIN WORKFLOW */
+async function startCreation() {
+    document.getElementById('start-btn').disabled = true;
+    showScreen('processing-screen');
+    state.overallSteps = 0;
+    state.sessionId = Date.now();
+    procLog('Iniciando constelación cinematográfica...', 'gold');
+
+    try { 
+        await transcribeSong(); 
+    } catch (err) {
+        procLog('Error transcripción: ' + err.message, 'red-log');
+        updateStep(1, 'error', 'Error – entrada manual');
+        var ml = await showLyricsModal('');
+        if (ml) { 
+            state.lyrics = ml; 
+            updateStep(1, 'complete', 'Letra manual'); 
+            procLog('Letra introducida manualmente', 'green-log'); 
+        }
+        else { 
+            procLog('Proceso cancelado.', 'red-log'); 
+            return; 
+        }
+    }
+    
+    try { 
+        await analyzeScenes(); 
+    } catch (err) {
+        procLog('Error análisis: ' + err.message, 'red-log');
+        updateStep(2, 'error', 'Escenas por defecto');
+        createDefaultScenes();
+    }
+    
+    try { 
+        await generateImages(); 
+    } catch (err) {
+        procLog('Error imágenes: ' + err.message, 'red-log');
+    }
+
+    procLog('Guardando sesión en historial...', 'gold');
+    HistoryManager.save({
+        id: state.sessionId,
+        lyrics: state.lyrics,
+        scenes: state.scenes,
+        songUrl: CONFIG.songUrl
+    });
+    
+    procLog('Abriendo reproductor cinematográfico...', 'gold');
+    initPlayer();
+    showScreen('player-screen');
+    generateVideos();
+}
+
+/* 1. TRANSCRIBE */
+function transcribeSong() {
+    updateStep(1, 'active', 'Descargando audio...');
+    procLog('Descargando audio...', '');
+    return new Promise(function(resolve, reject) {
+        if (!window.Poe || !window.Poe.registerHandler) {
+            reject(new Error('API de Poe no disponible'));
+            return;
+        }
+        
+        window.Poe.registerHandler('transcribe-h', function(result) {
+            if (!result || !result.responses || !result.responses[0]) {
+                reject(new Error('Respuesta inválida de Whisper'));
+                return;
+            }
+            
+            var msg = result.responses[0];
+            if (msg.status === 'complete') {
+                state.lyrics = msg.content || '';
+                updateStep(1, 'complete', 'Transcripción completada');
+                procLog('Letra transcrita (' + state.lyrics.length + ' chars)', 'green-log');
+                resolve();
+            } else if (msg.status === 'error') { 
+                reject(new Error(msg.statusText || 'Whisper error')); 
+            }
+        });
+        
+        fetch(CONFIG.songUrl)
+            .then(function(r) { 
+                if (!r.ok) throw new Error('Error descargando audio');
+                return r.blob(); 
+            })
+            .then(function(blob) {
+                var file = new File([blob], 'cancion.mp4', { type: 'video/mp4' });
+                updateStep(1, 'active', 'Transcribiendo con Whisper...');
+                procLog('Enviando a Whisper...', '');
+                return window.Poe.sendUserMessage(
+                    '@' + CONFIG.whisperBot + ' Transcribe this song audio accurately. Include all lyrics in the original language.', 
+                    {
+                        attachments: [file], 
+                        handler: 'transcribe-h', 
+                        stream: false, 
+                        openChat: false, 
+                        parameters: {}
+                    }
+                );
+            })
+            .catch(function(e) { reject(e); });
+    });
+}
+
+/* 2. ANALYZE */
+function analyzeScenes() {
+    updateStep(2, 'active', 'Analizando letra...');
+    procLog('Analizando escenas con IA...', '');
+    return new Promise(function(resolve, reject) {
+        if (!window.Poe || !window.Poe.registerHandler) {
+            reject(new Error('API de Poe no disponible'));
+            return;
+        }
+        
+        window.Poe.registerHandler('analyze-h', function(result) {
+            if (!result || !result.responses || !result.responses[0]) {
+                reject(new Error('Respuesta inválida del LLM'));
+                return;
+            }
+            
+            var msg = result.responses[0];
+            if (msg.status === 'complete') {
+                try {
+                    var c = msg.content || '[]';
+                    var m = c.match(/\[[\s\S]*\]/);
+                    if (m) { c = m[0]; }
+                    var parsed = JSON.parse(c);
+                    
+                    state.scenes = parsed.map(function(s, i) {
+                        return { 
+                            title: s.title || ('Escena ' + (i+1)), 
+                            lyrics: s.lyrics || '', 
+                            imagePrompt: s.imagePrompt || s.image_prompt || '', 
+                            videoPrompt: s.videoPrompt || s.video_prompt || '', 
+                            imageUrl: null, 
+                            videoUrl: null 
+                        };
+                    });
+                    
+                    updateStep(2, 'complete', state.scenes.length + ' escenas');
+                    procLog('Escenas: ' + state.scenes.map(function(s) { return s.title; }).join(' • '), 'green-log');
+                    resolve();
+                } catch (e) { 
+                    reject(new Error('Error parseando JSON de escenas')); 
+                }
+            } else if (msg.status === 'error') { 
+                reject(new Error(msg.statusText || 'LLM error')); 
+            }
+        });
+        
+        var prompt = 'Analyze these song lyrics and divide them into exactly ' + CONFIG.targetScenes + ' cinematic scenes for a music video. For each scene provide:\n- title: Short evocative title in Spanish\n- lyrics: Exact lyrics for this section\n- imagePrompt: Detailed cinematic image prompt in ENGLISH (camera angle, lighting, mood, color palette, composition). Vivid, specific, film-like. No text in image.\n- videoPrompt: Motion/action description in ENGLISH for video generation (camera movements, actions, environmental motion).\n\nReturn ONLY a valid JSON array. No markdown.\n[{"title":"...","lyrics":"...","imagePrompt":"...","videoPrompt":"..."}]\n\nLYRICS:\n' + state.lyrics;
+        
+        window.Poe.sendUserMessage(
+            '@' + CONFIG.llmBot + ' ' + prompt, 
+            { 
+                handler: 'analyze-h', 
+                stream: false, 
+                openChat: false, 
+                parameters: {} 
+            }
+        ).catch(function(e) { reject(e); });
+    });
+}
+
+/* FALLBACK SCENES */
+function createDefaultScenes() {
+    var lines = state.lyrics.split('\n').filter(function(l) { return l.trim(); });
+    var per = Math.ceil(lines.length / CONFIG.targetScenes);
+    state.scenes = [];
+    for (var i = 0; i < CONFIG.targetScenes; i++) {
+        var chunk = lines.slice(i * per, (i+1) * per).join('\n');
+        if (chunk) {
+            state.scenes.push({ 
+                title: 'Escena ' + (i+1), 
+                lyrics: chunk, 
+                imagePrompt: 'Cinematic widescreen scene, dramatic lighting, emotional. Abstract: ' + chunk.substring(0,80), 
+                videoPrompt: 'Slow cinematic camera push, atmospheric particles.', 
+                imageUrl: null, 
+                videoUrl: null 
+            });
+        }
+    }
+    procLog(state.scenes.length + ' escenas por defecto', 'green-log');
+}
+
+/* 3. IMAGES */
+function generateImages() {
+    var total = state.scenes.length;
+    updateStep(3, 'active', 'Imágenes (0/' + total + ')');
+    state.imagesReady = 0;
+    procLog('Generando ' + total + ' imágenes en paralelo...', '');
+    
+    return new Promise(function(resolve) {
+        if (!window.Poe || !window.Poe.registerHandler) {
+            procLog('API de Poe no disponible para imágenes', 'red-log');
+            state.imagesReady = total;
+            updateStep(3, 'error', '0/' + total + ' imágenes');
+            resolve();
+            return;
+        }
+        
+        var completed = 0;
+        
+        state.scenes.forEach(function(sc, i) {
+            window.Poe.registerHandler('img-' + i, function(result) {
+                if (!result || !result.responses || !result.responses[0]) {
+                    completed++;
+                    state.imagesReady++;
+                    updateStep(3, 'active', 'Imágenes (' + state.imagesReady + '/' + total + ')');
+                    if (completed >= total) {
+                        var ok = state.scenes.filter(function(s) { return s.imageUrl; }).length;
+                        updateStep(3, 'complete', ok + '/' + total + ' imágenes');
+                        resolve();
+                    }
+                    return;
+                }
+                
+                var msg = result.responses[0];
+                if (msg.status === 'complete') {
+                    if (msg.attachments && msg.attachments.length > 0) {
+                        sc.imageUrl = msg.attachments[0].url;
+                        addPreview(i, sc);
+                        procLog('Img ' + (i+1) + ': ' + sc.title, 'green-log');
+                    }
+                    completed++;
+                    state.imagesReady++;
+                } else if (msg.status === 'error') { 
+                    completed++;
+                    state.imagesReady++; 
+                    procLog('Error img ' + (i+1), 'red-log'); 
+                }
+                
+                updateStep(3, 'active', 'Imágenes (' + state.imagesReady + '/' + total + ')');
+                
+                if (completed >= total) {
+                    var ok = state.scenes.filter(function(s) { return s.imageUrl; }).length;
+                    updateStep(3, 'complete', ok + '/' + total + ' imágenes');
+                    resolve();
+                }
+            });
+        });
+        
+        state.scenes.forEach(function(sc, i) {
+            var p = 'Cinematic widescreen film still, ultra high quality, 16:9. ' + sc.imagePrompt + '. Dramatic cinematic lighting, shallow depth of field, anamorphic lens, film grain, moody.';
+            window.Poe.sendUserMessage(
+                '@' + CONFIG.imageBot + ' ' + p, 
+                { 
+                    handler: 'img-' + i, 
+                    stream: false, 
+                    openChat: false, 
+                    parameters: { aspect_ratio: '16:9' } 
+                }
+            ).catch(function() { 
+                completed++;
+                state.imagesReady++; 
+                if (completed >= total) { 
+                    var ok = state.scenes.filter(function(s) { return s.imageUrl; }).length;
+                    updateStep(3, 'complete', ok + '/' + total + ' imágenes');
+                    resolve(); 
+                } 
+            });
+        });
+    });
+}
+
+function addPreview(idx, sc) {
+    var c = document.getElementById('scene-previews');
+    var d = document.createElement('div');
+    d.className = 'scene-preview-card';
+    d.innerHTML = '<img src="' + sc.imageUrl + '" alt="' + sc.title + '"><span class="scene-num">' + (idx+1) + '. ' + sc.title + '</span>';
+    c.appendChild(d);
+}
+
+/* 4. VIDEOS (BG) */
+async function generateVideos() {
+    var total = state.scenes.length;
+    if (!state.scenes.some(function(s) { return s.imageUrl; })) { 
+        updateStep(4, 'error', 'Sin imágenes'); 
+        return; 
+    }
+    
+    if (!window.Poe || !window.Poe.registerHandler) {
+        updateStep(4, 'error', 'API no disponible');
+        return;
+    }
+    
+    updateStep(4, 'active', 'Vídeos (0/' + total + ')');
+    state.videosReady = 0;
+    procLog('Generando vídeos cinematográficos...', 'gold');
+    updateVidBadge();
+
+    state.scenes.forEach(function(sc, i) {
+        window.Poe.registerHandler('vid-' + i, function(result) {
+            if (!result || !result.responses || !result.responses[0]) {
+                state.videosReady++;
+                updateStep(4, 'active', 'Vídeos (' + state.videosReady + '/' + total + ')');
+                updateVidBadge();
+                if (state.videosReady >= total) {
+                    var ok = state.scenes.filter(function(s) { return s.videoUrl; }).length;
+                    updateStep(4, 'complete', ok + '/' + total + ' vídeos');
+                    updateVidBadge();
+                    HistoryManager.save({
+                        id: state.sessionId,
+                        lyrics: state.lyrics,
+                        scenes: state.scenes,
+                        songUrl: CONFIG.songUrl
+                    });
+                }
+                return;
+            }
+            
+            var msg = result.responses[0];
+            if (msg.status === 'complete') {
+                if (msg.attachments && msg.attachments.length > 0) {
+                    var va = msg.attachments.find(function(a) { 
+                        return a.mimeType && a.mimeType.startsWith('video/'); 
+                    });
+                    if (!va) { va = msg.attachments[msg.attachments.length - 1]; }
+                    if (va) { 
+                        sc.videoUrl = va.url; 
+                        addThumbBadge(i); 
+                        procLog('Vid ' + (i+1) + ': ' + sc.title, 'green-log'); 
+                    }
+                }
+                state.videosReady++;
+            } else if (msg.status === 'error') { 
+                state.videosReady++; 
+                procLog('Error vid ' + (i+1), 'red-log'); 
+            }
+            
+            updateStep(4, 'active', 'Vídeos (' + state.videosReady + '/' + total + ')');
+            updateVidBadge();
+            
+            if (state.videosReady >= total) {
+                var ok = state.scenes.filter(function(s) { return s.videoUrl; }).length;
+                updateStep(4, 'complete', ok + '/' + total + ' vídeos');
+                updateVidBadge();
+                
+                HistoryManager.save({
+                    id: state.sessionId,
+                    lyrics: state.lyrics,
+                    scenes: state.scenes,
+                    songUrl: CONFIG.songUrl
+                });
+            }
+        });
+    });
+
+    for (var i = 0; i < state.scenes.length; i++) {
+        var sc = state.scenes[i];
+        try {
+            var att = [];
+            if (sc.imageUrl) {
+                var r = await fetch(sc.imageUrl);
+                var bl = await r.blob();
+                att.push(new File([bl], 'frame_' + i + '.png', { type: 'image/png' }));
+            }
+            await window.Poe.sendUserMessage(
+                '@' + CONFIG.videoBot + ' ' + sc.videoPrompt + '. Cinematic, smooth camera, film quality, no text.', 
+                {
+                    attachments: att, 
+                    handler: 'vid-' + i, 
+                    stream: false, 
+                    openChat: false, 
+                    parameters: { size: '1280x720', duration: '8' }
+                }
+            );
+        } catch (err) {
+            state.videosReady++;
+            procLog('Error vid ' + (i+1) + ': ' + err.message, 'red-log');
+            updateVidBadge();
+        }
+    }
+}
+
+function addThumbBadge(i) {
+    var t = document.querySelectorAll('.scene-thumb');
+    if (t[i] && !t[i].querySelector('.vid-badge')) {
+        var b = document.createElement('div');
+        b.className = 'vid-badge';
+        b.innerHTML = '<i class="fas fa-play"></i>';
+        t[i].appendChild(b);
+    }
+}
+
+function updateVidBadge() {
+    var badge = document.getElementById('vid-progress-badge');
+    var txt = document.getElementById('vid-prog-text');
+    var done = state.scenes.filter(function(s) { return s.videoUrl; }).length;
+    var total = state.scenes.length;
+    if (done < total) {
+        txt.textContent = 'Vídeos: ' + done + '/' + total;
+        badge.classList.add('visible');
+    } else {
+        badge.classList.remove('visible');
+    }
+}
+
+/* DOWNLOAD FUNCTIONALITY */
+async function downloadVideo() {
+    var btn = document.getElementById('download-btn');
+    if (btn.classList.contains('downloading')) return;
+    
+    btn.classList.add('downloading');
+    
+    try {
+        procLog('Preparando descarga...', 'gold');
+        
+        var manifestContent = JSON.stringify({
+            title: 'Constelación Cinematográfica',
+            sessionId: state.sessionId,
+            timestamp: Date.now(),
+            songUrl: CONFIG.songUrl,
+            duration: state.duration,
+            lyrics: state.lyrics,
+            scenes: state.scenes.map(function(sc, i) {
+                return {
+                    index: i,
+                    title: sc.title,
+                    lyrics: sc.lyrics,
+                    imagePrompt: sc.imagePrompt,
+                    videoPrompt: sc.videoPrompt,
+                    hasImage: !!sc.imageUrl,
+                    hasVideo: !!sc.videoUrl,
+                    imageUrl: sc.imageUrl,
+                    videoUrl: sc.videoUrl
+                };
+            })
+        }, null, 2);
+        
+        var blob = new Blob([manifestContent], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'constelacion_' + state.sessionId + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        procLog('Descarga completada', 'green-log');
+        
+        setTimeout(function() {
+            btn.classList.remove('downloading');
+        }, 2000);
+        
+    } catch (err) {
+        console.error('Error en descarga:', err);
+        alert('Error al preparar la descarga. Por favor, intenta de nuevo.');
+        btn.classList.remove('downloading');
+    }
+}
+
+/* PLAYER */
+function initPlayer() {
+    state.audio = new Audio(CONFIG.songUrl);
+    state.audio.preload = 'auto';
+    state.audio.volume = parseFloat(document.getElementById('vol-slider').value);
+
+    state.audio.addEventListener('loadedmetadata', function() {
+        state.duration = state.audio.duration || 0;
+        document.getElementById('time-display').textContent = '0:00 / ' + fmt(state.duration);
+        buildSeekMarkers();
+    });
+    
+    state.audio.addEventListener('ended', function() {
+        state.isPlaying = false;
+        updatePlayUI();
+        cancelAnimationFrame(state.animFrame);
+        if (state.looping) { 
+            state.audio.currentTime = 0; 
+            doPlay(); 
+        }
+        else { 
+            document.getElementById('end-screen').classList.add('visible'); 
+        }
+    });
+    
+    buildThumbs();
+    if (state.scenes.length > 0) { transitionTo(0); }
+}
+
+function buildThumbs() {
+    var strip = document.getElementById('scene-strip');
+    strip.innerHTML = '';
+    state.scenes.forEach(function(sc, i) {
+        var t = document.createElement('div');
+        t.className = 'scene-thumb' + (i === 0 ? ' active-thumb' : '');
+        if (sc.imageUrl) { 
+            t.innerHTML = '<img src="' + sc.imageUrl + '" alt="' + sc.title + '">'; 
+        }
+        else { 
+            t.style.background = 'var(--surface2)'; 
+            t.innerHTML = '<span style="font-size:0.55rem;color:var(--text-dim);display:flex;align-items:center;justify-content:center;height:100%">' + (i+1) + '</span>'; 
+        }
+        if (sc.videoUrl) {
+            var badge = document.createElement('div');
+            badge.className = 'vid-badge';
+            badge.innerHTML = '<i class="fas fa-play"></i>';
+            t.appendChild(badge);
+        }
+        t.addEventListener('click', function() {
+            if (state.duration > 0) { 
+                state.audio.currentTime = i * (state.duration / state.scenes.length); 
+            }
+            transitionTo(i);
+        });
+        strip.appendChild(t);
+    });
+}
+
+function buildSeekMarkers() {
+    var c = document.getElementById('seek-markers');
+    c.innerHTML = '';
+    for (var i = 1; i < state.scenes.length; i++) {
+        var m = document.createElement('div');
+        m.className = 'seek-marker';
+        m.style.left = ((i / state.scenes.length) * 100) + '%';
+        c.appendChild(m);
+    }
+}
+
+/* Play/Pause */
+function doPlay() {
+    var promise = state.audio.play();
+    if (promise !== undefined) {
+        promise.then(function() {
+            state.isPlaying = true;
+            updatePlayUI();
+            document.getElementById('play-overlay').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('visible');
+            playbackLoop();
+        }).catch(function(error) {
+            console.error('Error reproduciendo audio:', error);
+        });
+    }
+}
+
+function doPause() {
+    state.audio.pause();
+    state.isPlaying = false;
+    updatePlayUI();
+    cancelAnimationFrame(state.animFrame);
+}
+
+function togglePlay() {
+    if (state.isPlaying) { doPause(); } 
+    else { doPlay(); }
+}
+
+function updatePlayUI() {
+    var btn = document.getElementById('play-btn');
+    btn.innerHTML = '<i class="fas ' + (state.isPlaying ? 'fa-pause' : 'fa-play') + '"></i>';
+}
+
+function playbackLoop() {
+    if (!state.audio) return;
+    
+    var ct = state.audio.currentTime || 0;
+    var p = state.duration > 0 ? ct / state.duration : 0;
+    document.getElementById('seek-fill').style.width = (p * 100) + '%';
+    document.getElementById('time-display').textContent = fmt(ct) + ' / ' + fmt(state.duration);
+
+    var si = getSceneIdx(ct);
+    if (si !== state.currentScene) { transitionTo(si); }
+    updateLyrics(si);
+
+    if (state.isPlaying) { 
+        state.animFrame = requestAnimationFrame(playbackLoop); 
+    }
+}
+
+function getSceneIdx(t) {
+    if (!state.scenes.length || !state.duration) { return 0; }
+    var d = state.duration / state.scenes.length;
+    return Math.min(Math.floor(t / d), state.scenes.length - 1);
+}
+
+function transitionTo(idx) {
+    if (idx < 0 || idx >= state.scenes.length) { return; }
+    state.currentScene = idx;
+    var sc = state.scenes[idx];
+    var show = state.activeLayer === 'a' ? 'b' : 'a';
+    var showEl = document.getElementById('layer-' + show);
+    var hideEl = document.getElementById('layer-' + state.activeLayer);
+
+    if (sc.videoUrl) {
+        showEl.innerHTML = '<video src="' + sc.videoUrl + '" autoplay loop muted playsinline class="scene-media"></video>';
+    } else if (sc.imageUrl) {
+        showEl.innerHTML = '<img src="' + sc.imageUrl + '" class="scene-media ken-burns" alt="' + sc.title + '">';
+    } else {
+        showEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#000"><span style="color:var(--gold);font-family:Cormorant Garamond,serif;font-size:1.8rem;font-style:italic">' + sc.title + '</span></div>';
+    }
+    
+    showEl.style.opacity = '1';
+    hideEl.style.opacity = '0';
+    state.activeLayer = show;
+
+    var tEl = document.getElementById('scene-title-overlay');
+    tEl.textContent = sc.title;
+    tEl.classList.add('visible');
+    setTimeout(function() { tEl.classList.remove('visible'); }, 3500);
+
+    document.getElementById('scene-counter').textContent = (idx + 1) + ' / ' + state.scenes.length;
+
+    document.querySelectorAll('.scene-thumb').forEach(function(t, i) { 
+        t.classList.toggle('active-thumb', i === idx); 
+    });
+    
+    var strip = document.getElementById('scene-strip');
+    if (strip.children[idx]) { 
+        strip.children[idx].scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest', 
+            inline: 'center' 
+        }); 
+    }
+}
+
+function updateLyrics(si) {
+    var ol = document.getElementById('lyrics-overlay');
+    if (si >= 0 && si < state.scenes.length && ol.dataset.si !== String(si)) {
+        ol.style.opacity = '0';
+        var lyr = state.scenes[si].lyrics || '';
+        setTimeout(function() { 
+            ol.textContent = lyr; 
+            ol.style.opacity = lyr ? '1' : '0'; 
+        }, 400);
+        ol.dataset.si = String(si);
+    }
+}
+
+/* SEEK (DRAG) */
+var isDragging = false;
+
+function seekTo(cx) {
+    var bar = document.getElementById('seek-bar');
+    var r = bar.getBoundingClientRect();
+    var ratio = Math.max(0, Math.min(1, (cx - r.left) / r.width));
+    if (state.audio && state.duration) {
+        state.audio.currentTime = ratio * state.duration;
+        document.getElementById('seek-fill').style.width = (ratio * 100) + '%';
+        var ns = getSceneIdx(state.audio.currentTime);
+        if (ns !== state.currentScene) { transitionTo(ns); }
+    }
+}
+
+document.getElementById('seek-bar').addEventListener('mousedown', function(e) { 
+    isDragging = true; 
+    this.classList.add('dragging'); 
+    seekTo(e.clientX); 
+});
+
+document.addEventListener('mousemove', function(e) { 
+    if (isDragging) { seekTo(e.clientX); } 
+});
+
+document.addEventListener('mouseup', function() { 
+    if (isDragging) { 
+        isDragging = false; 
+        document.getElementById('seek-bar').classList.remove('dragging'); 
+    } 
+});
+
+document.getElementById('seek-bar').addEventListener('touchstart', function(e) { 
+    isDragging = true; 
+    this.classList.add('dragging'); 
+    seekTo(e.touches[0].clientX); 
+}, { passive: true });
+
+document.addEventListener('touchmove', function(e) { 
+    if (isDragging && e.touches[0]) { 
+        seekTo(e.touches[0].clientX); 
+    } 
+}, { passive: true });
+
+document.addEventListener('touchend', function() { 
+    if (isDragging) { 
+        isDragging = false; 
+        document.getElementById('seek-bar').classList.remove('dragging'); 
+    } 
+});
+
+/* VOLUME */
+document.getElementById('vol-slider').addEventListener('input', function() {
+    if (state.audio) { state.audio.volume = parseFloat(this.value); }
+    var icon = parseFloat(this.value) === 0 ? 'fa-volume-mute' : 
+               parseFloat(this.value) < 0.5 ? 'fa-volume-down' : 'fa-volume-up';
+    document.getElementById('vol-btn').innerHTML = '<i class="fas ' + icon + '"></i>';
+});
+
+document.getElementById('vol-btn').addEventListener('click', function() {
+    var sl = document.getElementById('vol-slider');
+    if (parseFloat(sl.value) > 0) { 
+        sl.dataset.prev = sl.value; 
+        sl.value = 0; 
+    }
+    else { 
+        sl.value = sl.dataset.prev || 1; 
+    }
+    sl.dispatchEvent(new Event('input'));
+});
+
+/* LOOP */
+document.getElementById('loop-btn').addEventListener('click', function() {
+    state.looping = !state.looping;
+    this.classList.toggle('active', state.looping);
+});
+
+/* FULLSCREEN */
+document.getElementById('fs-btn').addEventListener('click', function() {
+    var el = document.getElementById('player-screen');
+    if (document.fullscreenElement) { 
+        document.exitFullscreen(); 
+    }
+    else if (el.requestFullscreen) { 
+        el.requestFullscreen(); 
+    }
+    else if (el.webkitRequestFullscreen) { 
+        el.webkitRequestFullscreen(); 
+    }
+});
+
+document.addEventListener('fullscreenchange', function() {
+    var icon = document.fullscreenElement ? 'fa-compress' : 'fa-expand';
+    document.getElementById('fs-btn').innerHTML = '<i class="fas ' + icon + '"></i>';
+});
+
+/* CINEMA FRAME CLICK */
+document.getElementById('cinema-frame').addEventListener('click', function(e) {
+    if (e.target.closest('.play-overlay') || e.target.closest('.end-screen')) { return; }
+    togglePlay();
+});
+
+document.getElementById('play-overlay').addEventListener('click', function() { 
+    doPlay(); 
+});
+
+/* END SCREEN */
+document.getElementById('replay-btn').addEventListener('click', function() {
+    document.getElementById('end-screen').classList.remove('visible');
+    state.audio.currentTime = 0;
+    transitionTo(0);
+    doPlay();
+});
+
+document.getElementById('back-btn').addEventListener('click', function() {
+    document.getElementById('end-screen').classList.remove('visible');
+    if (state.audio) { 
+        state.audio.pause(); 
+        state.audio.currentTime = 0; 
+    }
+    state.isPlaying = false;
+    showScreen('landing-screen');
+    document.getElementById('start-btn').disabled = false;
+});
+
+/* KEYBOARD */
+document.addEventListener('keydown', function(e) {
+    if (state.phase !== 'player') { return; }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { return; }
+    
+    switch (e.code) {
+        case 'Space': 
+            e.preventDefault(); 
+            togglePlay(); 
+            break;
+        case 'ArrowRight': 
+            if (state.audio) { 
+                state.audio.currentTime = Math.min(state.duration, state.audio.currentTime + 5); 
+            } 
+            break;
+        case 'ArrowLeft': 
+            if (state.audio) { 
+                state.audio.currentTime = Math.max(0, state.audio.currentTime - 5); 
+            } 
+            break;
+        case 'ArrowUp': 
+            e.preventDefault(); 
+            if (state.audio) { 
+                state.audio.volume = Math.min(1, state.audio.volume + 0.1); 
+                document.getElementById('vol-slider').value = state.audio.volume; 
+                document.getElementById('vol-slider').dispatchEvent(new Event('input')); 
+            } 
+            break;
+        case 'ArrowDown': 
+            e.preventDefault(); 
+            if (state.audio) { 
+                state.audio.volume = Math.max(0, state.audio.volume - 0.1); 
+                document.getElementById('vol-slider').value = state.audio.volume; 
+                document.getElementById('vol-slider').dispatchEvent(new Event('input')); 
+            } 
+            break;
+        case 'KeyF': 
+            document.getElementById('fs-btn').click(); 
+            break;
+        case 'KeyL': 
+            document.getElementById('loop-btn').click(); 
+            break;
+        case 'KeyM': 
+            document.getElementById('vol-btn').click(); 
+            break;
+        case 'KeyD': 
+            if (e.ctrlKey || e.metaKey) { 
+                e.preventDefault(); 
+                downloadVideo(); 
+            } 
+            break;
+    }
+});
+
+/* UTILITY */
+function fmt(s) {
+    if (isNaN(s) || s < 0) { return '0:00'; }
+    var m = Math.floor(s / 60);
+    var ss = Math.floor(s % 60);
+    return m + ':' + (ss < 10 ? '0' : '') + ss;
+}
+
+/* EVENT HANDLERS */
+document.getElementById('start-btn').addEventListener('click', startCreation);
+document.getElementById('play-btn').addEventListener('click', togglePlay);
+document.getElementById('download-btn').addEventListener('click', downloadVideo);
+document.getElementById('history-btn').addEventListener('click', showHistoryModal);
+
+/* INIT */
+initStars();
+initWaveform();
+</script>
+</body>
+</html>

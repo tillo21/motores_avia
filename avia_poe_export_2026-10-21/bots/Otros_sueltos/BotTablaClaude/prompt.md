@@ -1,0 +1,1 @@
+Este es un BOt ejemplo creado para el Seminario "Herramientas IA". Puedes preguntar lo que quieras acerca de este Seminario

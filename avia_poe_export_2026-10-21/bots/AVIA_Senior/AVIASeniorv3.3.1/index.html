@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior v3.3 - Constelación de Bots IA</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+        
+        .constellation-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: radial-gradient(circle at 50% 50%, #1e3a5f 0%, #0f172a 100%);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .bot-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .bot-node:hover {
+            filter: brightness(1.3);
+        }
+        
+        .connection-line {
+            stroke: #3b82f6;
+            stroke-width: 1.5;
+            stroke-opacity: 0.3;
+            fill: none;
+        }
+        
+        .bot-label {
+            fill: #e2e8f0;
+            font-size: 11px;
+            font-weight: 500;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+        
+        .card-red { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
+        .card-green { background: linear-gradient(135deg, #10b981 0%, #047857 100%); }
+        .card-yellow { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .card-blue { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+    </style>
+</head>
+<body class="p-6">
+    <!-- HEADER -->
+    <header class="mb-8">
+        <h1 class="text-4xl font-bold mb-2">AVIA Senior v3.3</h1>
+        <p class="text-slate-400">Constelación Interactiva de 19 Bots IA - Sistema de Orquestación Avanzado</p>
+    </header>
+
+    <!-- MÉTRICAS GLOBALES - 4 TARJETAS -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- Tarjeta Roja -->
+        <div class="card-red p-6 rounded-xl shadow-lg relative">
+            <div class="status-indicator bg-red-300"></div>
+            <h3 class="text-sm font-semibold mb-2 opacity-90">Bots Activos</h3>
+            <p class="metric-value text-white" id="active-bots">17/19</p>
+            <p class="text-xs mt-2 opacity-80">2 en mantenimiento</p>
+        </div>
+
+        <!-- Tarjeta Verde -->
+        <div class="card-green p-6 rounded-xl shadow-lg relative">
+            <div class="status-indicator bg-green-300"></div>
+            <h3 class="text-sm font-semibold mb-2 opacity-90">Tareas Completadas</h3>
+            <p class="metric-value text-white" id="completed-tasks">1,247</p>
+            <p class="text-xs mt-2 opacity-80">+89 hoy</p>
+        </div>
+
+        <!-- Tarjeta Amarilla -->
+        <div class="card-yellow p-6 rounded-xl shadow-lg relative">
+            <div class="status-indicator bg-yellow-300"></div>
+            <h3 class="text-sm font-semibold mb-2 opacity-90">Tiempo de Respuesta</h3>
+            <p class="metric-value text-white" id="response-time">0.8s</p>
+            <p class="text-xs mt-2 opacity-80">Promedio últimas 24h</p>
+        </div>
+
+        <!-- Tarjeta Azul -->
+        <div class="card-blue p-6 rounded-xl shadow-lg relative">
+            <div class="status-indicator bg-blue-300"></div>
+            <h3 class="text-sm font-semibold mb-2 opacity-90">Precisión Global</h3>
+            <p class="metric-value text-white" id="accuracy">94.7%</p>
+            <p class="text-xs mt-2 opacity-80">Validado por auditoría</p>
+        </div>
+    </section>
+
+    <!-- CONSTELACIÓN VISUAL -->
+    <section class="mb-8">
+        <div class="bg-slate-800 p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Mapa de Constelación</h2>
+            <div class="constellation-container" id="constellation"></div>
+        </div>
+    </section>
+
+    <!-- PANEL DE CONTROL DE BOTS -->
+    <section>
+        <h2 class="text-2xl font-bold mb-4">Panel de Control Individual</h2>
+        <div id="bot-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- MODAL DE DETALLES -->
+    <div id="bot-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 p-8 rounded-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-6">
+                <h3 id="modal-title" class="text-2xl font-bold"></h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // DATOS MOCK REALISTAS
+        // ==========================================
+        const botsData = [
+            { id: 1, name: "AVIA-Clon-Carlos", role: "Orquestador", status: "activo", layer: 1, color: "#ef4444", tasks: 342, accuracy: 97.2, avgTime: 0.6 },
+            { id: 2, name: "AVIA-Proyecto", role: "Gestión", status: "activo", layer: 1, color: "#ef4444", tasks: 289, accuracy: 95.8, avgTime: 0.7 },
+            { id: 3, name: "AVIA-Auditor", role: "Auditoría", status: "activo", layer: 1, color: "#ef4444", tasks: 421, accuracy: 98.5, avgTime: 1.2 },
+            { id: 4, name: "AVIA-Studio", role: "Diseño", status: "activo", layer: 2, color: "#10b981", tasks: 178, accuracy: 93.1, avgTime: 0.9 },
+            { id: 5, name: "AVIA-Ontología", role: "Clasificación", status: "activo", layer: 2, color: "#10b981", tasks: 512, accuracy: 96.4, avgTime: 0.5 },
+            { id: 6, name: "AVIA-Gobernanza", role: "Compliance", status: "activo", layer: 2, color: "#10b981", tasks: 234, accuracy: 99.1, avgTime: 0.8 },
+            { id: 7, name: "AVIA-Persistencia", role: "Contexto", status: "activo", layer: 2, color: "#10b981", tasks: 645, accuracy: 94.7, avgTime: 0.4 },
+            { id: 8, name: "AVIA-Composer", role: "Generación", status: "activo", layer: 3, color: "#f59e0b", tasks: 892, accuracy: 92.3, avgTime: 1.5 },
+            { id: 9, name: "Elena-Template", role: "Templates", status: "mantenimiento", layer: 3, color: "#f59e0b", tasks: 156, accuracy: 90.2, avgTime: 1.1 },
+            { id: 10, name: "App-Creator", role: "Implementación", status: "activo", layer: 3, color: "#f59e0b", tasks: 423, accuracy: 95.6, avgTime: 1.8 },
+            { id: 11, name: "Script-Bot", role: "Automatización", status: "activo", layer: 3, color: "#f59e0b", tasks: 734, accuracy: 91.8, avgTime: 0.7 },
+            { id: 12, name: "AVIA-Evidence", role: "Registro", status: "activo", layer: 4, color: "#3b82f6", tasks: 1023, accuracy: 99.8, avgTime: 0.3 },
+            { id: 13, name: "AVIA-Vigilance", role: "Seguridad", status: "activo", layer: 4, color: "#3b82f6", tasks: 567, accuracy: 97.9, avgTime: 0.9 },
+            { id: 14, name: "AVIA-Pukkart", role: "Logs", status: "activo", layer: 4, color: "#3b82f6", tasks: 1247, accuracy: 96.1, avgTime: 0.4 },
+            { id: 15, name: "AVIA-Router", role: "Enrutamiento", status: "activo", layer: 2, color: "#10b981", tasks: 892, accuracy: 94.5, avgTime: 0.5 },
+            { id: 16, name: "AVIA-Harmonia", role: "Consenso", status: "activo", layer: 1, color: "#ef4444", tasks: 345, accuracy: 96.8, avgTime: 0.8 },
+            { id: 17, name: "AVIA-Validator", role: "Validación", status: "activo", layer: 4, color: "#3b82f6", tasks: 678, accuracy: 98.2, avgTime: 0.6 },
+            { id: 18, name: "AVIA-Optimizer", role: "Optimización", status: "mantenimiento", layer: 3, color: "#f59e0b", tasks: 234, accuracy: 89.4, avgTime: 1.3 },
+            { id: 19, name: "AVIA-Analytics", role: "Análisis", status: "activo", layer: 4, color: "#3b82f6", tasks: 456, accuracy: 95.3, avgTime: 1.0 }
+        ];
+
+        // ==========================================
+        // RENDERIZADO DE CONSTELACIÓN D3.js
+        // ==========================================
+        const width = document.getElementById('constellation').clientWidth;
+        const height = 600;
+
+        const svg = d3.select("#constellation")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Crear layout circular por capa
+        const layerRadius = { 1: 80, 2: 160, 3: 240, 4: 320 };
+        
+        botsData.forEach((bot, i) => {
+            const botsInLayer = botsData.filter(b => b.layer === bot.layer);
+            const indexInLayer = botsInLayer.indexOf(bot);
+            const angle = (indexInLayer / botsInLayer.length) * 2 * Math.PI - Math.PI / 2;
+            const radius = layerRadius[bot.layer];
+            
+            bot.x = width / 2 + radius * Math.cos(angle);
+            bot.y = height / 2 + radius * Math.sin(angle);
+        });
+
+        // Dibujar conexiones
+        const connections = [];
+        botsData.forEach(bot => {
+            if (bot.layer > 1) {
+                const parentLayer = botsData.filter(b => b.layer === bot.layer - 1);
+                parentLayer.forEach(parent => {
+                    connections.push({ source: parent, target: bot });
+                });
+            }
+        });
+
+        svg.selectAll(".connection-line")
+            .data(connections)
+            .enter()
+            .append("line")
+            .attr("class", "connection-line")
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+
+        // Dibujar nodos
+        const nodes = svg.selectAll(".bot-node")
+            .data(botsData)
+            .enter()
+            .append("g")
+            .attr("class", "bot-node")
+            .attr("transform", d => `translate(${d.x},${d.y})`)
+            .on("click", (event, d) => showBotDetails(d));
+
+        nodes.append("circle")
+            .attr("r", d => d.status === "activo" ? 18 : 14)
+            .attr("fill", d => d.color)
+            .attr("stroke", "#e2e8f0")
+            .attr("stroke-width", 2)
+            .style("filter", d => d.status === "activo" ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))" : "grayscale(0.5)");
+
+        nodes.append("text")
+            .attr("class", "bot-label")
+            .attr("y", 35)
+            .text(d => d.name.split("-")[1] || d.name);
+
+        // ==========================================
+        // TARJETAS DE BOTS
+        // ==========================================
+        function renderBotCards() {
+            const container = document.getElementById('bot-cards');
+            const colors = ['card-red', 'card-green', 'card-yellow', 'card-blue'];
+            
+            botsData.forEach((bot, index) => {
+                const cardColor = colors[index % 4];
+                const card = document.createElement('div');
+                card.className = `${cardColor} p-4 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform`;
+                card.onclick = () => showBotDetails(bot);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <h4 class="font-bold text-white">${bot.name}</h4>
+                        <span class="text-xs px-2 py-1 rounded-full ${bot.status === 'activo' ? 'bg-green-500' : 'bg-gray-500'} text-white">
+                            ${bot.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <p class="text-sm opacity-90 mb-3">${bot.role}</p>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <p class="opacity-70">Tareas</p>
+                            <p class="font-bold text-white">${bot.tasks}</p>
+                        </div>
+                        <div>
+                            <p class="opacity-70">Precisión</p>
+                            <p class="font-bold text-white">${bot.accuracy}%</p>
+                        </div>
+                        <div>
+                            <p class="opacity-70">Tiempo</p>
+                            <p class="font-bold text-white">${bot.avgTime}s</p>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // ==========================================
+        // MODAL DE DETALLES
+        // ==========================================
+        function showBotDetails(bot) {
+            const modal = document.getElementById('bot-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+            
+            title.textContent = bot.name;
+            
+            const recentLogs = [
+                { time: "14:32:15", action: "Tarea completada", status: "success" },
+                { time: "14:28:42", action: "Procesando datos", status: "info" },
+                { time: "14:15:03", action: "Validación exitosa", status: "success" },
+                { time: "13:58:21", action: "Esperando input", status: "warning" }
+            ];
+            
+            content.innerHTML = `
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <p class="text-sm text-slate-400">Rol</p>
+                        <p class="text-lg font-semibold">${bot.role}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-400">Capa</p>
+                        <p class="text-lg font-semibold">Capa ${bot.layer}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-400">Estado</p>
+                        <p class="text-lg font-semibold capitalize">${bot.status}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-400">Tareas Procesadas</p>
+                        <p class="text-lg font-semibold">${bot.tasks}</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h4 class="font-semibold mb-2">Métricas de Rendimiento</h4>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Precisión</span>
+                                <span>${bot.accuracy}%</span>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: ${bot.accuracy}%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Tiempo Promedio</span>
+                                <span>${bot.avgTime}s</span>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: ${Math.min(100, (2 - bot.avgTime) * 50)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-2">Logs Recientes</h4>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                        ${recentLogs.map(log => `
+                            <div class="flex items-center gap-3 text-sm p-2 bg-slate-700 rounded">
+                                <span class="text-slate-400">${log.time}</span>
+                                <span class="flex-1">${log.action}</span>
+                                <span class="px-2 py-0.5 rounded text-xs ${
+                                    log.status === 'success' ? 'bg-green-600' :
+                                    log.status === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'
+                                }">${log.status}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('bot-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // ==========================================
+        // INICIALIZACIÓN
+        // ==========================================
+        renderBotCards();
+
+        // Simulación de actualización de métricas en tiempo real
+        setInterval(() => {
+            const activeBots = botsData.filter(b => b.status === 'activo').length;
+            document.getElementById('active-bots').textContent = `${activeBots}/${botsData.length}`;
+            
+            const totalTasks = botsData.reduce((sum, bot) => sum + bot.tasks, 0);
+            document.getElementById('completed-tasks').textContent = totalTasks.toLocaleString();
+        }, 5000);
+    </script>
+</body>
+</html>

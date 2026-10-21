@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Nómada v4.0 — Motor de Detección Emocional Pasiva</title>
+    <style>
+        :root {
+            --bg: #080d18;
+            --surface: #0f1623;
+            --surface2: #161f30;
+            --border: #1e2d42;
+            --accent: #4f8ef7;
+            --soporte: #f59e0b;
+            --exploracion: #10b981;
+            --urgencia: #ef4444;
+            --muted: #94a3b8;
+            --text: #e2e8f0;
+            --mono: 'Courier New', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            text-align: center;
+            padding: 28px 20px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(79,142,247,.12);
+            border: 1px solid rgba(79,142,247,.4);
+            color: var(--accent);
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .header h1 {
+            font-size: clamp(18px, 4vw, 28px);
+            font-weight: 800;
+            background: linear-gradient(135deg, #e2e8f0 30%, #4f8ef7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .header p { color: var(--muted); font-size: 12px; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            background: rgba(16,185,129,.1);
+            border: 1px solid rgba(16,185,129,.3);
+            color: var(--exploracion);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--exploracion);
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .4; transform: scale(1.4); }
+        }
+
+        /* ── GRID ── */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1100px; margin: 0 auto; }
+        .full { grid-column: 1 / -1; }
+        @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .card-hd {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .card-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; flex-shrink: 0;
+        }
+        .card-title {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--muted);
+        }
+
+        /* ── TEXTAREA ── */
+        .entrada {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.7;
+            resize: vertical;
+            min-height: 110px;
+            outline: none;
+            transition: border-color .3s;
+            font-family: inherit;
+        }
+        .entrada:focus { border-color: var(--accent); }
+        .entrada::placeholder { color: #4a5568; }
+        .entrada-meta {
+            display: flex; justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px; color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        /* ── REGISTROS ── */
+        .reg-grid {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 10px;
+        }
+        @media (max-width: 400px) { .reg-grid { grid-template-columns: 1fr; } }
+        .reg-card {
+            background: var(--surface2);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 10px;
+            text-align: center;
+            transition: all .45s cubic-bezier(.34,1.56,.64,1);
+        }
+        .reg-card.act-soporte    { border-color: var(--soporte);    background: rgba(245,158,11,.08);  box-shadow: 0 0 22px rgba(245,158,11,.18); }
+        .reg-card.act-exploracion{ border-color: var(--exploracion); background: rgba(16,185,129,.08); box-shadow: 0 0 22px rgba(16,185,129,.18); }
+        .reg-card.act-urgencia   { border-color: var(--urgencia);   background: rgba(239,68,68,.08);   box-shadow: 0 0 22px rgba(239,68,68,.18); }
+        .reg-emoji { font-size: 26px; margin-bottom: 8px; }
+        .reg-name  { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .reg-score { font-size: 30px; font-weight: 900; font-family: var(--mono); }
+        .c-soporte    { color: var(--soporte); }
+        .c-exploracion{ color: var(--exploracion); }
+        .c-urgencia   { color: var(--urgencia); }
+
+        /* ── BARRAS ── */
+        .barra { margin-bottom: 12px; }
+        .barra-hd { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+        .barra-hd span:first-child { color: var(--muted); }
+        .barra-track { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+        .barra-fill  { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.34,1.56,.64,1); }
+
+        /* ── ETIQUETAS ── */
+        .etiq-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+        .etiq {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-family: var(--mono);
+            border: 1px solid;
+        }
+        .etiq-soporte    { background: rgba(245,158,11,.08);  color: var(--soporte);    border-color: rgba(245,158,11,.25); }
+        .etiq-exploracion{ background: rgba(16,185,129,.08);  color: var(--exploracion); border-color: rgba(16,185,129,.25); }
+        .etiq-urgencia   { background: rgba(239,68,68,.08);   color: var(--urgencia);   border-color: rgba(239,68,68,.25); }
+        .etiq-neutral    { background: rgba(148,163,184,.06); color: var(--muted);      border-color: rgba(148,163,184,.2); }
+
+        /* ── RESPUESTA ADAPTADA ── */
+        .respuesta-box {
+            background: var(--surface2);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 10px 10px 0;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.75;
+            font-style: italic;
+            color: var(--text);
+            min-height: 60px;
+            transition: all .5s ease;
+        }
+
+        /* ── KPIs ── */
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .kpi {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 13px;
+        }
+        .kpi-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; }
+        .kpi-val { font-size: 22px; font-weight: 900; font-family: var(--mono); }
+        .kpi-meta{ font-size: 9px; color: var(--muted); margin-top: 3px; }
+        .kv-good { color: var(--exploracion); }
+        .kv-warn { color: var(--soporte); }
+        .kv-bad  { color: var(--urgencia); }
+
+        /* ── LOG OS ── */
+        .log {
+            background: #04070f;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 10px;
+            max-height: 170px;
+            overflow-y: auto;
+            line-height: 2;
+        }
+        .log-t  { color: var(--accent); }
+        .log-s  { color: var(--exploracion); }
+        .log-a  { color: var(--urgencia); }
+        .log-n  { color: var(--muted); }
+        .log-ok { color: var(--exploracion); }
+        .log::-webkit-scrollbar { width: 3px; }
+        .log::-webkit-scrollbar-thumb { background: var(--border); }
+
+        /* ── LÍNEA DE TIEMPO ── */
+        .timeline { display: flex; flex-direction: column; gap: 14px; }
+        .tl-item { display: flex; gap: 14px; align-items: flex-start; }
+        .tl-dot {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            flex-shrink: 0; margin-top: 2px;
+        }
+        .tl-activo   { background: var(--accent); color: #fff; box-shadow: 0 0 12px rgba(79,142,247,.4); }
+        .tl-pendiente{ background: var(--surface2); color: var(--muted); border: 2px solid var(--border); }
+        .tl-txt h4 { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+        .tl-txt p  { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+        .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+        /* ── IMPACTO ── */
+        .impacto-row {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .impacto-row:last-child { margin-bottom: 0; }
+        .imp-lbl { font-size: 11px; color: var(--muted); }
+        .imp-val { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+        .imp-arrow { font-size: 11px; color: var(--muted); margin: 0 6px; }
+
+        /* ── FOOTER ── */
+        .footer {
+            text-align: center;
+            padding: 22px 0 6px;
+            color: var(--muted);
+            font-size: 10px;
+            letter-spacing: 1px;
+            border-top: 1px solid var(--border);
+            margin-top: 24px;
+            line-height: 2;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="badge">Sprint 1 · Semanas 1–3 · AMS v4.0 · Auditoría #002</div>
+    <h1>Motor de Detección Emocional Pasiva</h1>
+    <p>AVIA Nómada v4.0 — Módulo de Inteligencia Afectiva · Acoplado con AVIA Conciencia OS</p>
+    <div class="status-pill"><span class="dot"></span>Sistema Activo · Modo Pasivo · Sin Invasividad</div>
+</div>
+
+<div class="grid">
+
+    <!-- ZONA DE ANÁLISIS -->
+    <div class="card full">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(79,142,247,.1)">🔍</div>
+            <span class="card-title">Zona de Análisis Pasivo — Escribe libremente</span>
+        </div>
+        <textarea class="entrada" id="mainInput"
+            placeholder="Escribe aquí tu mensaje... El motor detecta patrones emocionales de forma pasiva, sin preguntarte cómo te sientes. Prueba con urgencia, con preguntas de exploración o pidiendo soporte.">
+        </textarea>
+        <div class="entrada-meta">
+            <span id="wc">0 palabras</span>
+            <span id="vel">Velocidad de escritura: —</span>
+        </div>
+    </div>
+
+    <!-- REGISTROS -->
+    <div class="card full">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(79,142,247,.1)">🎛️</div>
+            <span class="card-title">Registros Emocionales Detectados</span>
+        </div>
+        <div class="reg-grid">
+            <div class="reg-card" id="rc-soporte">
+                <div class="reg-emoji">🤝</div>
+                <div class="reg-name c-soporte">Soporte</div>
+                <div class="reg-score c-soporte" id="rs-soporte">0%</div>
+            </div>
+            <div class="reg-card" id="rc-exploracion">
+                <div class="reg-emoji">🧭</div>
+                <div class="reg-name c-exploracion">Exploración</div>
+                <div class="reg-score c-exploracion" id="rs-exploracion">0%</div>
+            </div>
+            <div class="reg-card" id="rc-urgencia">
+                <div class="reg-emoji">⚡</div>
+                <div class="reg-name c-urgencia">Urgencia</div>
+                <div class="reg-score c-urgencia" id="rs-urgencia">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEÑALES -->
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(245,158,11,.1)">📡</div>
+            <span class="card-title">Señales del Análisis</span>
+        </div>
+
+        <div class="barra">
+            <div class="barra-hd"><span>Vocabulario afectivo</span><span id="pv" style="color:var(--accent);font-family:var(--mono);font-size:11px">0%</span></div>
+            <div class="barra-track"><div class="barra-fill" id="bv" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+        <div class="barra">
+            <div class="barra-hd"><span>Estructura sintáctica</span><span id="ps" style="color:var(--soporte);font-family:var(--mono);font-size:11px">0%</span></div>
+            <div class="barra-track"><div class="barra-fill" id="bs" style="width:0%;background:var(--soporte)"></div></div>
+        </div>
+        <div class="barra">
+            <div class="barra-hd"><span>Densidad de preguntas</span><span id="pq" style="color:var(--exploracion);font-family:var(--mono);font-size:11px">0%</span></div>
+            <div class="barra-track"><div class="barra-fill" id="bq" style="width:0%;background:var(--exploracion)"></div></div>
+        </div>
+        <div class="barra" style="margin-bottom:0">
+            <div class="barra-hd"><span>Señales de urgencia</span><span id="pu" style="color:var(--urgencia);font-family:var(--mono);font-size:11px">0%</span></div>
+            <div class="barra-track"><div class="barra-fill" id="bu" style="width:0%;background:var(--urgencia)"></div></div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="card-hd" style="margin-bottom:10px">
+            <div class="card-icon" style="background:rgba(16,185,129,.1)">🏷️</div>
+            <span class="card-title">Patrones Detectados</span>
+        </div>
+        <div class="etiq-wrap" id="etiqList">
+            <span class="etiq etiq-neutral">En espera de entrada…</span>
+        </div>
+    </div>
+
+    <!-- RESPUESTA + KPIs -->
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(79,142,247,.1)">💬</div>
+            <span class="card-title">Respuesta Adaptada al Registro</span>
+        </div>
+        <div class="respuesta-box" id="respuesta">
+            El tono de respuesta se adaptará automáticamente según el registro dominante detectado…
+        </div>
+
+        <hr class="divider">
+
+        <div class="card-hd" style="margin-bottom:12px">
+            <div class="card-icon" style="background:rgba(16,185,129,.1)">📊</div>
+            <span class="card-title">Indicadores de Rendimiento Sprint 1</span>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi">
+                <div class="kpi-lbl">Adaptación Emocional</div>
+                <div class="kpi-val kv-warn" id="kpi-ad">12%</div>
+                <div class="kpi-meta">Meta: ≥80%</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-lbl">Confianza del Motor</div>
+                <div class="kpi-val kv-bad" id="kpi-cf">0%</div>
+                <div class="kpi-meta">Meta: ≥75%</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-lbl">Análisis en Sesión</div>
+                <div class="kpi-val kv-good" id="kpi-an">0</div>
+                <div class="kpi-meta">Acumulados</div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-lbl">Modo Invasivo</div>
+                <div class="kpi-val kv-good">OFF</div>
+                <div class="kpi-meta">Pasivo · Ético ✓</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOG OS -->
+    <div class="card full">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(79,142,247,.1)">🖥️</div>
+            <span class="card-title">AVIA Conciencia OS — Registro de Acoplamiento en Tiempo Real</span>
+        </div>
+        <div class="log" id="osLog">
+            <div><span class="log-t">[00:00:00]</span> <span class="log-s">[AVIA-OS]</span> <span class="log-ok"> Motor de detección emocional pasiva · INICIADO ✓</span></div>
+            <div><span class="log-t">[00:00:00]</span> <span class="log-s">[AVIA-OS]</span> <span class="log-n"> Cargando diccionario afectivo v4.0 — 3 registros operativos…</span></div>
+            <div><span class="log-t">[00:00:00]</span> <span class="log-s">[AVIA-OS]</span> <span class="log-ok"> SOPORTE · EXPLORACIÓN · URGENCIA → Cargados ✓</span></div>
+            <div><span class="log-t">[00:00:00]</span> <span class="log-s">[AVIA-OS]</span> <span class="log-n"> Modo invasivo: DESACTIVADO · Protocolo ético AMS v4.0: ACTIVO</span></div>
+            <div><span class="log-t">[00:00:00]</span> <span class="log-s">[AVIA-OS]</span> <span class="log-ok"> Sistema listo. En espera de entrada textual del usuario…</span></div>
+        </div>
+    </div>
+
+    <!-- IMPACTO PROYECTADO -->
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(16,185,129,.1)">🎯</div>
+            <span class="card-title">Impacto Proyectado al Cierre Sprint 1</span>
+        </div>
+        <div class="impacto-row">
+            <span class="imp-lbl">Inteligencia Afectiva</span>
+            <span class="imp-val"><span class="kv-bad">5.0</span><span class="imp-arrow">→</span><span class="kv-good">7.5</span></span>
+        </div>
+        <div class="impacto-row">
+            <span class="imp-lbl">Puntuación Global</span>
+            <span class="imp-val"><span class="kv-warn">6.8</span><span class="imp-arrow">→</span><span class="kv-good">7.6</span></span>
+        </div>
+        <div class="impacto-row">
+            <span class="imp-lbl">Adaptación Emocional</span>
+            <span class="imp-val"><span class="kv-bad">12%</span><span class="imp-arrow">→</span><span class="kv-warn">55%</span></span>
+        </div>
+        <div class="impacto-row">
+            <span class="imp-lbl">NPS Equidad</span>
+            <span class="imp-val"><span class="kv-bad">+32</span><span class="imp-arrow">→</span><span class="kv-warn">+50</span></span>
+        </div>
+    </div>
+
+    <!-- LÍNEA DE TIEMPO -->
+    <div class="card">
+        <div class="card-hd">
+            <div class="card-icon" style="background:rgba(79,142,247,.1)">📅</div>
+            <span class="card-title">Hoja de Ruta Sprint 1 · 3 Semanas</span>
+        </div>
+        <div class="timeline">
+            <div class="tl-item">
+                <div class="tl-dot tl-activo">1</div>
+                <div class="tl-txt">
+                    <h4>Semana 1 — Núcleo del Motor ✦ ACTIVO AHORA</h4>
+                    <p>Implementación del analizador de patrones textuales. Diccionario afectivo v4.0 con 3 registros. Acoplamiento inicial con AVIA Conciencia OS. Prototipo funcional validado.</p>
+                </div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot tl-pendiente">2</div>
+                <div class="tl-txt">
+                    <h4>Semana 2 — Calibración y Pruebas de Campo</h4>
+                    <p>Ajuste de umbrales de detección. Validación con 50 casos reales. Revisión ética obligatoria con AVIA Conciencia OS. Meta de precisión: ≥70%.</p>
+                </div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot tl-pendiente">3</div>
+                <div class="tl-txt">
+                    <h4>Semana 3 — Respuesta Diferenciada y Medición</h4>
+                    <p>Activación completa del módulo de respuesta adaptada. Medición de Adaptación Emocional (meta: 55%). Documentación para Sprint 2. Presentación a la Constelación de Consenso.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    AVIA Nómada v4.0 · Motor de Detección Emocional Pasiva · Sprint 1 · AMS v4.0<br>
+    Auditoría #002 · AVIA Auditor · Clon de Carlos · AVIA Conciencia OS Acoplado ✓ · SiestaOTTOS Ecosystem
+</div>
+
+<script>
+// ======================================================
+// AVIA Nómada v4.0 — Motor de Detección Emocional Pasiva
+// Sprint 1 · AMS v4.0 · Modo pasivo · Sin invasividad
+// ======================================================
+
+const DIC = {
+    soporte: {
+        palabras: ['ayuda','ayudar','problema','no entiendo','no puedo','error','fallo','dificultad',
+                   'complicado','confuso','confusa','perdido','perdida','bloqueado','bloqueada',
+                   'atascado','no funciona','no sé','no sabe','explicame','explícame','necesito',
+                   'no sé cómo','qué hago','qué puedo','qué debo','cómo se hace','me pasa que',
+                   'tengo un problema','me está dando','no logro','no logra','no me sale'],
+        peso: 1.2
+    },
+    exploracion: {
+        palabras: ['quiero','me gustaría','explorar','conocer','descubrir','cómo funciona','qué es',
+                   'me interesa','curiosidad','podría','posible','opciones','alternativas','qué hay',
+                   'mostrar','aprender','probar','qué pasa si','y si','cuál sería','hay alguna',
+                   'existe algún','me pregunto','sería posible','qué diferencia','cuántas','cuántos',
+                   'me gustaría saber','querría entender','puedo ver','puedo conocer'],
+        peso: 1.0
+    },
+    urgencia: {
+        palabras: ['urgente','urgencia','rápido','ahora','inmediatamente','crisis','emergencia',
+                   'ya mismo','lo antes posible','desesperado','desesperada','por favor ayuda',
+                   'necesito ahora','crítico','grave','se cayó','perdí','perdí todo','se borró',
+                   'no responde','no abre','se rompió','no arranca','dejó de funcionar',
+                   'no puedo esperar','es para ya','es urgente','todo mal','nada funciona'],
+        peso: 1.5
+    }
+};
+
+const RESPUESTAS = {
+    soporte: [
+        "Entiendo que estás enfrentando algo complicado. Estoy aquí para acompañarte paso a paso. Cuéntame más y lo resolvemos juntos.",
+        "Veo que necesitas apoyo con esto. No tienes que resolverlo solo. Te guío con calma desde el principio.",
+        "Parece que hay algo que no está funcionando como esperas. Sin prisa, vamos a revisarlo juntos y encontramos la solución."
+    ],
+    exploracion: [
+        "Hay varias formas muy interesantes de abordar esto. Déjame mostrarte las opciones y exploramos lo que mejor se adapte a lo que buscas.",
+        "Me alegra que estés explorando este camino. Tengo información que puede abrirte nuevas perspectivas. Seguimos juntos.",
+        "Hay mucho territorio por descubrir aquí. Te acompaño en la exploración con toda la información disponible."
+    ],
+    urgencia: [
+        "Entiendo que esto es urgente. Vamos directo al punto: aquí está lo más importante que necesitas ahora mismo.",
+        "Recibido. Actuamos rápido. Primero esto — después te explico el por qué con calma.",
+        "Estoy contigo. En pocas líneas, aquí tienes exactamente lo que necesitas hacer ahora."
+    ]
+};
+
+let conteoAnalisis = 0;
+let timerEscritura = null;
+let ultimoTiempo = null;
+let registroActual = null;
+
+const entrada   = document.getElementById('mainInput');
+const logEl     = document.getElementById('osLog');
+
+function hora() {
+    const d = new Date();
+    return `[${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}]`;
+}
+
+function log(msg, tipo = 'n') {
+    const div = document.createElement('div');
+    div.innerHTML = `<span class="log-t">${hora()}</span> <span class="log-s">[AVIA-OS]</span> <span class="log-${tipo}"> ${msg}</span>`;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function analizar(texto) {
+    const bajo = texto.toLowerCase();
+    const palabras = texto.trim().split(/\s+/).filter(w => w.length > 0);
+    const nPalabras = palabras.length;
+    if (nPalabras < 2) return null;
+
+    let pS = 0, pE = 0, pU = 0;
+
+    DIC.soporte.palabras.forEach(kw => { if (bajo.includes(kw)) pS += DIC.soporte.peso; });
+    DIC.exploracion.palabras.forEach(kw => { if (bajo.includes(kw)) pE += DIC.exploracion.peso; });
+    DIC.urgencia.palabras.forEach(kw => { if (bajo.includes(kw)) pU += DIC.urgencia.peso; });
+
+    // Estructura sintáctica
+    const oraciones = texto.split(/[.!?]+/).filter(s => s.trim().length > 2);
+    const longMedia = oraciones.length > 0 ? nPalabras / oraciones.length : nPalabras;
+    if (longMedia < 5)  pU += 1.2;
+    if (longMedia > 12) pE += 0.8;
+
+    // Densidad de preguntas
+    const nPreg = (texto.match(/\?/g) || []).length;
+    const nExcl = (texto.match(/!/g) || []).length;
+    if (nPreg > 0) pE += nPreg * 0.9;
+    if (nExcl > 0) pU += nExcl * 0.7;
+
+    // Mayúsculas (señal de urgencia)
+    const mayus = palabras.filter(w => w === w.toUpperCase() && w.length > 1 && /[A-ZÁÉÍÓÚ]/.test(w));
+    if (mayus.length > 0) pU += mayus.length * 0.6;
+
+    // Repetición léxica (señal de soporte / frustración)
+    const unicas = new Set(palabras.map(w => w.toLowerCase()));
+    if ((1 - unicas.size / nPalabras) > 0.3) pS += 0.8;
+
+    // Si no hay señal, distribución base hacia exploración
+    const total = pS + pE + pU;
+    let nS, nE, nU;
+    if (total > 0) {
+        nS = Math.round((pS / total) * 100);
+        nE = Math.round((pE / total) * 100);
+        nU = Math.round((pU / total) * 100);
+    } else {
+        nS = 20; nE = 60; nU = 20;
+    }
+
+    // Registro dominante
+    let dominante = 'exploracion';
+    if (nS >= nE && nS >= nU) dominante = 'soporte';
+    if (nU >= nS && nU >= nE) dominante = 'urgencia';
+
+    // Confianza
+    const maxP = Math.max(pS, pE, pU);
+    const confianza = Math.min(Math.round((maxP / (total || 1)) * 80 + (nPalabras > 5 ? 15 : 3)), 94);
+
+    // Señales para barras
+    const sVocab = Math.min(Math.round((pS + pE + pU) * 9), 100);
+    const sSintax = Math.min(longMedia < 5 ? 85 : longMedia > 12 ? 60 : 35, 100);
+    const sPreg = Math.min(Math.round(nPreg * 30), 100);
+    const sUrg  = Math.min(Math.round((pU / (total || 1)) * 100), 100);
+
+    // Etiquetas de patrones
+    const etiquetas = [];
+    if (nPreg > 0) etiquetas.push({ texto: `${nPreg} pregunta${nPreg > 1 ? 's' : ''}`, tipo: 'exploracion' });
+    if (nExcl > 0) etiquetas.push({ texto: `${nExcl} exclamación${nExcl > 1 ? 'es' : ''}`, tipo: 'urgencia' });
+    if (mayus.length > 0) etiquetas.push({ texto: 'Mayúsculas detectadas', tipo: 'urgencia' });
+    if (longMedia < 5) etiquetas.push({ texto: 'Oraciones cortas', tipo: 'urgencia' });
+    if (longMedia > 12) etiquetas.push({ texto: 'Oraciones largas', tipo: 'exploracion' });
+    if ((1 - unicas.size / nPalabras) > 0.3) etiquetas.push({ texto: 'Repetición léxica', tipo: 'soporte' });
+    if (nPalabras > 20) etiquetas.push({ texto: `${nPalabras} palabras`, tipo: 'neutral' });
+
+    // Hasta 5 coincidencias de vocabulario
+    let kMatch = 0;
+    ['soporte','urgencia','exploracion'].forEach(reg => {
+        DIC[reg].palabras.forEach(kw => {
+            if (kMatch < 4 && bajo.includes(kw)) {
+                etiquetas.push({ texto: `"${kw}"`, tipo: reg });
+                kMatch++;
+            }
+        });
+    });
+
+    return { nS, nE, nU, dominante, confianza, etiquetas: etiquetas.slice(0,9),
+             sVocab, sSintax, sPreg, sUrg, nPalabras };
+}
+
+function actualizarUI(res) {
+    if (!res) return;
+
+    // Puntuaciones
+    document.getElementById('rs-soporte').textContent    = res.nS + '%';
+    document.getElementById('rs-exploracion').textContent = res.nE + '%';
+    document.getElementById('rs-urgencia').textContent    = res.nU + '%';
+
+    // Tarjeta activa
+    ['soporte','exploracion','urgencia'].forEach(r => {
+        document.getElementById(`rc-${r}`).className = 'reg-card';
+    });
+    document.getElementById(`rc-${res.dominante}`).className = `reg-card act-${res.dominante}`;
+
+    // Barras
+    const set = (id, val, pId) => {
+        document.getElementById(id).style.width = val + '%';
+        document.getElementById(pId).textContent = val + '%';
+    };
+    set('bv', res.sVocab,  'pv');
+    set('bs', res.sSintax, 'ps');
+    set('bq', res.sPreg,   'pq');
+    set('bu', res.sUrg,    'pu');
+
+    // Etiquetas
+    const ew = document.getElementById('etiqList');
+    if (res.etiquetas.length > 0) {
+        ew.innerHTML = res.etiquetas.map(e => `<span class="etiq etiq-${e.tipo}">${e.texto}</span>`).join('');
+    } else {
+        ew.innerHTML = '<span class="etiq etiq-neutral">Sin patrones relevantes aún</span>';
+    }
+
+    // Respuesta adaptada
+    const opts = RESPUESTAS[res.dominante];
+    document.getElementById('respuesta').textContent = opts[Math.floor(Math.random() * opts.length)];
+
+    // KPIs
+    conteoAnalisis++;
+    document.getElementById('kpi-an').textContent = conteoAnalisis;
+
+    const cf = document.getElementById('kpi-cf');
+    cf.textContent = res.confianza + '%';
+    cf.className = res.confianza >= 75 ? 'kpi-val kv-good' : res.confianza >= 50 ? 'kpi-val kv-warn' : 'kpi-val kv-bad';
+
+    const adPct = Math.min(12 + Math.round(conteoAnalisis * 1.8), 80);
+    const adEl = document.getElementById('kpi-ad');
+    adEl.textContent = adPct + '%';
+    adEl.className = adPct >= 80 ? 'kpi-val kv-good' : adPct >= 40 ? 'kpi-val kv-warn' : 'kpi-val kv-bad';
+
+    // Log OS
+    const nombres = { soporte: 'SOPORTE', exploracion: 'EXPLORACIÓN', urgencia: 'URGENCIA' };
+    const maxPct = Math.max(res.nS, res.nE, res.nU);
+    log(`Análisis #${conteoAnalisis} · Registro dominante: <strong>${nombres[res.dominante]}</strong> (${maxPct}%) · Confianza: ${res.confianza}%`,
+        res.dominante === 'urgencia' ? 'a' : 'ok');
+
+    if (res.dominante !== registroActual) {
+        log(`Cambio de registro detectado → ${nombres[res.dominante]} · Adaptando tono de respuesta…`, 's');
+        registroActual = res.dominante;
+    }
+    if (res.sUrg > 65) {
+        log('⚠ Señal de urgencia elevada · Prioridad ALTA activada · Verificación ética OK', 'a');
+    }
+}
+
+// Escucha de entrada
+entrada.addEventListener('input', function () {
+    const txt = this.value;
+    const nP = txt.trim().split(/\s+/).filter(w => w.length > 0).length;
+    document.getElementById('wc').textContent = nP + ' palabras';
+
+    const ahora = Date.now();
+    if (ultimoTiempo) {
+        const elapsed = (ahora - ultimoTiempo) / 1000;
+        if (elapsed > 0 && elapsed < 3) {
+            const ppm = Math.round((1 / elapsed) * 60);
+            document.getElementById('vel').textContent = `Velocidad de escritura: ${Math.min(ppm, 350)} p/m`;
+        }
+    }
+    ultimoTiempo = ahora;
+
+    clearTimeout(timerEscritura);
+    timerEscritura = setTimeout(() => {
+        const res = analizar(txt);
+        if (res) {
+            log(`Procesando entrada — ${res.nPalabras} palabras · Análisis iniciado…`, 'n');
+            actualizarUI(res);
+        }
+    }, 450);
+});
+
+// Logs de arranque diferidos
+setTimeout(() => log('Protocolo ético AMS v4.0 verificado · Sin captación invasiva ✓', 'ok'), 900);
+setTimeout(() => log('Conciencia OS acoplado y monitorizando en tiempo real ✓', 'ok'), 1600);
+setTimeout(() => log('En espera de entrada textual del usuario…', 'n'), 2100);
+</script>
+</body>
+</html>

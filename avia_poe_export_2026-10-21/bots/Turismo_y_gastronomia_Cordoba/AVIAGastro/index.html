@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Gastronomía - Mapa Interactivo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e27; color: #fff; }
+        
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, #1a1f3a 0%, #0f1228 100%);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #2a3150;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        
+        .filter-section {
+            margin-bottom: 25px;
+        }
+        
+        .filter-title {
+            font-size: 14px;
+            color: #8b92b0;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #1e2442;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-option:hover {
+            background: #252d52;
+            transform: translateX(5px);
+        }
+        
+        .filter-option.active {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #0a0e27;
+        }
+        
+        .filter-checkbox {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            accent-color: #ffd700;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #2a3150 0%, #1e2442 100%);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #8b92b0;
+            margin-top: 5px;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .custom-popup {
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .popup-image {
+            width: 200px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0a0e27;
+            margin-bottom: 5px;
+        }
+        
+        .popup-rating {
+            color: #ffd700;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .popup-specialty {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        
+        .popup-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #ffd700;
+            color: #0a0e27;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(26, 31, 58, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid #fff;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            .sidebar {
+                height: auto;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <div class="logo">AVIA Gastro 🍽️</div>
+            
+            <div class="stats-card">
+                <div class="stat-number">20</div>
+                <div class="stat-label">Establecimientos certificados</div>
+            </div>
+            
+            <div class="stats-card">
+                <div class="stat-number">8.6</div>
+                <div class="stat-label">Puntuación media</div>
+            </div>
+            
+            <div class="filter-section">
+                <div class="filter-title">Tipo de cocina</div>
+                <div class="filter-options">
+                    <label class="filter-option active">
+                        <input type="checkbox" class="filter-checkbox" checked data-filter="all">
+                        <span>Todos los restaurantes</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="alta-cocina">
+                        <span>Alta Cocina ⭐</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="tradicional">
+                        <span>Tradicional 🍲</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="tapas">
+                        <span>Tabernas & Tapas 🍷</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="internacional">
+                        <span>Internacional 🌍</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <div class="filter-title">Certificación AVIA</div>
+                <div class="filter-options">
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="diamante">
+                        <span>💎 Diamante (95-100)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="oro">
+                        <span>🥇 Oro (85-94)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="plata">
+                        <span>🥈 Plata (70-84)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="bronce">
+                        <span>🥉 Bronce (60-69)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <div class="filter-title">Precio</div>
+                <div class="filter-options">
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="precio-1">
+                        <span>€ (< 20€)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="precio-2">
+                        <span>€€ (20-40€)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="precio-3">
+                        <span>€€€ (40-70€)</span>
+                    </label>
+                    <label class="filter-option">
+                        <input type="checkbox" class="filter-checkbox" data-filter="precio-4">
+                        <span>€€€€ (> 70€)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div style="position: relative;">
+            <div id="map"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #dc143c;"></div>
+                    <span>Alta Cocina</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff8c00;"></div>
+                    <span>Tradicional</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffd700;"></div>
+                    <span>Tapas & Tabernas</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #32cd32;"></div>
+                    <span>Internacional</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4169e1;"></div>
+                    <span>Emblemático</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Datos de establecimientos
+        const establecimientos = [
+            {
+                nombre: "Noor", lat: 37.8829, lng: -4.7797, tipo: "alta-cocina", 
+                puntuacion: 9.8, certificacion: "diamante", precio: 4,
+                especialidad: "Menú degustación Al-Ándalus S.XII",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23dc143c' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='20' font-family='Arial'%3ENoor ⭐⭐%3C/text%3E%3C/svg%3E",
+                color: "#dc143c"
+            },
+            {
+                nombre: "Choco", lat: 37.8810, lng: -4.7780, tipo: "alta-cocina",
+                puntuacion: 9.5, certificacion: "diamante", precio: 4,
+                especialidad: "Rabo de toro deconstruido",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23dc143c' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='20' font-family='Arial'%3EChoco ⭐%3C/text%3E%3C/svg%3E",
+                color: "#dc143c"
+            },
+            {
+                nombre: "Bocatti di Cardinale", lat: 37.5464, lng: -4.2931, tipo: "internacional",
+                puntuacion: 9.0, certificacion: "oro", precio: 2,
+                especialidad: "Pappardelle al tartufo nero",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%2332cd32' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EBocatti 🍝%3C/text%3E%3C/svg%3E",
+                color: "#32cd32"
+            },
+            {
+                nombre: "Bodegas Campos", lat: 37.8820, lng: -4.7765, tipo: "tradicional",
+                puntuacion: 8.8, certificacion: "oro", precio: 3,
+                especialidad: "Salmorejo con texturas",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23ff8c00' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='Arial'%3EBodegas Campos%3C/text%3E%3C/svg%3E",
+                color: "#ff8c00"
+            },
+            {
+                nombre: "Bar Santos", lat: 37.8790, lng: -4.7810, tipo: "tapas",
+                puntuacion: 8.8, certificacion: "oro", precio: 1,
+                especialidad: "Tortilla con centollo",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23ffd700' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23333' font-size='18' font-family='Arial'%3EBar Santos 🍳%3C/text%3E%3C/svg%3E",
+                color: "#ffd700"
+            },
+            {
+                nombre: "Garum 2.1", lat: 37.8835, lng: -4.7770, tipo: "internacional",
+                puntuacion: 8.9, certificacion: "oro", precio: 3,
+                especialidad: "Arroz meloso de bogavante",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%2332cd32' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-family='Arial'%3EGarum 2.1 🦞%3C/text%3E%3C/svg%3E",
+                color: "#32cd32"
+            },
+            {
+                nombre: "Casa Pepe de la Judería", lat: 37.8795, lng: -4.7790, tipo: "tradicional",
+                puntuacion: 8.9, certificacion: "oro", precio: 3,
+                especialidad: "Rabo de toro tradicional",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23ff8c00' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ECasa Pepe%3C/text%3E%3C/svg%3E",
+                color: "#ff8c00"
+            },
+            {
+                nombre: "Taberna La Viuda", lat: 37.8800, lng: -4.7800, tipo: "tapas",
+                puntuacion: 8.5, certificacion: "plata", precio: 1,
+                especialidad: "Berenjenas con miel",
+                imagen: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%23ffd700' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23333' font-size='16' font-family='Arial'%3ELa Viuda 🍆%3C/text%3E%3C/svg%3E",
+                color: "#ffd700"
+            }
+        ];
+
+        // Inicializar mapa centrado en Córdoba
+        const map = L.map('map').setView([37.8845, -4.7796], 13);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap, © CartoDB'
+        }).addTo(map);
+
+        let markers = [];
+
+        function createMarker(est) {
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background: ${est.color}; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                    ${est.certificacion === 'diamante' ? '💎' : est.certificacion === 'oro' ? '🥇' : est.certificacion === 'plata' ? '🥈' : '🥉'}
+                </div>`,
+                iconSize: [30, 30]
+            });
+
+            const marker = L.marker([est.lat, est.lng], { icon }).addTo(map);
+            
+            const popupContent = `
+                <div class="custom-popup">
+                    <img src="${est.imagen}" class="popup-image" alt="${est.nombre}">
+                    <div class="popup-title">${est.nombre}</div>
+                    <div class="popup-rating">⭐ ${est.puntuacion}/10</div>
+                    <div class="popup-specialty">${est.especialidad}</div>
+                    <span class="popup-badge">${est.certificacion.toUpperCase()}</span>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            marker.metadata = est;
+            markers.push(marker);
+        }
+
+        establecimientos.forEach(createMarker);
+
+        // Filtros interactivos
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', applyFilters);
+        });
+
+        function applyFilters() {
+            const activeFilters = {
+                tipo: [],
+                certificacion: [],
+                precio: []
+            };
+
+            document.querySelectorAll('.filter-checkbox:checked').forEach(cb => {
+                const filter = cb.dataset.filter;
+                if (filter === 'all') return;
+                
+                if (['alta-cocina', 'tradicional', 'tapas', 'internacional'].includes(filter)) {
+                    activeFilters.tipo.push(filter);
+                } else if (['diamante', 'oro', 'plata', 'bronce'].includes(filter)) {
+                    activeFilters.certificacion.push(filter);
+                } else if (filter.startsWith('precio-')) {
+                    activeFilters.precio.push(parseInt(filter.split('-')[1]));
+                }
+            });
+
+            markers.forEach(marker => {
+                const est = marker.metadata;
+                let show = true;
+
+                if (activeFilters.tipo.length > 0 && !activeFilters.tipo.includes(est.tipo)) {
+                    show = false;
+                }
+                if (activeFilters.certificacion.length > 0 && !activeFilters.certificacion.includes(est.certificacion)) {
+                    show = false;
+                }
+                if (activeFilters.precio.length > 0 && !activeFilters.precio.includes(est.precio)) {
+                    show = false;
+                }
+
+                if (show) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+
+        // Efecto hover en filtros
+        document.querySelectorAll('.filter-option').forEach(option => {
+            option.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

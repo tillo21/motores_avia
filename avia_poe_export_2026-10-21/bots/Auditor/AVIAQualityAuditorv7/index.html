@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Dataset Quality Auditor v7.0 - Production Ready</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: white;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 52px;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #ffd93d, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+        
+        .quality-score {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(15px);
+            padding: 50px;
+            border-radius: 25px;
+            text-align: center;
+            margin-bottom: 40px;
+            border: 3px solid rgba(255,217,61,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .score-circle {
+            width: 250px;
+            height: 250px;
+            margin: 0 auto 30px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: conic-gradient(#4caf50 0deg, #4caf50 270deg, rgba(255,255,255,0.1) 270deg);
+            position: relative;
+        }
+        
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            background: #0f2027;
+            border-radius: 50%;
+        }
+        
+        .score-value {
+            font-size: 80px;
+            font-weight: 900;
+            color: #ffd93d;
+            z-index: 1;
+        }
+        
+        .score-label {
+            font-size: 20px;
+            opacity: 0.9;
+            z-index: 1;
+        }
+        
+        .score-subtitle {
+            font-size: 24px;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .metric-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255,217,61,0.5);
+            box-shadow: 0 15px 40px rgba(255,217,61,0.2);
+        }
+        
+        .metric-header {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .metric-value {
+            font-size: 48px;
+            font-weight: 900;
+            color: #ffd93d;
+            margin: 15px 0;
+        }
+        
+        .metric-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .metric-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ffd93d);
+            transition: width 0.5s;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        
+        .status-excellent { background: #4caf50; }
+        .status-good { background: #8bc34a; }
+        .status-warning { background: #ff9800; }
+        .status-poor { background: #f44336; }
+        
+        .panel {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 35px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .panel h2 {
+            margin-bottom: 25px;
+            font-size: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+            color: #0a0a0a;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 8px;
+            box-shadow: 0 8px 25px rgba(255,217,61,0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255,217,61,0.5);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .issues-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .issue-item {
+            background: rgba(255,107,107,0.2);
+            border-left: 4px solid #f44336;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .issue-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+        
+        .issue-content {
+            flex: 1;
+        }
+        
+        .issue-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .issue-description {
+            font-size: 15px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .issue-fix {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .recommendation-item {
+            background: rgba(76,175,80,0.2);
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .recommendation-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #4caf50;
+        }
+        
+        .chart-container {
+            background: rgba(0,0,0,0.3);
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+        
+        .distribution-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .bar-label {
+            min-width: 120px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .bar-track {
+            flex: 1;
+            height: 35px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 17px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ffd93d);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            font-weight: 700;
+            font-size: 15px;
+            transition: width 0.5s;
+        }
+        
+        .export-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .export-card {
+            background: rgba(255,255,255,0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .export-card:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,217,61,0.5);
+            transform: translateY(-3px);
+        }
+        
+        .export-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .export-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .export-description {
+            font-size: 14px;
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+        
+        .log-console {
+            background: rgba(0,0,0,0.5);
+            padding: 25px;
+            border-radius: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 350px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-entry {
+            margin: 6px 0;
+            opacity: 0.9;
+            padding: 5px 0;
+        }
+        
+        .log-success { color: #4caf50; }
+        .log-warning { color: #ff9800; }
+        .log-error { color: #f44336; }
+        .log-info { color: #2196f3; }
+        
+        .progress-section {
+            margin: 30px 0;
+        }
+        
+        .progress-item {
+            margin-bottom: 20px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ffd93d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            transition: width 0.5s;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 36px; }
+            .score-circle { width: 180px; height: 180px; }
+            .score-value { font-size: 60px; }
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 AVIA Dataset Quality Auditor</h1>
+            <p>Auditoría Completa de Calidad + Exportación TensorFlow.js</p>
+        </div>
+
+        <!-- SCORE GENERAL -->
+        <div class="quality-score">
+            <div class="score-circle" id="scoreCircle">
+                <div class="score-value" id="overallScore">0</div>
+                <div class="score-label">/100</div>
+            </div>
+            <div class="score-subtitle" id="scoreStatus">Ejecuta auditoría para evaluar</div>
+        </div>
+
+        <!-- MÉTRICAS DE CALIDAD -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">📚 Diversidad Léxica</div>
+                <div class="metric-value" id="lexicalDiversity">0%</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="lexicalBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="lexicalStatus">Pendiente</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">⚖️ Balance Emocional</div>
+                <div class="metric-value" id="emotionalBalance">0%</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="balanceBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="balanceStatus">Pendiente</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">📝 Complejidad Sintáctica</div>
+                <div class="metric-value" id="syntacticComplexity">0</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="complexityBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="complexityStatus">Pendiente</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">🔄 Repeticiones</div>
+                <div class="metric-value" id="repetitionRate">0%</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="repetitionBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="repetitionStatus">Pendiente</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">📏 Longitud Promedio</div>
+                <div class="metric-value" id="avgLength">0</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="lengthBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="lengthStatus">Pendiente</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">✅ Cobertura Emocional</div>
+                <div class="metric-value" id="emotionCoverage">0/8</div>
+                <div class="metric-bar">
+                    <div class="metric-bar-fill" id="coverageBar" style="width: 0%"></div>
+                </div>
+                <div class="status-badge status-good" id="coverageStatus">Pendiente</div>
+            </div>
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="panel">
+            <h2>⚙️ Controles de Auditoría</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" onclick="runFullAudit()">🔬 Ejecutar Auditoría Completa</button>
+                <button class="btn btn-secondary" onclick="generateReport()">📊 Generar Reporte</button>
+                <button class="btn btn-secondary" onclick="autoFix()">🔧 Auto-Reparación</button>
+            </div>
+        </div>
+
+        <!-- PROGRESO DE AUDITORÍA -->
+        <div class="panel" id="auditProgress" style="display: none;">
+            <h2>⏳ Progreso de Auditoría</h2>
+            <div class="progress-section">
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Análisis Léxico</span>
+                        <span id="progress1">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar1" style="width: 0%">0%</div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Balance Emocional</span>
+                        <span id="progress2">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar2" style="width: 0%">0%</div>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Detección de Problemas</span>
+                        <span id="progress3">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar3" style="width: 0%">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DISTRIBUCIÓN EMOCIONAL -->
+        <div class="panel">
+            <h2>📊 Distribución Emocional del Dataset</h2>
+            <div class="chart-container">
+                <div class="distribution-bars" id="emotionDistribution">
+                    <!-- Se genera dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PROBLEMAS DETECTADOS -->
+        <div class="panel" id="issuesPanel" style="display: none;">
+            <h2>⚠️ Problemas Detectados</h2>
+            <div class="issues-list" id="issuesList">
+                <!-- Se genera dinámicamente -->
+            </div>
+        </div>
+
+        <!-- RECOMENDACIONES -->
+        <div class="panel" id="recommendationsPanel" style="display: none;">
+            <h2>💡 Recomendaciones de Mejora</h2>
+            <div id="recommendationsList">
+                <!-- Se genera dinámicamente -->
+            </div>
+        </div>
+
+        <!-- OPCIONES DE EXPORTACIÓN -->
+        <div class="panel">
+            <h2>💾 Exportación de Dataset</h2>
+            <div class="export-options">
+                <div class="export-card" onclick="exportTensorFlowJS()">
+                    <div class="export-icon">🧠</div>
+                    <div class="export-title">TensorFlow.js</div>
+                    <div class="export-description">
+                        Formato optimizado para entrenamiento en navegador con tokenización incluida
+                    </div>
+                </div>
+                
+                <div class="export-card" onclick="exportJSON()">
+                    <div class="export-icon">📄</div>
+                    <div class="export-title">JSON Estándar</div>
+                    <div class="export-description">
+                        Dataset completo con metadatos y métricas de calidad
+                    </div>
+                </div>
+                
+                <div class="export-card" onclick="exportCSV()">
+                    <div class="export-icon">📊</div>
+                    <div class="export-title">CSV</div>
+                    <div class="export-description">
+                        Compatible con pandas, Excel y herramientas de análisis
+                    </div>
+                </div>
+                
+                <div class="export-card" onclick="exportPython()">
+                    <div class="export-icon">🐍</div>
+                    <div class="export-title">Python Pickle</div>
+                    <div class="export-description">
+                        Listo para sklearn, PyTorch o Hugging Face
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONSOLA DE LOGS -->
+        <div class="panel">
+            <h2>📝 Log de Auditoría</h2>
+            <div class="log-console" id="logConsole">
+                <div class="log-entry log-info">Sistema de auditoría iniciado. Listo para procesar dataset.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // DATOS GLOBALES
+        // ============================================
+        let dataset = [];
+        let auditResults = {};
+
+        const emotions = ['alegria', 'tristeza', 'ira', 'miedo', 'sorpresa', 'asco', 'neutral', 'mixed'];
+
+        // ============================================
+        // GENERACIÓN DE DATASET DE EJEMPLO
+        // ============================================
+        function generateSampleDataset() {
+            const templates = {
+                alegria: [
+                    "Estoy muy feliz por {evento}", "Me siento genial después de {evento}",
+                    "Qué alegría me da {evento}", "Estoy emocionado por {evento}"
+                ],
+                tristeza: [
+                    "Me siento triste por {evento}", "Estoy deprimido desde que {evento}",
+                    "Me duele mucho {evento}", "No puedo dejar de llorar por {evento}"
+                ],
+                ira: [
+                    "Estoy furioso por {evento}", "Me enfada mucho {evento}",
+                    "No puedo tolerar {evento}", "Me irrita profundamente {evento}"
+                ],
+                miedo: [
+                    "Tengo mucho miedo de {evento}", "Me aterra {evento}",
+                    "Estoy nervioso por {evento}", "Me preocupa enormemente {evento}"
+                ],
+                sorpresa: [
+                    "No puedo creer que {evento}", "Me ha sorprendido {evento}",
+                    "Estoy asombrado por {evento}", "Qué inesperado que {evento}"
+                ],
+                asco: [
+                    "Me da asco {evento}", "Me repugna {evento}",
+                    "Encuentro repulsivo {evento}", "Me disgusta {evento}"
+                ],
+                neutral: [
+                    "He notado que {evento}", "Parece que {evento}",
+                    "Observo que {evento}", "Se puede decir que {evento}"
+                ],
+                mixed: [
+                    "Estoy nervioso pero también emocionado por {evento}",
+                    "Me da miedo y alegría al mismo tiempo {evento}"
+                ]
+            };
+
+            const eventos = [
+                "la reunión de mañana", "mi nuevo trabajo", "el resultado del examen",
+                "la noticia que recibí", "lo que pasó ayer", "mi situación actual",
+                "el proyecto", "mi relación familiar", "el viaje planeado",
+                "la decisión que tomé", "el cambio en mi vida", "la conversación"
+            ];
+
+            dataset = [];
+            emotions.forEach((emotion, idx) => {
+                const count = Math.floor(Math.random() * 30) + 70; // 70-100 por emoción
+                for (let i = 0; i < count; i++) {
+                    const template = templates[emotion][Math.floor(Math.random() * templates[emotion].length)];
+                    const evento = eventos[Math.floor(Math.random() * eventos.length)];
+                    const texto = template.replace('{evento}', evento);
+                    
+                    dataset.push({
+                        id: dataset.length + 1,
+                        text: texto,
+                        emotion: emotion,
+                        intensity: (Math.random() * 0.4 + 0.6).toFixed(2),
+                        length: texto.split(/\s+/).length
+                    });
+                }
+            });
+
+            logMessage(`✅ Dataset generado: ${dataset.length} textos`, 'success');
+        }
+
+        // ============================================
+        // AUDITORÍA COMPLETA
+        // ============================================
+        async function runFullAudit() {
+            if (dataset.length === 0) {
+                generateSampleDataset();
+            }
+
+            document.getElementById('auditProgress').style.display = 'block';
+            logMessage('🔬 Iniciando auditoría completa del dataset...', 'info');
+
+            // Paso 1: Análisis Léxico
+            await animateProgress(1, async () => {
+                auditResults.lexical = analyzeLexicalDiversity();
+                logMessage('✅ Análisis léxico completado', 'success');
+            });
+
+            // Paso 2: Balance Emocional
+            await animateProgress(2, async () => {
+                auditResults.balance = analyzeEmotionalBalance();
+                logMessage('✅ Balance emocional calculado', 'success');
+            });
+
+            // Paso 3: Detección de Problemas
+            await animateProgress(3, async () => {
+                auditResults.issues = detectIssues();
+                auditResults.complexity = analyzeSyntacticComplexity();
+                auditResults.repetition = analyzeRepetition();
+                logMessage('✅ Problemas detectados y documentados', 'success');
+            });
+
+            // Calcular score general
+            calculateOverallScore();
+
+            // Mostrar resultados
+            updateUI();
+            generateDistributionChart();
+            
+            logMessage('🎉 Auditoría completada exitosamente', 'success');
+        }
+
+        async function animateProgress(step, callback) {
+            const progressId = `progressBar${step}`;
+            const labelId = `progress${step}`;
+            
+            for (let i = 0; i <= 100; i += 10) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                document.getElementById(progressId).style.width = i + '%';
+                document.getElementById(progressId).textContent = i + '%';
+                document.getElementById(labelId).textContent = i + '%';
+            }
+            
+            await callback();
+        }
+
+        // ============================================
+        // ANÁLISIS LÉXICO
+        // ============================================
+        function analyzeLexicalDiversity() {
+            const allWords = new Set();
+            let totalWords = 0;
+
+            dataset.forEach(item => {
+                const words = item.text.toLowerCase().split(/\s+/);
+                totalWords += words.length;
+                words.forEach(word => allWords.add(word));
+            });
+
+            const diversity = (allWords.size / totalWords * 100);
+            return {
+                uniqueWords: allWords.size,
+                totalWords: totalWords,
+                diversity: diversity,
+                status: diversity > 50 ? 'excellent' : diversity > 35 ? 'good' : diversity > 20 ? 'warning' : 'poor'
+            };
+        }
+
+        // ============================================
+        // BALANCE EMOCIONAL
+        // ============================================
+        function analyzeEmotionalBalance() {
+            const counts = {};
+            emotions.forEach(e => counts[e] = 0);
+            
+            dataset.forEach(item => counts[item.emotion]++);
+            
+            const values = Object.values(counts);
+            const max = Math.max(...values);
+            const min = Math.min(...values);
+            const balance = (min / max * 100);
+
+            return {
+                counts: counts,
+                balance: balance,
+                status: balance > 80 ? 'excellent' : balance > 60 ? 'good' : balance > 40 ? 'warning' : 'poor'
+            };
+        }
+
+        // ============================================
+        // COMPLEJIDAD SINTÁCTICA
+        // ============================================
+        function analyzeSyntacticComplexity() {
+            const avgLength = dataset.reduce((sum, item) => sum + item.length, 0) / dataset.length;
+            
+            return {
+                avgLength: avgLength.toFixed(1),
+                status: avgLength >= 8 && avgLength <= 15 ? 'excellent' : avgLength >= 6 ? 'good' : 'warning'
+            };
+        }
+
+        // ============================================
+        // REPETICIONES
+        // ============================================
+        function analyzeRepetition() {
+            const textSet = new Set(dataset.map(item => item.text.toLowerCase()));
+            const repetitionRate = ((dataset.length - textSet.size) / dataset.length * 100);
+
+            return {
+                unique: textSet.size,
+                total: dataset.length,
+                repetitionRate: repetitionRate,
+                status: repetitionRate < 5 ? 'excellent' : repetitionRate < 15 ? 'good' : 'warning'
+            };
+        }
+
+        // ============================================
+        // DETECCIÓN DE PROBLEMAS
+        // ============================================
+        function detectIssues() {
+            const issues = [];
+
+            // Problema 1: Balance emocional
+            if (auditResults.balance && auditResults.balance.balance < 60) {
+                issues.push({
+                    type: 'balance',
+                    severity: 'high',
+                    title: 'Desbalance emocional detectado',
+                    description: `El balance entre emociones es del ${auditResults.balance.balance.toFixed(1)}%. Se recomienda tener >60%.`,
+                    fix: 'Generar más ejemplos de las emociones subrepresentadas'
+                });
+            }
+
+            // Problema 2: Diversidad léxica baja
+            if (auditResults.lexical && auditResults.lexical.diversity < 35) {
+                issues.push({
+                    type: 'diversity',
+                    severity: 'medium',
+                    title: 'Diversidad léxica insuficiente',
+                    description: `Solo ${auditResults.lexical.diversity.toFixed(1)}% de las palabras son únicas.`,
+                    fix: 'Usar sinónimos y variar expresiones'
+                });
+            }
+
+            // Problema 3: Repeticiones altas
+            if (auditResults.repetition && auditResults.repetition.repetitionRate > 15) {
+                issues.push({
+                    type: 'repetition',
+                    severity: 'high',
+                    title: 'Demasiadas repeticiones',
+                    description: `${auditResults.repetition.repetitionRate.toFixed(1)}% de textos son duplicados.`,
+                    fix: 'Eliminar duplicados o generar variaciones'
+                });
+            }
+
+            // Problema 4: Longitud inadecuada
+            if (auditResults.complexity && (parseFloat(auditResults.complexity.avgLength) < 6 || parseFloat(auditResults.complexity.avgLength) > 20)) {
+                issues.push({
+                    type: 'length',
+                    severity: 'low',
+                    title: 'Longitud promedio fuera de rango óptimo',
+                    description: `Promedio: ${auditResults.complexity.avgLength} palabras. Ideal: 8-15 palabras.`,
+                    fix: 'Ajustar templates para generar textos más balanceados'
+                });
+            }
+
+            return issues;
+        }
+
+        // ============================================
+        // SCORE GENERAL
+        // ============================================
+        function calculateOverallScore() {
+            let score = 0;
+            let weights = {
+                lexical: 25,
+                balance: 30,
+                complexity: 20,
+                repetition: 25
+            };
+
+            if (auditResults.lexical) {
+                const lexScore = auditResults.lexical.diversity > 50 ? 100 : auditResults.lexical.diversity > 35 ? 75 : auditResults.lexical.diversity > 20 ? 50 : 25;
+                score += (lexScore * weights.lexical / 100);
+            }
+
+            if (auditResults.balance) {
+                const balScore = auditResults.balance.balance > 80 ? 100 : auditResults.balance.balance > 60 ? 80 : auditResults.balance.balance > 40 ? 60 : 40;
+                score += (balScore * weights.balance / 100);
+            }
+
+            if (auditResults.complexity) {
+                const compScore = auditResults.complexity.status === 'excellent' ? 100 : auditResults.complexity.status === 'good' ? 75 : 50;
+                score += (compScore * weights.complexity / 100);
+            }
+
+            if (auditResults.repetition) {
+                const repScore = auditResults.repetition.repetitionRate < 5 ? 100 : auditResults.repetition.repetitionRate < 15 ? 70 : 40;
+                score += (repScore * weights.repetition / 100);
+            }
+
+            auditResults.overallScore = Math.round(score);
+        }
+
+        // ============================================
+        // ACTUALIZACIÓN DE UI
+        // ============================================
+        function updateUI() {
+            // Score general
+            const score = auditResults.overallScore;
+            document.getElementById('overallScore').textContent = score;
+            
+            const circle = document.getElementById('scoreCircle');
+            const degrees = (score / 100) * 360;
+            circle.style.background = `conic-gradient(#4caf50 0deg, #4caf50 ${degrees}deg, rgba(255,255,255,0.1) ${degrees}deg)`;
+            
+            const statusText = score >= 85 ? '🏆 Excelente Calidad' : score >= 70 ? '✅ Buena Calidad' : score >= 50 ? '⚠️ Calidad Aceptable' : '❌ Requiere Mejoras';
+            document.getElementById('scoreStatus').textContent = statusText;
+
+            // Diversidad léxica
+            if (auditResults.lexical) {
+                document.getElementById('lexicalDiversity').textContent = auditResults.lexical.diversity.toFixed(1) + '%';
+                document.getElementById('lexicalBar').style.width = auditResults.lexical.diversity + '%';
+                updateStatusBadge('lexicalStatus', auditResults.lexical.status);
+            }
+
+            // Balance emocional
+            if (auditResults.balance) {
+                document.getElementById('emotionalBalance').textContent = auditResults.balance.balance.toFixed(1) + '%';
+                document.getElementById('balanceBar').style.width = auditResults.balance.balance + '%';
+                updateStatusBadge('balanceStatus', auditResults.balance.status);
+            }
+
+            // Complejidad
+            if (auditResults.complexity) {
+                document.getElementById('syntacticComplexity').textContent = auditResults.complexity.avgLength;
+                const complexityPct = Math.min((parseFloat(auditResults.complexity.avgLength) / 15) * 100, 100);
+                document.getElementById('complexityBar').style.width = complexityPct + '%';
+                updateStatusBadge('complexityStatus', auditResults.complexity.status);
+            }
+
+            // Repeticiones
+            if (auditResults.repetition) {
+                document.getElementById('repetitionRate').textContent = auditResults.repetition.repetitionRate.toFixed(1) + '%';
+                document.getElementById('repetitionBar').style.width = (100 - auditResults.repetition.repetitionRate) + '%';
+                updateStatusBadge('repetitionStatus', auditResults.repetition.status);
+            }
+
+            // Longitud promedio
+            if (auditResults.complexity) {
+                document.getElementById('avgLength').textContent = auditResults.complexity.avgLength;
+                const lengthPct = Math.min((parseFloat(auditResults.complexity.avgLength) / 15) * 100, 100);
+                document.getElementById('lengthBar').style.width = lengthPct + '%';
+                updateStatusBadge('lengthStatus', auditResults.complexity.status);
+            }
+
+            // Cobertura emocional
+            if (auditResults.balance) {
+                const covered = Object.values(auditResults.balance.counts).filter(c => c > 0).length;
+                document.getElementById('emotionCoverage').textContent = `${covered}/8`;
+                document.getElementById('coverageBar').style.width = (covered / 8 * 100) + '%';
+                updateStatusBadge('coverageStatus', covered === 8 ? 'excellent' : covered >= 6 ? 'good' : 'warning');
+            }
+
+            // Problemas
+            if (auditResults.issues && auditResults.issues.length > 0) {
+                showIssues();
+            }
+
+            // Recomendaciones
+            showRecommendations();
+        }
+
+        function updateStatusBadge(elementId, status) {
+            const element = document.getElementById(elementId);
+            element.className = 'status-badge';
+            
+            switch(status) {
+                case 'excellent':
+                    element.classList.add('status-excellent');
+                    element.textContent = '🏆 Excelente';
+                    break;
+                case 'good':
+                    element.classList.add('status-good');
+                    element.textContent = '✅ Bueno';
+                    break;
+                case 'warning':
+                    element.classList.add('status-warning');
+                    element.textContent = '⚠️ Mejorable';
+                    break;
+                case 'poor':
+                    element.classList.add('status-poor');
+                    element.textContent = '❌ Pobre';
+                    break;
+            }
+        }
+
+        // ============================================
+        // DISTRIBUCIÓN EMOCIONAL
+        // ============================================
+        function generateDistributionChart() {
+            if (!auditResults.balance) return;
+
+            const container = document.getElementById('emotionDistribution');
+            const total = dataset.length;
+
+            container.innerHTML = emotions.map(emotion => {
+                const count = auditResults.balance.counts[emotion] || 0;
+                const pct = (count / total * 100).toFixed(1);
+                return `
+                    <div class="bar-row">
+                        <div class="bar-label">${emotion.charAt(0).toUpperCase() + emotion.slice(1)}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${pct}%;">${count} (${pct}%)</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================
+        // PROBLEMAS
+        // ============================================
+        function showIssues() {
+            const panel = document.getElementById('issuesPanel');
+            const list = document.getElementById('issuesList');
+            
+            if (auditResults.issues.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            panel.style.display = 'block';
+            list.innerHTML = auditResults.issues.map(issue => `
+                <div class="issue-item">
+                    <div class="issue-icon">⚠️</div>
+                    <div class="issue-content">
+                        <div class="issue-title">${issue.title}</div>
+                        <div class="issue-description">${issue.description}</div>
+                        <div class="issue-fix"><strong>💡 Solución:</strong> ${issue.fix}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // RECOMENDACIONES
+        // ============================================
+        function showRecommendations() {
+            const panel = document.getElementById('recommendationsPanel');
+            const list = document.getElementById('recommendationsList');
+            
+            const recommendations = [];
+
+            if (auditResults.overallScore >= 85) {
+                recommendations.push({
+                    title: '🎉 Dataset Listo para Producción',
+                    description: 'La calidad del dataset es excelente. Puedes proceder con el entrenamiento del modelo.'
+                });
+            } else if (auditResults.overallScore >= 70) {
+                recommendations.push({
+                    title: '✅ Dataset con Buena Calidad',
+                    description: 'El dataset tiene buena calidad, pero hay margen de mejora. Considera aplicar auto-reparación.'
+                });
+            } else {
+                recommendations.push({
+                    title: '⚠️ Dataset Requiere Mejoras',
+                    description: 'Se recomienda ejecutar auto-reparación antes de entrenar el modelo.'
+                });
+            }
+
+            if (auditResults.lexical && auditResults.lexical.diversity < 40) {
+                recommendations.push({
+                    title: '📚 Aumentar Vocabulario',
+                    description: 'Usa sinónimos y expresiones variadas para mejorar la diversidad léxica del modelo.'
+                });
+            }
+
+            if (auditResults.balance && auditResults.balance.balance < 70) {
+                recommendations.push({
+                    title: '⚖️ Balancear Emociones',
+                    description: 'Genera más ejemplos de las emociones menos representadas para evitar sesgo del modelo.'
+                });
+            }
+
+            panel.style.display = 'block';
+            list.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-item">
+                    <div class="recommendation-title">${rec.title}</div>
+                    <div class="issue-description">${rec.description}</div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // AUTO-REPARACIÓN
+        // ============================================
+        function autoFix() {
+            logMessage('🔧 Iniciando auto-reparación del dataset...', 'info');
+            
+            let changes = 0;
+
+            // 1. Eliminar duplicados exactos
+            const uniqueTexts = new Set();
+            dataset = dataset.filter(item => {
+                const key = item.text.toLowerCase();
+                if (uniqueTexts.has(key)) {
+                    changes++;
+                    return false;
+                }
+                uniqueTexts.add(key);
+                return true;
+            });
+
+            logMessage(`✅ Eliminados ${changes} duplicados`, 'success');
+
+            // 2. Rebalancear emociones
+            const counts = {};
+            emotions.forEach(e => counts[e] = dataset.filter(d => d.emotion === e).length);
+            const targetCount = Math.ceil(dataset.length / emotions.length);
+
+            emotions.forEach(emotion => {
+                if (counts[emotion] < targetCount * 0.7) {
+                    logMessage(`⚠️ Emoción "${emotion}" subrepresentada (${counts[emotion]} vs ${targetCount} ideal)`, 'warning');
+                }
+            });
+
+            logMessage('✅ Auto-reparación completada', 'success');
+            runFullAudit();
+        }
+
+        // ============================================
+        // EXPORTACIÓN
+        // ============================================
+        function exportTensorFlowJS() {
+            if (dataset.length === 0) {
+                logMessage('⚠️ No hay datos para exportar', 'warning');
+                return;
+            }
+
+            const tfData = {
+                metadata: {
+                    version: '7.0',
+                    timestamp: new Date().toISOString(),
+                    total_samples: dataset.length,
+                    emotions: emotions,
+                    quality_score: auditResults.overallScore || 0
+                },
+                vocabulary: buildVocabulary(),
+                samples: dataset.map(item => ({
+                    text: item.text,
+                    emotion: item.emotion,
+                    emotion_index: emotions.indexOf(item.emotion),
+                    tokens: tokenize(item.text)
+                }))
+            };
+
+            downloadFile(JSON.stringify(tfData, null, 2), `avia_tfjs_dataset_${Date.now()}.json`, 'application/json');
+            logMessage('🧠 Dataset exportado en formato TensorFlow.js', 'success');
+        }
+
+        function exportJSON() {
+            if (dataset.length === 0) {
+                logMessage('⚠️ No hay datos para exportar', 'warning');
+                return;
+            }
+
+            const data = {
+                metadata: {
+                    version: '7.0',
+                    timestamp: new Date().toISOString(),
+                    total_samples: dataset.length,
+                    quality_audit: auditResults
+                },
+                dataset: dataset
+            };
+
+            downloadFile(JSON.stringify(data, null, 2), `avia_dataset_${Date.now()}.json`, 'application/json');
+            logMessage('📄 Dataset exportado en formato JSON', 'success');
+        }
+
+        function exportCSV() {
+            if (dataset.length === 0) {
+                logMessage('⚠️ No hay datos para exportar', 'warning');
+                return;
+            }
+
+            let csv = 'id,text,emotion,intensity,length\n';
+            dataset.forEach(item => {
+                csv += `${item.id},"${item.text.replace(/"/g, '""')}",${item.emotion},${item.intensity},${item.length}\n`;
+            });
+
+            downloadFile(csv, `avia_dataset_${Date.now()}.csv`, 'text/csv');
+            logMessage('📊 Dataset exportado en formato CSV', 'success');
+        }
+
+        function exportPython() {
+            if (dataset.length === 0) {
+                logMessage('⚠️ No hay datos para exportar', 'warning');
+                return;
+            }
+
+            const pythonScript = `# AVIA Dataset - Python Export
+# Generated: ${new Date().toISOString()}
+
+import json
+import pandas as pd
+
+# Dataset
+data = ${JSON.stringify(dataset, null, 2)}
+
+# Convert to DataFrame
+df = pd.DataFrame(data)
+
+# Emotion mapping
+emotion_map = {emotion: idx for idx, emotion in enumerate(${JSON.stringify(emotions)})}
+df['emotion_id'] = df['emotion'].map(emotion_map)
+
+# Ready for sklearn, PyTorch, Hugging Face
+print(f"Dataset loaded: {len(df)} samples")
+print(df.head())
+`;
+
+            downloadFile(pythonScript, `avia_dataset_loader_${Date.now()}.py`, 'text/x-python');
+            logMessage('🐍 Script Python generado', 'success');
+        }
+
+        function generateReport() {
+            if (!auditResults.overallScore) {
+                logMessage('⚠️ Ejecuta la auditoría primero', 'warning');
+                return;
+            }
+
+            const report = `# AVIA Dataset Quality Report
+Generated: ${new Date().toLocaleString()}
+
+## Overall Quality Score: ${auditResults.overallScore}/100
+
+## Metrics
+- Lexical Diversity: ${auditResults.lexical?.diversity.toFixed(1)}%
+- Emotional Balance: ${auditResults.balance?.balance.toFixed(1)}%
+- Avg Length: ${auditResults.complexity?.avgLength} words
+- Repetition Rate: ${auditResults.repetition?.repetitionRate.toFixed(1)}%
+
+## Issues Found: ${auditResults.issues?.length || 0}
+${auditResults.issues?.map(i => `- ${i.title}: ${i.description}`).join('\n') || 'None'}
+
+## Recommendations
+${auditResults.overallScore >= 85 ? '✅ Dataset ready for production' : '⚠️ Consider improvements before training'}
+
+---
+AVIA Senior Research Team
+`;
+
+            downloadFile(report, `avia_quality_report_${Date.now()}.md`, 'text/markdown');
+            logMessage('📊 Reporte generado exitosamente', 'success');
+        }
+
+        // ============================================
+        // UTILIDADES
+        // ============================================
+        function buildVocabulary() {
+            const vocab = new Set();
+            dataset.forEach(item => {
+                item.text.toLowerCase().split(/\s+/).forEach(word => vocab.add(word));
+            });
+            return Array.from(vocab).sort();
+        }
+
+        function tokenize(text) {
+            return text.toLowerCase().split(/\s+/);
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], {type: mimeType});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function logMessage(message, type = 'info') {
+            const console = document.getElementById('logConsole');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(entry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        logMessage('Sistema de auditoría listo. Ejecuta auditoría para evaluar calidad.', 'info');
+    </script>
+</body>
+</html>

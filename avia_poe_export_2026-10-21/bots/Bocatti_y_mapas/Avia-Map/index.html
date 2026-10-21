@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AVIA Map — Lugares favoritos geolocalizados</title>
+
+  <!-- Leaflet (mapa) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+    :root{
+      --avia-0:#0b1220;
+      --avia-1:#101a33;
+      --avia-2:#162449;
+      --avia-3:#1f2f5c;
+      --avia-accent:#22c55e; /* verde */
+      --avia-accent2:#3b82f6; /* azul */
+      --avia-warn:#f59e0b;
+      --avia-danger:#ef4444;
+      --avia-text:#e8eefc;
+      --avia-muted:#a8b3d6;
+      --avia-card: rgba(255,255,255,0.06);
+      --avia-border: rgba(255,255,255,0.12);
+      --avia-shadow: 0 12px 30px rgba(0,0,0,0.35);
+      --radius: 16px;
+      --radius2: 22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      color:var(--avia-text);
+      background: radial-gradient(1200px 800px at 20% -10%, rgba(59,130,246,0.35), transparent 55%),
+                  radial-gradient(1100px 700px at 110% 0%, rgba(34,197,94,0.28), transparent 60%),
+                  linear-gradient(180deg, var(--avia-0), var(--avia-1) 40%, #070b14 100%);
+      min-height:100vh;
+    }
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:18px 14px 34px;
+    }
+    header{
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      justify-content:space-between;
+      padding:14px 14px 8px;
+    }
+    .brand{
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background: linear-gradient(135deg, rgba(34,197,94,0.95), rgba(59,130,246,0.95));
+      box-shadow: 0 14px 40px rgba(34,197,94,0.20);
+      border:1px solid rgba(255,255,255,0.18);
+      display:grid; place-items:center;
+      font-weight:900;
+    }
+    .brand h1{
+      margin:0;
+      font-size:16px;
+      letter-spacing:0.2px;
+    }
+    .brand p{
+      margin:4px 0 0;
+      color:var(--avia-muted);
+      font-size:12px;
+    }
+    .status{
+      display:flex; flex-direction:column; gap:6px;
+      align-items:flex-end;
+      min-width:200px;
+    }
+    .pill{
+      display:flex; align-items:center; gap:10px;
+      padding:9px 12px;
+      border-radius:999px;
+      border:1px solid var(--avia-border);
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+      font-size:12px;
+      color:var(--avia-muted);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: var(--avia-accent);
+      box-shadow: 0 0 0 6px rgba(34,197,94,0.18);
+      flex:0 0 auto;
+    }
+    .dot.warn{
+      background: var(--avia-warn);
+      box-shadow: 0 0 0 6px rgba(245,158,11,0.18);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap:14px;
+      padding:10px 0;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .status{ align-items:flex-start; min-width:auto; }
+      header{ flex-direction:column; }
+    }
+
+    .card{
+      border-radius: var(--radius2);
+      border:1px solid var(--avia-border);
+      background: var(--avia-card);
+      box-shadow: var(--avia-shadow);
+      overflow:hidden;
+    }
+    .card h2{
+      margin:0;
+      padding:14px 14px 10px;
+      font-size:13px;
+      letter-spacing:0.24px;
+      color:var(--avia-muted);
+      font-weight:700;
+      text-transform:uppercase;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
+    }
+
+    #map{
+      height: 560px;
+      width:100%;
+    }
+    @media (max-width: 980px){
+      #map{ height: 420px; }
+    }
+
+    .panel{
+      padding:12px 12px 14px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+    .col{
+      display:flex; flex-direction:column; gap:6px;
+      min-width: 140px;
+      flex: 1 1 auto;
+    }
+    label{
+      font-size:12px;
+      color:var(--avia-muted);
+      font-weight:600;
+    }
+    input, select, textarea, button{
+      font: inherit;
+      color: var(--avia-text);
+      background: rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 10px 12px;
+      outline:none;
+      transition: 0.15s ease;
+    }
+    textarea{ min-height: 86px; resize: vertical; }
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(59,130,246,0.55);
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+    }
+
+    button{
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,0.14);
+      background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+      padding: 10px 12px;
+      font-weight:800;
+      letter-spacing:0.1px;
+    }
+    button:hover{ transform: translateY(-1px); }
+    button:active{ transform: translateY(0px); }
+
+    .primary{
+      background: linear-gradient(135deg, rgba(34,197,94,0.95), rgba(59,130,246,0.95));
+      border-color: rgba(255,255,255,0.22);
+      box-shadow: 0 16px 46px rgba(34,197,94,0.16);
+    }
+    .ghost{
+      background: rgba(255,255,255,0.04);
+    }
+    .danger{
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.35);
+      color: #ffd6d6;
+    }
+
+    .hint{
+      margin-top:10px;
+      color:var(--avia-muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .small{
+      font-size:12px;
+      color:var(--avia-muted);
+    }
+    .kbd{
+      font-family: var(--mono);
+      font-size:12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+      color: #d9e4ff;
+      white-space:nowrap;
+    }
+
+    .favList{
+      padding: 12px 12px 14px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .listHead{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .listTools{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      margin-top:8px;
+    }
+    .search{
+      flex: 1 1 180px;
+      min-width: 180px;
+    }
+    .filter{
+      flex: 0 0 180px;
+      min-width: 160px;
+    }
+
+    .items{
+      display:flex; flex-direction:column; gap:10px;
+      max-height: 420px;
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .item{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .itemTop{
+      display:flex; gap:10px; align-items:flex-start; justify-content:space-between;
+    }
+    .itemTitle{
+      display:flex; flex-direction:column; gap:4px;
+      min-width:0;
+    }
+    .itemTitle strong{
+      font-size:13px;
+      line-height:1.2;
+      word-break: break-word;
+    }
+    .metaLine{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      color: var(--avia-muted);
+      font-size:12px;
+    }
+    .badge{
+      font-size:11px;
+      font-weight:900;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(59,130,246,0.18);
+      color: #d7e6ff;
+      white-space:nowrap;
+    }
+    .badge.green{
+      background: rgba(34,197,94,0.16);
+      color: #d9ffe9;
+      border-color: rgba(34,197,94,0.32);
+    }
+    .itemBtns{
+      display:flex; gap:8px; flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .linkBtn{
+      padding: 9px 10px;
+      border-radius: 14px;
+      font-size:12px;
+      font-weight:900;
+    }
+    .hr{
+      height:1px;
+      background: rgba(255,255,255,0.08);
+      margin: 6px 0;
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.16);
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #e9f0ff;
+      font-size: 12px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+      display:none;
+      z-index: 9999;
+      max-width: calc(100vw - 24px);
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Modal */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      z-index: 10000;
+      padding: 14px;
+    }
+    .modal{
+      margin: 6vh auto 0;
+      max-width: 720px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius: 22px;
+      box-shadow: 0 35px 120px rgba(0,0,0,0.6);
+      overflow:hidden;
+    }
+    .modalHeader{
+      padding: 14px 14px 10px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent);
+    }
+    .modalHeader h3{
+      margin:0;
+      font-size:14px;
+      letter-spacing:0.2px;
+    }
+    .modalBody{
+      padding: 12px 14px 14px;
+    }
+    .modalActions{
+      display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;
+      padding: 12px 14px 14px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Quitar accesibilidad: foco visible */
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+      outline: 2px solid rgba(59,130,246,0.75);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">AV</div>
+        <div>
+          <h1>AVIA Map — geolocaliza tus lugares favoritos</h1>
+          <p>Crea, filtra, exporta/importa CSV y marca puntos desde el mapa.</p>
+        </div>
+      </div>
+
+      <div class="status">
+        <div class="pill" id="statusPill">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">En línea (modo interfaz)</span>
+        </div>
+        <div class="small">Nota: como no hay backend configurado, por defecto el guardado es local en el archivo CSV y en memoria durante la sesión.</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- MAPA -->
+      <section class="card" aria-label="Mapa">
+        <h2>Mapa</h2>
+        <div id="map"></div>
+      </section>
+
+      <!-- PANEL -->
+      <aside class="card" aria-label="Favoritos y acciones">
+        <h2>Favoritos</h2>
+        <div class="panel">
+          <div class="row">
+            <div class="col">
+              <label for="categoryInput">Categoría (personalizada)</label>
+              <input id="categoryInput" type="text" placeholder="Ej: Estudio, Ocio, Trabajo..." />
+            </div>
+            <div class="col" style="flex:0 0 190px; min-width: 190px;">
+              <label>&nbsp;</label>
+              <button class="primary" id="useHereBtn" type="button" title="Centra el mapa en tu ubicación actual">
+                Usar mi ubicación
+              </button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="col">
+              <label for="nameInput">Nombre del lugar</label>
+              <input id="nameInput" type="text" placeholder="Ej: Café Central" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="col">
+              <label for="notesInput">Notas</label>
+              <textarea id="notesInput" placeholder="Qué tiene, por qué te gusta, horarios, etc."></textarea>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="col" style="flex: 0 0 160px; min-width: 160px;">
+              <label>Coordenadas (lat,lng)</label>
+              <input id="coordInput" type="text" placeholder="Se completan al hacer clic en el mapa" />
+            </div>
+            <div class="col" style="flex: 0 0 170px; min-width: 170px;">
+              <label>&nbsp;</label>
+              <button class="primary" id="addFavBtn" type="button" title="Guardar favorito con los datos actuales">
+                Añadir favorito
+              </button>
+            </div>
+          </div>
+
+          <div class="hint">
+            <div><span class="kbd">1</span> Haz clic en el mapa para fijar el punto.</div>
+            <div><span class="kbd">2</span> Rellena nombre + categoría + notas.</div>
+            <div><span class="kbd">3</span> Pulsa <b>Añadir favorito</b>.</div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row" style="margin-top:8px; align-items:center;">
+            <div class="col" style="flex:1 1 auto; min-width: 240px;">
+              <label for="csvFile">Importar CSV</label>
+              <input id="csvFile" type="file" accept=".csv,text/csv" />
+            </div>
+            <div class="col" style="flex:0 0 180px; min-width: 180px;">
+              <label>&nbsp;</label>
+              <button class="ghost" id="importBtn" type="button">Importar</button>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="col" style="flex:1 1 auto; min-width: 240px;">
+              <label>Exportar CSV</label>
+              <button class="ghost" id="exportBtn" type="button">Exportar mis favoritos</button>
+            </div>
+            <div class="col" style="flex:0 0 200px; min-width: 200px;">
+              <label>&nbsp;</label>
+              <button class="danger" id="clearBtn" type="button" title="Borra la lista cargada en esta pestaña (no afecta a tu CSV)">
+                Borrar lista local
+              </button>
+            </div>
+          </div>
+
+          <div class="hint">
+            <div class="small">
+              CSV usado:
+              <span class="kbd">id,name,category,notes,lat,lng,address,createdAt,updatedAt</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="favList">
+          <div class="listHead">
+            <div>
+              <div style="font-weight:900; font-size:13px;">Lista</div>
+              <div class="small" id="countText">0 favoritos</div>
+            </div>
+
+            <div class="listTools" aria-label="Filtros">
+              <input class="search" id="searchInput" type="text" placeholder="Buscar por nombre o categoría..." />
+              <select class="filter" id="categoryFilter">
+                <option value="__ALL__">Todas las categorías</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="items" id="items"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modalHeader">
+        <div>
+          <h3 id="modalTitle">Editar favorito</h3>
+          <div class="small" id="modalSubtitle">—</div>
+        </div>
+        <button class="ghost" id="closeModalBtn" type="button" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="row">
+          <div class="col">
+            <label for="editName">Nombre</label>
+            <input id="editName" type="text" />
+          </div>
+          <div class="col">
+            <label for="editCategory">Categoría</label>
+            <input id="editCategory" type="text" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="col">
+            <label for="editNotes">Notas</label>
+            <textarea id="editNotes"></textarea>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="col" style="flex:0 0 200px; min-width:200px;">
+            <label>lat</label>
+            <input id="editLat" type="text" inputmode="decimal" />
+          </div>
+          <div class="col" style="flex:0 0 200px; min-width:200px;">
+            <label>lng</label>
+            <input id="editLng" type="text" inputmode="decimal" />
+          </div>
+          <div class="col" style="flex:1 1 auto;">
+            <label>&nbsp;</label>
+            <button class="ghost" id="applyMoveBtn" type="button">Mover punto al mapa</button>
+          </div>
+        </div>
+
+        <div class="hint">
+          Consejo: para “mover” el punto, puedes hacer clic en el mapa y luego pulsar <b>Añadir favorito</b> como nuevo.
+        </div>
+      </div>
+
+      <div class="modalActions">
+        <button class="danger" id="deleteBtn" type="button">Eliminar</button>
+        <button class="primary" id="saveBtn" type="button">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <script>
+    /***********************
+     * AVIA Map (HTML único)
+     * - Guardado: NO en nube (sin backend / tokens).
+     * - Para “en la nube”, usa export/import CSV o integra un almacenamiento externo.
+     ***********************/
+
+    // --- Estado en memoria
+    const state = {
+      favorites: [],
+      selected: null, // {id, lat, lng}
+      userPos: null, // {lat, lng}
+      editingId: null,
+      map: null,
+      markers: new Map(), // id -> marker
+      selectedMarker: null
+    };
+
+    // --- Helpers
+    const $ = (id) => document.getElementById(id);
+
+    function toast(msg){
+      const el = $("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => { el.style.display = "none"; }, 2800);
+    }
+
+    function uid(){
+      // id estable local (no requiere backend)
+      return "fav_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16);
+    }
+
+    function nowISO(){
+      return new Date().toISOString();
+    }
+
+    function parseCSVLine(line){
+      // CSV simple con comillas opcionales.
+      // Campos esperados: id,name,category,notes,lat,lng,address,createdAt,updatedAt
+      const out = [];
+      let cur = "";
+      let inQuotes = false;
+
+      for(let i=0;i<line.length;i++){
+        const ch = line[i];
+        if(ch === '"' ){
+          if(inQuotes && line[i+1] === '"'){
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if(ch === ',' && !inQuotes){
+          out.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
+
+    function csvEscape(s){
+      const str = (s ?? "").toString();
+      if(/[",\n]/.test(str)){
+        return '"' + str.replace(/"/g,'""') + '"';
+      }
+      return str;
+    }
+
+    function validateLatLng(lat, lng){
+      const la = Number(lat);
+      const ln = Number(lng);
+      if(!Number.isFinite(la) || !Number.isFinite(ln)) return false;
+      if(la < -90 || la > 90) return false;
+      if(ln < -180 || ln > 180) return false;
+      return true;
+    }
+
+    function setStatusOnline(isOnline){
+      const dot = $("statusDot");
+      const text = $("statusText");
+      if(isOnline){
+        dot.classList.remove("warn");
+        text.textContent = "En línea (modo interfaz)";
+      } else {
+        dot.classList.add("warn");
+        text.textContent = "Sin conexión (usa mapa/funcionalidad solo si cargó antes)";
+      }
+    }
+
+    // --- Map init
+    function initMap(){
+      // Centro inicial: España aproximada (si no hay geolocalización aún)
+      const defaultCenter = [40.4168, -3.7038];
+
+      state.map = L.map("map", { zoomControl: true }).setView(defaultCenter, 5);
+
+      // Tiles (OpenStreetMap)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(state.map);
+
+      // Clic para seleccionar punto
+      state.map.on("click", (e) => {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        state.selected = { id: null, lat, lng };
+        $("coordInput").value = lat.toFixed(7) + "," + lng.toFixed(7);
+
+        // marker de selección
+        if(state.selectedMarker){
+          state.selectedMarker.remove();
+        }
+        state.selectedMarker = L.marker([lat, lng], { draggable:false })
+          .addTo(state.map);
+      });
+
+      // Intentar geolocalización
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            state.userPos = { lat, lng };
+
+            state.map.setView([lat, lng], 14);
+            $("coordInput").value = lat.toFixed(7) + "," + lng.toFixed(7);
+
+            if(state.selectedMarker){
+              state.selectedMarker.remove();
+            }
+            state.selectedMarker = L.marker([lat, lng], { draggable:false })
+              .addTo(state.map);
+          },
+          (err) => {
+            toast("No se pudo obtener ubicación. Aun así puedes hacer clic en el mapa.");
+          },
+          { enableHighAccuracy:true, maximumAge: 60_000, timeout: 10_000 }
+        );
+      } else {
+        toast("Geolocalización no disponible en este navegador.");
+      }
+    }
+
+    // --- CRUD local (memoria) + render
+    function upsertFavorite(fav){
+      const idx = state.favorites.findIndex(x => x.id === fav.id);
+      if(idx >= 0){
+        state.favorites[idx] = fav;
+      } else {
+        state.favorites.unshift(fav);
+      }
+    }
+
+    function removeFavorite(id){
+      state.favorites = state.favorites.filter(x => x.id !== id);
+      const m = state.markers.get(id);
+      if(m){ m.remove(); }
+      state.markers.delete(id);
+      if(state.editingId === id){
+        state.editingId = null;
+      }
+      renderAll();
+    }
+
+    function latlngFromCoordInput(){
+      const v = $("coordInput").value.trim();
+      if(!v) return null;
+      const parts = v.split(",");
+      if(parts.length !== 2) return null;
+      const lat = parts[0].trim();
+      const lng = parts[1].trim();
+      if(!validateLatLng(lat,lng)) return null;
+      return { lat: Number(lat), lng: Number(lng) };
+    }
+
+    function addSelectedAsFavorite(){
+      const coords = latlngFromCoordInput();
+      if(!coords){
+        toast("Primero fija el punto: haz clic en el mapa (se completa la coordenada).");
+        return;
+      }
+
+      const name = $("nameInput").value.trim();
+      const category = $("categoryInput").value.trim();
+      const notes = $("notesInput").value.trim();
+
+      if(!name){
+        toast("Falta el nombre del lugar.");
+        return;
+      }
+      if(!category){
+        toast("Falta la categoría (personalizada).");
+        return;
+      }
+
+      const fav = {
+        id: uid(),
+        name,
+        category,
+        notes,
+        lat: coords.lat,
+        lng: coords.lng,
+        address: "", // (sin geocodificación por no depender de APIs externas)
+        createdAt: nowISO(),
+        updatedAt: nowISO()
+      };
+
+      upsertFavorite(fav);
+      toast("Favorito añadido.");
+
+      // marker
+      const marker = L.marker([fav.lat, fav.lng]).addTo(state.map);
+      marker.bindPopup(`<b>${escapeHtml(fav.name)}</b><br/>${escapeHtml(fav.category)}<br/><span style="color:#a8b3d6">${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}</span>`);
+      marker.on("click", () => {
+        // selección UI/inputs
+        state.selected = { id: fav.id, lat: fav.lat, lng: fav.lng };
+        $("coordInput").value = fav.lat.toFixed(7) + "," + fav.lng.toFixed(7);
+        $("nameInput").value = fav.name;
+        $("categoryInput").value = fav.category;
+        $("notesInput").value = fav.notes || "";
+
+        // abre edición
+        openEditModal(fav.id);
+      });
+
+      state.markers.set(fav.id, marker);
+
+      renderAll();
+    }
+
+    function escapeHtml(str){
+      return (str ?? "").toString()
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+    }
+
+    function renderCategoryFilter(){
+      const filter = $("categoryFilter");
+      const selected = filter.value;
+
+      const categories = Array.from(new Set(state.favorites.map(x => x.category).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+
+      filter.innerHTML = `<option value="__ALL__">Todas las categorías</option>`;
+      for(const c of categories){
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        filter.appendChild(opt);
+      }
+      // restaurar selección si existe
+      if(categories.includes(selected)){
+        filter.value = selected;
+      }
+    }
+
+    function renderList(){
+      const items = $("items");
+      items.innerHTML = "";
+
+      const q = $("searchInput").value.trim().toLowerCase();
+      const cat = $("categoryFilter").value;
+
+      const filtered = state.favorites.filter(f => {
+        const okCat = (cat === "__ALL__") ? true : (f.category === cat);
+        const blob = `${f.name} ${f.category} ${f.notes ?? ""}`.toLowerCase();
+        const okQ = q ? blob.includes(q) : true;
+        return okCat && okQ;
+      });
+
+      if(filtered.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "item";
+        empty.innerHTML = `
+          <div class="small" style="font-weight:900; color: var(--avia-muted);">Sin resultados</div>
+          <div class="small">Añade un favorito desde el mapa o importa un CSV.</div>
+        `;
+        items.appendChild(empty);
+        $("countText").textContent = `${state.favorites.length} favoritos`;
+        return;
+      }
+
+      $("countText").textContent = `${state.favorites.length} favoritos`;
+
+      for(const f of filtered){
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const badgeClass = f.category ? "badge" : "badge green";
+        const hasNotes = f.notes && f.notes.trim().length > 0;
+        const coord = `${Number(f.lat).toFixed(5)}, ${Number(f.lng).toFixed(5)}`;
+
+        item.innerHTML = `
+          <div class="itemTop">
+            <div class="itemTitle">
+              <strong title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</strong>
+              <div class="metaLine">
+                <span class="${badgeClass}">${escapeHtml(f.category || "Sin categoría")}</span>
+                <span style="color: var(--avia-muted);">${escapeHtml(coord)}</span>
+              </div>
+            </div>
+            <div class="itemBtns">
+              <button class="linkBtn ghost" data-act="ver" data-id="${escapeHtml(f.id)}" type="button">Ver</button>
+              <button class="linkBtn ghost" data-act="editar" data-id="${escapeHtml(f.id)}" type="button">Editar</button>
+              <button class="linkBtn danger" data-act="borrar" data-id="${escapeHtml(f.id)}" type="button">Borrar</button>
+            </div>
+          </div>
+          ${hasNotes ? `<div class="small" style="line-height:1.35; color: var(--avia-muted); white-space:pre-wrap;">${escapeHtml(f.notes)}</div>` : ``}
+          <div class="metaLine">
+            <span class="small">Actualizado: ${new Date(f.updatedAt || f.createdAt).toLocaleString()}</span>
+          </div>
+        `;
+        items.appendChild(item);
+      }
+
+      items.querySelectorAll("button[data-act]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const act = btn.getAttribute("data-act");
+          if(act === "ver"){
+            const f = state.favorites.find(x => x.id === id);
+            if(!f) return;
+            state.map.setView([f.lat, f.lng], 15);
+            if(state.selectedMarker) state.selectedMarker.remove();
+            state.selectedMarker = L.marker([f.lat, f.lng]).addTo(state.map);
+          }
+          if(act === "editar"){
+            openEditModal(id);
+          }
+          if(act === "borrar"){
+            if(confirm("¿Eliminar este favorito?")){
+              removeFavorite(id);
+              toast("Favorito eliminado.");
+            }
+          }
+        });
+      });
+    }
+
+    function renderAll(){
+      renderCategoryFilter();
+      renderList();
+      $("coordInput").setAttribute("placeholder", "lat,lng");
+    }
+
+    // --- Modal edit
+    function openEditModal(id){
+      const f = state.favorites.find(x => x.id === id);
+      if(!f) return;
+
+      state.editingId = id;
+
+      $("modalSubtitle").textContent = `ID: ${id}`;
+      $("editName").value = f.name || "";
+      $("editCategory").value = f.category || "";
+      $("editNotes").value = f.notes || "";
+      $("editLat").value = String(f.lat);
+      $("editLng").value = String(f.lng);
+
+      $("modalOverlay").style.display = "block";
+    }
+
+    function closeModal(){
+      $("modalOverlay").style.display = "none";
+      state.editingId = null;
+    }
+
+    function saveEdit(){
+      const id = state.editingId;
+      const f = state.favorites.find(x => x.id === id);
+      if(!f) return;
+
+      const name = $("editName").value.trim();
+      const category = $("editCategory").value.trim();
+      const notes = $("editNotes").value.trim();
+      const lat = $("editLat").value.trim();
+      const lng = $("editLng").value.trim();
+
+      if(!name){ toast("Falta el nombre."); return; }
+      if(!category){ toast("Falta la categoría."); return; }
+      if(!validateLatLng(lat,lng)){ toast("Coordenadas inválidas."); return; }
+
+      f.name = name;
+      f.category = category;
+      f.notes = notes;
+      f.lat = Number(lat);
+      f.lng = Number(lng);
+      f.updatedAt = nowISO();
+
+      // mover marker
+      const marker = state.markers.get(id);
+      if(marker){
+        marker.setLatLng([f.lat, f.lng]);
+        marker.setPopupContent(`<b>${escapeHtml(f.name)}</b><br/>${escapeHtml(f.category)}<br/><span style="color:#a8b3d6">${f.lat.toFixed(5)}, ${f.lng.toFixed(5)}</span>`);
+      }
+
+      toast("Cambios guardados.");
+      closeModal();
+      renderAll();
+    }
+
+    function deleteEdit(){
+      const id = state.editingId;
+      if(!id) return;
+      if(confirm("¿Eliminar este favorito?")){
+        removeFavorite(id);
+        toast("Favorito eliminado.");
+        closeModal();
+      }
+    }
+
+    // --- Export/Import CSV
+    function toCSV(){
+      const header = "id,name,category,notes,lat,lng,address,createdAt,updatedAt";
+      const lines = state.favorites.map(f => ([
+        csvEscape(f.id),
+        csvEscape(f.name),
+        csvEscape(f.category),
+        csvEscape(f.notes ?? ""),
+        csvEscape(String(f.lat)),
+        csvEscape(String(f.lng)),
+        csvEscape(f.address ?? ""),
+        csvEscape(f.createdAt ?? ""),
+        csvEscape(f.updatedAt ?? "")
+      ].join(",")));
+      return [header, ...lines].join("\n");
+    }
+
+    function exportCSV(){
+      const csv = toCSV();
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "avia-map-favoritos.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      toast("CSV exportado.");
+    }
+
+    function loadFromCSVText(text, mode="append"){
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if(lines.length < 2){
+        toast("CSV vacío o sin datos.");
+        return;
+      }
+
+      const header = lines[0];
+      const cols = parseCSVLine(header).map(x => x.trim());
+      const idx = (name) => cols.indexOf(name);
+
+      const required = ["id","name","category","notes","lat","lng","address","createdAt","updatedAt"];
+      for(const r of required){
+        if(!cols.includes(r)){
+          // Aun así intentaremos por posición estándar
+          // pero avisamos.
+        }
+      }
+
+      const standardOrder = ["id","name","category","notes","lat","lng","address","createdAt","updatedAt"];
+
+      function getField(cLine, fieldName){
+        const i = idx(fieldName);
+        if(i >= 0) return cLine[i];
+        // fallback: posición estándar
+        const j = standardOrder.indexOf(fieldName);
+        if(j >= 0) return cLine[j];
+        return "";
+      }
+
+      let imported = 0;
+
+      for(let i=1;i<lines.length;i++){
+        const arr = parseCSVLine(lines[i]);
+
+        const id = (getField(arr, "id") || "").trim() || uid();
+        const name = (getField(arr, "name") || "").trim();
+        const category = (getField(arr, "category") || "").trim();
+        const notes = (getField(arr, "notes") || "").trim();
+        const lat = (getField(arr, "lat") || "").trim();
+        const lng = (getField(arr, "lng") || "").trim();
+        const address = (getField(arr, "address") || "").trim();
+        const createdAt = (getField(arr, "createdAt") || "").trim();
+        const updatedAt = (getField(arr, "updatedAt") || "").trim();
+
+        if(!name || !category) continue;
+        if(!validateLatLng(lat,lng)) continue;
+
+        const fav = {
+          id,
+          name,
+          category,
+          notes,
+          lat: Number(lat),
+          lng: Number(lng),
+          address,
+          createdAt: createdAt || nowISO(),
+          updatedAt: updatedAt || createdAt || nowISO()
+        };
+
+        const exists = state.favorites.some(x => x.id === id);
+        if(mode === "append"){
+          if(!exists){
+            state.favorites.unshift(fav);
+          } else {
+            // actualizar si existe
+            const old = state.favorites.find(x => x.id === id);
+            Object.assign(old, fav);
+          }
+        } else if(mode === "replace"){
+          // se sustituye al final
+        }
+
+        imported++;
+      }
+
+      // reconstruir marcadores (para evitar duplicados)
+      state.markers.forEach(m => m.remove());
+      state.markers.clear();
+
+      for(const f of state.favorites){
+        const marker = L.marker([f.lat, f.lng]).addTo(state.map);
+        marker.bindPopup(`<b>${escapeHtml(f.name)}</b><br/>${escapeHtml(f.category)}<br/><span style="color:#a8b3d6">${Number(f.lat).toFixed(5)}, ${Number(f.lng).toFixed(5)}</span>`);
+        marker.on("click", () => {
+          state.selected = { id: f.id, lat: f.lat, lng: f.lng };
+          $("coordInput").value = f.lat.toFixed(7) + "," + f.lng.toFixed(7);
+          $("nameInput").value = f.name;
+          $("categoryInput").value = f.category;
+          $("notesInput").value = f.notes || "";
+          openEditModal(f.id);
+        });
+        state.markers.set(f.id, marker);
+      }
+
+      toast(`CSV importado: ${imported} filas válidas.`);
+      renderAll();
+    }
+
+    function importCSVFromFile(file){
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = reader.result;
+        loadFromCSVText(text, "append");
+      };
+      reader.onerror = () => toast("Error leyendo el archivo CSV.");
+      reader.readAsText(file, "utf-8");
+    }
+
+    // --- Wiring UI
+    $("addFavBtn").addEventListener("click", addSelectedAsFavorite);
+
+    $("useHereBtn").addEventListener("click", () => {
+      if(!state.userPos){
+        toast("Ubicación no disponible todavía. Espera o haz clic en el mapa.");
+        return;
+      }
+      const {lat,lng} = state.userPos;
+      state.map.setView([lat,lng], 14);
+      $("coordInput").value = lat.toFixed(7) + "," + lng.toFixed(7);
+
+      if(state.selectedMarker) state.selectedMarker.remove();
+      state.selectedMarker = L.marker([lat,lng]).addTo(state.map);
+      toast("Ubicación lista para guardar.");
+    });
+
+    $("exportBtn").addEventListener("click", exportCSV);
+
+    $("importBtn").addEventListener("click", () => {
+      const f = $("csvFile").files[0];
+      if(!f){
+        toast("Selecciona un archivo CSV primero.");
+        return;
+      }
+      importCSVFromFile(f);
+    });
+
+    $("clearBtn").addEventListener("click", () => {
+      state.favorites = [];
+      state.markers.forEach(m => m.remove());
+      state.markers.clear();
+      if(state.selectedMarker) state.selectedMarker.remove();
+      state.selected = null;
+
+      $("nameInput").value = "";
+      $("categoryInput").value = "";
+      $("notesInput").value = "";
+      $("coordInput").value = "";
+
+      renderAll();
+      toast("Lista local borrada.");
+    });
+
+    $("searchInput").addEventListener("input", renderAll);
+    $("categoryFilter").addEventListener("change", renderAll);
+
+    $("closeModalBtn").addEventListener("click", closeModal);
+    $("modalOverlay").addEventListener("click", (e) => {
+      if(e.target === $("modalOverlay")) closeModal();
+    });
+    $("saveBtn").addEventListener("click", saveEdit);
+    $("deleteBtn").addEventListener("click", deleteEdit);
+
+    $("applyMoveBtn").addEventListener("click", () => {
+      const lat = $("editLat").value.trim();
+      const lng = $("editLng").value.trim();
+      if(!validateLatLng(lat,lng)){
+        toast("Coordenadas inválidas.");
+        return;
+      }
+      state.map.setView([Number(lat), Number(lng)], 15);
+      if(state.selectedMarker) state.selectedMarker.remove();
+      state.selectedMarker = L.marker([Number(lat), Number(lng)]).addTo(state.map);
+      toast("Vista movida al nuevo punto.");
+    });
+
+    // --- Online/offline indicator
+    setStatusOnline(navigator.onLine);
+    window.addEventListener("online", () => setStatusOnline(true));
+    window.addEventListener("offline", () => setStatusOnline(false));
+
+    // --- Init
+    initMap();
+    renderAll();
+
+    // atajo: Ctrl/Cmd + Enter para añadir
+    document.addEventListener("keydown", (e) => {
+      const isMac = navigator.platform.toLowerCase().includes("mac");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if(mod && e.key === "Enter"){
+        addSelectedAsFavorite();
+      }
+      if(e.key === "Escape"){
+        if($("modalOverlay").style.display === "block") closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

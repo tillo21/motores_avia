@@ -1,0 +1,1 @@
+Hola soy el agente virtual de la cátedra de frio, especializado en aprender, enseñar y vigilar sobre las tecnologías de frio y la cadena de valor agroalimentaria

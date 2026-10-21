@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>AVIA Vigilancia v3</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:#080c18;color:#e2e8f0;overflow-x:hidden;min-height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#111827}::-webkit-scrollbar-thumb{background:#3b82f6;border-radius:4px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+@keyframes alertBg{0%,100%{background:rgba(239,68,68,.08)}50%{background:rgba(239,68,68,.22)}}
+@keyframes flow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes waveform{0%,100%{height:20%}50%{height:80%}}
+@keyframes audioWave{0%{transform:scaleY(.3)}50%{transform:scaleY(1)}100%{transform:scaleY(.3)}}
+.blink{animation:blink 1s infinite}
+.alert-bg{animation:alertBg 2s infinite}
+.fade-in{animation:fadeIn .4s ease-out}
+.glass{background:rgba(15,23,42,.85);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,.12)}
+.cam{position:relative;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1a2744);border-radius:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.cam:hover{transform:scale(1.02);box-shadow:0 0 20px rgba(59,130,246,.2)}
+.cam::after{content:'';position:absolute;left:0;right:0;height:2px;background:rgba(59,130,246,.25);animation:scan 3.5s linear infinite}
+.cam .grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(59,130,246,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.04) 1px,transparent 1px);background-size:18px 18px;pointer-events:none}
+.bar-fill{background:linear-gradient(90deg,#3b82f6,#06b6d4,#3b82f6);background-size:200%;animation:flow 3s linear infinite;transition:width .8s ease}
+.btn-ctrl{position:relative;overflow:hidden;transition:all .2s}.btn-ctrl:active{transform:scale(.95)}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center}.modal-bg.open{display:flex}
+.wave-bar{width:3px;margin:0 1px;border-radius:2px;background:#3b82f6;animation:waveform .8s ease-in-out infinite}
+.audio-bar{width:4px;border-radius:2px;background:#22c55e;animation:audioWave .6s ease-in-out infinite;transform-origin:bottom}
+.toast{position:fixed;bottom:20px;right:20px;z-index:200;transform:translateX(120%);transition:transform .4s ease}.toast.show{transform:translateX(0)}
+.tab-active{background:rgba(59,130,246,.2)!important;border-color:#3b82f6!important;color:#60a5fa!important}
+.toggle{position:relative;width:40px;height:20px;background:#374151;border-radius:10px;cursor:pointer;transition:background .3s}
+.toggle.on{background:#2563eb}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .3s}
+.toggle.on::after{transform:translateX(20px)}
+.user-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.intercom-active{box-shadow:0 0 0 2px #22c55e,0 0 20px rgba(34,197,94,.3)}
+.volume-slider{-webkit-appearance:none;height:4px;background:#374151;border-radius:2px;outline:none}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:#3b82f6;border-radius:50%;cursor:pointer}
+@media(max-width:768px){
+  .mobile-menu-btn{display:flex!important}
+  .desktop-tabs{display:none!important}
+}
+@media(min-width:769px){.mobile-menu-btn{display:none!important}}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="toast glass rounded-xl px-5 py-3 flex items-center gap-3 max-w-sm">
+  <i id="toastIcon" class="fas fa-check-circle text-green-400 text-lg"></i>
+  <div><div id="toastTitle" class="text-sm font-semibold"></div><div id="toastMsg" class="text-xs text-gray-400"></div></div>
+</div>
+
+<!-- HEADER -->
+<header class="glass sticky top-0 z-50 px-3 md:px-4 py-2.5">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-2 md:gap-3">
+      <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <i class="fas fa-shield-halved text-white text-base md:text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-base md:text-lg font-bold tracking-wide">AVIA <span class="text-cyan-400">VIGILANCIA</span></h1>
+        <p class="text-[9px] md:text-[10px] text-gray-500 tracking-widest uppercase">Studio v3 — Sistema Completo</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 md:gap-3">
+      <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20" id="statusBadge">
+        <span class="w-2 h-2 rounded-full bg-green-400 blink"></span>
+        <span class="text-green-400 text-xs font-bold" style="font-family:'IBM Plex Mono',monospace" id="sysStatus">OPERATIVO</span>
+      </div>
+      <div class="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gray-800/50 text-[10px] text-gray-400">
+        <i class="fas fa-user text-blue-400"></i><span>Admin</span>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace" class="text-xs md:text-sm text-cyan-300 bg-gray-800/50 px-2 md:px-3 py-1.5 rounded-lg" id="clock">--:--:--</div>
+      <div class="relative">
+        <button onclick="showTab('alerts')" class="btn-ctrl w-8 h-8 md:w-9 md:h-9 rounded-lg bg-gray-800 flex items-center justify-center hover:bg-gray-700">
+          <i class="fas fa-bell text-gray-300 text-sm"></i>
+          <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold flex items-center justify-center blink" id="notifCount">3</span>
+        </button>
+      </div>
+      <button onclick="openModal('settingsModal')" class="btn-ctrl w-8 h-8 md:w-9 md:h-9 rounded-lg bg-gray-800 flex items-center justify-center hover:bg-gray-700">
+        <i class="fas fa-gear text-gray-300 text-sm"></i>
+      </button>
+      <button onclick="toggleMobileMenu()" class="mobile-menu-btn btn-ctrl w-8 h-8 rounded-lg bg-gray-800 items-center justify-center hover:bg-gray-700">
+        <i class="fas fa-bars text-gray-300 text-sm"></i>
+      </button>
+    </div>
+  </div>
+  <div id="mobileNav" class="hidden mt-3 pb-1 overflow-x-auto">
+    <div class="flex gap-1.5">
+      <button onclick="showTab('cameras');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-th-large mr-1"></i>Cámaras</button>
+      <button onclick="showTab('alerts');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-bell mr-1"></i>Alertas</button>
+      <button onclick="showTab('bots');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-robot mr-1"></i>Bots</button>
+      <button onclick="showTab('audio');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-headset mr-1"></i>Audio</button>
+      <button onclick="showTab('users');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-users mr-1"></i>Usuarios</button>
+      <button onclick="showTab('analytics');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-chart-line mr-1"></i>Analítica</button>
+      <button onclick="showTab('map');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-map mr-1"></i>Mapa</button>
+      <button onclick="showTab('logs');toggleMobileMenu()" class="text-[10px] px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap"><i class="fas fa-terminal mr-1"></i>Logs</button>
+    </div>
+  </div>
+</header>
+
+<main class="p-2 md:p-4 max-w-[1400px] mx-auto">
+
+<!-- METRICS -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mb-3 md:mb-4">
+  <div class="glass rounded-xl p-3 md:p-4 fade-in" style="animation-delay:.05s">
+    <div class="flex justify-between items-start mb-1 md:mb-2">
+      <span class="text-[9px] md:text-[10px] text-gray-400 uppercase tracking-widest">Cámaras</span>
+      <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center"><i class="fas fa-video text-cyan-400 text-xs md:text-sm"></i></div>
+    </div>
+    <div class="text-xl md:text-2xl font-bold" id="metricCams">8/8</div>
+    <div class="flex items-center gap-1 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-green-400"></span><span class="text-[9px] md:text-[10px] text-green-400">Todas online</span></div>
+  </div>
+  <div class="glass rounded-xl p-3 md:p-4 fade-in" style="animation-delay:.1s">
+    <div class="flex justify-between items-start mb-1 md:mb-2">
+      <span class="text-[9px] md:text-[10px] text-gray-400 uppercase tracking-widest">Alertas</span>
+      <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center"><i class="fas fa-triangle-exclamation text-yellow-400 text-xs md:text-sm"></i></div>
+    </div>
+    <div class="text-xl md:text-2xl font-bold" id="metricAlerts">12</div>
+    <div class="text-[9px] md:text-[10px] text-yellow-400 mt-1" id="metricUnresolved"><i class="fas fa-arrow-up mr-1 text-[8px]"></i>3 activas</div>
+  </div>
+  <div class="glass rounded-xl p-3 md:p-4 fade-in" style="animation-delay:.15s">
+    <div class="flex justify-between items-start mb-1 md:mb-2">
+      <span class="text-[9px] md:text-[10px] text-gray-400 uppercase tracking-widest">Detecciones IA</span>
+      <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-purple-500/10 flex items-center justify-center"><i class="fas fa-brain text-purple-400 text-xs md:text-sm"></i></div>
+    </div>
+    <div class="text-xl md:text-2xl font-bold" id="metricAI">47</div>
+    <div class="text-[9px] md:text-[10px] text-purple-400 mt-1"><i class="fas fa-bullseye mr-1 text-[8px]"></i>Precisión 98.2%</div>
+  </div>
+  <div class="glass rounded-xl p-3 md:p-4 fade-in" style="animation-delay:.2s">
+    <div class="flex justify-between items-start mb-1 md:mb-2">
+      <span class="text-[9px] md:text-[10px] text-gray-400 uppercase tracking-widest">Seguridad</span>
+      <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-green-500/10 flex items-center justify-center"><i class="fas fa-shield text-green-400 text-xs md:text-sm"></i></div>
+    </div>
+    <div class="text-xl md:text-2xl font-bold text-green-400" id="metricSec">ALTO</div>
+    <div class="w-full bg-gray-700/50 rounded-full h-1.5 mt-2"><div class="bar-fill h-1.5 rounded-full" style="width:92%"></div></div>
+  </div>
+</div>
+
+<!-- TABS (desktop) -->
+<div class="desktop-tabs flex gap-1.5 md:gap-2 mb-3 md:mb-4 overflow-x-auto pb-1">
+  <button onclick="showTab('cameras')" data-tab="cameras" class="tab-btn tab-active flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-th-large text-[10px]"></i>Cámaras</button>
+  <button onclick="showTab('alerts')" data-tab="alerts" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-bell text-[10px]"></i>Alertas</button>
+  <button onclick="showTab('bots')" data-tab="bots" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-robot text-[10px]"></i>Bots IA</button>
+  <button onclick="showTab('audio')" data-tab="audio" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-headset text-[10px]"></i>Audio</button>
+  <button onclick="showTab('users')" data-tab="users" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-users text-[10px]"></i>Usuarios</button>
+  <button onclick="showTab('analytics')" data-tab="analytics" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-chart-line text-[10px]"></i>Analítica</button>
+  <button onclick="showTab('map')" data-tab="map" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-map text-[10px]"></i>Mapa</button>
+  <button onclick="showTab('logs')" data-tab="logs" class="tab-btn flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-lg border border-gray-700/50 text-xs md:text-sm font-medium whitespace-nowrap"><i class="fas fa-terminal text-[10px]"></i>Logs</button>
+</div>
+
+<!-- TAB: CAMERAS -->
+<div id="tab-cameras" class="tab-panel">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3" id="camGrid"></div>
+  <div class="glass rounded-xl p-3 md:p-4 mt-3">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <h3 class="text-sm font-bold flex items-center gap-2"><i class="fas fa-circle-play text-blue-400"></i>Grabaciones Recientes</h3>
+    </div>
+    <div id="recordingsList" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- TAB: ALERTS -->
+<div id="tab-alerts" class="tab-panel hidden">
+  <div class="glass rounded-xl p-3 md:p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3 md:mb-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2"><i class="fas fa-bell text-yellow-400"></i>Centro de Alertas</h2>
+      <div class="flex gap-1.5" id="alertFilters">
+        <button onclick="filterAlerts('all')" class="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-blue-600 text-white">Todas</button>
+        <button onclick="filterAlerts('critical')" class="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-gray-700 text-gray-300">Críticas</button>
+        <button onclick="filterAlerts('warning')" class="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-gray-700 text-gray-300">Avisos</button>
+        <button onclick="filterAlerts('info')" class="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-gray-700 text-gray-300">Info</button>
+      </div>
+    </div>
+    <div id="alertList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+  </div>
+</div>
+
+<!-- TAB: BOTS -->
+<div id="tab-bots" class="tab-panel hidden">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-3 md:mb-4"><i class="fas fa-robot text-cyan-400"></i>Bots IA</h2>
+      <div id="botList" class="space-y-2 md:space-y-3"></div>
+    </div>
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-3"><i class="fas fa-wave-square text-green-400"></i>Actividad</h2>
+      <div class="flex items-center gap-3 mb-3 p-2.5 bg-gray-800/50 rounded-lg">
+        <div class="flex items-end h-7 gap-0.5" id="waveform"></div>
+        <div><div class="text-[11px] font-semibold text-green-400">Procesando</div><div class="text-[10px] text-gray-500" id="processRate">1,247 fps</div></div>
+      </div>
+      <div id="botConsole" class="bg-gray-900/80 rounded-lg p-2.5 h-56 overflow-y-auto text-[10px] md:text-[11px] space-y-0.5" style="font-family:'IBM Plex Mono',monospace"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: AUDIO -->
+<div id="tab-audio" class="tab-panel hidden">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+    <div class="glass rounded-xl p-3 md:p-4 md:col-span-2">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-headset text-green-400"></i>Intercomunicador</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4" id="intercomZones"></div>
+      <div class="bg-gray-800/50 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-gray-500" id="intercomStatus"></div>
+            <span class="text-sm font-semibold" id="intercomLabel">Selecciona una zona</span>
+          </div>
+          <span class="text-[10px] text-gray-500" style="font-family:'IBM Plex Mono',monospace" id="intercomDuration">00:00</span>
+        </div>
+        <div class="flex items-center justify-center h-16 gap-[2px] mb-3" id="audioVisualizer">
+          <div class="text-gray-600 text-xs">Sin conexión activa</div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button onclick="toggleIntercom()" id="intercomBtn" class="btn-ctrl px-5 py-2.5 bg-gray-700 rounded-xl text-sm font-medium flex items-center gap-2" disabled>
+            <i class="fas fa-microphone"></i><span>Hablar</span>
+          </button>
+          <button onclick="toggleListen()" id="listenBtn" class="btn-ctrl px-4 py-2.5 bg-gray-700 rounded-xl text-sm flex items-center gap-2" disabled>
+            <i class="fas fa-headphones"></i><span>Escuchar</span>
+          </button>
+          <div class="flex-1 flex items-center gap-2 min-w-[120px]">
+            <i class="fas fa-volume-low text-gray-400 text-xs"></i>
+            <input type="range" min="0" max="100" value="75" class="volume-slider flex-1" id="intercomVolume" oninput="document.getElementById('volDisplay').textContent=this.value">
+            <span class="text-[10px] text-gray-400 w-6" id="volDisplay">75</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-volume-up text-blue-400"></i>Audio Feeds</h2>
+      <div id="audioFeeds" class="space-y-2"></div>
+      <div class="mt-4 pt-3 border-t border-gray-700/50">
+        <h3 class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Detección Sonora</h3>
+        <div id="soundDetection" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: USERS -->
+<div id="tab-users" class="tab-panel hidden">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+    <div class="glass rounded-xl p-3 md:p-4 md:col-span-2">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h2 class="text-sm md:text-base font-bold flex items-center gap-2"><i class="fas fa-users text-blue-400"></i>Gestión de Usuarios</h2>
+        <button onclick="openModal('addUserModal')" class="btn-ctrl text-[11px] px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-1.5"><i class="fas fa-plus text-[10px]"></i>Nuevo</button>
+      </div>
+      <div id="usersList" class="space-y-2"></div>
+    </div>
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-key text-yellow-400"></i>Roles</h2>
+      <div id="rolesList" class="space-y-3"></div>
+      <div class="mt-4 pt-3 border-t border-gray-700/50">
+        <h3 class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Sesiones Activas</h3>
+        <div id="sessionsList" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: ANALYTICS -->
+<div id="tab-analytics" class="tab-panel hidden">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-chart-bar text-blue-400"></i>Detecciones / Hora</h2>
+      <div id="chart" class="h-32 md:h-40 flex items-end gap-[3px] px-1"></div>
+      <div class="flex justify-between text-[9px] md:text-[10px] text-gray-500 mt-2 px-1"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span></div>
+    </div>
+    <div class="glass rounded-xl p-3 md:p-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-chart-pie text-purple-400"></i>Distribución</h2>
+      <div id="distChart" class="space-y-3 md:space-y-4"></div>
+    </div>
+    <div class="glass rounded-xl p-3 md:p-4 md:col-span-2">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-timeline text-cyan-400"></i>Timeline 24h</h2>
+      <div id="timeline" class="space-y-1 max-h-48 md:max-h-56 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: MAP -->
+<div id="tab-map" class="tab-panel hidden">
+  <div class="glass rounded-xl p-3 md:p-4">
+    <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-4"><i class="fas fa-map-marked-alt text-green-400"></i>Plano de Instalaciones</h2>
+    <div class="bg-gray-900 rounded-xl overflow-hidden" style="height:350px;max-height:50vh">
+      <svg width="100%" height="100%" viewBox="0 0 800 420" id="mapSvg">
+        <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <rect x="50" y="20" width="700" height="380" rx="6" fill="none" stroke="#1e293b" stroke-width="2" stroke-dasharray="8 4"/>
+        <rect x="60" y="30" width="320" height="170" rx="4" fill="#0f172a" stroke="#334155"/><text x="220" y="120" text-anchor="middle" fill="#475569" font-size="13">ZONA A — Oficinas</text>
+        <rect x="400" y="30" width="340" height="170" rx="4" fill="#0f172a" stroke="#334155"/><text x="570" y="120" text-anchor="middle" fill="#475569" font-size="13">ZONA B — Almacén</text>
+        <rect x="60" y="220" width="220" height="170" rx="4" fill="#0f172a" stroke="#334155"/><text x="170" y="310" text-anchor="middle" fill="#475569" font-size="13">ZONA C — Entrada</text>
+        <rect x="300" y="220" width="220" height="170" rx="4" fill="#0f172a" stroke="#334155"/><text x="410" y="310" text-anchor="middle" fill="#475569" font-size="13">ZONA D — Parking</text>
+        <rect x="540" y="220" width="200" height="170" rx="4" fill="#0f172a" stroke="#334155"/><text x="640" y="310" text-anchor="middle" fill="#475569" font-size="13">ZONA E — Perímetro</text>
+        <g id="mapCams"></g>
+      </svg>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-3 text-[10px] text-gray-400">
+      <span><i class="fas fa-circle text-green-400 mr-1 text-[8px]"></i>OK</span>
+      <span><i class="fas fa-circle text-yellow-400 mr-1 text-[8px]"></i>Movimiento</span>
+      <span><i class="fas fa-circle text-red-400 mr-1 text-[8px]"></i>Alerta</span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: LOGS -->
+<div id="tab-logs" class="tab-panel hidden">
+  <div class="glass rounded-xl p-3 md:p-4">
+    <div class="flex items-center justify-between mb-3 md:mb-4">
+      <h2 class="text-sm md:text-base font-bold flex items-center gap-2"><i class="fas fa-terminal text-green-400"></i>Log del Sistema</h2>
+      <div class="flex gap-2">
+        <select id="logFilter" onchange="filterLogs(this.value)" class="text-[10px] px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300"><option value="all">Todos</option><option value="error">Errores</option><option value="warn">Avisos</option><option value="info">Info</option><option value="ok">OK</option></select>
+        <button onclick="clearLogs()" class="text-[10px] px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg">Limpiar</button>
+      </div>
+    </div>
+    <div id="sysLog" class="bg-gray-900/80 rounded-lg p-2.5 h-[350px] md:h-[400px] overflow-y-auto text-[10px] md:text-[11px] space-y-0.5" style="font-family:'IBM Plex Mono',monospace"></div>
+    <div class="flex items-center justify-between mt-2 text-[10px] text-gray-500"><span id="logCount">0 entradas</span><span id="logSize">0 KB</span></div>
+  </div>
+</div>
+
+<!-- CONTROLS -->
+<div class="glass rounded-xl p-3 md:p-4 mt-3 md:mt-4">
+  <h2 class="text-sm md:text-base font-bold flex items-center gap-2 mb-3"><i class="fas fa-sliders text-cyan-400"></i>Controles</h2>
+  <div class="flex flex-wrap gap-2">
+    <button onclick="doAction('lockdown')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-lock"></i>Bloqueo</button>
+    <button onclick="doAction('alert')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-triangle-exclamation"></i>Alerta</button>
+    <button onclick="doAction('protocols')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-shield-alt"></i>Protocolos</button>
+    <button onclick="doAction('scan')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-brain"></i>Escaneo IA</button>
+    <button onclick="doAction('report')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-file-export"></i>Reporte</button>
+    <button onclick="doAction('night')" id="nightBtn" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-moon"></i>Nocturno</button>
+    <button onclick="doAction('pa')" class="btn-ctrl flex items-center gap-1.5 px-3 md:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs md:text-sm font-medium"><i class="fas fa-bullhorn"></i>PA General</button>
+  </div>
+</div>
+</main>
+
+<!-- MODALS -->
+<div id="camModal" class="modal-bg" onclick="if(event.target===this)closeModal('camModal')">
+  <div class="glass rounded-2xl p-4 md:p-5 w-[95%] max-w-[640px] fade-in max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-base md:text-lg" id="camModalTitle"></h3><button onclick="closeModal('camModal')" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-times text-sm"></i></button></div>
+    <div id="camModalBody"></div>
+  </div>
+</div>
+<div id="actionModal" class="modal-bg" onclick="if(event.target===this)closeModal('actionModal')">
+  <div class="glass rounded-2xl p-4 md:p-5 w-[95%] max-w-[480px] fade-in">
+    <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-base md:text-lg" id="actModalTitle"></h3><button onclick="closeModal('actionModal')" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-times text-sm"></i></button></div>
+    <div id="actModalBody" class="text-sm text-gray-300 mb-4"></div>
+    <div class="flex gap-2 justify-end"><button onclick="closeModal('actionModal')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancelar</button><button onclick="confirmAction()" id="actModalBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium">Confirmar</button></div>
+  </div>
+</div>
+<div id="settingsModal" class="modal-bg" onclick="if(event.target===this)closeModal('settingsModal')">
+  <div class="glass rounded-2xl p-4 md:p-5 w-[95%] max-w-[420px] fade-in">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg"><i class="fas fa-gear mr-2 text-gray-400"></i>Configuración</h3><button onclick="closeModal('settingsModal')" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-times text-sm"></i></button></div>
+    <div class="space-y-4">
+      <div class="flex justify-between items-center"><span class="text-sm">Alertas sonoras</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="flex justify-between items-center"><span class="text-sm">Auto modo nocturno</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      <div class="flex justify-between items-center"><span class="text-sm">Detección movimiento</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="flex justify-between items-center"><span class="text-sm">Audio ambiental</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div><label class="text-xs text-gray-400 block mb-2">Sensibilidad IA: <span id="sensVal" class="text-cyan-400">7</span>/10</label><input type="range" min="1" max="10" value="7" class="volume-slider w-full" oninput="document.getElementById('sensVal').textContent=this.value"></div>
+    </div>
+    <div class="flex justify-end mt-5"><button onclick="closeModal('settingsModal');showToast('Guardado','Configuración actualizada','fa-check-circle','green')" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium">Guardar</button></div>
+  </div>
+</div>
+<div id="addUserModal" class="modal-bg" onclick="if(event.target===this)closeModal('addUserModal')">
+  <div class="glass rounded-2xl p-4 md:p-5 w-[95%] max-w-[420px] fade-in">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg"><i class="fas fa-user-plus mr-2 text-blue-400"></i>Nuevo Usuario</h3><button onclick="closeModal('addUserModal')" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-times text-sm"></i></button></div>
+    <div class="space-y-3">
+      <div><label class="text-xs text-gray-400 block mb-1">Nombre</label><input id="newUserName" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white" style="font-size:16px" placeholder="Nombre completo"></div>
+      <div><label class="text-xs text-gray-400 block mb-1">Email</label><input id="newUserEmail" type="email" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white" style="font-size:16px" placeholder="email@empresa.com"></div>
+      <div><label class="text-xs text-gray-400 block mb-1">Rol</label><select id="newUserRole" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white" style="font-size:16px"><option value="admin">Administrador</option><option value="supervisor">Supervisor</option><option value="operator" selected>Operador</option><option value="viewer">Visualizador</option></select></div>
+    </div>
+    <div class="flex justify-end mt-5 gap-2"><button onclick="closeModal('addUserModal')" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Cancelar</button><button onclick="addUser()" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium">Crear</button></div>
+  </div>
+</div>
+<div id="userDetailModal" class="modal-bg" onclick="if(event.target===this)closeModal('userDetailModal')">
+  <div class="glass rounded-2xl p-4 md:p-5 w-[95%] max-w-[480px] fade-in">
+    <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-lg" id="userDetailTitle"></h3><button onclick="closeModal('userDetailModal')" class="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center"><i class="fas fa-times text-sm"></i></button></div>
+    <div id="userDetailBody"></div>
+  </div>
+</div>
+
+<script>
+ 
+// ===== DATA =====
+const C=[
+  {id:1,name:"Entrada Principal",zone:"A",st:"online",rec:true,mot:false,alr:false,mx:120,my:70,audio:true,db:42},
+  {id:2,name:"Parking Norte",zone:"D",st:"online",rec:true,mot:true,alr:false,mx:370,my:270,audio:true,db:58},
+  {id:3,name:"Almacén Central",zone:"B",st:"online",rec:true,mot:false,alr:false,mx:500,my:70,audio:true,db:35},
+  {id:4,name:"Oficina Dirección",zone:"A",st:"online",rec:true,mot:false,alr:false,mx:300,my:130,audio:false,db:30},
+  {id:5,name:"Perímetro Sur",zone:"E",st:"online",rec:true,mot:true,alr:true,mx:620,my:280,audio:true,db:72},
+  {id:6,name:"Recepción",zone:"C",st:"online",rec:true,mot:false,alr:false,mx:140,my:280,audio:true,db:45},
+  {id:7,name:"Pasillo Oeste",zone:"A",st:"online",rec:true,mot:false,alr:false,mx:90,my:160,audio:false,db:28},
+  {id:8,name:"Terraza Norte",zone:"B",st:"online",rec:true,mot:false,alr:false,mx:680,my:100,audio:true,db:50}
+];
+const A=[
+  {id:1,t:"critical",title:"Intrusión detectada",desc:"Movimiento no autorizado — Perímetro Sur",cam:"CAM-05",time:"14:32",ok:false},
+  {id:2,t:"warning",title:"Movimiento inusual",desc:"Actividad fuera de horario — Parking Norte",cam:"CAM-02",time:"14:15",ok:false},
+  {id:3,t:"info",title:"Mantenimiento OK",desc:"Firmware CAM-03 actualizado v4.2.1",cam:"CAM-03",time:"13:45",ok:true},
+  {id:4,t:"critical",title:"Puerta forzada",desc:"Sensor magnético — Almacén",cam:"CAM-03",time:"12:20",ok:true},
+  {id:5,t:"warning",title:"Baja iluminación",desc:"Nivel bajo — Pasillo Oeste",cam:"CAM-07",time:"11:55",ok:false},
+  {id:6,t:"info",title:"Reconocimiento facial",desc:"ID-4521 María López autorizada",cam:"CAM-01",time:"11:30",ok:true},
+  {id:7,t:"warning",title:"Señal débil",desc:"Conexión intermitente — Terraza",cam:"CAM-08",time:"10:45",ok:true},
+  {id:8,t:"critical",title:"Objeto abandonado",desc:"Paquete no identificado — Recepción",cam:"CAM-06",time:"09:15",ok:true},
+  {id:9,t:"info",title:"Patrulla #12 OK",desc:"Ronda completada sin incidencias",cam:"N/A",time:"08:30",ok:true},
+  {id:10,t:"warning",title:"Temp. elevada",desc:"Sensor térmico — rack servidor",cam:"N/A",time:"07:50",ok:true},
+  {id:11,t:"info",title:"Sistema iniciado",desc:"Arranque sin errores",cam:"N/A",time:"06:00",ok:true},
+  {id:12,t:"info",title:"Backup completo",desc:"Respaldo 24h finalizado",cam:"N/A",time:"05:00",ok:true}
+];
+const B=[
+  {id:"BOT-01",name:"Detector Movimiento",icon:"fa-eye",st:"active",load:67,det:23,col:"cyan"},
+  {id:"BOT-02",name:"Reconocimiento Facial",icon:"fa-face-smile",st:"active",load:45,det:8,col:"purple"},
+  {id:"BOT-03",name:"Análisis Comportamiento",icon:"fa-brain",st:"active",load:82,det:12,col:"blue"},
+  {id:"BOT-04",name:"Detección Objetos",icon:"fa-cube",st:"active",load:38,det:4,col:"green"},
+  {id:"BOT-05",name:"Patrulla Automática",icon:"fa-route",st:"active",load:55,det:0,col:"yellow"},
+  {id:"BOT-06",name:"Análisis Térmico",icon:"fa-temperature-high",st:"standby",load:12,det:1,col:"red"}
+];
+const users=[
+  {id:1,name:"Carlos Martínez",email:"carlos@avia.com",role:"admin",avatar:"CM",color:"blue",online:true,lastSeen:"Ahora",zones:["A","B","C","D","E"]},
+  {id:2,name:"María López",email:"maria@avia.com",role:"supervisor",avatar:"ML",color:"purple",online:true,lastSeen:"Ahora",zones:["A","B","C"]},
+  {id:3,name:"Pedro García",email:"pedro@avia.com",role:"operator",avatar:"PG",color:"green",online:true,lastSeen:"Ahora",zones:["A","C"]},
+  {id:4,name:"Ana Torres",email:"ana@avia.com",role:"operator",avatar:"AT",color:"cyan",online:false,lastSeen:"Hace 2h",zones:["B","D"]},
+  {id:5,name:"Luis Fernández",email:"luis@avia.com",role:"viewer",avatar:"LF",color:"yellow",online:false,lastSeen:"Hace 5h",zones:["A"]},
+  {id:6,name:"Elena Ruiz",email:"elena@avia.com",role:"supervisor",avatar:"ER",color:"pink",online:true,lastSeen:"Ahora",zones:["D","E"]}
+];
+const rolesMap={admin:{name:"Administrador",color:"red",perms:["Cámaras","Alertas","Bots","Audio","Usuarios","Config","Bloqueo","Reportes"]},supervisor:{name:"Supervisor",color:"purple",perms:["Cámaras","Alertas","Bots","Audio","Reportes"]},operator:{name:"Operador",color:"blue",perms:["Cámaras","Alertas","Audio"]},viewer:{name:"Visualizador",color:"gray",perms:["Cámaras"]}};
+const zones=[{id:"A",name:"Oficinas",icon:"fa-building",color:"blue"},{id:"B",name:"Almacén",icon:"fa-warehouse",color:"purple"},{id:"C",name:"Entrada",icon:"fa-door-open",color:"green"},{id:"D",name:"Parking",icon:"fa-car",color:"yellow"},{id:"E",name:"Perímetro",icon:"fa-tower-observation",color:"red"},{id:"ALL",name:"PA General",icon:"fa-bullhorn",color:"cyan"}];
+const hourly=[2,1,0,0,1,0,3,5,8,6,4,3,5,7,12,8,6,4,3,2,1,3,2,1];
+const dist=[{n:"Movimiento",c:23,col:"#06b6d4"},{n:"Facial",c:8,col:"#a855f7"},{n:"Comportamiento",c:12,col:"#3b82f6"},{n:"Objetos",c:4,col:"#22c55e"}];
+var logs=[],nightMode=false,curAct="",activeIntercom=null,intercomTimer=null,intercomSec=0,isTalking=false,isListening=false;
+
+// ===== RENDERS =====
+function rCams(){document.getElementById("camGrid").innerHTML=C.map(function(c){return '<div class="cam" style="aspect-ratio:16/10" onclick="openCam('+c.id+')"><div class="grid-bg"></div><div class="relative h-full flex flex-col justify-between p-2 md:p-2.5 z-10"><div class="flex justify-between items-center"><div class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full '+(c.rec?"bg-red-500 blink":"bg-gray-600")+'"></span><span class="text-[9px] md:text-[10px] font-bold '+(c.rec?"text-red-400":"text-gray-600")+'" style="font-family:IBM Plex Mono,monospace">REC</span></div><div class="flex items-center gap-1.5"><span class="text-[9px] text-gray-500" style="font-family:IBM Plex Mono,monospace">CAM-0'+c.id+'</span>'+(c.audio?'<i class="fas fa-microphone text-[8px] text-green-400/50"></i>':"")+'</div></div><div class="text-center">'+(c.alr?'<div class="alert-bg inline-block rounded-lg px-2 py-1 mb-1"><i class="fas fa-exclamation-triangle text-red-400 text-sm"></i><span class="text-[9px] text-red-300 ml-1 font-bold">ALERTA</span></div>':c.mot?'<div class="text-yellow-400 text-[9px] font-bold" style="font-family:IBM Plex Mono,monospace"><i class="fas fa-person-running mr-1"></i>MOV</div>':'<i class="fas fa-video text-blue-400/10 text-3xl md:text-4xl"></i>')+'</div><div class="flex justify-between items-end"><div><div class="text-[10px] md:text-xs font-semibold leading-tight">'+c.name+'</div><div class="text-[8px] md:text-[9px] text-gray-500">Zona '+c.zone+(c.audio?" · "+c.db+"dB":"")+'</div></div><div class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full '+(c.st==="online"?"bg-green-400":"bg-red-400")+'"></span></div></div></div></div>';}).join("");}
+
+function rAlerts(f){f=f||"all";var ic={critical:"fa-circle-exclamation",warning:"fa-triangle-exclamation",info:"fa-circle-info"};var cl={critical:"red",warning:"yellow",info:"blue"};var items=f==="all"?A:A.filter(function(a){return a.t===f;});document.getElementById("alertList").innerHTML=items.map(function(a){return '<div class="flex items-start gap-2 md:gap-3 p-2.5 md:p-3 rounded-lg '+(a.t==="critical"&&!a.ok?"alert-bg":"")+' bg-gray-800/40 hover:bg-gray-800/70 transition fade-in"><div class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-'+cl[a.t]+'-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas '+ic[a.t]+' text-'+cl[a.t]+'-400 text-[10px] md:text-xs"></i></div><div class="flex-1 min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="text-xs md:text-sm font-semibold">'+a.title+'</span><span class="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded-full '+(a.ok?"bg-green-500/20 text-green-400":"bg-red-500/20 text-red-400")+'">'+(a.ok?"✓":"Activo")+'</span></div><p class="text-[10px] md:text-[11px] text-gray-400 mt-0.5">'+a.desc+'</p><div class="flex gap-2 mt-1 text-[9px] md:text-[10px] text-gray-500"><span><i class="fas fa-video mr-1"></i>'+a.cam+'</span><span><i class="fas fa-clock mr-1"></i>'+a.time+'</span></div></div>'+(!a.ok?'<button onclick="event.stopPropagation();resolveAlert('+a.id+')" class="text-[10px] md:text-[11px] px-2.5 py-1.5 bg-green-600 hover:bg-green-500 rounded-lg flex-shrink-0 font-medium">Resolver</button>':"")+'</div>';}).join("");}
+
+function rBots(){document.getElementById("botList").innerHTML=B.map(function(b){return '<div class="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 bg-gray-800/40 rounded-lg"><div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-'+b.col+'-500/15 flex items-center justify-center flex-shrink-0"><i class="fas '+b.icon+' text-'+b.col+'-400 text-sm"></i></div><div class="flex-1 min-w-0"><div class="flex justify-between items-center"><span class="text-xs md:text-sm font-semibold">'+b.name+'</span><span class="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded-full font-bold '+(b.st==="active"?"bg-green-500/20 text-green-400":"bg-gray-700 text-gray-500")+'">'+(b.st==="active"?"ON":"OFF")+'</span></div><div class="flex items-center gap-2 mt-1"><div class="flex-1 bg-gray-700/50 rounded-full h-1.5"><div class="bar-fill h-1.5 rounded-full" style="width:'+b.load+'%"></div></div><span class="text-[9px] text-gray-400 w-7 text-right">'+b.load+'%</span></div><div class="text-[9px] text-gray-500 mt-0.5">'+b.det+' det · '+b.id+'</div></div></div>';}).join("");}
+
+function rConsole(){var msgs=[{t:"14:32:15",tp:"error",m:"[BOT-01] ALERTA: Mov — Perímetro Sur — 97.3%"},{t:"14:32:16",tp:"info",m:"[BOT-03] Analizando patrón..."},{t:"14:32:18",tp:"warn",m:"[BOT-02] Facial — Sin coincidencia"},{t:"14:32:20",tp:"info",m:"[BOT-04] Escaneando objetos..."},{t:"14:32:22",tp:"ok",m:"[BOT-05] Patrulla → Zona E"},{t:"14:15:03",tp:"warn",m:"[BOT-01] Mov fuera horario — Parking"},{t:"13:45:00",tp:"ok",m:"[SYS] Firmware CAM-03 → v4.2.1"}];var cl={error:"text-red-400",warn:"text-yellow-400",info:"text-cyan-400",ok:"text-green-400"};document.getElementById("botConsole").innerHTML=msgs.map(function(m){return '<div><span class="text-gray-600">'+m.t+'</span> <span class="'+cl[m.tp]+'">'+m.m+'</span></div>';}).join("");}
+
+function rRecordings(){var recs=[{cam:5,time:"14:32",dur:"0:45",type:"Alerta",col:"red"},{cam:2,time:"14:15",dur:"1:12",type:"Movimiento",col:"yellow"},{cam:3,time:"12:20",dur:"0:30",type:"Alerta",col:"red"},{cam:1,time:"11:30",dur:"0:15",type:"Facial",col:"purple"},{cam:6,time:"09:15",dur:"2:00",type:"Alerta",col:"red"},{cam:8,time:"08:00",dur:"4:00",type:"Rutina",col:"blue"}];document.getElementById("recordingsList").innerHTML=recs.map(function(r){return '<div class="flex items-center gap-3 p-2 rounded-lg bg-gray-800/30 hover:bg-gray-800/60 transition cursor-pointer text-[11px]" onclick="showToast(\'Play\',\'CAM-0'+r.cam+" "+r.time+'\',\'fa-play\',\'blue\')"><i class="fas fa-play-circle text-'+r.col+'-400"></i><span class="text-gray-400 w-12" style="font-family:IBM Plex Mono,monospace">CAM-0'+r.cam+'</span><span style="font-family:IBM Plex Mono,monospace" class="w-10">'+r.time+'</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-'+r.col+'-500/20 text-'+r.col+'-400">'+r.type+'</span><span class="text-gray-500 ml-auto">'+r.dur+"</span></div>";}).join("");}
+
+function rAudio(){document.getElementById("intercomZones").innerHTML=zones.map(function(z){return '<button onclick="selectZone(\''+z.id+'\')" id="zone-'+z.id+'" class="zone-btn btn-ctrl flex items-center gap-2 p-3 rounded-xl bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 transition text-left '+(activeIntercom===z.id?"intercom-active border-green-500/50":"")+'"><div class="w-8 h-8 rounded-lg bg-'+z.color+'-500/15 flex items-center justify-center flex-shrink-0"><i class="fas '+z.icon+" text-"+z.color+'-400 text-xs"></i></div><div><div class="text-xs font-semibold">'+(z.id==="ALL"?"PA General":"Zona "+z.id)+'</div><div class="text-[9px] text-gray-500">'+z.name+"</div></div></button>";}).join("");var audioCams=C.filter(function(c){return c.audio;});document.getElementById("audioFeeds").innerHTML=audioCams.map(function(c){var bars="";for(var i=0;i<6;i++){bars+='<div class="audio-bar" style="height:'+Math.round(15+Math.random()*85)+"%;width:2px;animation-delay:"+i*.08+"s;animation-duration:"+(0.3+Math.random()*.4).toFixed(2)+"s;background:"+(c.db>60?"#ef4444":c.db>45?"#eab308":"#22c55e")+'"></div>';}return '<div class="flex items-center gap-2 p-2 rounded-lg bg-gray-800/40"><div class="flex items-end h-5 gap-[1px]">'+bars+'</div><div class="flex-1 min-w-0"><div class="text-[11px] font-semibold">'+c.name+'</div><div class="text-[9px] text-gray-500">'+c.db+' dB</div></div><div class="text-[9px] px-1.5 py-0.5 rounded '+(c.db>60?"bg-red-500/20 text-red-400":c.db>45?"bg-yellow-500/20 text-yellow-400":"bg-green-500/20 text-green-400")+'">'+(c.db>60?"Alto":c.db>45?"Medio":"Normal")+"</div></div>";}).join("");document.getElementById("soundDetection").innerHTML=[{t:"14:32",ev:"Ruido fuerte",zone:"E",db:72,col:"red"},{t:"14:15",ev:"Vehículo",zone:"D",db:58,col:"yellow"},{t:"13:20",ev:"Conversación",zone:"C",db:45,col:"green"},{t:"12:05",ev:"Alarma",zone:"B",db:85,col:"red"}].map(function(s){return '<div class="flex items-center gap-2 text-[11px]"><span class="text-gray-500 w-10" style="font-family:IBM Plex Mono,monospace">'+s.t+'</span><span class="w-1.5 h-1.5 rounded-full bg-'+s.col+'-400"></span><span class="flex-1">'+s.ev+'</span><span class="text-gray-500">Z-'+s.zone+'</span><span class="text-'+s.col+'-400" style="font-family:IBM Plex Mono,monospace">'+s.db+"dB</span></div>";}).join("");}
+
+function rUsers(){var rl={admin:"Administrador",supervisor:"Supervisor",operator:"Operador",viewer:"Visualizador"};var rc={admin:"red",supervisor:"purple",operator:"blue",viewer:"gray"};document.getElementById("usersList").innerHTML=users.map(function(u){return '<div class="flex items-center gap-3 p-3 bg-gray-800/40 rounded-xl hover:bg-gray-800/60 transition cursor-pointer" onclick="openUserDetail('+u.id+')"><div class="user-avatar bg-'+u.color+'-500/20 text-'+u.color+'-400">'+u.avatar+'</div><div class="flex-1 min-w-0"><div class="flex items-center gap-2"><span class="text-sm font-semibold">'+u.name+"</span>"+(u.online?'<span class="w-2 h-2 rounded-full bg-green-400"></span>':"")+'</div><div class="text-[11px] text-gray-400">'+u.email+'</div><div class="flex items-center gap-2 mt-1"><span class="text-[9px] px-1.5 py-0.5 rounded-full bg-'+rc[u.role]+"-500/20 text-"+rc[u.role]+'-400 font-bold">'+rl[u.role]+'</span><span class="text-[9px] text-gray-500">Zonas: '+u.zones.join(", ")+'</span></div></div><div class="text-right flex-shrink-0"><div class="text-[10px] '+(u.online?"text-green-400":"text-gray-500")+'">'+u.lastSeen+"</div></div></div>";}).join("");document.getElementById("rolesList").innerHTML=Object.entries(rolesMap).map(function(e){var k=e[0],r=e[1];return '<div class="p-2.5 bg-gray-800/40 rounded-lg"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-'+r.color+'-400">'+r.name+'</span><span class="text-[9px] text-gray-500">'+users.filter(function(u){return u.role===k;}).length+' usr</span></div><div class="flex flex-wrap gap-1">'+r.perms.map(function(p){return '<span class="text-[8px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400">'+p+"</span>";}).join("")+"</div></div>";}).join("");document.getElementById("sessionsList").innerHTML=users.filter(function(u){return u.online;}).map(function(u){return '<div class="flex items-center gap-2 text-[11px]"><span class="w-2 h-2 rounded-full bg-green-400"></span><span class="font-semibold">'+u.name+"</span></div>";}).join("");}
+
+function rChart(){var mx=Math.max.apply(null,hourly);document.getElementById("chart").innerHTML=hourly.map(function(v,i){return '<div class="flex-1 group relative"><div class="w-full rounded-t" style="height:'+Math.max((v/mx)*100,3)+"%;background:linear-gradient(to top,#3b82f6,#06b6d4);opacity:"+(v?1:.15)+'"></div><div class="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] bg-gray-800 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap">'+String(i).padStart(2,"0")+"h:"+v+"</div></div>";}).join("");}
+
+function rDist(){var tot=dist.reduce(function(s,d){return s+d.c;},0);document.getElementById("distChart").innerHTML=dist.map(function(d){var pct=((d.c/tot)*100).toFixed(0);return '<div><div class="flex justify-between text-xs mb-1"><span>'+d.n+'</span><span style="font-family:IBM Plex Mono,monospace">'+d.c+" ("+pct+'%)</span></div><div class="w-full bg-gray-700/50 rounded-full h-2"><div class="h-2 rounded-full" style="width:'+pct+"%;background:"+d.col+'"></div></div></div>';}).join("");}
+
+function rTimeline(){document.getElementById("timeline").innerHTML=A.slice().reverse().map(function(a){return '<div class="flex items-center gap-2 text-[10px] md:text-[11px] p-1.5 rounded hover:bg-gray-800/40"><span class="text-gray-500 w-9" style="font-family:IBM Plex Mono,monospace">'+a.time+'</span><span class="w-1.5 h-1.5 rounded-full bg-'+(a.t==="critical"?"red":a.t==="warning"?"yellow":"blue")+'-400"></span><span class="flex-1">'+a.title+" — "+a.desc+'</span><span class="text-gray-600 hidden md:inline">'+a.cam+"</span></div>";}).join("");}
+
+function rMap(){document.getElementById("mapCams").innerHTML=C.map(function(c){var col=c.alr?"#ef4444":c.mot?"#eab308":"#22c55e";return '<g class="cursor-pointer" onclick="openCam('+c.id+')"><circle cx="'+c.mx+'" cy="'+c.my+'" r="14" fill="'+col+'" opacity=".12">'+(c.alr||c.mot?'<animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite"/>':"")+
+'</circle><circle cx="'+c.mx+'" cy="'+c.my+'" r="5" fill="'+col+'" filter="url(#glow)"/><text x="'+c.mx+'" y="'+(c.my-18)+'" text-anchor="middle" fill="#94a3b8" font-size="8">'+c.name+"</text></g>";}).join("");}
+
+function rWave(){var h="";for(var i=0;i<14;i++){h+='<div class="wave-bar" style="height:'+Math.round(10+Math.random()*90)+"%;animation-delay:"+i*.04+"s;animation-duration:"+(0.3+Math.random()*.5).toFixed(2)+'s"></div>';}document.getElementById("waveform").innerHTML=h;}
+
+function rSysLog(filter){filter=filter||"all";var cls={error:"text-red-400",warn:"text-yellow-400",info:"text-cyan-400",ok:"text-green-400"};var filtered=filter==="all"?logs:logs.filter(function(l){return l.tp===filter;});document.getElementById("sysLog").innerHTML=filtered.map(function(l){return '<div><span class="text-gray-600">'+l.t+'</span> <span class="'+(cls[l.tp]||"text-gray-400")+'">'+l.m+"</span></div>";}).join("");document.getElementById("sysLog").scrollTop=document.getElementById("sysLog").scrollHeight;document.getElementById("logCount").textContent=filtered.length+" entradas";document.getElementById("logSize").textContent=(JSON.stringify(logs).length/1024).toFixed(1)+" KB";}
+
+// ===== INTERACTIONS =====
+function showTab(t){document.querySelectorAll(".tab-panel").forEach(function(e){e.classList.add("hidden");});document.querySelectorAll(".tab-btn").forEach(function(e){e.classList.remove("tab-active");});document.getElementById("tab-"+t).classList.remove("hidden");var btn=document.querySelector('[data-tab="'+t+'"]');if(btn)btn.classList.add("tab-active");}
+
+function openCam(id){var c=C.find(function(x){return x.id===id;});document.getElementById("camModalTitle").innerHTML='<i class="fas fa-video mr-2 text-cyan-400"></i>'+c.name;document.getElementById("camModalBody").innerHTML='<div class="cam rounded-xl mb-3" style="aspect-ratio:16/9;min-height:180px"><div class="grid-bg"></div><div class="relative h-full flex items-center justify-center z-10"><div class="text-center"><i class="fas fa-video text-blue-400/20 text-5xl mb-2"></i><p class="text-sm text-gray-400">Feed — '+c.name+"</p>"+(c.rec?'<p class="text-xs text-red-400 mt-1 blink"><i class="fas fa-circle text-[7px] mr-1"></i>REC</p>':"")+(c.alr?'<div class="mt-2 alert-bg inline-block rounded-lg px-3 py-1"><i class="fas fa-exclamation-triangle text-red-400 mr-1"></i><span class="text-red-300 text-xs font-bold">ALERTA</span></div>':"")+'</div><div class="absolute top-2 left-2 text-[9px] text-gray-500" style="font-family:IBM Plex Mono,monospace">Z-'+c.zone+" · CAM-0"+c.id+'</div></div></div><div class="grid grid-cols-4 gap-2 mb-3"><div class="bg-gray-800/60 rounded-lg p-2 text-center"><div class="text-[9px] text-gray-400">Estado</div><div class="text-xs font-bold '+(c.st==="online"?"text-green-400":"text-red-400")+'">'+c.st.toUpperCase()+'</div></div><div class="bg-gray-800/60 rounded-lg p-2 text-center"><div class="text-[9px] text-gray-400">Mov.</div><div class="text-xs font-bold '+(c.mot?"text-yellow-400":"text-gray-500")+'">'+(c.mot?"SÍ":"NO")+'</div></div><div class="bg-gray-800/60 rounded-lg p-2 text-center"><div class="text-[9px] text-gray-400">Audio</div><div class="text-xs font-bold '+(c.audio?"text-blue-400":"text-gray-500")+'">'+(c.audio?c.db+"dB":"N/A")+'</div></div><div class="bg-gray-800/60 rounded-lg p-2 text-center"><div class="text-[9px] text-gray-400">Alerta</div><div class="text-xs font-bold '+(c.alr?"text-red-400":"text-green-400")+'">'+(c.alr?"SÍ":"NO")+'</div></div></div><div class="flex flex-wrap gap-1.5"><button onclick="camAct(\'capture\','+c.id+')" class="btn-ctrl flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs"><i class="fas fa-camera"></i>Captura</button><button onclick="camAct(\'analyze\','+c.id+')" class="btn-ctrl flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs"><i class="fas fa-brain"></i>IA</button><button onclick="camAct(\'ptz\','+c.id+')" class="btn-ctrl flex-1 flex items-center justify-center gap-1.5 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs"><i class="fas fa-arrows-alt"></i>PTZ</button>'+(c.alr?'<button onclick="camAct(\'clear\','+c.id+')" class="btn-ctrl flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-xs"><i class="fas fa-check"></i>Despejar</button>':'<button onclick="camAct(\'alertcam\','+c.id+')" class="btn-ctrl flex-1 flex items-center justify-center gap-1.5 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-xs"><i class="fas fa-bell"></i>Alerta</button>')+"</div>";openModal("camModal");}
+
+function camAct(act,id){var c=C.find(function(x){return x.id===id;});if(act==="alertcam"){c.alr=true;c.mot=true;}if(act==="clear"){c.alr=false;}var msgs={capture:"Captura guardada",analyze:"Análisis IA iniciado",ptz:"PTZ activado",alertcam:"Alerta activada",clear:"Alerta despejada"};addLog(act==="alertcam"?"warn":"ok","[CAM-0"+id+"] "+msgs[act]+" — "+c.name);showToast("Cámara",msgs[act],"fa-video","cyan");closeModal("camModal");rCams();rMap();updateMetrics();}
+
+function resolveAlert(id){var a=A.find(function(x){return x.id===id;});if(a){a.ok=true;rAlerts();updateMetrics();addLog("ok","[ALERTA] Resuelta: "+a.title);showToast("Resuelta",a.title,"fa-check-circle","green");}}
+function filterAlerts(f){document.querySelectorAll(".af-btn").forEach(function(b){b.className="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-gray-700 text-gray-300";});if(event&&event.target)event.target.className="af-btn text-[10px] md:text-[11px] px-2 md:px-3 py-1 rounded-full bg-blue-600 text-white";rAlerts(f);}
+function filterLogs(v){rSysLog(v);}
+
+// AUDIO
+function selectZone(zid){activeIntercom=activeIntercom===zid?null:zid;rAudio();var btn=document.getElementById("intercomBtn"),lbtn=document.getElementById("listenBtn"),label=document.getElementById("intercomLabel"),st=document.getElementById("intercomStatus"),vis=document.getElementById("audioVisualizer");if(activeIntercom){btn.disabled=false;lbtn.disabled=false;label.textContent="Conectado: "+(zid==="ALL"?"PA General":"Zona "+zid);st.className="w-3 h-3 rounded-full bg-green-400 blink";var bars="";for(var i=0;i<32;i++){bars+='<div class="audio-bar bg-green-400/60" style="height:'+Math.round(5+Math.random()*60)+"%;animation-delay:"+i*.03+"s;animation-duration:"+(0.3+Math.random()*.5).toFixed(2)+'s"></div>';}vis.innerHTML=bars;addLog("info","[INTERCOM] Conectado → "+(zid==="ALL"?"PA":"Zona "+zid));}else{btn.disabled=true;lbtn.disabled=true;isTalking=false;isListening=false;label.textContent="Selecciona una zona";st.className="w-3 h-3 rounded-full bg-gray-500";vis.innerHTML='<div class="text-gray-600 text-xs">Sin conexión</div>';stopTimer();}}
+
+function toggleIntercom(){isTalking=!isTalking;var btn=document.getElementById("intercomBtn");if(isTalking){btn.className="btn-ctrl px-5 py-2.5 bg-red-600 rounded-xl text-sm font-medium flex items-center gap-2";btn.innerHTML='<i class="fas fa-microphone-slash"></i><span>Parar</span>';startTimer();addLog("info","[INTERCOM] Transmitiendo → "+(activeIntercom==="ALL"?"PA":"Zona "+activeIntercom));showToast("Intercom","Transmitiendo...","fa-microphone","green");}else{btn.className="btn-ctrl px-5 py-2.5 bg-gray-700 rounded-xl text-sm font-medium flex items-center gap-2";btn.innerHTML='<i class="fas fa-microphone"></i><span>Hablar</span>';stopTimer();addLog("ok","[INTERCOM] Fin transmisión ("+fmtTime(intercomSec)+")");}}
+
+function toggleListen(){isListening=!isListening;var btn=document.getElementById("listenBtn");if(isListening){btn.className="btn-ctrl px-4 py-2.5 bg-blue-600 rounded-xl text-sm flex items-center gap-2";btn.innerHTML='<i class="fas fa-headphones"></i><span>🔊</span>';if(!isTalking)startTimer();}else{btn.className="btn-ctrl px-4 py-2.5 bg-gray-700 rounded-xl text-sm flex items-center gap-2";btn.innerHTML='<i class="fas fa-headphones"></i><span>Escuchar</span>';if(!isTalking)stopTimer();}}
+
+function startTimer(){if(!intercomTimer){intercomSec=0;intercomTimer=setInterval(function(){intercomSec++;document.getElementById("intercomDuration").textContent=fmtTime(intercomSec);},1000);}}
+function stopTimer(){if(intercomTimer){clearInterval(intercomTimer);intercomTimer=null;}}
+function fmtTime(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+
+// USERS
+function openUserDetail(id){var u=users.find(function(x){return x.id===id;});var rl={admin:"Administrador",supervisor:"Supervisor",operator:"Operador",viewer:"Visualizador"};var rc={admin:"red",supervisor:"purple",operator:"blue",viewer:"gray"};document.getElementById("userDetailTitle").innerHTML='<i class="fas fa-user mr-2 text-blue-400"></i>'+u.name;document.getElementById("userDetailBody").innerHTML='<div class="flex items-center gap-4 mb-4 p-3 bg-gray-800/40 rounded-xl"><div class="user-avatar bg-'+u.color+"-500/20 text-"+u.color+'-400 w-14 h-14 text-xl">'+u.avatar+'</div><div><div class="font-semibold">'+u.name+'</div><div class="text-sm text-gray-400">'+u.email+'</div><div class="flex items-center gap-2 mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full bg-'+rc[u.role]+"-500/20 text-"+rc[u.role]+'-400 font-bold">'+rl[u.role]+'</span><span class="w-2 h-2 rounded-full '+(u.online?"bg-green-400":"bg-gray-500")+'"></span><span class="text-[10px] '+(u.online?"text-green-400":"text-gray-500")+'">'+u.lastSeen+'</span></div></div></div><div class="space-y-3"><div><h4 class="text-xs text-gray-400 mb-2 uppercase tracking-wider">Zonas</h4><div class="flex flex-wrap gap-1.5">'+u.zones.map(function(z){return '<span class="text-[11px] px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400">Zona '+z+"</span>";}).join("")+'</div></div><div><h4 class="text-xs text-gray-400 mb-2 uppercase tracking-wider">Permisos</h4><div class="flex flex-wrap gap-1">'+rolesMap[u.role].perms.map(function(p){return '<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400">'+p+"</span>";}).join("")+'</div></div><div class="flex gap-2 pt-2"><button onclick="toggleUserSt('+u.id+')" class="btn-ctrl flex-1 py-2 '+(u.online?"bg-yellow-600 hover:bg-yellow-500":"bg-green-600 hover:bg-green-500")+' rounded-lg text-xs font-medium"><i class="fas fa-'+(u.online?"pause":"play")+' mr-1"></i>'+(u.online?"Suspender":"Activar")+"</button>"+(u.role!=="admin"?'<button onclick="removeUser('+u.id+')" class="btn-ctrl px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-medium"><i class="fas fa-trash"></i></button>':"")+"</div></div>";openModal("userDetailModal");}
+
+function addUser(){var name=document.getElementById("newUserName").value,email=document.getElementById("newUserEmail").value,role=document.getElementById("newUserRole").value;if(!name||!email){showToast("Error","Completa los campos","fa-exclamation-circle","red");return;}var init=name.split(" ").map(function(w){return w[0];}).join("").substring(0,2).toUpperCase();var cols=["blue","purple","green","cyan","yellow","pink"];users.push({id:users.length+1,name:name,email:email,role:role,avatar:init,color:cols[Math.floor(Math.random()*cols.length)],online:false,lastSeen:"Nuevo",zones:["A"]});rUsers();closeModal("addUserModal");addLog("ok","[USERS] Nuevo: "+name);showToast("Creado",name,"fa-user-plus","green");document.getElementById("newUserName").value="";document.getElementById("newUserEmail").value="";}
+
+function toggleUserSt(id){var u=users.find(function(x){return x.id===id;});u.online=!u.online;u.lastSeen=u.online?"Ahora":"Hace 0m";rUsers();closeModal("userDetailModal");addLog("info","[USERS] "+u.name+" → "+(u.online?"Activo":"Inactivo"));showToast("Estado",u.name+" "+(u.online?"activado":"suspendido"),"fa-user","blue");}
+function removeUser(id){var idx=users.findIndex(function(x){return x.id===id;});if(idx>-1){var name=users[idx].name;users.splice(idx,1);rUsers();closeModal("userDetailModal");addLog("warn","[USERS] Eliminado: "+name);showToast("Eliminado",name,"fa-trash","red");}}
+
+// ACTIONS
+function doAction(act){curAct=act;var cfg={lockdown:{t:"🔒 Bloqueo General",b:'Bloquear instalaciones y accesos.<br><br><div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5 text-xs text-yellow-300"><i class="fas fa-warning mr-1"></i>Requiere nivel 2</div>',btn:"Activar"},alert:{t:"⚠️ Alerta Manual",b:'<input id="alertInput" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white mb-2" style="font-size:16px" placeholder="Descripción..."><select class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white" style="font-size:16px"><option>Crítica</option><option selected>Media</option><option>Baja</option></select>',btn:"Enviar"},protocols:{t:"🛡️ Protocolos",b:'<div class="space-y-1.5"><button onclick="selProto(this)" class="proto w-full text-left px-3 py-2 bg-gray-800 hover:bg-red-500/20 rounded-lg text-sm"><i class="fas fa-fire mr-2 text-red-400"></i>Incendio</button><button onclick="selProto(this)" class="proto w-full text-left px-3 py-2 bg-gray-800 hover:bg-blue-500/20 rounded-lg text-sm"><i class="fas fa-user-shield mr-2 text-blue-400"></i>Intrusión</button><button onclick="selProto(this)" class="proto w-full text-left px-3 py-2 bg-gray-800 hover:bg-green-500/20 rounded-lg text-sm"><i class="fas fa-kit-medical mr-2 text-green-400"></i>Médico</button><button onclick="selProto(this)" class="proto w-full text-left px-3 py-2 bg-gray-800 hover:bg-yellow-500/20 rounded-lg text-sm"><i class="fas fa-person-running mr-2 text-yellow-400"></i>Evacuación</button></div>',btn:"Activar"},scan:{t:"🧠 Escaneo IA",b:'Análisis profundo 6 bots × 8 cámaras.<br><br><div class="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-2.5 text-xs text-cyan-300"><i class="fas fa-info-circle mr-1"></i>~2-5 min</div>',btn:"Iniciar"},report:{t:"📊 Reporte",b:'<select class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white mb-2" style="font-size:16px"><option>Diario</option><option>Semanal</option><option>Incidentes</option></select><select class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white" style="font-size:16px"><option>PDF</option><option>Excel</option><option>HTML</option></select>',btn:"Generar"},night:{t:"🌙 Nocturno",b:nightMode?"Desactivar modo nocturno.":'<ul class="text-sm space-y-1.5"><li><i class="fas fa-check text-green-400 mr-2"></i>Infrarrojo</li><li><i class="fas fa-check text-green-400 mr-2"></i>Sensibilidad +50%</li><li><i class="fas fa-check text-green-400 mr-2"></i>Alertas sonoras</li><li><i class="fas fa-check text-green-400 mr-2"></i>Patrulla 10 min</li></ul>',btn:nightMode?"Desactivar":"Activar"},pa:{t:"📢 PA General",b:'Megafonía a todas las zonas.<br><br><input id="paInput" type="text" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white mt-2" style="font-size:16px" placeholder="Mensaje...">',btn:"Emitir"}};var c=cfg[act];document.getElementById("actModalTitle").innerHTML=c.t;document.getElementById("actModalBody").innerHTML=c.b;document.getElementById("actModalBtn").textContent=c.btn;openModal("actionModal");}
+
+function selProto(el){document.querySelectorAll(".proto").forEach(function(p){p.classList.remove("ring-2","ring-blue-500");});el.classList.add("ring-2","ring-blue-500");}
+
+function confirmAction(){if(curAct==="night"){nightMode=!nightMode;document.getElementById("nightBtn").innerHTML=nightMode?'<i class="fas fa-sun"></i>Diurno':'<i class="fas fa-moon"></i>Nocturno';document.body.style.background=nightMode?"#040610":"#080c18";}if(curAct==="lockdown"){var s=document.getElementById("sysStatus"),b=document.getElementById("statusBadge");s.textContent="BLOQUEADO";s.className="text-red-400 text-xs font-bold";b.className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20";setTimeout(function(){s.textContent="OPERATIVO";s.className="text-green-400 text-xs font-bold";b.className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20";addLog("ok","[SYS] Bloqueo desactivado");},10000);}if(curAct==="scan"){B.forEach(function(b){if(b.st==="active")b.load=Math.min(99,b.load+25);});rBots();setTimeout(function(){B.forEach(function(b){b.load=Math.max(10,b.load-25);});rBots();addLog("ok","[SYS] Escaneo completo");showToast("Escaneo","Completado","fa-check","green");},8000);}if(curAct==="alert"){var d=document.getElementById("alertInput");var desc=d?d.value||"Sin descripción":"Manual";A.unshift({id:A.length+1,t:"warning",title:"Alerta Manual",desc:desc,cam:"MANUAL",time:new Date().toTimeString().slice(0,5),ok:false});rAlerts();updateMetrics();}if(curAct==="pa"){var pi=document.getElementById("paInput");addLog("info",'[PA] Megafonía: "'+(pi?pi.value||"Atención":"Atención")+'"');}var labels={lockdown:"Bloqueo activado",alert:"Alerta enviada",protocols:"Protocolo activado",scan:"Escaneo IA iniciado",report:"Generando reporte...",night:nightMode?"Nocturno ON":"Nocturno OFF",pa:"PA emitido"};addLog(curAct==="lockdown"?"error":"ok","[SYS] "+labels[curAct]);showToast("Acción",labels[curAct],"fa-check-circle","green");closeModal("actionModal");}
+
+// UTILS
+function openModal(id){document.getElementById(id).classList.add("open");}
+function closeModal(id){document.getElementById(id).classList.remove("open");}
+function toggleMobileMenu(){document.getElementById("mobileNav").classList.toggle("hidden");}
+function showToast(t,m,ic,cl){var el=document.getElementById("toast");document.getElementById("toastTitle").textContent=t;document.getElementById("toastMsg").textContent=m;document.getElementById("toastIcon").className="fas "+ic+" text-"+cl+"-400 text-lg";el.classList.add("show");setTimeout(function(){el.classList.remove("show");},3000);}
+function addLog(tp,m){logs.unshift({t:new Date().toTimeString().split(" ")[0],tp:tp,m:m});if(logs.length>200)logs.pop();rSysLog(document.getElementById("logFilter")?document.getElementById("logFilter").value:"all");}
+function updateMetrics(){var u=A.filter(function(a){return!a.ok;}).length;document.getElementById("metricAlerts").textContent=A.length;document.getElementById("metricUnresolved").innerHTML='<i class="fas fa-arrow-up mr-1 text-[8px]"></i>'+u+" activas";document.getElementById("notifCount").textContent=u;}
+function clearLogs(){logs=[];rSysLog();}
+
+// SIMULATION
+function tick(){var t=new Date().toTimeString().split(" ")[0];document.getElementById("clock").textContent=t;}
+function simulate(){C.forEach(function(c){if(Math.random()<.07)c.mot=!c.mot;if(c.audio)c.db=Math.max(20,Math.min(90,c.db+Math.floor(Math.random()*11)-5));});B.forEach(function(b){if(b.st==="active")b.load=Math.min(99,Math.max(8,b.load+Math.floor(Math.random()*13)-6));});if(Math.random()<.2)document.getElementById("metricAI").textContent=parseInt(document.getElementById("metricAI").textContent)+1;document.getElementById("processRate").textContent=(1100+Math.floor(Math.random()*300)).toLocaleString()+" fps";rBots();rMap();}
+
+// INIT
+rCams();rAlerts();rBots();rConsole();rRecordings();rAudio();rUsers();rChart();rDist();rTimeline();rMap();rWave();tick();
+addLog("ok","[SYS] AVIA Vigilancia v3 iniciado");
+addLog("info","[SYS] 8 cámaras · 6 bots · 6 usuarios · 5 zonas audio");
+addLog("info","[AUDIO] Intercomunicador listo");
+addLog("info","[USERS] 4 usuarios en línea");
+setInterval(tick,1000);setInterval(simulate,4000);setInterval(rWave,3000);
+setInterval(function(){if(activeIntercom)rAudio();},5000);
+
+// Dark mode detection
+if(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark");}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(e){if(e.matches){document.documentElement.classList.add("dark");}else{document.documentElement.classList.remove("dark");}});
+</script>
+</body>
+</html>
+

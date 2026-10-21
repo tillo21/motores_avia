@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Dashboard v4 Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deep: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #0f172a;
+            --border-subtle: #334155;
+            --border-active: #3b82f6;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --gradient-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gradient-main);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.96);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        /* HEADER */
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.4s;
+        }
+        .mode-badge.demo {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(139,92,246,0.4);
+        }
+        .mode-badge.live {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(16,185,129,0.4);
+        }
+        .mode-badge.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 22px;
+            font-size: 0.95rem;
+        }
+
+        /* TOAST */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 420px;
+            width: 90%;
+        }
+        .toast {
+            padding: 16px 40px 16px 20px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+            animation: toastIn 0.35s ease-out;
+            position: relative;
+            cursor: pointer;
+        }
+        .toast-error   { background: linear-gradient(135deg, #991b1b, #7f1d1d); border-left: 4px solid var(--accent-red); }
+        .toast-success  { background: linear-gradient(135deg, #065f46, #064e3b); border-left: 4px solid var(--accent-green); }
+        .toast-warning  { background: linear-gradient(135deg, #92400e, #78350f); border-left: 4px solid var(--accent-amber); }
+        .toast-info     { background: linear-gradient(135deg, #1e40af, #1e3a8a); border-left: 4px solid var(--accent-blue); }
+        .toast-title    { font-weight: bold; margin-bottom: 4px; }
+        .toast-close    {
+            position: absolute; top: 8px; right: 12px;
+            background: none; border: none; color: rgba(255,255,255,0.6);
+            font-size: 1.2rem; cursor: pointer;
+        }
+        .toast-close:hover { color: white; }
+        @keyframes toastIn  { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+        @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateX(40px); } }
+
+        /* CONFIG MODAL OVERLAY */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 5000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .overlay.show { display: flex; }
+        .config-modal {
+            background: var(--bg-card);
+            border: 2px solid var(--border-active);
+            color: white;
+            padding: 30px;
+            border-radius: 18px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: modalIn 0.3s ease-out;
+        }
+        @keyframes modalIn { from { opacity:0; transform: scale(0.95) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        .config-modal h3 { margin-bottom: 18px; color: #60a5fa; font-size: 1.2rem; }
+        .config-modal .field-label { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 6px; }
+        .config-modal input {
+            width: 100%; padding: 12px 14px;
+            background: var(--bg-input); border: 1px solid #475569;
+            color: white; border-radius: 10px; font-size: 1rem;
+            margin-bottom: 6px; transition: border 0.3s;
+        }
+        .config-modal input:focus { outline: none; border-color: var(--accent-blue); }
+        .config-modal .inline-error {
+            color: #fca5a5; font-size: 0.85rem; min-height: 1.4em; margin-bottom: 14px;
+        }
+        .config-modal .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* BUTTONS */
+        .btn {
+            border: none; padding: 11px 22px; border-radius: 10px;
+            cursor: pointer; font-size: 0.92rem; font-weight: 600;
+            transition: all 0.25s; color: white;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn:active { transform: translateY(0); }
+        .btn:disabled { background: #475569 !important; cursor: not-allowed; transform: none; filter: none; }
+        .btn-sm { padding: 8px 16px; font-size: 0.82rem; border-radius: 8px; }
+        .btn-primary   { background: var(--accent-blue); }
+        .btn-demo      { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .btn-danger    { background: var(--accent-red); }
+        .btn-secondary { background: #475569; }
+        .btn-amber     { background: linear-gradient(135deg, var(--accent-amber), #d97706); }
+        .btn-ghost     {
+            background: transparent; border: 1px solid #475569; color: var(--text-secondary);
+        }
+        .btn-ghost:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+        /* ERROR BANNER */
+        .error-banner {
+            background: linear-gradient(135deg, #450a0a, #7f1d1d);
+            border: 1px solid #dc2626; color: white;
+            padding: 22px; border-radius: 14px; margin-bottom: 20px;
+            display: none;
+            box-shadow: 0 8px 25px rgba(239,68,68,0.2);
+        }
+        .error-banner.show { display: block; }
+        .error-banner h3 { margin-bottom: 12px; font-size: 1.1rem; }
+        .error-banner .diagnostico {
+            background: rgba(0,0,0,0.35); padding: 14px; border-radius: 10px;
+            margin: 12px 0; font-family: 'Courier New', monospace;
+            font-size: 0.82rem; line-height: 1.7;
+        }
+        .error-banner .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* GRID */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 18px; margin-bottom: 22px;
+        }
+        .card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-deep));
+            padding: 22px; border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-subtle);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(102,126,234,0.3);
+        }
+        .card h2 {
+            font-size: 0.82rem; margin-bottom: 14px; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1.5px;
+        }
+        .metric {
+            font-size: 2.4rem; font-weight: bold;
+            background: var(--gradient-main);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .metric-sm { font-size: 1.1rem; }
+        .status-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 20px;
+            font-size: 0.82rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .status-chip .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block;
+        }
+        .status-chip.online  { background: rgba(16,185,129,0.15); color: #34d399; }
+        .status-chip.online .dot { background: #34d399; box-shadow: 0 0 6px #34d399; }
+        .status-chip.offline { background: rgba(239,68,68,0.15); color: #f87171; }
+        .status-chip.offline .dot { background: #f87171; }
+        .status-chip.paused  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .status-chip.paused .dot { background: #fbbf24; }
+        .status-chip.demo    { background: rgba(139,92,246,0.15); color: #a78bfa; }
+        .status-chip.demo .dot { background: #a78bfa; box-shadow: 0 0 6px #a78bfa; }
+        .status-chip.connecting { background: rgba(59,130,246,0.15); color: #60a5fa; }
+        .status-chip.connecting .dot { background: #60a5fa; animation: blink 1.5s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+        .info-text { color: var(--text-secondary); margin-top: 10px; font-size: 0.9rem; line-height: 1.5; }
+        .info-text strong { color: var(--text-primary); }
+
+        /* LATENCY BAR */
+        .latency-bar-wrap {
+            margin-top: 10px;
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .latency-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease, background 0.6s;
+            width: 0%;
+        }
+
+        /* LOGS */
+        .logs-card {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-deep));
+            padding: 22px; border-radius: 16px;
+            border: 1px solid var(--border-subtle);
+            margin-top: 18px;
+        }
+        .logs-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+        }
+        .logs-header h2 { font-size: 1rem; color: var(--text-secondary); margin: 0; }
+        #logs {
+            font-family: 'Courier New', monospace; font-size: 0.8rem;
+            color: #cbd5e1; max-height: 260px; overflow-y: auto;
+            background: var(--bg-deep); padding: 14px;
+            border-radius: 10px; border: 1px solid var(--bg-card);
+        }
+        #logs::-webkit-scrollbar { width: 6px; }
+        #logs::-webkit-scrollbar-track { background: var(--bg-card); border-radius: 3px; }
+        #logs::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        #logs div {
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(30,41,59,0.4);
+        }
+        #logs div:last-child { border-bottom: none; }
+
+        code {
+            background: #334155; padding: 2px 6px; border-radius: 4px;
+            font-family: 'Courier New', monospace; color: #60a5fa; font-size: 0.85em;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            .container { padding: 18px; border-radius: 14px; }
+            h1 { font-size: 1.4rem; }
+            .metric { font-size: 2rem; }
+            .btn { padding: 10px 16px; font-size: 0.85rem; }
+            .config-modal { padding: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOASTS -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- CONFIG MODAL -->
+    <div class="overlay" id="configOverlay">
+        <div class="config-modal">
+            <h3>⚙️ Conexión al Servidor</h3>
+            <div class="field-label">URL del endpoint</div>
+            <input type="text" id="serverUrl" placeholder="http://localhost:5000" value="http://localhost:5000">
+            <div class="inline-error" id="configError"></div>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="connectBtn" onclick="intentarConexion()">🚀 Conectar</button>
+                <button class="btn btn-ghost" onclick="cerrarConfig()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="container">
+        <div class="header-row">
+            <div class="header-left">
+                <h1>🎯 AVIA Dashboard v4 Pro</h1>
+                <span class="mode-badge demo" id="modeBadge" style="display:none;"></span>
+            </div>
+            <div class="header-actions" id="headerActions" style="display:none;">
+                <button class="btn btn-sm btn-ghost" onclick="abrirConfig()">⚙️ Servidor</button>
+                <button class="btn btn-sm btn-demo" onclick="iniciarDemo()" id="btnDemoHeader" style="display:none;">🎮 Demo</button>
+            </div>
+        </div>
+        <p class="subtitle" id="subtitleText">Sistema de Monitoreo Inteligente con Auto-Diagnóstico</p>
+
+        <!-- ERROR BANNER -->
+        <div class="error-banner" id="errorBanner">
+            <h3>⚠️ Conexión interrumpida</h3>
+            <div class="diagnostico" id="errorMessage"></div>
+            <div class="btn-row">
+                <button class="btn btn-sm btn-danger" onclick="reintentar()">🔄 Reintentar</button>
+                <button class="btn btn-sm btn-secondary" onclick="abrirConfig()">⚙️ Reconfigurar</button>
+                <button class="btn btn-sm btn-demo" onclick="iniciarDemo()">🎮 Modo Demo</button>
+            </div>
+        </div>
+
+        <!-- METRICS GRID -->
+        <div class="grid" id="metricsGrid">
+            <div class="card">
+                <h2>Estado del Sistema</h2>
+                <span class="status-chip connecting" id="statusChip">
+                    <span class="dot"></span>
+                    <span id="statusText">Iniciando</span>
+                </span>
+                <p class="info-text">Uptime: <strong id="uptime">--</strong></p>
+            </div>
+            <div class="card">
+                <h2>Disponibilidad</h2>
+                <div class="metric" id="disponibilidad">---%</div>
+                <p class="info-text">Últimos 100 checks</p>
+            </div>
+            <div class="card">
+                <h2>Latencia</h2>
+                <div class="metric" id="latencia">---</div>
+                <div class="latency-bar-wrap">
+                    <div class="latency-bar" id="latencyBar"></div>
+                </div>
+                <p class="info-text">Tiempo de respuesta (ms)</p>
+            </div>
+            <div class="card">
+                <h2>Caché del Sistema</h2>
+                <div class="metric metric-sm" id="cacheMetric">---</div>
+                <p class="info-text">
+                    Archivos: <strong id="cacheFiles">--</strong> · 
+                    Tamaño: <strong id="cacheSize">--</strong>
+                </p>
+            </div>
+        </div>
+
+        <!-- LOGS -->
+        <div class="logs-card">
+            <div class="logs-header">
+                <h2>📊 Registro de Actividad</h2>
+                <button class="btn btn-sm btn-ghost" onclick="limpiarLogs()">🗑 Limpiar</button>
+            </div>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        /* ============================================
+           ESTADO GLOBAL
+           ============================================ */
+        var state = {
+            apiBase: null,
+            intervalId: null,
+            modo: 'idle',        // idle | demo | live | error
+            demoUptime: 0,
+            demoTick: 0,
+            isSandboxed: false,
+            hasLocalStorage: false,
+            pollMs: 5000,
+            demoPollMs: 3000
+        };
+
+        /* ============================================
+           CIRCUIT BREAKER
+           ============================================ */
+        var cb = {
+            MAX_ERRORS: 3,
+            RESET_MS: 30000,
+            errors: 0,
+            successes: 0,
+            state: 'CLOSED',       // CLOSED | OPEN | HALF_OPEN
+            nextRetry: 0,
+            lastErr: null,
+
+            canExecute: function() {
+                if (this.state === 'CLOSED' || this.state === 'HALF_OPEN') return true;
+                if (Date.now() >= this.nextRetry) {
+                    this.state = 'HALF_OPEN';
+                    log('🟡 Half-open: probando recuperación…', 'warning');
+                    return true;
+                }
+                return false;
+            },
+
+            onSuccess: function() {
+                this.successes++;
+                if (this.state === 'HALF_OPEN' || this.errors > 0) {
+                    if (this.successes >= 2) this.reset();
+                }
+            },
+
+            onError: function(err) {
+                this.errors++;
+                this.successes = 0;
+                this.lastErr = { msg: err.message, ts: Date.now(), url: state.apiBase };
+                log('❌ Error ' + this.errors + '/' + this.MAX_ERRORS + ': ' + err.message, 'error');
+                if (this.errors >= this.MAX_ERRORS) {
+                    this.state = 'OPEN';
+                    this.nextRetry = Date.now() + this.RESET_MS;
+                    log('🔴 Circuit breaker abierto. Pausado ' + (this.RESET_MS / 1000) + 's', 'error');
+                    mostrarErrorPanel();
+                }
+            },
+
+            reset: function() {
+                if (this.errors > 0) log('✅ Sistema recuperado', 'success');
+                this.errors = 0;
+                this.successes = 0;
+                this.state = 'CLOSED';
+                this.lastErr = null;
+                ocultarErrorPanel();
+            },
+
+            diagnostico: function() {
+                if (!this.lastErr) return null;
+                var d = { error: this.lastErr.msg, url: this.lastErr.url, errors: this.errors };
+                var m = this.lastErr.msg;
+                if (!this.lastErr.url) {
+                    d.causa = 'URL no configurada';
+                    d.solucion = 'Configura el servidor o usa Modo Demo.';
+                } else if (m.indexOf('Failed to fetch') > -1 || m.indexOf('NetworkError') > -1 || m.indexOf('blocked') > -1) {
+                    d.causa = state.isSandboxed ? 'Sandbox bloquea red local' : 'Servidor no accesible';
+                    d.solucion = state.isSandboxed
+                        ? 'Usa Modo Demo aquí, o copia este HTML y ábrelo fuera del iframe.'
+                        : 'Verifica que el servidor esté corriendo.';
+                } else if (m.indexOf('Timeout') > -1) {
+                    d.causa = 'Timeout (>5s)';
+                    d.solucion = 'El servidor no responde a tiempo.';
+                } else if (m.indexOf('403') > -1 || m.indexOf('CORS') > -1) {
+                    d.causa = 'CORS / permisos';
+                    d.solucion = 'Revisa la config CORS del servidor.';
+                } else {
+                    d.causa = 'Error inesperado';
+                    d.solucion = 'Revisa la consola del navegador (F12).';
+                }
+                return d;
+            }
+        };
+
+        /* ============================================
+           DETECCIÓN DE ENTORNO (silenciosa)
+           ============================================ */
+        function detectarEntorno() {
+            try { state.isSandboxed = (window.self !== window.top); } catch (e) { state.isSandboxed = true; }
+
+            try {
+                localStorage.setItem('__t', '1');
+                localStorage.removeItem('__t');
+                state.hasLocalStorage = true;
+            } catch (e) {
+                state.hasLocalStorage = false;
+            }
+        }
+
+        /* ============================================
+           TOASTS
+           ============================================ */
+        function showToast(message, type, title, duration) {
+            type = type || 'info';
+            duration = duration || 5000;
+            var c = document.getElementById('toastContainer');
+            var t = document.createElement('div');
+            t.className = 'toast toast-' + type;
+            var cl = document.createElement('button');
+            cl.className = 'toast-close';
+            cl.innerHTML = '&times;';
+            cl.onclick = function() { killToast(t); };
+            t.appendChild(cl);
+            if (title) {
+                var h = document.createElement('div');
+                h.className = 'toast-title';
+                h.textContent = title;
+                t.appendChild(h);
+            }
+            var b = document.createElement('div');
+            b.textContent = message;
+            t.appendChild(b);
+            c.appendChild(t);
+            var timer = setTimeout(function() { killToast(t); }, duration);
+            t.addEventListener('click', function() { clearTimeout(timer); killToast(t); });
+        }
+
+        function killToast(el) {
+            if (!el || !el.parentNode) return;
+            el.style.animation = 'toastOut 0.3s ease-in forwards';
+            setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+        }
+
+        /* ============================================
+           LOGGING
+           ============================================ */
+        function log(msg, tipo) {
+            tipo = tipo || 'info';
+            var d = document.getElementById('logs');
+            var now = new Date().toLocaleTimeString();
+            var icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+            var colors = { info: '#94a3b8', success: '#34d399', warning: '#fbbf24', error: '#f87171' };
+            var entry = document.createElement('div');
+            entry.textContent = (icons[tipo] || 'ℹ️') + ' [' + now + '] ' + msg;
+            entry.style.color = colors[tipo] || '#94a3b8';
+            d.insertBefore(entry, d.firstChild);
+            while (d.children.length > 120) d.removeChild(d.lastChild);
+        }
+
+        function limpiarLogs() {
+            document.getElementById('logs').innerHTML = '';
+            log('🗑 Log limpiado', 'info');
+        }
+        window.limpiarLogs = limpiarLogs;
+
+        /* ============================================
+           FETCH + TIMEOUT
+           ============================================ */
+        function fetchJSON(url) {
+            var ac = new AbortController();
+            var t = setTimeout(function() { ac.abort(); }, 5000);
+            return fetch(url, { headers: { 'Accept': 'application/json' }, signal: ac.signal })
+                .then(function(r) {
+                    clearTimeout(t);
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    var ct = r.headers.get('content-type');
+                    if (!ct || ct.indexOf('json') === -1) throw new Error('Respuesta no JSON');
+                    return r.json();
+                }).catch(function(e) {
+                    clearTimeout(t);
+                    if (e.name === 'AbortError') throw new Error('Timeout: sin respuesta en 5s');
+                    throw e;
+                });
+        }
+
+        /* ============================================
+           DATOS DEMO
+           ============================================ */
+        function generarDemo() {
+            state.demoUptime += Math.round(state.demoPollMs / 1000);
+            state.demoTick++;
+            var base = 45 + Math.sin(state.demoTick * 0.3) * 15;
+            var jitter = (Math.random() - 0.5) * 12;
+            return {
+                disponibilidad: (99 + Math.random() * 1).toFixed(1),
+                latencia_promedio: Math.max(8, Math.round(base + jitter)),
+                uptime_segundos: state.demoUptime,
+                cache: {
+                    total_archivos: Math.floor(120 + Math.sin(state.demoTick * 0.1) * 30 + Math.random() * 10),
+                    'tamaño_mb': (2.5 + Math.sin(state.demoTick * 0.15) * 1.5 + Math.random()).toFixed(1)
+                }
+            };
+        }
+
+        /* ============================================
+           UI HELPERS
+           ============================================ */
+        function formatUptime(s) {
+            var d = Math.floor(s / 86400);
+            var h = Math.floor((s % 86400) / 3600);
+            var m = Math.floor((s % 3600) / 60);
+            if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+            if (h > 0) return h + 'h ' + m + 'm';
+            if (m > 0) return m + 'm ' + (s % 60) + 's';
+            return s + 's';
+        }
+
+        function setStatus(text, cls) {
+            var chip = document.getElementById('statusChip');
+            var label = document.getElementById('statusText');
+            chip.className = 'status-chip ' + cls;
+            label.textContent = text;
+        }
+
+        function setBadge(text, cls) {
+            var b = document.getElementById('modeBadge');
+            b.textContent = text;
+            b.className = 'mode-badge ' + cls;
+            b.style.display = 'inline-flex';
+        }
+
+        function renderData(data) {
+            // Status
+            var disp = parseFloat(data.disponibilidad);
+            if (state.modo === 'demo') {
+                setStatus('Demo', 'demo');
+            } else if (disp >= 99) {
+                setStatus('Online', 'online');
+            } else if (disp >= 95) {
+                setStatus('Degradado', 'paused');
+            } else {
+                setStatus('Crítico', 'offline');
+            }
+
+            // Metrics
+            document.getElementById('disponibilidad').textContent = data.disponibilidad + '%';
+            var lat = data.latencia_promedio;
+            document.getElementById('latencia').textContent = lat + 'ms';
+            document.getElementById('uptime').textContent = formatUptime(data.uptime_segundos);
+
+            // Latency bar (0-200ms scale)
+            var bar = document.getElementById('latencyBar');
+            var pct = Math.min(100, (lat / 200) * 100);
+            bar.style.width = pct + '%';
+            if (lat < 60) bar.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+            else if (lat < 120) bar.style.background = 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+            else bar.style.background = 'linear-gradient(90deg, #ef4444, #f87171)';
+
+            // Cache
+            if (data.cache) {
+                var f = data.cache.total_archivos;
+                var s = data.cache['tamaño_mb'];
+                document.getElementById('cacheFiles').textContent = f;
+                document.getElementById('cacheSize').textContent = s + ' MB';
+                document.getElementById('cacheMetric').textContent = f + ' archivos';
+            }
+        }
+
+        function mostrarErrorPanel() {
+            var panel = document.getElementById('errorBanner');
+            var msg = document.getElementById('errorMessage');
+            var d = cb.diagnostico();
+            if (!d) { msg.innerHTML = 'Error desconocido.'; }
+            else {
+                msg.innerHTML =
+                    '<strong>Causa:</strong> ' + d.causa + '\n' +
+                    '<strong>Error:</strong> ' + d.error + '\n' +
+                    '<strong>Servidor:</strong> ' + (d.url || 'N/A') + '\n' +
+                    '<strong>Errores:</strong> ' + d.errors + '/' + cb.MAX_ERRORS + '\n\n' +
+                    '💡 ' + d.solucion;
+            }
+            panel.classList.add('show');
+            setStatus('Pausado', 'paused');
+            setBadge('⚠️ ERROR', 'error');
+            state.modo = 'error';
+            pararPolling();
+        }
+
+        function ocultarErrorPanel() {
+            document.getElementById('errorBanner').classList.remove('show');
+        }
+
+        /* ============================================
+           MODO DEMO
+           ============================================ */
+        function iniciarDemo() {
+            pararPolling();
+            cerrarConfig();
+            ocultarErrorPanel();
+            cb.reset();
+
+            state.modo = 'demo';
+            state.demoUptime = 0;
+            state.demoTick = 0;
+
+            setBadge('🎮 DEMO', 'demo');
+            document.getElementById('subtitleText').textContent = 'Modo Demo — Datos simulados en tiempo real';
+            document.getElementById('headerActions').style.display = 'flex';
+            document.getElementById('btnDemoHeader').style.display = 'none';
+
+            log('🎮 Modo Demo iniciado', 'success');
+
+            tickDemo();
+            state.intervalId = setInterval(tickDemo, state.demoPollMs);
+        }
+
+        function tickDemo() {
+            var data = generarDemo();
+            renderData(data);
+            // Log cada 5 ticks para no saturar
+            if (state.demoTick % 5 === 1) {
+                log('📈 Demo: ' + data.latencia_promedio + 'ms · ' + data.disponibilidad + '% · cache ' + data.cache.total_archivos + ' archivos', 'info');
+            }
+        }
+
+        window.iniciarDemo = iniciarDemo;
+
+        /* ============================================
+           MODO LIVE
+           ============================================ */
+        function iniciarLive() {
+            pararPolling();
+            ocultarErrorPanel();
+            cb.reset();
+            state.modo = 'live';
+
+            setBadge('🟢 LIVE', 'live');
+            document.getElementById('subtitleText').textContent = 'Conectado a ' + state.apiBase;
+            document.getElementById('headerActions').style.display = 'flex';
+            document.getElementById('btnDemoHeader').style.display = 'inline-flex';
+
+            log('📊 Polling iniciado (' + (state.pollMs / 1000) + 's)', 'info');
+            tickLive();
+            state.intervalId = setInterval(tickLive, state.pollMs);
+        }
+
+        function tickLive() {
+            if (state.modo !== 'live' || !state.apiBase) return;
+            if (!cb.canExecute()) return;
+
+            fetchJSON(state.apiBase + '/api/health')
+                .then(function(data) {
+                    cb.onSuccess();
+                    renderData(data);
+                    if (cb.successes % 6 === 0) {
+                        log('✓ Estable · ' + data.latencia_promedio + 'ms', 'success');
+                    }
+                })
+                .catch(function(err) {
+                    cb.onError(err);
+                });
+        }
+
+        /* ============================================
+           CONEXIÓN
+           ============================================ */
+        function intentarConexion() {
+            var input = document.getElementById('serverUrl');
+            var errDiv = document.getElementById('configError');
+            var btn = document.getElementById('connectBtn');
+            var url = input.value.trim();
+
+            errDiv.textContent = '';
+
+            if (!url) { errDiv.textContent = '❌ Introduce una URL'; return; }
+            if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+                url = 'http://' + url;
+                input.value = url;
+            }
+            url = url.replace(/\/+$/, '');
+
+            log('🚀 Validando ' + url + '…', 'info');
+            btn.disabled = true;
+            btn.textContent = '⏳ Validando…';
+
+            fetchJSON(url + '/api/health')
+                .then(function(data) {
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Conectar';
+
+                    state.apiBase = url;
+                    guardarUrl(url);
+
+                    cerrarConfig();
+                    showToast('Conectado a ' + url, 'success', '✅ Conexión Exitosa');
+                    log('✅ Servidor validado: ' + url, 'success');
+                    iniciarLive();
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Conectar';
+
+                    var msg = err.message;
+                    errDiv.textContent = '❌ ' + msg;
+                    log('❌ Conexión fallida: ' + msg, 'error');
+
+                    if (state.isSandboxed && (msg.indexOf('fetch') > -1 || msg.indexOf('Network') > -1)) {
+                        errDiv.textContent = '❌ Sandbox bloquea localhost. Usa Modo Demo o copia el HTML.';
+                    }
+                });
+        }
+
+        window.intentarConexion = intentarConexion;
+
+        /* ============================================
+           CONFIG MODAL
+           ============================================ */
+        function abrirConfig() {
+            document.getElementById('configError').textContent = '';
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').textContent = '🚀 Conectar';
+            document.getElementById('configOverlay').classList.add('show');
+        }
+
+        function cerrarConfig() {
+            document.getElementById('configOverlay').classList.remove('show');
+        }
+
+        window.abrirConfig = abrirConfig;
+        window.cerrarConfig = cerrarConfig;
+
+        document.getElementById('configOverlay').addEventListener('click', function(e) {
+            if (e.target === this) cerrarConfig();
+        });
+
+        document.getElementById('serverUrl').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') intentarConexion();
+        });
+
+        /* ============================================
+           REINTENTAR
+           ============================================ */
+        function reintentar() {
+            log('🔄 Reintento manual', 'info');
+            cb.reset();
+            ocultarErrorPanel();
+            if (state.apiBase) {
+                iniciarLive();
+            } else {
+                abrirConfig();
+            }
+        }
+        window.reintentar = reintentar;
+
+        /* ============================================
+           PERSISTENCIA LIGERA
+           ============================================ */
+        function guardarUrl(url) {
+            if (!state.hasLocalStorage) return;
+            try { localStorage.setItem('avia_url', url); } catch(e) {}
+        }
+
+        function cargarUrl() {
+            if (!state.hasLocalStorage) return null;
+            try { return localStorage.getItem('avia_url'); } catch(e) { return null; }
+        }
+
+        /* ============================================
+           POLLING CONTROL
+           ============================================ */
+        function pararPolling() {
+            if (state.intervalId) {
+                clearInterval(state.intervalId);
+                state.intervalId = null;
+            }
+        }
+
+        /* ============================================
+           ARRANQUE INTELIGENTE
+           ============================================ */
+        function arrancar() {
+            detectarEntorno();
+
+            // Log limpio de arranque: una sola línea resume todo
+            var entorno = state.isSandboxed ? 'sandbox/iframe' : 'standalone';
+            var storage = state.hasLocalStorage ? 'localStorage' : 'memoria';
+            log('🎯 AVIA Dashboard v4 Pro · Entorno: ' + entorno + ' · Storage: ' + storage, 'info');
+
+            // Recuperar URL guardada
+            var saved = cargarUrl();
+            if (saved) {
+                document.getElementById('serverUrl').value = saved;
+                log('📌 URL recuperada: ' + saved, 'info');
+            }
+
+            // DECISIÓN INTELIGENTE:
+            // Si estamos en sandbox → auto-demo sin esperar
+            // Si estamos standalone → intentar conexión automática (si hay URL guardada) o mostrar config
+            if (state.isSandboxed) {
+                log('🔒 Sandbox detectado → auto-iniciando Modo Demo', 'info');
+                // Pequeño delay para que el usuario vea el log
+                setTimeout(iniciarDemo, 400);
+            } else if (saved) {
+                log('🔄 Intentando conexión automática a ' + saved + '…', 'info');
+                document.getElementById('headerActions').style.display = 'flex';
+                setStatus('Conectando', 'connecting');
+                state.apiBase = saved;
+
+                fetchJSON(saved + '/api/health')
+                    .then(function(data) {
+                        log('✅ Reconexión exitosa', 'success');
+                        iniciarLive();
+                    })
+                    .catch(function(err) {
+                        log('⚠️ Servidor no disponible: ' + err.message, 'warning');
+                        log('💡 Usa ⚙️ Servidor para reconfigurar o 🎮 Demo para simular', 'info');
+                        setStatus('Desconectado', 'offline');
+                        setBadge('⚠️ OFFLINE', 'error');
+                        document.getElementById('headerActions').style.display = 'flex';
+                        document.getElementById('btnDemoHeader').style.display = 'inline-flex';
+                        showToast('Servidor no disponible. Usa el menú para reconfigurar o iniciar demo.', 'warning', '⚠️ Sin Conexión', 6000);
+                    });
+            } else {
+                // Sin URL guardada, sin sandbox → pedir config
+                log('💡 Configura el servidor (⚙️) o inicia el Modo Demo', 'info');
+                document.getElementById('headerActions').style.display = 'flex';
+                document.getElementById('btnDemoHeader').style.display = 'inline-flex';
+                setStatus('Sin configurar', 'paused');
+            }
+        }
+
+        /* ============================================
+           INIT
+           ============================================ */
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', arrancar);
+        } else {
+            arrancar();
+        }
+
+    })();
+    </script>
+</body>
+</html>

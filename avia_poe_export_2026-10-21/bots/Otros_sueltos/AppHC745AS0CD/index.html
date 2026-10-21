@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor Anime Chibi 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        'bg-light': '#FFFFFF',
+                        'bg-dark': '#181818'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #5D5CDE;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .upload-area {
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(93, 92, 222, 0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-bg-light dark:bg-bg-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent mb-4">
+                🎨 Convertidor Anime Chibi 3D
+            </h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400">
+                Transforma tus fotos en adorables personajes anime chibi en 3D usando inteligencia artificial
+            </p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                📸 Sube tu Foto
+            </h2>
+            
+            <div id="uploadArea" class="upload-area border-2 border-dashed border-primary/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary/60 transition-colors">
+                <div id="uploadContent">
+                    <div class="text-6xl mb-4">🖼️</div>
+                    <p class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Haz clic aquí o arrastra tu imagen
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        Formatos soportados: JPG, PNG, WebP
+                    </p>
+                </div>
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+            </div>
+
+            <div id="imagePreview" class="hidden mt-4">
+                <img id="previewImg" class="max-w-full h-64 object-contain mx-auto rounded-lg shadow-md">
+                <div class="mt-4 text-center">
+                    <button id="changeImageBtn" class="text-primary hover:text-primary/80 text-sm">
+                        Cambiar imagen
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button id="analyzeBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <span id="analyzeBtnText">Selecciona una imagen para continuar</span>
+                    <div id="analyzeBtnSpinner" class="loading-spinner mx-auto hidden"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Analysis Section -->
+        <div id="analysisSection" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                🤖 Análisis IA del Estilo Chibi
+            </h2>
+            
+            <div id="analysisContent" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div id="analysisLoading" class="flex items-center justify-center py-8">
+                    <div class="loading-spinner mr-3"></div>
+                    <span>Analizando imagen y generando descripción chibi...</span>
+                </div>
+                <div id="analysisResult" class="hidden prose dark:prose-invert max-w-none"></div>
+            </div>
+
+            <div id="continueToEditor" class="mt-6 hidden">
+                <button id="editPromptBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                    ✏️ Personalizar Prompt
+                </button>
+            </div>
+        </div>
+
+        <!-- Prompt Editor Section -->
+        <div id="promptEditorSection" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                ✏️ Editor de Prompts Avanzado
+            </h2>
+            
+            <!-- Style Presets -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">🎨 Estilos Preestablecidos</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button class="style-preset bg-gradient-to-r from-pink-200 to-pink-300 dark:from-pink-700 dark:to-pink-600 p-3 rounded-lg text-center hover:shadow-md transition-all" data-style="kawaii">
+                        <div class="text-2xl mb-1">🌸</div>
+                        <div class="text-sm font-medium">Kawaii</div>
+                    </button>
+                    <button class="style-preset bg-gradient-to-r from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-600 p-3 rounded-lg text-center hover:shadow-md transition-all" data-style="cool">
+                        <div class="text-2xl mb-1">😎</div>
+                        <div class="text-sm font-medium">Cool</div>
+                    </button>
+                    <button class="style-preset bg-gradient-to-r from-purple-200 to-purple-300 dark:from-purple-700 dark:to-purple-600 p-3 rounded-lg text-center hover:shadow-md transition-all" data-style="magical">
+                        <div class="text-2xl mb-1">✨</div>
+                        <div class="text-sm font-medium">Mágico</div>
+                    </button>
+                    <button class="style-preset bg-gradient-to-r from-green-200 to-green-300 dark:from-green-700 dark:to-green-600 p-3 rounded-lg text-center hover:shadow-md transition-all" data-style="natural">
+                        <div class="text-2xl mb-1">🌿</div>
+                        <div class="text-sm font-medium">Natural</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Customization Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h3 class="text-lg font-medium mb-3">👁️ Características</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tamaño de ojos:</label>
+                            <select id="eyeSize" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="huge sparkling">Enormes y brillantes</option>
+                                <option value="very large expressive">Muy grandes y expresivos</option>
+                                <option value="big cute">Grandes y tiernos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Expresión facial:</label>
+                            <select id="expression" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="happy and cheerful">Feliz y alegre</option>
+                                <option value="cute and innocent">Tierno e inocente</option>
+                                <option value="playful and mischievous">Juguetón y travieso</option>
+                                <option value="calm and gentle">Tranquilo y gentil</option>
+                                <option value="excited and energetic">Emocionado y energético</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Proporciones chibi:</label>
+                            <select id="proportions" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="head 1:2 body ratio">Cabeza 1:2 cuerpo</option>
+                                <option value="head 1:1.5 body ratio">Cabeza 1:1.5 cuerpo</option>
+                                <option value="head 1:3 body ratio">Cabeza 1:3 cuerpo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-medium mb-3">🎨 Estilo Visual</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Paleta de colores:</label>
+                            <select id="colorPalette" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="soft pastel colors">Colores pastel suaves</option>
+                                <option value="vibrant bright colors">Colores vibrantes</option>
+                                <option value="warm autumn colors">Colores cálidos de otoño</option>
+                                <option value="cool winter colors">Colores fríos de invierno</option>
+                                <option value="rainbow gradient colors">Colores degradado arcoíris</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Iluminación:</label>
+                            <select id="lighting" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="soft warm lighting">Iluminación suave y cálida</option>
+                                <option value="bright studio lighting">Iluminación de estudio brillante</option>
+                                <option value="magical glowing light">Luz mágica resplandeciente</option>
+                                <option value="natural sunlight">Luz solar natural</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Fondo:</label>
+                            <select id="background" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base">
+                                <option value="simple gradient background">Fondo degradado simple</option>
+                                <option value="white studio background">Fondo blanco de estudio</option>
+                                <option value="cute pastel pattern background">Fondo con patrón pastel</option>
+                                <option value="magical sparkly background">Fondo mágico con brillos</option>
+                                <option value="transparent background">Fondo transparente</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Prompt Editor -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium">📝 Editor de Prompt</h3>
+                    <button id="resetPromptBtn" class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                        🔄 Resetear
+                    </button>
+                </div>
+                <textarea 
+                    id="promptEditor" 
+                    class="w-full h-32 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-base resize-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Tu prompt personalizado aparecerá aquí..."
+                ></textarea>
+                <div class="mt-2 text-sm text-gray-500">
+                    💡 Tip: Edita el prompt para ajustar detalles específicos como vestimenta, accesorios, poses, etc.
+                </div>
+            </div>
+
+            <!-- Prompt Preview -->
+            <div class="mb-6">
+                <h3 class="text-lg font-medium mb-3">👀 Vista Previa del Prompt Final</h3>
+                <div id="promptPreview" class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm font-mono text-gray-700 dark:text-gray-300 min-h-[60px]">
+                    El prompt final aparecerá aquí...
+                </div>
+            </div>
+
+            <!-- Generate Button -->
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="generateBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                    <span id="generateBtnText">🎨 Generar Imagen Chibi 3D</span>
+                    <div id="generateBtnSpinner" class="loading-spinner mx-auto hidden"></div>
+                </button>
+                <button id="backToAnalysisBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                    ← Volver al Análisis
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hidden">
+            <h2 class="text-2xl font-semibold mb-4 flex items-center">
+                ✨ Tu Personaje Chibi 3D
+            </h2>
+            
+            <div id="resultsContent">
+                <div id="generationLoading" class="flex items-center justify-center py-12">
+                    <div class="text-center">
+                        <div class="loading-spinner mx-auto mb-4"></div>
+                        <p class="text-lg">Creando tu adorable personaje chibi...</p>
+                        <p class="text-sm text-gray-500 mt-2">Esto puede tomar unos momentos</p>
+                    </div>
+                </div>
+                
+                <div id="generationResult" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">Imagen Original</h3>
+                            <img id="originalImage" class="w-full rounded-lg shadow-md">
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2">Versión Chibi 3D</h3>
+                            <div id="chibiImageContainer">
+                                <img id="chibiImage" class="w-full rounded-lg shadow-md">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button id="downloadBtn" class="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                            📥 Descargar Imagen Chibi
+                        </button>
+                        <button id="newImageBtn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                            🔄 Convertir Otra Imagen
+                        </button>
+                    </div>
+                </div>
+
+                <div id="generationError" class="hidden text-center py-8">
+                    <div class="text-6xl mb-4">😅</div>
+                    <p class="text-lg text-red-600 dark:text-red-400 mb-4">Hubo un problema generando la imagen</p>
+                    <button id="retryBtn" class="bg-primary hover:bg-primary/90 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                        Intentar de nuevo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dark mode setup
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Global variables
+        let currentImageFile = null;
+        let currentAnalysis = "";
+
+        // Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const changeImageBtn = document.getElementById('changeImageBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const analyzeBtnText = document.getElementById('analyzeBtnText');
+        const analyzeBtnSpinner = document.getElementById('analyzeBtnSpinner');
+        
+        const analysisSection = document.getElementById('analysisSection');
+        const analysisLoading = document.getElementById('analysisLoading');
+        const analysisResult = document.getElementById('analysisResult');
+        const generateBtn = document.getElementById('generateBtn');
+        const generateBtnText = document.getElementById('generateBtnText');
+        const generateBtnSpinner = document.getElementById('generateBtnSpinner');
+        
+        const resultsSection = document.getElementById('resultsSection');
+        const generationLoading = document.getElementById('generationLoading');
+        const generationResult = document.getElementById('generationResult');
+        const generationError = document.getElementById('generationError');
+        const originalImage = document.getElementById('originalImage');
+        const chibiImage = document.getElementById('chibiImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newImageBtn = document.getElementById('newImageBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        
+        // Prompt Editor Elements
+        const continueToEditor = document.getElementById('continueToEditor');
+        const editPromptBtn = document.getElementById('editPromptBtn');
+        const promptEditorSection = document.getElementById('promptEditorSection');
+        const backToAnalysisBtn = document.getElementById('backToAnalysisBtn');
+        const stylePresets = document.querySelectorAll('.style-preset');
+        const eyeSize = document.getElementById('eyeSize');
+        const expression = document.getElementById('expression');
+        const proportions = document.getElementById('proportions');
+        const colorPalette = document.getElementById('colorPalette');
+        const lighting = document.getElementById('lighting');
+        const background = document.getElementById('background');
+        const promptEditor = document.getElementById('promptEditor');
+        const promptPreview = document.getElementById('promptPreview');
+        const resetPromptBtn = document.getElementById('resetPromptBtn');
+        
+        let originalPrompt = "";
+        let selectedStyle = "";
+
+        // Event listeners
+        uploadArea.addEventListener('click', () => imageInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('border-primary');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('border-primary');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('border-primary');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImageUpload(files[0]);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleImageUpload(e.target.files[0]);
+            }
+        });
+
+        changeImageBtn.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        analyzeBtn.addEventListener('click', analyzeImage);
+        generateBtn.addEventListener('click', generateChibiImage);
+        retryBtn.addEventListener('click', generateChibiImage);
+        newImageBtn.addEventListener('click', resetApp);
+        downloadBtn.addEventListener('click', downloadImage);
+        
+        // Prompt Editor Event Listeners
+        editPromptBtn.addEventListener('click', showPromptEditor);
+        backToAnalysisBtn.addEventListener('click', () => {
+            promptEditorSection.classList.add('hidden');
+            analysisSection.classList.remove('hidden');
+        });
+        
+        stylePresets.forEach(preset => {
+            preset.addEventListener('click', () => {
+                // Remove active class from all presets
+                stylePresets.forEach(p => p.classList.remove('ring-2', 'ring-primary'));
+                // Add active class to clicked preset
+                preset.classList.add('ring-2', 'ring-primary');
+                selectedStyle = preset.dataset.style;
+                updatePromptPreview();
+            });
+        });
+        
+        // Add change listeners to all form controls
+        [eyeSize, expression, proportions, colorPalette, lighting, background, promptEditor].forEach(element => {
+            element.addEventListener('change', updatePromptPreview);
+            if (element.tagName === 'TEXTAREA') {
+                element.addEventListener('input', updatePromptPreview);
+            }
+        });
+        
+        resetPromptBtn.addEventListener('click', resetPrompt);
+
+        // Functions
+        function handleImageUpload(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor selecciona un archivo de imagen válido.');
+                return;
+            }
+
+            currentImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                uploadArea.classList.add('hidden');
+                imagePreview.classList.remove('hidden');
+                analyzeBtn.disabled = false;
+                analyzeBtnText.textContent = 'Analizar y Generar Descripción Chibi';
+                
+                // Reset subsequent sections
+                analysisSection.classList.add('hidden');
+                resultsSection.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzeImage() {
+            if (!currentImageFile) return;
+
+            // Update UI
+            analyzeBtn.disabled = true;
+            analyzeBtnText.textContent = 'Analizando...';
+            analyzeBtnSpinner.classList.remove('hidden');
+            analysisSection.classList.remove('hidden');
+            analysisSection.classList.add('fade-in');
+            analysisLoading.classList.remove('hidden');
+            analysisResult.classList.add('hidden');
+            generateBtn.classList.add('hidden');
+
+            // Register handler for analysis
+            window.Poe.registerHandler("analysis-handler", (result, context) => {
+                const msg = result.responses[0];
+                
+                if (msg.status === "error") {
+                    console.error("Error en análisis:", msg.statusText);
+                    analysisLoading.classList.add('hidden');
+                    analysisResult.innerHTML = `<p class="text-red-600">Error: ${msg.statusText}</p>`;
+                    analysisResult.classList.remove('hidden');
+                } else if (msg.status === "complete") {
+                    currentAnalysis = msg.content;
+                    analysisLoading.classList.add('hidden');
+                    analysisResult.innerHTML = marked.parse(msg.content);
+                    analysisResult.classList.remove('hidden');
+                    continueToEditor.classList.remove('hidden');
+                    
+                    // Extract base prompt for editor
+                    const promptMatch = msg.content.match(/prompt[:\s]*(.*?)(?:\n|$)/i);
+                    originalPrompt = promptMatch ? promptMatch[1].trim() : "cute chibi character in 3D anime style";
+                    promptEditor.value = originalPrompt;
+                }
+                
+                // Re-enable analyze button
+                analyzeBtn.disabled = false;
+                analyzeBtnText.textContent = 'Analizar y Generar Descripción Chibi';
+                analyzeBtnSpinner.classList.add('hidden');
+            });
+
+            try {
+                await window.Poe.sendUserMessage(
+                    "@Claude-Sonnet-4 Analiza esta imagen y crea una descripción detallada para convertirla en un personaje anime chibi en 3D. Incluye: características físicas principales, colores dominantes, expresión facial, vestimenta, y cómo adaptar estos elementos al estilo chibi (proporciones exageradas, ojos grandes, cabeza más grande que el cuerpo, características kawaii). Termina con un prompt detallado en inglés para generar la imagen chibi 3D que capture la esencia de la persona de manera adorable.",
+                    {
+                        attachments: [currentImageFile],
+                        handler: "analysis-handler",
+                        stream: false,
+                        openChat: false
+                    }
+                );
+            } catch (error) {
+                console.error("Error:", error);
+                analyzeBtn.disabled = false;
+                analyzeBtnText.textContent = 'Analizar y Generar Descripción Chibi';
+                analyzeBtnSpinner.classList.add('hidden');
+                analysisLoading.classList.add('hidden');
+                analysisResult.innerHTML = `<p class="text-red-600">Error: ${error.message}</p>`;
+                analysisResult.classList.remove('hidden');
+            }
+        }
+
+        async function generateChibiImage() {
+            if (!currentAnalysis) return;
+
+            // Update UI
+            generateBtn.disabled = true;
+            generateBtnText.textContent = 'Generando...';
+            generateBtnSpinner.classList.remove('hidden');
+            resultsSection.classList.remove('hidden');
+            resultsSection.classList.add('fade-in');
+            generationLoading.classList.remove('hidden');
+            generationResult.classList.add('hidden');
+            generationError.classList.add('hidden');
+
+            // Set original image
+            originalImage.src = previewImg.src;
+
+            // Register handler for image generation
+            window.Poe.registerHandler("generation-handler", (result, context) => {
+                const msg = result.responses[0];
+                
+                if (msg.status === "error") {
+                    console.error("Error en generación:", msg.statusText);
+                    generationLoading.classList.add('hidden');
+                    generationError.classList.remove('hidden');
+                } else if (msg.status === "complete") {
+                    generationLoading.classList.add('hidden');
+                    
+                    if (msg.attachments && msg.attachments.length > 0) {
+                        const imageAttachment = msg.attachments[0];
+                        chibiImage.src = imageAttachment.url;
+                        chibiImage.onload = () => {
+                            generationResult.classList.remove('hidden');
+                        };
+                    } else {
+                        generationError.classList.remove('hidden');
+                    }
+                }
+                
+                // Re-enable generate button
+                generateBtn.disabled = false;
+                generateBtnText.textContent = '🎨 Generar Imagen Chibi 3D';
+                generateBtnSpinner.classList.add('hidden');
+            });
+
+            try {
+                // Use the prompt from the editor if available, otherwise fall back to analysis
+                let finalPrompt;
+                if (promptPreview.textContent !== 'El prompt final aparecerá aquí...') {
+                    finalPrompt = promptPreview.textContent;
+                } else {
+                    // Fallback to original method
+                    const promptMatch = currentAnalysis.match(/prompt[:\s]*(.*?)(?:\n|$)/i);
+                    const basePrompt = promptMatch ? promptMatch[1] : "cute chibi character in 3D anime style";
+                    finalPrompt = `${basePrompt}, 3D rendered, chibi anime style, kawaii, big expressive eyes, oversized head, small body proportions, soft lighting, high quality 3D animation style, adorable and charming, pastel colors, cute expression --aspect 1:1`;
+                }
+
+                await window.Poe.sendUserMessage(
+                    `@GPT-Image-1 ${finalPrompt}`,
+                    {
+                        handler: "generation-handler",
+                        stream: false,
+                        openChat: false
+                    }
+                );
+            } catch (error) {
+                console.error("Error:", error);
+                generateBtn.disabled = false;
+                generateBtnText.textContent = '🎨 Generar Imagen Chibi 3D';
+                generateBtnSpinner.classList.add('hidden');
+                generationLoading.classList.add('hidden');
+                generationError.classList.remove('hidden');
+            }
+        }
+
+        function downloadImage() {
+            if (chibiImage.src) {
+                const link = document.createElement('a');
+                link.download = 'chibi-3d-character.png';
+                link.href = chibiImage.src;
+                link.click();
+            }
+        }
+
+        function showPromptEditor() {
+            analysisSection.classList.add('hidden');
+            promptEditorSection.classList.remove('hidden');
+            promptEditorSection.classList.add('fade-in');
+            updatePromptPreview();
+        }
+
+        function updatePromptPreview() {
+            let finalPrompt = promptEditor.value || originalPrompt;
+            
+            // Add style modifiers
+            const styleModifiers = [];
+            
+            if (selectedStyle) {
+                const styleMap = {
+                    'kawaii': 'kawaii style, extremely cute, adorable, sweet',
+                    'cool': 'cool and stylish, confident pose, trendy',
+                    'magical': 'magical aura, sparkles, enchanted, mystical',
+                    'natural': 'natural and organic, soft features, gentle'
+                };
+                styleModifiers.push(styleMap[selectedStyle]);
+            }
+            
+            // Add characteristics
+            styleModifiers.push(`${eyeSize.value} eyes`);
+            styleModifiers.push(`${expression.value} expression`);
+            styleModifiers.push(`${proportions.value}`);
+            styleModifiers.push(colorPalette.value);
+            styleModifiers.push(lighting.value);
+            styleModifiers.push(background.value);
+            
+            // Combine everything
+            const enhancedPrompt = `${finalPrompt}, ${styleModifiers.join(', ')}, 3D rendered, chibi anime style, kawaii, high quality 3D animation style --aspect 1:1`;
+            
+            promptPreview.textContent = enhancedPrompt;
+        }
+
+        function resetPrompt() {
+            promptEditor.value = originalPrompt;
+            
+            // Reset all selects to default
+            eyeSize.selectedIndex = 0;
+            expression.selectedIndex = 0;
+            proportions.selectedIndex = 0;
+            colorPalette.selectedIndex = 0;
+            lighting.selectedIndex = 0;
+            background.selectedIndex = 0;
+            
+            // Reset style presets
+            stylePresets.forEach(p => p.classList.remove('ring-2', 'ring-primary'));
+            selectedStyle = "";
+            
+            updatePromptPreview();
+        }
+
+        function resetApp() {
+            currentImageFile = null;
+            currentAnalysis = "";
+            originalPrompt = "";
+            selectedStyle = "";
+            
+            uploadArea.classList.remove('hidden');
+            imagePreview.classList.add('hidden');
+            analysisSection.classList.add('hidden');
+            promptEditorSection.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            
+            analyzeBtn.disabled = true;
+            analyzeBtnText.textContent = 'Selecciona una imagen para continuar';
+            
+            imageInput.value = '';
+            promptEditor.value = '';
+            promptPreview.textContent = 'El prompt final aparecerá aquí...';
+            
+            // Reset controls
+            resetPrompt();
+        }
+    </script>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</body>
+</html>

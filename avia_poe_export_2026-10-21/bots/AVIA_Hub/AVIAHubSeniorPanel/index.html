@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior v24.3 - Sistema Orquestador</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #2563eb;
+            --secondary: #7c3aed;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Átomos */
+        .atom-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .atom-badge.active { background: var(--success); color: white; }
+        .atom-badge.pending { background: var(--warning); color: white; }
+        .atom-badge.inactive { background: var(--border); color: var(--dark); }
+        
+        .atom-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .atom-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .atom-btn.primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        
+        /* Moléculas */
+        .molecule-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .molecule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .molecule-metric {
+            text-align: center;
+            padding: 16px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+        
+        .molecule-metric .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .molecule-metric .label {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        /* Organismos */
+        .organism-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .organism-agent-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .organism-agent-panel h3 {
+            color: var(--dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .organism-agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .agent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--light);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s;
+        }
+        
+        .agent-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .agent-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .agent-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .agent-role {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        /* Template */
+        .template-header {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        
+        .template-header h1 {
+            color: var(--dark);
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+        
+        .template-header .version {
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .template-header .subtitle {
+            color: #64748b;
+            margin-top: 8px;
+        }
+        
+        /* Workflow Visualizer */
+        .workflow-canvas {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .workflow-node {
+            position: absolute;
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            padding: 16px;
+            min-width: 150px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: move;
+            transition: all 0.3s;
+        }
+        
+        .workflow-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .workflow-node.orquestador { border-color: #2563eb; }
+        .workflow-node.analisis { border-color: #10b981; }
+        .workflow-node.ejecucion { border-color: #f59e0b; }
+        .workflow-node.validacion { border-color: #ef4444; }
+        
+        .node-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+        
+        .node-status {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .organism-dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .template-header h1 {
+                font-size: 24px;
+            }
+        }
+        
+        /* Animaciones */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .active-indicator {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Template: Header -->
+        <div class="template-header">
+            <h1>AVIA Senior</h1>
+            <div class="version">v24.3</div>
+            <div class="subtitle">Sistema de Orquestación Multiagente con Diseño Atómico</div>
+        </div>
+        
+        <!-- Organismo: Dashboard Métricas -->
+        <div class="organism-dashboard">
+            <div class="molecule-card">
+                <div class="molecule-metric">
+                    <div class="value" id="activeAgents">8</div>
+                    <div class="label">Agentes Activos</div>
+                </div>
+            </div>
+            
+            <div class="molecule-card">
+                <div class="molecule-metric">
+                    <div class="value" id="tasksCompleted">247</div>
+                    <div class="label">Tareas Completadas</div>
+                </div>
+            </div>
+            
+            <div class="molecule-card">
+                <div class="molecule-metric">
+                    <div class="value" id="efficiency">94%</div>
+                    <div class="label">Eficiencia</div>
+                </div>
+            </div>
+            
+            <div class="molecule-card">
+                <div class="molecule-metric">
+                    <div class="value" id="uptime">99.8%</div>
+                    <div class="label">Disponibilidad</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Organismo: Panel de Agentes -->
+        <div class="organism-agent-panel">
+            <div class="molecule-header">
+                <h3>
+                    <span class="active-indicator"></span>
+                    Agentes del Sistema
+                </h3>
+                <button class="atom-btn primary" onclick="refreshAgents()">Actualizar</button>
+            </div>
+            
+            <div class="organism-agent-list" id="agentList">
+                <!-- Generado dinámicamente -->
+            </div>
+        </div>
+        
+        <!-- Organismo: Workflow Canvas -->
+        <div class="molecule-card">
+            <div class="molecule-header">
+                <h3>Flujo de Orquestación</h3>
+                <div>
+                    <span class="atom-badge active">En Ejecución</span>
+                </div>
+            </div>
+            
+            <div class="workflow-canvas" id="workflowCanvas">
+                <!-- Nodos generados dinámicamente -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuración de agentes AVIA
+        const agentes = [
+            { id: 1, nombre: 'AVIA-Clon-Carlos', rol: 'ORQUESTADOR', capacidades: ['Orquestación', 'Decisión', 'Coordinación'], estado: 'active' },
+            { id: 2, nombre: 'AVIA-Analista', rol: 'ANÁLISIS', capacidades: ['Análisis de Datos', 'Reportes'], estado: 'active' },
+            { id: 3, nombre: 'AVIA-Ejecutor', rol: 'EJECUCIÓN', capacidades: ['Implementación', 'Deploy'], estado: 'active' },
+            { id: 4, nombre: 'AVIA-Validador', rol: 'VALIDACIÓN', capacidades: ['Testing', 'QA'], estado: 'active' },
+            { id: 5, nombre: 'AVIA-Monitor', rol: 'MONITOREO', capacidades: ['Logs', 'Alertas'], estado: 'active' },
+            { id: 6, nombre: 'AVIA-Optimizador', rol: 'OPTIMIZACIÓN', capacidades: ['Performance', 'Recursos'], estado: 'pending' },
+            { id: 7, nombre: 'AVIA-Documentador', rol: 'DOCUMENTACIÓN', capacidades: ['Docs', 'Specs'], estado: 'active' },
+            { id: 8, nombre: 'AVIA-Seguridad', rol: 'SEGURIDAD', capacidades: ['Audit', 'Compliance'], estado: 'active' }
+        ];
+        
+        // Renderizar lista de agentes
+        function renderAgents() {
+            const agentList = document.getElementById('agentList');
+            agentList.innerHTML = agentes.map(agente => `
+                <div class="agent-item">
+                    <div class="agent-info">
+                        <div class="agent-name">${agente.nombre}</div>
+                        <div class="agent-role">${agente.rol} • ${agente.capacidades.join(', ')}</div>
+                    </div>
+                    <span class="atom-badge ${agente.estado}">${agente.estado}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Renderizar workflow
+        function renderWorkflow() {
+            const canvas = document.getElementById('workflowCanvas');
+            const nodes = [
+                { id: 'orq', title: 'Orquestador', status: 'Coordinando', x: 50, y: 50, type: 'orquestador' },
+                { id: 'ana', title: 'Análisis', status: 'Procesando', x: 300, y: 30, type: 'analisis' },
+                { id: 'eje', title: 'Ejecución', status: 'Activo', x: 300, y: 150, type: 'ejecucion' },
+                { id: 'val', title: 'Validación', status: 'Verificando', x: 550, y: 90, type: 'validacion' }
+            ];
+            
+            canvas.innerHTML = nodes.map(node => `
+                <div class="workflow-node ${node.type}" style="left: ${node.x}px; top: ${node.y}px;">
+                    <div class="node-title">${node.title}</div>
+                    <div class="node-status">${node.status}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Actualizar métricas
+        function updateMetrics() {
+            const activeAgents = agentes.filter(a => a.estado === 'active').length;
+            document.getElementById('activeAgents').textContent = activeAgents;
+            
+            const tasksCompleted = Math.floor(Math.random() * 50) + 220;
+            document.getElementById('tasksCompleted').textContent = tasksCompleted;
+            
+            const efficiency = (93 + Math.random() * 7).toFixed(1);
+            document.getElementById('efficiency').textContent = efficiency + '%';
+        }
+        
+        // Función de refresco
+        function refreshAgents() {
+            renderAgents();
+            updateMetrics();
+            console.log('Sistema actualizado - v24.3');
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAgents();
+            renderWorkflow();
+            updateMetrics();
+            
+            // Auto-actualización cada 5 segundos
+            setInterval(updateMetrics, 5000);
+        });
+        
+        // Drag and drop para nodos de workflow
+        let draggedNode = null;
+        
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.workflow-node')) {
+                draggedNode = e.target.closest('.workflow-node');
+                draggedNode.style.cursor = 'grabbing';
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (draggedNode) {
+                const canvas = document.getElementById('workflowCanvas');
+                const rect = canvas.getBoundingClientRect();
+                draggedNode.style.left = (e.clientX - rect.left - 75) + 'px';
+                draggedNode.style.top = (e.clientY - rect.top - 20) + 'px';
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (draggedNode) {
+                draggedNode.style.cursor = 'move';
+                draggedNode = null;
+            }
+        });
+    </script>
+</body>
+</html>

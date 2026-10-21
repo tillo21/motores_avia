@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Portal v2.0 - Demo Validación</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner { animation: spin 1s linear infinite; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app"></div>
+
+    <script>
+        // ==================== MOCK BACKEND ====================
+        const MockBackend = {
+            users: [
+                { id: 1, email: 'admin@clinical.com', username: 'admin', password: 'admin123', role: 'admin', is_active: true },
+                { id: 2, email: 'security@clinical.com', username: 'security', password: 'security123', role: 'security_officer', is_active: true },
+                { id: 3, email: 'doctor@clinical.com', username: 'doctor', password: 'doctor123', role: 'clinician', is_active: true },
+                { id: 4, email: 'viewer@clinical.com', username: 'viewer', password: 'viewer123', role: 'viewer', is_active: true }
+            ],
+            auditLogs: [
+                { id: 1, user_id: 1, action: 'user.login', resource: 'auth', details: 'Admin login successful', timestamp: new Date().toISOString() },
+                { id: 2, user_id: 2, action: 'permission.grant', resource: 'user', details: 'Security officer granted permissions', timestamp: new Date(Date.now() - 3600000).toISOString() },
+                { id: 3, user_id: 1, action: 'security.audit', resource: 'system', details: 'System security audit completed', timestamp: new Date(Date.now() - 7200000).toISOString() },
+                { id: 4, user_id: 3, action: 'patient.view', resource: 'patient', details: 'Patient record accessed', timestamp: new Date(Date.now() - 10800000).toISOString() }
+            ],
+            sessions: {},
+            
+            login(email, password) {
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        const user = this.users.find(u => u.email === email && u.password === password);
+                        if (user) {
+                            const token = 'mock_token_' + Math.random().toString(36).substr(2, 9);
+                            this.sessions[token] = user.id;
+                            this.auditLogs.unshift({
+                                id: this.auditLogs.length + 1,
+                                user_id: user.id,
+                                action: 'user.login',
+                                resource: 'auth',
+                                details: `${user.username} logged in`,
+                                timestamp: new Date().toISOString()
+                            });
+                            resolve({ access_token: token, user });
+                        } else {
+                            reject(new Error('Invalid credentials'));
+                        }
+                    }, 500);
+                });
+            },
+            
+            getLogs() {
+                return new Promise(resolve => {
+                    setTimeout(() => resolve([...this.auditLogs]), 300);
+                });
+            },
+            
+            createLog(token, logData) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const userId = this.sessions[token];
+                        const newLog = {
+                            id: this.auditLogs.length + 1,
+                            user_id: userId,
+                            ...logData,
+                            timestamp: new Date().toISOString()
+                        };
+                        this.auditLogs.unshift(newLog);
+                        resolve(newLog);
+                    }, 300);
+                });
+            }
+        };
+
+        // ==================== APP STATE ====================
+        let appState = {
+            currentUser: null,
+            token: null,
+            logs: [],
+            loading: false,
+            error: null,
+            view: 'login'
+        };
+
+        // ==================== HELPERS ====================
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('es-ES', { 
+                year: 'numeric', month: 'short', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+            });
+        }
+
+        function getRoleBadge(role) {
+            const styles = {
+                admin: 'bg-red-100 text-red-800',
+                security_officer: 'bg-orange-100 text-orange-800',
+                clinician: 'bg-blue-100 text-blue-800',
+                viewer: 'bg-gray-100 text-gray-800'
+            };
+            return `<span class="px-3 py-1 text-xs font-medium rounded-full ${styles[role] || styles.viewer}">${role}</span>`;
+        }
+
+        function getActionBadge(action) {
+            const colors = {
+                'user.login': 'bg-green-100 text-green-800',
+                'user.logout': 'bg-gray-100 text-gray-800',
+                'permission.grant': 'bg-purple-100 text-purple-800',
+                'security.audit': 'bg-red-100 text-red-800',
+                'patient.view': 'bg-blue-100 text-blue-800'
+            };
+            const color = colors[action] || 'bg-gray-100 text-gray-800';
+            return `<span class="px-2 py-1 text-xs font-medium rounded ${color}">${action}</span>`;
+        }
+
+        // ==================== VIEWS ====================
+        function LoginView() {
+            return `
+                <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md fade-in">
+                        <div class="text-center mb-8">
+                            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-full mb-4">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
+                            <h1 class="text-3xl font-bold text-gray-900">Clinical Portal v2.0</h1>
+                            <p class="text-gray-600 mt-2">Demo de Validación - Mock Backend</p>
+                        </div>
+
+                        ${appState.error ? `
+                            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                                <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-sm text-red-800">${appState.error}</p>
+                            </div>
+                        ` : ''}
+
+                        <form id="loginForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <input 
+                                    type="email" 
+                                    id="email" 
+                                    required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="admin@clinical.com"
+                                    value="admin@clinical.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                <input 
+                                    type="password" 
+                                    id="password" 
+                                    required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="••••••••"
+                                    value="admin123"
+                                />
+                            </div>
+
+                            <button 
+                                type="submit"
+                                class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-all transform hover:scale-105 active:scale-95"
+                            >
+                                ${appState.loading ? 'Authenticating...' : 'Sign In'}
+                            </button>
+                        </form>
+
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <p class="text-xs font-semibold text-gray-700 mb-2">Credenciales de prueba:</p>
+                            <div class="space-y-1 text-xs text-gray-600 font-mono">
+                                <p>👑 Admin: admin@clinical.com / admin123</p>
+                                <p>🛡️ Security: security@clinical.com / security123</p>
+                                <p>👨‍⚕️ Doctor: doctor@clinical.com / doctor123</p>
+                                <p>👁️ Viewer: viewer@clinical.com / viewer123</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function DashboardView() {
+            const stats = {
+                totalLogs: appState.logs.length,
+                todayLogs: appState.logs.filter(log => {
+                    const today = new Date().toDateString();
+                    return new Date(log.timestamp).toDateString() === today;
+                }).length,
+                activeSessions: 1,
+                securityEvents: appState.logs.filter(l => l.action.includes('security')).length
+            };
+
+            const canViewLogs = ['admin', 'security_officer'].includes(appState.currentUser.role);
+
+            return `
+                <div class="min-h-screen bg-gray-50">
+                    <!-- Header -->
+                    <header class="bg-white shadow-sm border-b border-gray-200">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                    <div>
+                                        <h1 class="text-2xl font-bold text-gray-900">Clinical Portal v2.0</h1>
+                                        <p class="text-sm text-gray-600">Security & Audit System</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <p class="font-semibold text-gray-900">${appState.currentUser.username}</p>
+                                        ${getRoleBadge(appState.currentUser.role)}
+                                    </div>
+                                    <button 
+                                        onclick="handleLogout()"
+                                        class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- Main Content -->
+                    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">
+                            ${StatCard('📊', 'Total Logs', stats.totalLogs, 'blue')}
+                            ${StatCard('⏰', "Today's Logs", stats.todayLogs, 'green')}
+                            ${StatCard('👥', 'Active Sessions', stats.activeSessions, 'purple')}
+                            ${StatCard('🛡️', 'Security Events', stats.securityEvents, 'red')}
+                        </div>
+
+                        <!-- Audit Logs -->
+                        ${canViewLogs ? `
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 fade-in">
+                                <div class="flex items-center justify-between mb-6">
+                                    <h2 class="text-xl font-bold text-gray-900">Audit Logs</h2>
+                                    <button 
+                                        onclick="handleCreateTestLog()"
+                                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
+                                    >
+                                        ➕ Create Test Log
+                                    </button>
+                                </div>
+                                ${AuditLogsTable()}
+                            </div>
+                        ` : `
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center fade-in">
+                                <svg class="w-12 h-12 text-yellow-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                <h3 class="text-lg font-semibold text-yellow-900 mb-2">Restricted Access</h3>
+                                <p class="text-yellow-800">You need Security Officer or Admin role to view audit logs.</p>
+                            </div>
+                        `}
+                    </main>
+                </div>
+            `;
+        }
+
+        function StatCard(icon, label, value, color) {
+            const colors = {
+                blue: 'bg-blue-500',
+                green: 'bg-green-500',
+                purple: 'bg-purple-500',
+                red: 'bg-red-500'
+            };
+            return `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 ${colors[color]} rounded-lg flex items-center justify-center text-2xl">
+                            ${icon}
+                        </div>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-900 mb-1">${value}</p>
+                    <p class="text-sm text-gray-600">${label}</p>
+                </div>
+            `;
+        }
+
+        function AuditLogsTable() {
+            if (appState.loading) {
+                return `
+                    <div class="flex justify-center py-12">
+                        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full spinner"></div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${appState.logs.map(log => `
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#${log.id}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getActionBadge(log.action)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${log.resource}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">${log.details}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(log.timestamp)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // ==================== EVENT HANDLERS ====================
+        async function handleLogin(e) {
+            e.preventDefault();
+            appState.loading = true;
+            appState.error = null;
+            render();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const result = await MockBackend.login(email, password);
+                appState.currentUser = result.user;
+                appState.token = result.access_token;
+                appState.logs = await MockBackend.getLogs();
+                appState.view = 'dashboard';
+            } catch (err) {
+                appState.error = err.message;
+            } finally {
+                appState.loading = false;
+                render();
+            }
+        }
+
+        function handleLogout() {
+            MockBackend.auditLogs.unshift({
+                id: MockBackend.auditLogs.length + 1,
+                user_id: appState.currentUser.id,
+                action: 'user.logout',
+                resource: 'auth',
+                details: `${appState.currentUser.username} logged out`,
+                timestamp: new Date().toISOString()
+            });
+            appState = { ...appState, currentUser: null, token: null, view: 'login', error: null };
+            render();
+        }
+
+        async function handleCreateTestLog() {
+            appState.loading = true;
+            render();
+
+            try {
+                await MockBackend.createLog(appState.token, {
+                    action: 'test.manual',
+                    resource: 'demo',
+                    details: 'Manual test log created from dashboard'
+                });
+                appState.logs = await MockBackend.getLogs();
+            } catch (err) {
+                console.error('Failed to create log:', err);
+            } finally {
+                appState.loading = false;
+                render();
+            }
+        }
+
+        // ==================== RENDER ====================
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = appState.view === 'login' ? LoginView() : DashboardView();
+
+            // Attach event listeners
+            if (appState.view === 'login') {
+                const form = document.getElementById('loginForm');
+                if (form) form.addEventListener('submit', handleLogin);
+            }
+        }
+
+        // ==================== INITIALIZE ====================
+        render();
+    </script>
+</body>
+</html>

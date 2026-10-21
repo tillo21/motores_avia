@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orquestador AVIA v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .drag-active { border-color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1); }
+        .panel-slide { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+
+    <!-- TOOLBAR -->
+    <div class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-white">🌌 Orquestador de Agentes AVIA</h1>
+                <div class="flex gap-3">
+                    <button id="btnFiles" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition flex items-center gap-2">
+                        📤 Archivos (<span id="fileCount">0</span>)
+                    </button>
+                    <button id="btnLinks" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition flex items-center gap-2">
+                        🔗 Enlaces (<span id="linkCount">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="max-w-7xl mx-auto p-6">
+        
+        <!-- CHAT INTERFACE -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-6">
+            <h2 class="text-xl font-bold text-white mb-4">💬 Interfaz de Comunicación</h2>
+            <textarea id="agentMessage" placeholder="Escribe tu mensaje a los agentes AVIA..." class="w-full h-32 px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <div id="attachmentInfo" class="flex gap-2 text-sm text-slate-400"></div>
+                <button id="btnSend" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center gap-2">
+                    ✓ Enviar a Agentes
+                </button>
+            </div>
+        </div>
+
+        <!-- AGENT CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="agentGrid"></div>
+
+    </div>
+
+    <!-- PANEL ARCHIVOS -->
+    <div id="filesPanel" class="hidden fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-slate-700 shadow-2xl z-50 overflow-y-auto panel-slide">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">📤 Subir Archivos</h2>
+                <button id="closeFiles" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div id="dropZone" class="border-2 border-dashed border-slate-700 rounded-lg p-8 text-center transition-colors bg-slate-800/50">
+                <div class="text-6xl mb-3">📤</div>
+                <p class="text-sm text-slate-300 mb-2">Arrastra archivos aquí</p>
+                <p class="text-xs text-slate-500 mb-4">o</p>
+                <label class="cursor-pointer">
+                    <span class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg inline-block">Explorar archivos</span>
+                    <input type="file" id="fileInput" multiple class="hidden" accept="image/*,audio/*,video/*,.pdf,.txt,.doc,.docx">
+                </label>
+                <p class="text-xs text-slate-500 mt-4">Máximo 10MB por archivo</p>
+            </div>
+            <div id="filesList" class="mt-6"></div>
+        </div>
+    </div>
+
+    <!-- PANEL ENLACES -->
+    <div id="linksPanel" class="hidden fixed right-0 top-0 h-full w-96 bg-slate-900 border-l border-slate-700 shadow-2xl z-50 overflow-y-auto panel-slide">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">🔗 Añadir Enlaces</h2>
+                <button id="closeLinks" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-3">
+                <input type="url" id="urlInput" placeholder="https://ejemplo.com" class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="addLink" class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition flex items-center justify-center gap-2">
+                    ➕ Añadir enlace
+                </button>
+            </div>
+            <div id="linksList" class="mt-6"></div>
+        </div>
+    </div>
+
+    <script>
+        // SISTEMA DE PERSISTENCIA SEGURA
+        const SafeStorage = (() => {
+            let storage = {};
+            const isSandbox = (() => {
+                try {
+                    localStorage.setItem('__test', '1');
+                    localStorage.removeItem('__test');
+                    return false;
+                } catch { return true; }
+            })();
+            return {
+                setItem: (k, v) => {
+                    try { if (!isSandbox) localStorage.setItem(k, v); storage[k] = v; } catch { storage[k] = v; }
+                },
+                getItem: (k) => {
+                    try { return !isSandbox ? localStorage.getItem(k) : storage[k]; } catch { return storage[k]; }
+                }
+            };
+        })();
+
+        // ESTADO
+        let files = [];
+        let links = JSON.parse(SafeStorage.getItem('avia-links') || '[]');
+        const agents = ['AVIA Clon-Carlos', 'AVIA Studio', 'AVIA Persistencia', 'AVIA Semiotic', 'AVIA Ontología', 'AVIA Curator'];
+
+        // INICIALIZACIÓN
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAgents();
+            renderLinks();
+            updateCounts();
+        });
+
+        // AGENTES
+        function renderAgents() {
+            const grid = document.getElementById('agentGrid');
+            grid.innerHTML = agents.map(agent => `
+                <div class="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20 fade-in">
+                    <h3 class="text-lg font-bold text-white mb-2">${agent}</h3>
+                    <p class="text-sm text-slate-300">Estado: Activo</p>
+                    <div class="mt-4 flex gap-2">
+                        <div class="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-green-500 rounded-full" style="width: ${Math.random()*100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ARCHIVOS
+        document.getElementById('btnFiles').onclick = () => {
+            document.getElementById('linksPanel').classList.add('hidden');
+            document.getElementById('filesPanel').classList.toggle('hidden');
+        };
+        document.getElementById('closeFiles').onclick = () => document.getElementById('filesPanel').classList.add('hidden');
+
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, (ev) => {
+            ev.preventDefault();
+            dropZone.classList.add('drag-active');
+        }));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            addFiles(Array.from(e.dataTransfer.files));
+        });
+        document.getElementById('fileInput').onchange = (e) => addFiles(Array.from(e.target.files));
+
+        function addFiles(newFiles) {
+            files = [...files, ...newFiles.filter(f => f.size <= 10*1024*1024)];
+            renderFiles();
+            updateCounts();
+        }
+
+        function renderFiles() {
+            const list = document.getElementById('filesList');
+            if (files.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = `<h3 class="text-sm font-semibold text-slate-300 mb-3">Archivos (${files.length})</h3>` +
+                files.map((file, i) => `
+                    <div class="bg-slate-800 rounded-lg p-3 border border-slate-700 mb-2 fade-in">
+                        <div class="flex gap-3">
+                            <div class="w-12 h-12 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 text-2xl">
+                                ${getFileIcon(file.type)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-white font-medium truncate">${file.name}</p>
+                                <p class="text-xs text-slate-400">${(file.size/1024).toFixed(1)} KB</p>
+                            </div>
+                            <button onclick="removeFile(${i})" class="text-red-400 hover:text-red-300 flex-shrink-0">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function getFileIcon(type) {
+            if (type.startsWith('image/')) return '🖼️';
+            if (type.startsWith('audio/')) return '🎵';
+            if (type.startsWith('video/')) return '🎬';
+            if (type.includes('pdf')) return '📄';
+            return '📁';
+        }
+
+        function removeFile(i) {
+            files = files.filter((_, idx) => idx !== i);
+            renderFiles();
+            updateCounts();
+        }
+
+        // ENLACES
+        document.getElementById('btnLinks').onclick = () => {
+            document.getElementById('filesPanel').classList.add('hidden');
+            document.getElementById('linksPanel').classList.toggle('hidden');
+        };
+        document.getElementById('closeLinks').onclick = () => document.getElementById('linksPanel').classList.add('hidden');
+
+        document.getElementById('addLink').onclick = addLink;
+        document.getElementById('urlInput').onkeypress = (e) => { if (e.key === 'Enter') addLink(); };
+
+        function addLink() {
+            const input = document.getElementById('urlInput');
+            const url = input.value.trim();
+            if (!url) return;
+            
+            const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+            links.push({
+                url: fullUrl,
+                title: new URL(fullUrl).hostname,
+                timestamp: Date.now()
+            });
+            
+            SafeStorage.setItem('avia-links', JSON.stringify(links));
+            input.value = '';
+            renderLinks();
+            updateCounts();
+        }
+
+        function renderLinks() {
+            const list = document.getElementById('linksList');
+            if (links.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = `<h3 class="text-sm font-semibold text-slate-300 mb-3">Enlaces (${links.length})</h3>` +
+                links.map((link, i) => `
+                    <div class="bg-slate-800 rounded-lg p-4 border border-slate-700 mb-2 fade-in">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-blue-600/20 rounded flex items-center justify-center flex-shrink-0 text-xl">🔗</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm text-white font-medium truncate">${link.url}</p>
+                                <p class="text-xs text-slate-400 mt-1">${link.title}</p>
+                                <p class="text-xs text-slate-500 mt-1">${new Date(link.timestamp).toLocaleString()}</p>
+                            </div>
+                            <button onclick="removeLink(${i})" class="text-red-400 hover:text-red-300 flex-shrink-0">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function removeLink(i) {
+            links = links.filter((_, idx) => idx !== i);
+            SafeStorage.setItem('avia-links', JSON.stringify(links));
+            renderLinks();
+            updateCounts();
+        }
+
+        // ACTUALIZAR CONTADORES
+        function updateCounts() {
+            document.getElementById('fileCount').textContent = files.length;
+            document.getElementById('linkCount').textContent = links.length;
+            const info = document.getElementById('attachmentInfo');
+            const parts = [];
+            if (files.length > 0) parts.push(`📎 ${files.length} archivos`);
+            if (links.length > 0) parts.push(`🔗 ${links.length} enlaces`);
+            info.innerHTML = parts.join(' ');
+        }
+
+        // ENVIAR
+        document.getElementById('btnSend').onclick = async () => {
+            const message = document.getElementById('agentMessage').value;
+            if (!message && files.length === 0 && links.length === 0) {
+                alert('Añade un mensaje, archivo o enlace');
+                return;
+            }
+
+            const payload = {
+                message,
+                files: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
+                links,
+                timestamp: Date.now()
+            };
+
+            console.log('📤 Enviando a backend:', payload);
+            
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                console.log('✅ Respuesta:', result);
+                alert('Mensaje enviado a los agentes AVIA');
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('Error al enviar (backend no disponible)');
+            }
+        };
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA-LEID v5.0-alpha | Audio Intelligence Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ========================================
+           AVIA-LEID v5.0-alpha - SISTEMA BASE
+           Reconstrucción limpia sin dependencias de v4.x
+        ======================================== */
+        
+        :root {
+            --primary: #4299e1;
+            --primary-dark: #2b6cb0;
+            --bg-light: #f7fafc;
+            --bg-card: #ffffff;
+            --text: #2d3748;
+            --text-secondary: #718096;
+            --border: #e2e8f0;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --error: #f56565;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-light: #1a202c;
+            --bg-card: #2d3748;
+            --text: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --border: #4a5568;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-light);
+            color: var(--text);
+            line-height: 1.6;
+            transition: var(--transition);
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--bg-card);
+            border-bottom: 2px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .version-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* LAYOUT PRINCIPAL */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        .main-panel {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .side-panel {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            max-height: calc(100vh - 8rem);
+            overflow-y: auto;
+        }
+
+        /* ZONA DE CARGA */
+        .upload-zone {
+            border: 3px dashed var(--border);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.drag-over {
+            border-color: var(--primary);
+            background: rgba(66, 153, 225, 0.05);
+        }
+
+        .upload-zone i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .upload-zone input[type="file"] {
+            display: none;
+        }
+
+        /* REPRODUCTOR */
+        .player {
+            margin-bottom: 2rem;
+        }
+
+        .waveform-container {
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+            height: 200px;
+        }
+
+        #waveformCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .control-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.1);
+        }
+
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* PANEL IA */
+        .ia-section {
+            margin-bottom: 2rem;
+        }
+
+        .ia-status {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .ia-status.disponible {
+            background: rgba(72, 187, 120, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .ia-status.no-disponible {
+            background: rgba(245, 101, 101, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .ia-status.procesando {
+            background: rgba(237, 137, 54, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .ia-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* RESULTADO IA */
+        .resultado-ia {
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .resultado-ia.visible {
+            display: block;
+        }
+
+        .resultado-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .resultado-header h3 {
+            color: var(--primary);
+        }
+
+        .resultado-content {
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+
+        .resultado-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        /* SPINNER */
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* MONITOR DE ESTADO */
+        .monitor {
+            background: var(--bg-light);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .monitor-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .monitor-item:last-child {
+            border-bottom: none;
+        }
+
+        .monitor-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .monitor-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* ACCESIBILIDAD */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ANUNCIADOR ARIA */
+        [role="status"] {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-waveform-lines" aria-hidden="true"></i>
+            AVIA-LEID
+            <span class="version-badge">v5.0-α</span>
+        </div>
+        <div class="header-actions">
+            <button id="btnTemaOscuro" class="btn btn-secondary" aria-label="Alternar tema oscuro">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+            </button>
+            <button id="btnAyuda" class="btn btn-secondary" aria-label="Ayuda">
+                <i class="fas fa-question-circle" aria-hidden="true"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="container">
+        <!-- PANEL IZQUIERDO -->
+        <main class="main-panel">
+            <h2>Editor de Audio</h2>
+            
+            <!-- ZONA DE CARGA -->
+            <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Seleccionar archivo de audio">
+                <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>
+                <h3>Arrastra un archivo de audio aquí</h3>
+                <p>o haz clic para seleccionar</p>
+                <p class="upload-info">Soporta: MP3, WAV, OGG, M4A (max 100MB)</p>
+                <input type="file" id="fileInput" accept="audio/*" aria-label="Seleccionar archivo de audio">
+            </div>
+
+            <!-- INFORMACIÓN DEL ARCHIVO -->
+            <div id="fileInfo" class="monitor" style="display: none;">
+                <div class="monitor-item">
+                    <span class="monitor-label">Archivo:</span>
+                    <span class="monitor-value" id="fileName">--</span>
+                </div>
+                <div class="monitor-item">
+                    <span class="monitor-label">Duración:</span>
+                    <span class="monitor-value" id="fileDuration">--</span>
+                </div>
+                <div class="monitor-item">
+                    <span class="monitor-label">Tamaño:</span>
+                    <span class="monitor-value" id="fileSize">--</span>
+                </div>
+            </div>
+
+            <!-- REPRODUCTOR -->
+            <section class="player" id="playerSection" style="display: none;">
+                <div class="waveform-container">
+                    <canvas id="waveformCanvas" aria-label="Forma de onda del audio"></canvas>
+                </div>
+
+                <div class="controls">
+                    <button class="control-btn" id="btnPlay" aria-label="Reproducir">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="control-btn" id="btnPause" aria-label="Pausar" style="display: none;">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="control-btn" id="btnStop" aria-label="Detener">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                    <span class="time-display" id="timeDisplay" aria-live="off">00:00 / 00:00</span>
+                </div>
+            </section>
+        </main>
+
+        <!-- PANEL DERECHO -->
+        <aside class="side-panel">
+            <h2>Inteligencia Artificial</h2>
+
+            <!-- ESTADO IA -->
+            <div id="iaStatus" class="ia-status no-disponible">
+                <i class="fas fa-circle" aria-hidden="true"></i>
+                <span id="iaStatusText">Verificando disponibilidad...</span>
+            </div>
+
+            <!-- BOTONES IA -->
+            <div class="ia-buttons">
+                <button id="btnTranscribir" class="btn btn-primary" disabled>
+                    <i class="fas fa-file-text" aria-hidden="true"></i>
+                    Transcribir
+                </button>
+                <button id="btnResumen" class="btn btn-primary" disabled>
+                    <i class="fas fa-compress-alt" aria-hidden="true"></i>
+                    Resumir
+                </button>
+                <button id="btnTraducir" class="btn btn-primary" disabled>
+                    <i class="fas fa-language" aria-hidden="true"></i>
+                    Traducir
+                </button>
+                <button id="btnSeparar" class="btn btn-primary" disabled>
+                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    Separar
+                </button>
+            </div>
+
+            <!-- RESULTADO IA -->
+            <div id="resultadoIA" class="resultado-ia">
+                <div class="resultado-header">
+                    <h3 id="resultadoTitulo">Transcripción</h3>
+                    <button id="btnCerrarResultado" class="btn btn-secondary" style="padding: 0.25rem 0.5rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="resultadoContenido" class="resultado-content"></div>
+                <div class="resultado-actions">
+                    <button id="btnCopiar" class="btn btn-secondary">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                    <button id="btnDescargarTXT" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> TXT
+                    </button>
+                </div>
+            </div>
+
+            <!-- MONITOR DE SESIÓN -->
+            <h3 style="margin-top: 2rem;">Monitor</h3>
+            <div class="monitor">
+                <div class="monitor-item">
+                    <span class="monitor-label">Reproducciones:</span>
+                    <span class="monitor-value" id="monitorReproducciones">0</span>
+                </div>
+                <div class="monitor-item">
+                    <span class="monitor-label">Operaciones IA:</span>
+                    <span class="monitor-value" id="monitorIA">0</span>
+                </div>
+                <div class="monitor-item">
+                    <span class="monitor-label">Errores:</span>
+                    <span class="monitor-value" id="monitorErrores">0</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- AUDIO OCULTO -->
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <!-- ANUNCIADOR ARIA -->
+    <div id="anunciador" role="status" aria-live="polite" aria-atomic="true" class="visually-hidden"></div>
+
+    <script>
+        /* ========================================
+           AVIA-LEID v5.0-alpha - CORE ENGINE
+           Transcripción real mediante archivos adjuntos
+        ======================================== */
+
+        // ESTADO GLOBAL UNIFICADO
+        var estado = {
+            // AUDIO
+            archivoActual: null,
+            urlArchivoActual: null,
+            audioContexto: null,
+            datosOnda: null,
+            
+            // REPRODUCCIÓN
+            reproduciendo: false,
+            velocidad: 1,
+            reproducciones: 0,
+            
+            // IA
+            iaDisponible: false,
+            iaProcesando: false,
+            operacionIA: null,
+            ultimaTranscripcion: '',
+            operacionesIA: 0,
+            
+            // SISTEMA
+            modoOscuro: false,
+            errores: 0,
+            inicioSesion: Date.now()
+        };
+
+        // CONFIGURACIÓN IA
+        var CONFIG_IA = {
+            BOT_TRANSCRIPCION: '@GPT-4o',
+            BOT_RESUMEN: '@Claude-3.5-Sonnet',
+            MAX_TAMAÑO_ARCHIVO: 100 * 1024 * 1024, // 100MB
+            FORMATOS_ACEPTADOS: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a']
+        };
+
+        // ELEMENTOS DOM
+        var elementos = {
+            uploadZone: document.getElementById('uploadZone'),
+            fileInput: document.getElementById('fileInput'),
+            fileInfo: document.getElementById('fileInfo'),
+            fileName: document.getElementById('fileName'),
+            fileDuration: document.getElementById('fileDuration'),
+            fileSize: document.getElementById('fileSize'),
+            
+            playerSection: document.getElementById('playerSection'),
+            canvas: document.getElementById('waveformCanvas'),
+            audio: document.getElementById('audioPlayer'),
+            btnPlay: document.getElementById('btnPlay'),
+            btnPause: document.getElementById('btnPause'),
+            btnStop: document.getElementById('btnStop'),
+            timeDisplay: document.getElementById('timeDisplay'),
+            
+            iaStatus: document.getElementById('iaStatus'),
+            iaStatusText: document.getElementById('iaStatusText'),
+            btnTranscribir: document.getElementById('btnTranscribir'),
+            btnResumen: document.getElementById('btnResumen'),
+            btnTraducir: document.getElementById('btnTraducir'),
+            btnSeparar: document.getElementById('btnSeparar'),
+            
+            resultadoIA: document.getElementById('resultadoIA'),
+            resultadoTitulo: document.getElementById('resultadoTitulo'),
+            resultadoContenido: document.getElementById('resultadoContenido'),
+            btnCerrarResultado: document.getElementById('btnCerrarResultado'),
+            btnCopiar: document.getElementById('btnCopiar'),
+            btnDescargarTXT: document.getElementById('btnDescargarTXT'),
+            
+            monitorReproducciones: document.getElementById('monitorReproducciones'),
+            monitorIA: document.getElementById('monitorIA'),
+            monitorErrores: document.getElementById('monitorErrores'),
+            
+            btnTemaOscuro: document.getElementById('btnTemaOscuro'),
+            anunciador: document.getElementById('anunciador')
+        };
+
+        // =====================================
+        // INICIALIZACIÓN
+        // =====================================
+        
+        function inicializar() {
+            verificarDisponibilidadIA();
+            configurarEventos();
+            anunciar('AVIA-LEID v5.0-alpha iniciado correctamente');
+        }
+
+        function verificarDisponibilidadIA() {
+            if (window.Poe && typeof window.Poe.sendUserMessage === 'function') {
+                estado.iaDisponible = true;
+                elementos.iaStatus.className = 'ia-status disponible';
+                elementos.iaStatusText.textContent = 'IA disponible - Poe conectado';
+                registrarHandlersPoe();
+                actualizarBotonesIA();
+            } else {
+                estado.iaDisponible = false;
+                elementos.iaStatus.className = 'ia-status no-disponible';
+                elementos.iaStatusText.textContent = 'IA no disponible - Ejecuta en Poe';
+                desactivarBotonesIA();
+            }
+        }
+
+        function registrarHandlersPoe() {
+            if (!window.Poe || typeof window.Poe.registerHandler !== 'function') return;
+
+            window.Poe.registerHandler('avia-transcribir-v5', function(resultado) {
+                manejarRespuestaIA(resultado, 'transcripcion');
+            });
+
+            window.Poe.registerHandler('avia-resumir-v5', function(resultado) {
+                manejarRespuestaIA(resultado, 'resumen');
+            });
+        }
+
+        function manejarRespuestaIA(resultado, tipo) {
+            var mensaje = resultado && resultado.responses && resultado.responses[0];
+            
+            if (!mensaje) {
+                finalizarOperacionIAConError('Respuesta vacía del servicio IA');
+                return;
+            }
+
+            if (mensaje.status === 'incomplete') {
+                elementos.resultadoIA.classList.add('visible');
+                elementos.resultadoTitulo.textContent = tipo === 'transcripcion' ? 'Transcribiendo...' : 'Procesando...';
+                elementos.resultadoContenido.textContent = mensaje.content || '';
+                return;
+            }
+
+            if (mensaje.status === 'complete') {
+                if (tipo === 'transcripcion') {
+                    estado.ultimaTranscripcion = mensaje.content || '';
+                }
+                estado.iaProcesando = false;
+                estado.operacionIA = null;
+                estado.operacionesIA++;
+                
+                actualizarBotonesIA();
+                actualizarMonitor();
+                
+                elementos.resultadoTitulo.textContent = tipo === 'transcripcion' ? 'Transcripción' : 'Resumen';
+                elementos.resultadoContenido.textContent = mensaje.content || 'Sin contenido';
+                elementos.resultadoIA.classList.add('visible');
+                
+                anunciar(tipo + ' completada');
+                return;
+            }
+
+            if (mensaje.status === 'error') {
+                finalizarOperacionIAConError(mensaje.statusText || 'Error en el servicio IA');
+            }
+        }
+
+        function finalizarOperacionIAConError(mensaje) {
+            estado.iaProcesando = false;
+            estado.operacionIA = null;
+            estado.errores++;
+            
+            actualizarBotonesIA();
+            actualizarMonitor();
+            
+            elementos.resultadoIA.classList.add('visible');
+            elementos.resultadoTitulo.textContent = 'Error';
+            elementos.resultadoContenido.textContent = mensaje;
+            elementos.iaStatus.className = 'ia-status no-disponible';
+            
+            anunciar('Error: ' + mensaje);
+        }
+
+        // =====================================
+        // GESTIÓN DE ARCHIVOS
+        // =====================================
+        
+        function configurarEventos() {
+            // CARGA DE ARCHIVO
+            elementos.uploadZone.addEventListener('click', function() {
+                elementos.fileInput.click();
+            });
+            
+            elementos.fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    cargarArchivo(e.target.files[0]);
+                }
+            });
+            
+            // DRAG & DROP
+            elementos.uploadZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                elementos.uploadZone.classList.add('drag-over');
+            });
+            
+            elementos.uploadZone.addEventListener('dragleave', function() {
+                elementos.uploadZone.classList.remove('drag-over');
+            });
+            
+            elementos.uploadZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                elementos.uploadZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    cargarArchivo(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // CONTROLES DE AUDIO
+            elementos.btnPlay.addEventListener('click', reproducir);
+            elementos.btnPause.addEventListener('click', pausar);
+            elementos.btnStop.addEventListener('click', detener);
+            
+            elementos.audio.addEventListener('timeupdate', actualizarTiempo);
+            elementos.audio.addEventListener('ended', function() {
+                estado.reproduciendo = false;
+                estado.reproducciones++;
+                elementos.btnPlay.style.display = 'inline-flex';
+                elementos.btnPause.style.display = 'none';
+                actualizarMonitor();
+            });
+            
+            // BOTONES IA
+            elementos.btnTranscribir.addEventListener('click', transcribir);
+            elementos.btnResumen.addEventListener('click', resumir);
+            elementos.btnCerrarResultado.addEventListener('click', function() {
+                elementos.resultadoIA.classList.remove('visible');
+            });
+            elementos.btnCopiar.addEventListener('click', copiarResultado);
+            elementos.btnDescargarTXT.addEventListener('click', descargarTXT);
+            
+            // TEMA
+            elementos.btnTemaOscuro.addEventListener('click', alternarTema);
+        }
+
+        function cargarArchivo(archivo) {
+            // VALIDACIÓN
+            if (!archivo.type.startsWith('audio/')) {
+                mostrarError('Por favor selecciona un archivo de audio válido');
+                return;
+            }
+            
+            if (archivo.size > CONFIG_IA.MAX_TAMAÑO_ARCHIVO) {
+                mostrarError('El archivo excede el tamaño máximo de 100MB');
+                return;
+            }
+            
+            // LIMPIAR ESTADO ANTERIOR
+            liberarRecursos();
+            
+            // ASIGNAR NUEVO ARCHIVO
+            estado.archivoActual = archivo;
+            estado.urlArchivoActual = URL.createObjectURL(archivo);
+            
+            elementos.audio.src = estado.urlArchivoActual;
+            elementos.audio.load();
+            
+            // MOSTRAR INFORMACIÓN
+            elementos.fileName.textContent = archivo.name;
+            elementos.fileSize.textContent = formatearTamaño(archivo.size);
+            elementos.fileInfo.style.display = 'block';
+            elementos.playerSection.style.display = 'block';
+            
+            elementos.audio.addEventListener('loadedmetadata', function() {
+                elementos.fileDuration.textContent = formatearTiempo(elementos.audio.duration);
+                generarFormaDeOnda();
+            }, {once: true});
+            
+            actualizarBotonesIA();
+            anunciar('Archivo cargado: ' + archivo.name);
+        }
+
+        function liberarRecursos() {
+            if (estado.urlArchivoActual) {
+                URL.revokeObjectURL(estado.urlArchivoActual);
+                estado.urlArchivoActual = null;
+            }
+            
+            if (estado.audioContexto && estado.audioContexto.state !== 'closed') {
+                estado.audioContexto.close();
+                estado.audioContexto = null;
+            }
+            
+            elementos.audio.pause();
+            elementos.audio.src = '';
+        }
+
+        // =====================================
+        // FORMA DE ONDA
+        // =====================================
+        
+        async function generarFormaDeOnda() {
+            try {
+                estado.audioContexto = new (window.AudioContext || window.webkitAudioContext)();
+                
+                var respuesta = await fetch(estado.urlArchivoActual);
+                var arrayBuffer = await respuesta.arrayBuffer();
+                var audioBuffer = await estado.audioContexto.decodeAudioData(arrayBuffer);
+                
+                var datosCanal = audioBuffer.getChannelData(0);
+                var muestras = 1000;
+                var blockSize = Math.floor(datosCanal.length / muestras);
+                var datosOnda = [];
+                
+                for (var i = 0; i < muestras; i++) {
+                    var inicio = blockSize * i;
+                    var suma = 0;
+                    for (var j = 0; j < blockSize; j++) {
+                        suma += Math.abs(datosCanal[inicio + j]);
+                    }
+                    datosOnda.push(suma / blockSize);
+                }
+                
+                estado.datosOnda = datosOnda;
+                dibujarOnda();
+            } catch (error) {
+                console.error('Error al generar forma de onda:', error);
+                anunciar('No se pudo generar la forma de onda');
+            }
+        }
+
+        function dibujarOnda() {
+            if (!estado.datosOnda) return;
+            
+            var canvas = elementos.canvas;
+            var ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+            
+            var anchoBarra = canvas.width / estado.datosOnda.length;
+            var alturaMaxima = canvas.height * 0.8;
+            
+            for (var i = 0; i < estado.datosOnda.length; i++) {
+                var altura = estado.datosOnda[i] * alturaMaxima;
+                var x = i * anchoBarra;
+                var y = (canvas.height - altura) / 2;
+                
+                ctx.fillRect(x, y, anchoBarra - 1, altura);
+            }
+        }
+
+        // =====================================
+        // REPRODUCCIÓN
+        // =====================================
+        
+        function reproducir() {
+            elementos.audio.play();
+            estado.reproduciendo = true;
+            elementos.btnPlay.style.display = 'none';
+            elementos.btnPause.style.display = 'inline-flex';
+        }
+
+        function pausar() {
+            elementos.audio.pause();
+            estado.reproduciendo = false;
+            elementos.btnPlay.style.display = 'inline-flex';
+            elementos.btnPause.style.display = 'none';
+        }
+
+        function detener() {
+            elementos.audio.pause();
+            elementos.audio.currentTime = 0;
+            estado.reproduciendo = false;
+            elementos.btnPlay.style.display = 'inline-flex';
+            elementos.btnPause.style.display = 'none';
+        }
+
+        function actualizarTiempo() {
+            var actual = elementos.audio.currentTime;
+            var total = elementos.audio.duration;
+            elementos.timeDisplay.textContent = formatearTiempo(actual) + ' / ' + formatearTiempo(total);
+        }
+
+        // =====================================
+        // FUNCIONES IA
+        // =====================================
+        
+        async function transcribir() {
+            if (!validarOperacionIA()) return;
+            
+            estado.iaProcesando = true;
+            estado.operacionIA = 'transcripcion';
+            elementos.iaStatus.className = 'ia-status procesando';
+            elementos.iaStatusText.textContent = 'Transcribiendo...';
+            actualizarBotonesIA();
+            
+            try {
+                var respuesta = await window.Poe.sendUserMessage(
+                    CONFIG_IA.BOT_TRANSCRIPCION + ' Transcribe fielmente el archivo de audio adjunto. Identifica hablantes cuando sea posible y mantén la puntuación correcta.',
+                    {
+                        attachments: [estado.archivoActual],
+                        handler: 'avia-transcribir-v5',
+                        stream: true,
+                        openChat: false,
+                        handlerContext: {
+                            nombreArchivo: estado.archivoActual.name,
+                            tipoOperacion: 'transcripcion'
+                        }
+                    }
+                );
+                
+                if (!respuesta || respuesta.success !== true) {
+                    throw new Error('Poe no aceptó la solicitud');
+                }
+            } catch (error) {
+                finalizarOperacionIAConError('Error al enviar archivo: ' + error.message);
+            }
+        }
+
+        async function resumir() {
+            if (!validarOperacionIA()) return;
+            
+            if (!estado.ultimaTranscripcion) {
+                mostrarError('Primero debes transcribir el audio');
+                return;
+            }
+            
+            estado.iaProcesando = true;
+            estado.operacionIA = 'resumen';
+            elementos.iaStatus.className = 'ia-status procesando';
+            elementos.iaStatusText.textContent = 'Generando resumen...';
+            actualizarBotonesIA();
+            
+            try {
+                var respuesta = await window.Poe.sendUserMessage(
+                    CONFIG_IA.BOT_RESUMEN + ' Resume el siguiente texto de forma concisa pero completa:\n\n' + estado.ultimaTranscripcion,
+                    {
+                        handler: 'avia-resumir-v5',
+                        stream: true,
+                        openChat: false
+                    }
+                );
+                
+                if (!respuesta || respuesta.success !== true) {
+                    throw new Error('Poe no aceptó la solicitud');
+                }
+            } catch (error) {
+                finalizarOperacionIAConError('Error al generar resumen: ' + error.message);
+            }
+        }
+
+        function validarOperacionIA() {
+            if (!estado.iaDisponible) {
+                mostrarError('IA no disponible - Ejecuta la aplicación en Poe');
+                return false;
+            }
+            
+            if (estado.iaProcesando) {
+                mostrarError('Ya hay una operación en curso');
+                return false;
+            }
+            
+            if (!estado.archivoActual) {
+                mostrarError('Primero carga un archivo de audio');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function actualizarBotonesIA() {
+            var desactivar = !estado.iaDisponible || estado.iaProcesando || !estado.archivoActual;
+            
+            elementos.btnTranscribir.disabled = desactivar;
+            elementos.btnResumen.disabled = desactivar || !estado.ultimaTranscripcion;
+            elementos.btnTraducir.disabled = true; // v5.1
+            elementos.btnSeparar.disabled = true; // v5.1
+        }
+
+        function desactivarBotonesIA() {
+            elementos.btnTranscribir.disabled = true;
+            elementos.btnResumen.disabled = true;
+            elementos.btnTraducir.disabled = true;
+            elementos.btnSeparar.disabled = true;
+        }
+
+        // =====================================
+        // EXPORTACIÓN DE RESULTADOS
+        // =====================================
+        
+        function copiarResultado() {
+            var texto = elementos.resultadoContenido.textContent;
+            navigator.clipboard.writeText(texto).then(function() {
+                anunciar('Texto copiado al portapapeles');
+            }).catch(function() {
+                mostrarError('No se pudo copiar el texto');
+            });
+        }
+
+        function descargarTXT() {
+            var texto = elementos.resultadoContenido.textContent;
+            var blob = new Blob([texto], {type: 'text/plain'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'transcripcion_' + Date.now() + '.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            anunciar('Archivo descargado');
+        }
+
+        // =====================================
+        // UTILIDADES
+        // =====================================
+        
+        function formatearTiempo(segundos) {
+            if (!isFinite(segundos)) return '00:00';
+            var mins = Math.floor(segundos / 60);
+            var secs = Math.floor(segundos % 60);
+            return String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+        }
+
+        function formatearTamaño(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+
+        function anunciar(mensaje) {
+            elementos.anunciador.textContent = mensaje;
+            setTimeout(function() {
+                elementos.anunciador.textContent = '';
+            }, 3000);
+        }
+
+        function mostrarError(mensaje) {
+            estado.errores++;
+            actualizarMonitor();
+            anunciar('Error: ' + mensaje);
+            alert(mensaje);
+        }
+
+        function actualizarMonitor() {
+            elementos.monitorReproducciones.textContent = estado.reproducciones;
+            elementos.monitorIA.textContent = estado.operacionesIA;
+            elementos.monitorErrores.textContent = estado.errores;
+        }
+
+        function alternarTema() {
+            estado.modoOscuro = !estado.modoOscuro;
+            document.documentElement.setAttribute('data-theme', estado.modoOscuro ? 'dark' : 'light');
+            elementos.btnTemaOscuro.querySelector('i').className = estado.modoOscuro ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // =====================================
+        // INICIO
+        // =====================================
+        
+        window.addEventListener('DOMContentLoaded', inicializar);
+        window.addEventListener('beforeunload', liberarRecursos);
+    </script>
+</body>
+</html>

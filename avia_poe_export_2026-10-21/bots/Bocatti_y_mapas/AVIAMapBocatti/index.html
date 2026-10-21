@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Map → Bocatti | SiestaOTTOS v5.2</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+        
+        .map-container {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            font-size: 22px;
+            color: #1a202c;
+        }
+        
+        .btn-close {
+            background: #f7fafc;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+            transition: background 0.2s;
+        }
+        
+        .btn-close:hover {
+            background: #edf2f7;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .transport-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .transport-option {
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .transport-option:hover {
+            border-color: #cbd5e0;
+            background: #f7fafc;
+        }
+        
+        .transport-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .transport-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .transport-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .preferences {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .preference-tag {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #edf2f7;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preference-tag:hover {
+            background: #e2e8f0;
+        }
+        
+        .preference-tag.selected {
+            background: #667eea;
+            color: white;
+        }
+        
+        .route-info {
+            background: #f0fff4;
+            border-left: 4px solid #48bb78;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        
+        .route-info h3 {
+            color: #22543d;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .route-details {
+            color: #2f855a;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .map-preview {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 48px 24px;
+            text-align: center;
+            color: #718096;
+            margin-top: 20px;
+        }
+        
+        .map-preview-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            #map {
+                height: 350px;
+            }
+            
+            .transport-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 AVIA Map → Bocatti</h1>
+            <p>Sistema de navegación afectiva | SiestaOTTOS v5.2</p>
+            <span class="badge">✓ FASE 1 Completada</span>
+        </div>
+        
+        <!-- Mapa Principal -->
+        <div class="map-container">
+            <div id="map"></div>
+            <button class="btn-primary" onclick="openModal()">
+                📍 ¿Cómo llegar a Bocatti?
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modal de Planificación -->
+    <div id="routeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🗺️ Planifica tu ruta</h2>
+                <button class="btn-close" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <p style="color: #718096; font-size: 14px; margin-bottom: 24px;">
+                    Movilidad afectiva, accesible y transparente
+                </p>
+                
+                <!-- Origen -->
+                <div class="form-group">
+                    <label class="form-label">📍 Origen</label>
+                    <input 
+                        type="text" 
+                        id="originInput" 
+                        class="form-input" 
+                        placeholder="Tu ubicación actual o dirección"
+                    >
+                </div>
+                
+                <!-- Transporte -->
+                <div class="form-group">
+                    <label class="form-label">🚗 Medio de transporte</label>
+                    <div class="transport-grid">
+                        <div class="transport-option" onclick="selectTransport('car')">
+                            <div class="transport-icon">🚗</div>
+                            <div class="transport-label">Coche</div>
+                        </div>
+                        <div class="transport-option" onclick="selectTransport('foot')">
+                            <div class="transport-icon">🚶</div>
+                            <div class="transport-label">A pie</div>
+                        </div>
+                        <div class="transport-option" onclick="selectTransport('bike')">
+                            <div class="transport-icon">🚲</div>
+                            <div class="transport-label">Bicicleta</div>
+                        </div>
+                        <div class="transport-option" onclick="selectTransport('bus')">
+                            <div class="transport-icon">🚌</div>
+                            <div class="transport-label">Transporte público</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preferencias -->
+                <div class="form-group">
+                    <label class="form-label">🎯 Preferencias de ruta</label>
+                    <div class="preferences">
+                        <span class="preference-tag" onclick="togglePreference(this)">☁️ Tranquila</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">♿ Accesible</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">€ Sin peajes</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">🌄 Paisajística</span>
+                    </div>
+                </div>
+                
+                <!-- Botón Calcular -->
+                <button class="btn-primary" onclick="calculateRoute()">
+                    ➜ Buscar mejores rutas
+                </button>
+                
+                <!-- Resultado de ruta -->
+                <div id="routeResult" style="display: none;">
+                    <div class="route-info">
+                        <h3>✓ Ruta calculada</h3>
+                        <div class="route-details" id="routeDetails"></div>
+                    </div>
+                </div>
+                
+                <!-- Vista previa del mapa -->
+                <div class="map-preview">
+                    <div class="map-preview-icon">🗺️</div>
+                    <div style="font-size: 14px;">Vista previa del mapa</div>
+                    <div style="font-size: 12px; margin-top: 4px;">
+                        (Próxima fase: mapa interactivo)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Configuración Bocatti
+        const BOCATTI_LOCATION = {
+            lat: 40.4168,
+            lng: -3.7038,
+            name: 'Bocatti Madrid'
+        };
+        
+        // Estado global
+        let map;
+        let selectedTransport = null;
+        let selectedPreferences = [];
+        
+        // Inicializar mapa
+        function initMap() {
+            map = L.map('map').setView([BOCATTI_LOCATION.lat, BOCATTI_LOCATION.lng], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors | AVIA-Studio v5.2',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Marcador de Bocatti
+            const marker = L.marker([BOCATTI_LOCATION.lat, BOCATTI_LOCATION.lng]).addTo(map);
+            marker.bindPopup(`<b>🍽️ ${BOCATTI_LOCATION.name}</b><br>Tu destino te espera`).openPopup();
+        }
+        
+        // Modal
+        function openModal() {
+            document.getElementById('routeModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('routeModal').classList.remove('active');
+        }
+        
+        // Selección de transporte
+        function selectTransport(type) {
+            document.querySelectorAll('.transport-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.target.closest('.transport-option').classList.add('selected');
+            selectedTransport = type;
+        }
+        
+        // Preferencias
+        function togglePreference(element) {
+            element.classList.toggle('selected');
+            const pref = element.textContent.trim();
+            if (selectedPreferences.includes(pref)) {
+                selectedPreferences = selectedPreferences.filter(p => p !== pref);
+            } else {
+                selectedPreferences.push(pref);
+            }
+        }
+        
+        // Calcular ruta (FASE 2 - Placeholder)
+        function calculateRoute() {
+            const origin = document.getElementById('originInput').value;
+            
+            if (!origin || !selectedTransport) {
+                alert('⚠️ Por favor completa todos los campos requeridos');
+                return;
+            }
+            
+            // Simulación (se reemplazará en FASE 2)
+            const button = event.target;
+            button.innerHTML = '<span class="spinner"></span> Calculando...';
+            button.disabled = true;
+            
+            setTimeout(() => {
+                document.getElementById('routeResult').style.display = 'block';
+                document.getElementById('routeDetails').innerHTML = `
+                    <strong>Origen:</strong> ${origin}<br>
+                    <strong>Destino:</strong> Bocatti Madrid<br>
+                    <strong>Transporte:</strong> ${selectedTransport}<br>
+                    <strong>Duración:</strong> 34 min · <strong>Distancia:</strong> 23.1 km<br>
+                    <strong>Serenidad:</strong> 91/100 · <strong>Confianza:</strong> 88%
+                `;
+                button.innerHTML = '✓ Ruta confirmada';
+                button.style.background = '#48bb78';
+                
+                // Callback a Bocattiv5 (placeholder)
+                console.log('📤 Datos enviados a Bocattiv5:', {
+                    origin,
+                    destination: BOCATTI_LOCATION,
+                    transport: selectedTransport,
+                    preferences: selectedPreferences
+                });
+            }, 2000);
+        }
+        
+        // Inicializar al cargar
+        window.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>

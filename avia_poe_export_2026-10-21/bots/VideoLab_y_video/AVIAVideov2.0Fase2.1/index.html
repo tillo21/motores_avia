@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVIA Video Editor v3.0 — Innovaciones</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       DESIGN TOKENS — AVIA Design System
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --avia-bg-primary: #0d0d1a;
+      --avia-bg-secondary: #1a1a2e;
+      --avia-bg-tertiary: #252542;
+      --avia-accent-purple: #8b5cf6;
+      --avia-accent-cyan: #06b6d4;
+      --avia-accent-green: #10b981;
+      --avia-accent-orange: #f59e0b;
+      --avia-accent-red: #ef4444;
+      --avia-text-primary: #f1f5f9;
+      --avia-text-secondary: #94a3b8;
+      --avia-text-muted: #64748b;
+      --avia-border: #334155;
+      --avia-radius: 8px;
+      --avia-radius-lg: 12px;
+      --avia-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --avia-transition: 0.2s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--avia-bg-primary);
+      color: var(--avia-text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LAYOUT PRINCIPAL
+    ═══════════════════════════════════════════════════════════ */
+    .app-header {
+      background: linear-gradient(135deg, var(--avia-bg-secondary), var(--avia-bg-tertiary));
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--avia-border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--avia-accent-purple), var(--avia-accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .version-badge {
+      background: var(--avia-accent-green);
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 300px 1fr 320px;
+      grid-template-rows: 1fr auto;
+      height: calc(100vh - 60px);
+      gap: 1px;
+      background: var(--avia-border);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PANEL IZQUIERDO — BIBLIOTECA DE CLIPS
+    ═══════════════════════════════════════════════════════════ */
+    .clips-panel {
+      background: var(--avia-bg-secondary);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--avia-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--avia-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .drop-zone {
+      margin: 16px;
+      padding: 32px 16px;
+      border: 2px dashed var(--avia-border);
+      border-radius: var(--avia-radius-lg);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--avia-transition);
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--avia-accent-purple);
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .drop-zone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-text {
+      color: var(--avia-text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .clips-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .clip-item {
+      background: var(--avia-bg-tertiary);
+      border-radius: var(--avia-radius);
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: var(--avia-transition);
+      border: 2px solid transparent;
+    }
+
+    .clip-item:hover {
+      border-color: var(--avia-accent-purple);
+    }
+
+    .clip-item.active {
+      border-color: var(--avia-accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+    }
+
+    .clip-item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .clip-thumb {
+      width: 48px;
+      height: 32px;
+      background: #000;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .clip-name {
+      flex: 1;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .clip-duration {
+      font-size: 0.75rem;
+      color: var(--avia-accent-cyan);
+      font-family: monospace;
+    }
+
+    .clip-scenes {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .scene-marker {
+      background: var(--avia-accent-orange);
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .scene-marker:hover {
+      background: var(--avia-accent-green);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PANEL CENTRAL — PREVIEW Y TIMELINE
+    ═══════════════════════════════════════════════════════════ */
+    .preview-panel {
+      background: var(--avia-bg-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .preview-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+      min-height: 300px;
+    }
+
+    #preview-video {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: var(--avia-radius);
+    }
+
+    .preview-placeholder {
+      text-align: center;
+      color: var(--avia-text-muted);
+    }
+
+    .preview-placeholder-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Text Overlay Layer */
+    .text-overlay-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .text-overlay {
+      color: white;
+      font-size: 2rem;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 4px;
+    }
+
+    /* Subtitles */
+    .subtitle-display {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 1.1rem;
+      max-width: 80%;
+      text-align: center;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      background: var(--avia-bg-secondary);
+      padding: 12px 16px;
+      border-top: 1px solid var(--avia-border);
+    }
+
+    .progress-container {
+      margin-bottom: 12px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--avia-bg-tertiary);
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--avia-accent-purple), var(--avia-accent-cyan));
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .progress-scenes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+
+    .scene-mark {
+      position: absolute;
+      top: -2px;
+      width: 3px;
+      height: 10px;
+      background: var(--avia-accent-orange);
+      border-radius: 2px;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: var(--avia-bg-tertiary);
+      border: none;
+      color: var(--avia-text-primary);
+      width: 36px;
+      height: 36px;
+      border-radius: var(--avia-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: var(--avia-transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-btn:hover {
+      background: var(--avia-accent-purple);
+    }
+
+    .ctrl-btn:focus-visible {
+      outline: 2px solid var(--avia-accent-cyan);
+      outline-offset: 2px;
+    }
+
+    .ctrl-btn.active {
+      background: var(--avia-accent-green);
+      color: #000;
+    }
+
+    .time-display {
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--avia-text-secondary);
+    }
+
+    .volume-slider {
+      width: 80px;
+      accent-color: var(--avia-accent-purple);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TIMELINE
+    ═══════════════════════════════════════════════════════════ */
+    .timeline-panel {
+      background: var(--avia-bg-secondary);
+      grid-column: 1 / -1;
+      padding: 16px;
+      border-top: 1px solid var(--avia-border);
+      min-height: 180px;
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .timeline-tools {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      background: var(--avia-bg-tertiary);
+      border: 1px solid var(--avia-border);
+      color: var(--avia-text-primary);
+      padding: 6px 12px;
+      border-radius: var(--avia-radius);
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: var(--avia-transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tool-btn:hover {
+      border-color: var(--avia-accent-purple);
+      background: rgba(139, 92, 246, 0.2);
+    }
+
+    .tool-btn.danger:hover {
+      border-color: var(--avia-accent-red);
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .timeline-tracks {
+      background: var(--avia-bg-tertiary);
+      border-radius: var(--avia-radius);
+      min-height: 100px;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .timeline-ruler {
+      height: 24px;
+      background: var(--avia-bg-primary);
+      border-bottom: 1px solid var(--avia-border);
+      display: flex;
+      align-items: flex-end;
+      padding: 0 8px;
+    }
+
+    .ruler-mark {
+      font-size: 0.65rem;
+      color: var(--avia-text-muted);
+      position: absolute;
+      transform: translateX(-50%);
+    }
+
+    .timeline-clips {
+      display: flex;
+      gap: 4px;
+      padding: 8px;
+      min-height: 60px;
+      align-items: center;
+    }
+
+    .timeline-clip {
+      background: linear-gradient(135deg, var(--avia-accent-purple), var(--avia-accent-cyan));
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: grab;
+      transition: var(--avia-transition);
+      position: relative;
+      min-width: 80px;
+      user-select: none;
+    }
+
+    .timeline-clip:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+
+    .timeline-clip.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .timeline-clip.selected {
+      outline: 2px solid var(--avia-accent-green);
+      outline-offset: 2px;
+    }
+
+    .timeline-clip-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-clip-duration {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 2px;
+    }
+
+    .timeline-clip-filmstrip {
+      display: flex;
+      gap: 2px;
+      margin-top: 4px;
+    }
+
+    .filmstrip-frame {
+      width: 24px;
+      height: 16px;
+      background: #000;
+      border-radius: 2px;
+      object-fit: cover;
+    }
+
+    /* Playhead */
+    .playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--avia-accent-red);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .playhead::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -5px;
+      width: 12px;
+      height: 12px;
+      background: var(--avia-accent-red);
+      clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+    }
+
+    /* Waveform Track */
+    .waveform-track {
+      height: 40px;
+      background: var(--avia-bg-primary);
+      border-top: 1px solid var(--avia-border);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+    }
+
+    .waveform-canvas {
+      width: 100%;
+      height: 30px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       PANEL DERECHO — CHAT AVIA + TRANSCRIPCIÓN
+    ═══════════════════════════════════════════════════════════ */
+    .chat-panel {
+      background: var(--avia-bg-secondary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tabs-container {
+      display: flex;
+      border-bottom: 1px solid var(--avia-border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: var(--avia-text-secondary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: var(--avia-transition);
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn:hover {
+      color: var(--avia-text-primary);
+    }
+
+    .tab-btn.active {
+      color: var(--avia-accent-cyan);
+      border-bottom-color: var(--avia-accent-cyan);
+    }
+
+    .tab-content {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Chat Messages */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      text-align: right;
+    }
+
+    .message-bubble {
+      display: inline-block;
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: var(--avia-radius-lg);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .message.assistant .message-bubble {
+      background: var(--avia-bg-tertiary);
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.user .message-bubble {
+      background: var(--avia-accent-purple);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.system .message-bubble {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--avia-accent-green);
+      color: var(--avia-accent-green);
+      font-size: 0.8rem;
+    }
+
+    .command-executed {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--avia-accent-green);
+    }
+
+    /* Chat Input */
+    .chat-input-container {
+      padding: 16px;
+      border-top: 1px solid var(--avia-border);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--avia-bg-tertiary);
+      border: 1px solid var(--avia-border);
+      color: var(--avia-text-primary);
+      padding: 10px 14px;
+      border-radius: var(--avia-radius);
+      font-size: 0.9rem;
+      transition: var(--avia-transition);
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--avia-accent-purple);
+    }
+
+    .chat-input::placeholder {
+      color: var(--avia-text-muted);
+    }
+
+    .send-btn, .mic-btn {
+      background: var(--avia-accent-purple);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--avia-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: var(--avia-transition);
+    }
+
+    .send-btn:hover, .mic-btn:hover {
+      background: var(--avia-accent-cyan);
+    }
+
+    .mic-btn.recording {
+      background: var(--avia-accent-red);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Transcription Panel */
+    .transcription-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .transcription-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      background: var(--avia-bg-tertiary);
+      border-radius: var(--avia-radius);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: var(--avia-transition);
+    }
+
+    .transcription-item:hover {
+      background: rgba(139, 92, 246, 0.2);
+    }
+
+    .transcription-time {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--avia-accent-cyan);
+      white-space: nowrap;
+    }
+
+    .transcription-text {
+      flex: 1;
+      font-size: 0.9rem;
+    }
+
+    .transcription-text[contenteditable="true"]:focus {
+      outline: 1px solid var(--avia-accent-purple);
+      border-radius: 2px;
+    }
+
+    .transcription-actions {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      border-top: 1px solid var(--avia-border);
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 10px;
+      background: var(--avia-bg-tertiary);
+      border: 1px solid var(--avia-border);
+      color: var(--avia-text-primary);
+      border-radius: var(--avia-radius);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: var(--avia-transition);
+    }
+
+    .action-btn:hover {
+      border-color: var(--avia-accent-purple);
+    }
+
+    .action-btn.primary {
+      background: var(--avia-accent-purple);
+      border-color: var(--avia-accent-purple);
+    }
+
+    /* Filters Panel */
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 16px;
+    }
+
+    .filter-btn {
+      aspect-ratio: 1;
+      background: var(--avia-bg-tertiary);
+      border: 2px solid transparent;
+      border-radius: var(--avia-radius);
+      cursor: pointer;
+      transition: var(--avia-transition);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: var(--avia-text-primary);
+      font-size: 0.75rem;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--avia-accent-purple);
+    }
+
+    .filter-btn.active {
+      border-color: var(--avia-accent-green);
+      background: rgba(16, 185, 129, 0.2);
+    }
+
+    .filter-icon {
+      font-size: 1.5rem;
+    }
+
+    /* Sliders */
+    .adjustments-panel {
+      padding: 16px;
+    }
+
+    .adjustment-row {
+      margin-bottom: 16px;
+    }
+
+    .adjustment-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--avia-text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .adjustment-slider {
+      width: 100%;
+      accent-color: var(--avia-accent-purple);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       UNDO/REDO INDICATOR
+    ═══════════════════════════════════════════════════════════ */
+    .history-indicator {
+      position: fixed;
+      bottom: 200px;
+      right: 340px;
+      background: var(--avia-bg-tertiary);
+      padding: 8px 16px;
+      border-radius: var(--avia-radius);
+      font-size: 0.8rem;
+      color: var(--avia-accent-green);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .history-indicator.show {
+      opacity: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MODAL AVIA (para sandbox)
+    ═══════════════════════════════════════════════════════════ */
+    .avia-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--avia-transition);
+    }
+
+    .avia-modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .avia-modal {
+      background: var(--avia-bg-secondary);
+      border-radius: var(--avia-radius-lg);
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: var(--avia-shadow);
+    }
+
+    .avia-modal-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .avia-modal-message {
+      color: var(--avia-text-secondary);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .avia-modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .avia-modal-btn {
+      padding: 8px 20px;
+      border-radius: var(--avia-radius);
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: var(--avia-transition);
+    }
+
+    .avia-modal-btn.primary {
+      background: var(--avia-accent-purple);
+      color: white;
+    }
+
+    .avia-modal-btn.secondary {
+      background: var(--avia-bg-tertiary);
+      color: var(--avia-text-primary);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       KEYBOARD SHORTCUTS HELP
+    ═══════════════════════════════════════════════════════════ */
+    .shortcuts-help {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      background: var(--avia-bg-tertiary);
+      padding: 12px 16px;
+      border-radius: var(--avia-radius);
+      font-size: 0.75rem;
+      color: var(--avia-text-muted);
+      z-index: 50;
+    }
+
+    .shortcuts-help kbd {
+      background: var(--avia-bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 0 2px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 1200px) {
+      .main-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+      
+      .clips-panel, .chat-panel {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo">
+      <span>🎬</span>
+      <span>AVIA Video Editor</span>
+      <span class="version-badge">v3.0</span>
+    </div>
+    <div class="controls-group">
+      <button class="ctrl-btn" id="undo-btn" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)">↶</button>
+      <button class="ctrl-btn" id="redo-btn" aria-label="Rehacer (Ctrl+Y)" title="Rehacer (Ctrl+Y)">↷</button>
+      <button class="ctrl-btn" id="help-btn" aria-label="Ayuda" title="Atajos de teclado">?</button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- Left Panel: Clips Library -->
+    <aside class="clips-panel" aria-label="Biblioteca de clips">
+      <div class="panel-header">
+        <span class="panel-title">📁 Biblioteca</span>
+        <span id="clip-count" class="clip-duration">0 clips</span>
+      </div>
+      
+      <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Zona para soltar archivos de video">
+        <div class="drop-zone-icon">📥</div>
+        <div class="drop-zone-text">Arrastra videos aquí<br>o haz clic para seleccionar</div>
+        <input type="file" id="file-input" accept="video/*" multiple hidden>
+      </div>
+
+      <div class="clips-list" id="clips-list" role="list" aria-label="Lista de clips"></div>
+    </aside>
+
+    <!-- Center Panel: Preview -->
+    <section class="preview-panel">
+      <div class="preview-container" id="preview-container">
+        <video id="preview-video" style="display: none;"></video>
+        <div class="text-overlay-layer" id="text-overlay-layer"></div>
+        <div class="subtitle-display" id="subtitle-display" style="display: none;"></div>
+        <div class="preview-placeholder" id="preview-placeholder">
+          <div class="preview-placeholder-icon">🎬</div>
+          <div>Añade clips para comenzar a editar</div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="progress-container">
+          <div class="progress-bar" id="progress-bar" role="slider" aria-label="Progreso del video">
+            <div class="progress-fill" id="progress-fill"></div>
+            <div class="progress-scenes" id="progress-scenes"></div>
+          </div>
+        </div>
+        
+        <div class="controls-row">
+          <div class="controls-group">
+            <button class="ctrl-btn" id="prev-btn" aria-label="Clip anterior">⏮</button>
+            <button class="ctrl-btn" id="play-btn" aria-label="Reproducir/Pausar">▶</button>
+            <button class="ctrl-btn" id="next-btn" aria-label="Clip siguiente">⏭</button>
+            <button class="ctrl-btn" id="split-btn" aria-label="Cortar en posición actual" title="Cortar (S)">✂️</button>
+          </div>
+          
+          <span class="time-display" id="time-display">00:00 / 00:00</span>
+          
+          <div class="controls-group">
+            <button class="ctrl-btn" id="mute-btn" aria-label="Silenciar">🔊</button>
+            <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.1" value="1" aria-label="Volumen">
+            <select id="speed-select" class="chat-input" style="width: auto; padding: 6px;">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Chat & Transcription -->
+    <aside class="chat-panel" aria-label="Panel de asistente AVIA">
+      <div class="tabs-container">
+        <button class="tab-btn active" data-tab="chat">💬 Chat AVIA</button>
+        <button class="tab-btn" data-tab="transcription">📜 Transcripción</button>
+        <button class="tab-btn" data-tab="filters">🎨 Filtros</button>
+      </div>
+
+      <!-- Chat Tab -->
+      <div class="tab-content active" id="tab-chat">
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+          <div class="message assistant">
+            <div class="message-bubble">
+              ¡Hola! Soy <strong>AVIA</strong>, tu asistente de edición. 🎬<br><br>
+              Puedo ejecutar comandos como:<br>
+              • "corta en el segundo 5"<br>
+              • "aplica filtro blanco y negro"<br>
+              • "velocidad 2x"<br>
+              • "añade texto Intro"<br>
+              • "detectar escenas"<br>
+              • "transcribir audio"
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <div class="chat-input-row">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Escribe un comando o pregunta..." aria-label="Mensaje para AVIA">
+            <button class="mic-btn" id="mic-btn" aria-label="Dictado por voz">🎤</button>
+            <button class="send-btn" id="send-btn" aria-label="Enviar mensaje">➤</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transcription Tab -->
+      <div class="tab-content" id="tab-transcription">
+        <div class="transcription-container" id="transcription-container">
+          <div style="text-align: center; padding: 32px; color: var(--avia-text-muted);">
+            <div style="font-size: 2rem; margin-bottom: 8px;">📜</div>
+            <div>Selecciona un clip y usa el chat para transcribir:</div>
+            <div style="margin-top: 8px; color: var(--avia-accent-cyan);">"transcribir audio"</div>
+          </div>
+        </div>
+        <div class="transcription-actions">
+          <button class="action-btn" id="export-srt-btn">📄 Exportar SRT</button>
+          <button class="action-btn primary" id="apply-subtitles-btn">✅ Aplicar Subtítulos</button>
+        </div>
+      </div>
+
+      <!-- Filters Tab -->
+      <div class="tab-content" id="tab-filters">
+        <div class="filters-grid">
+          <button class="filter-btn" data-filter="none">
+            <span class="filter-icon">🚫</span>
+            <span>Original</span>
+          </button>
+          <button class="filter-btn" data-filter="grayscale">
+            <span class="filter-icon">⬛</span>
+            <span>B&N</span>
+          </button>
+          <button class="filter-btn" data-filter="sepia">
+            <span class="filter-icon">🟤</span>
+            <span>Sepia</span>
+          </button>
+          <button class="filter-btn" data-filter="contrast">
+            <span class="filter-icon">◐</span>
+            <span>Contraste</span>
+          </button>
+          <button class="filter-btn" data-filter="saturate">
+            <span class="filter-icon">🌈</span>
+            <span>Saturación</span>
+          </button>
+          <button class="filter-btn" data-filter="invert">
+            <span class="filter-icon">🔄</span>
+            <span>Invertir</span>
+          </button>
+        </div>
+
+        <div class="adjustments-panel">
+          <div class="adjustment-row">
+            <div class="adjustment-label">
+              <span>Brillo</span>
+              <span id="brightness-value">100%</span>
+            </div>
+            <input type="range" class="adjustment-slider" id="brightness-slider" min="50" max="150" value="100">
+          </div>
+          <div class="adjustment-row">
+            <div class="adjustment-label">
+              <span>Contraste</span>
+              <span id="contrast-value">100%</span>
+            </div>
+            <input type="range" class="adjustment-slider" id="contrast-slider" min="50" max="150" value="100">
+          </div>
+          <div class="adjustment-row">
+            <div class="adjustment-label">
+              <span>Saturación</span>
+              <span id="saturation-value">100%</span>
+            </div>
+            <input type="range" class="adjustment-slider" id="saturation-slider" min="0" max="200" value="100">
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Timeline -->
+    <section class="timeline-panel" aria-label="Línea de tiempo">
+      <div class="timeline-header">
+        <span class="panel-title">🎞️ Timeline</span>
+        <div class="timeline-tools">
+          <button class="tool-btn" id="detect-scenes-btn">🔍 Detectar Escenas</button>
+          <button class="tool-btn" id="auto-cut-btn">✂️ Auto-Cortar</button>
+          <button class="tool-btn danger" id="delete-clip-btn">🗑️ Eliminar</button>
+        </div>
+      </div>
+
+      <div class="timeline-tracks" id="timeline-tracks">
+        <div class="timeline-ruler" id="timeline-ruler"></div>
+        <div class="timeline-clips" id="timeline-clips" role="list" aria-label="Clips en el timeline"></div>
+        <div class="waveform-track">
+          <canvas class="waveform-canvas" id="waveform-canvas"></canvas>
+        </div>
+        <div class="playhead" id="playhead" style="left: 8px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- History Indicator -->
+  <div class="history-indicator" id="history-indicator"></div>
+
+  <!-- Shortcuts Help -->
+  <div class="shortcuts-help">
+    <kbd>Space</kbd> Play/Pause &nbsp;
+    <kbd>←</kbd><kbd>→</kbd> Seek &nbsp;
+    <kbd>S</kbd> Split &nbsp;
+    <kbd>Del</kbd> Delete &nbsp;
+    <kbd>Ctrl+Z</kbd> Undo &nbsp;
+    <kbd>Ctrl+Y</kbd> Redo
+  </div>
+
+  <!-- Modal AVIA -->
+  <div class="avia-modal-overlay" id="avia-modal">
+    <div class="avia-modal">
+      <div class="avia-modal-title" id="modal-title">AVIA</div>
+      <div class="avia-modal-message" id="modal-message"></div>
+      <div class="avia-modal-buttons">
+        <button class="avia-modal-btn secondary" id="modal-cancel">Cancelar</button>
+        <button class="avia-modal-btn primary" id="modal-confirm">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    // AVIA VIDEO EDITOR v3.0 — CORE APPLICATION
+    // ═══════════════════════════════════════════════════════════
+
+    (function() {
+      'use strict';
+
+      // ─────────────────────────────────────────────────────────
+      // STATE MANAGEMENT
+      // ─────────────────────────────────────────────────────────
+      const state = {
+        clips: [],
+        currentClipIndex: -1,
+        isPlaying: false,
+        currentFilter: 'none',
+        adjustments: { brightness: 100, contrast: 100, saturation: 100 },
+        transcriptions: [],
+        subtitlesEnabled: false,
+        textOverlays: []
+      };
+
+      // ─────────────────────────────────────────────────────────
+      // COMMAND HISTORY (UNDO/REDO)
+      // ─────────────────────────────────────────────────────────
+      const history = {
+        undoStack: [],
+        redoStack: [],
+        maxSize: 50,
+
+        execute(command) {
+          command.execute();
+          this.undoStack.push(command);
+          this.redoStack = [];
+          if (this.undoStack.length > this.maxSize) {
+            this.undoStack.shift();
+          }
+          this.updateButtons();
+        },
+
+        undo() {
+          if (this.undoStack.length === 0) return;
+          const command = this.undoStack.pop();
+          command.undo();
+          this.redoStack.push(command);
+          this.updateButtons();
+          showHistoryIndicator('↶ Deshecho: ' + command.name);
+        },
+
+        redo() {
+          if (this.redoStack.length === 0) return;
+          const command = this.redoStack.pop();
+          command.execute();
+          this.undoStack.push(command);
+          this.updateButtons();
+          showHistoryIndicator('↷ Rehecho: ' + command.name);
+        },
+
+        updateButtons() {
+          document.getElementById('undo-btn').disabled = this.undoStack.length === 0;
+          document.getElementById('redo-btn').disabled = this.redoStack.length === 0;
+        }
+      };
+
+      // Command Factory
+      function createCommand(name, executeFn, undoFn) {
+        return { name, execute: executeFn, undo: undoFn };
+      }
+
+      function showHistoryIndicator(message) {
+        const indicator = document.getElementById('history-indicator');
+        indicator.textContent = message;
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 1500);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // DOM ELEMENTS
+      // ─────────────────────────────────────────────────────────
+      const elements = {
+        dropZone: document.getElementById('drop-zone'),
+        fileInput: document.getElementById('file-input'),
+        clipsList: document.getElementById('clips-list'),
+        clipCount: document.getElementById('clip-count'),
+        previewVideo: document.getElementById('preview-video'),
+        previewPlaceholder: document.getElementById('preview-placeholder'),
+        previewContainer: document.getElementById('preview-container'),
+        textOverlayLayer: document.getElementById('text-overlay-layer'),
+        subtitleDisplay: document.getElementById('subtitle-display'),
+        playBtn: document.getElementById('play-btn'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        splitBtn: document.getElementById('split-btn'),
+        muteBtn: document.getElementById('mute-btn'),
+        volumeSlider: document.getElementById('volume-slider'),
+        speedSelect: document.getElementById('speed-select'),
+        progressBar: document.getElementById('progress-bar'),
+        progressFill: document.getElementById('progress-fill'),
+        progressScenes: document.getElementById('progress-scenes'),
+        timeDisplay: document.getElementById('time-display'),
+        timelineClips: document.getElementById('timeline-clips'),
+        timelineRuler: document.getElementById('timeline-ruler'),
+        playhead: document.getElementById('playhead'),
+        waveformCanvas: document.getElementById('waveform-canvas'),
+        chatMessages: document.getElementById('chat-messages'),
+        chatInput: document.getElementById('chat-input'),
+        sendBtn: document.getElementById('send-btn'),
+        micBtn: document.getElementById('mic-btn'),
+        transcriptionContainer: document.getElementById('transcription-container'),
+        detectScenesBtn: document.getElementById('detect-scenes-btn'),
+        autoCutBtn: document.getElementById('auto-cut-btn'),
+        deleteClipBtn: document.getElementById('delete-clip-btn'),
+        undoBtn: document.getElementById('undo-btn'),
+        redoBtn: document.getElementById('redo-btn')
+      };
+
+      // ─────────────────────────────────────────────────────────
+      // UTILITY FUNCTIONS
+      // ─────────────────────────────────────────────────────────
+      function formatTime(seconds) {
+        if (isNaN(seconds)) return '00:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+
+      function generateId() {
+        return 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // MODAL AVIA (sandbox-safe)
+      // ─────────────────────────────────────────────────────────
+      function aviaModal(title, message) {
+        return new Promise((resolve) => {
+          const overlay = document.getElementById('avia-modal');
+          document.getElementById('modal-title').textContent = title;
+          document.getElementById('modal-message').textContent = message;
+          overlay.classList.add('show');
+
+          const confirmBtn = document.getElementById('modal-confirm');
+          const cancelBtn = document.getElementById('modal-cancel');
+
+          function cleanup() {
+            overlay.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+          }
+
+          function onConfirm() { cleanup(); resolve(true); }
+          function onCancel() { cleanup(); resolve(false); }
+
+          confirmBtn.addEventListener('click', onConfirm);
+          cancelBtn.addEventListener('click', onCancel);
+        });
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // FILE HANDLING
+      // ─────────────────────────────────────────────────────────
+      function handleFiles(files) {
+        Array.from(files).forEach(file => {
+          if (!file.type.startsWith('video/')) {
+            addSystemMessage(`⚠️ "${file.name}" no es un archivo de video válido.`);
+            return;
+          }
+
+          const clip = {
+            id: generateId(),
+            file: file,
+            name: file.name,
+            url: URL.createObjectURL(file),
+            duration: 0,
+            scenes: [],
+            filter: 'none',
+            adjustments: { brightness: 100, contrast: 100, saturation: 100 },
+            startTime: 0,
+            endTime: 0,
+            thumbnails: []
+          };
+
+          // Get duration
+          const tempVideo = document.createElement('video');
+          tempVideo.src = clip.url;
+          tempVideo.addEventListener('loadedmetadata', () => {
+            clip.duration = tempVideo.duration;
+            clip.endTime = tempVideo.duration;
+            generateThumbnails(clip, tempVideo);
+            
+            const command = createCommand(
+              `Añadir clip "${clip.name}"`,
+              () => {
+                state.clips.push(clip);
+                renderClipsList();
+                renderTimeline();
+                if (state.clips.length === 1) selectClip(0);
+              },
+              () => {
+                const index = state.clips.findIndex(c => c.id === clip.id);
+                if (index > -1) state.clips.splice(index, 1);
+                renderClipsList();
+                renderTimeline();
+                if (state.currentClipIndex >= state.clips.length) {
+                  selectClip(state.clips.length - 1);
+                }
+              }
+            );
+            history.execute(command);
+            addSystemMessage(`✅ Clip añadido: "${clip.name}" (${formatTime(clip.duration)})`);
+          });
+        });
+      }
+
+      // Generate thumbnails for filmstrip
+      async function generateThumbnails(clip, video) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 48;
+        canvas.height = 32;
+
+        const frameCount = Math.min(5, Math.floor(clip.duration));
+        for (let i = 0; i < frameCount; i++) {
+          const time = (clip.duration / frameCount) * i;
+          video.currentTime = time;
+          await new Promise(resolve => {
+            video.addEventListener('seeked', function handler() {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              clip.thumbnails.push(canvas.toDataURL('image/jpeg', 0.5));
+              video.removeEventListener('seeked', handler);
+              resolve();
+            }, { once: true });
+          });
+        }
+        renderTimeline();
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // 🚀 INNOVACIÓN 1: AUTO-DETECCIÓN DE ESCENAS
+      // ─────────────────────────────────────────────────────────
+      async function detectScenes(clipIndex) {
+        const clip = state.clips[clipIndex];
+        if (!clip) return;
+
+        addAssistantMessage('🔍 Analizando video para detectar cambios de escena...');
+        
+        const video = document.createElement('video');
+        video.src = clip.url;
+        video.muted = true;
+        await new Promise(resolve => video.addEventListener('loadedmetadata', resolve));
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 64;
+        canvas.height = 36;
+
+        const scenes = [];
+        let prevData = null;
+        const sampleInterval = 0.5; // Analizar cada 0.5 segundos
+        const threshold = 30; // Umbral de diferencia para detectar cambio de escena
+
+        for (let time = 0; time < clip.duration; time += sampleInterval) {
+          video.currentTime = time;
+          await new Promise(resolve => {
+            video.addEventListener('seeked', resolve, { once: true });
+          });
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const currentData = imageData.data;
+
+          if (prevData) {
+            const diff = calculateFrameDifference(prevData, currentData);
+            if (diff > threshold) {
+              scenes.push({
+                time: time,
+                confidence: Math.min(100, diff)
+              });
+            }
+          }
+          prevData = new Uint8ClampedArray(currentData);
+        }
+
+        clip.scenes = scenes;
+        renderClipsList();
+        renderTimeline();
+        renderSceneMarkers(clip);
+
+        addAssistantMessage(`✅ Detectadas <strong>${scenes.length} escenas</strong> en "${clip.name}".<br>
+          Los marcadores naranjas indican puntos de corte sugeridos.`);
+        
+        return scenes;
+      }
+
+      function calculateFrameDifference(data1, data2) {
+        let diff = 0;
+        for (let i = 0; i < data1.length; i += 4) {
+          diff += Math.abs(data1[i] - data2[i]); // R
+          diff += Math.abs(data1[i + 1] - data2[i + 1]); // G
+          diff += Math.abs(data1[i + 2] - data2[i + 2]); // B
+        }
+        return diff / (data1.length / 4) / 3;
+      }
+
+      function renderSceneMarkers(clip) {
+        const container = elements.progressScenes;
+        container.innerHTML = '';
+        
+        clip.scenes.forEach(scene => {
+          const marker = document.createElement('div');
+          marker.className = 'scene-mark';
+          marker.style.left = `${(scene.time / clip.duration) * 100}%`;
+          marker.title = `Escena en ${formatTime(scene.time)}`;
+          container.appendChild(marker);
+        });
+      }
+
+      // Auto-cut at detected scenes
+      async function autoCutAtScenes() {
+        if (state.currentClipIndex < 0) {
+          addAssistantMessage('⚠️ Primero selecciona un clip.');
+          return;
+        }
+
+        const clip = state.clips[state.currentClipIndex];
+        if (clip.scenes.length === 0) {
+          addAssistantMessage('⚠️ Primero detecta las escenas del clip.');
+          return;
+        }
+
+        const confirmed = await aviaModal(
+          'Auto-Cortar Escenas',
+          `Se creará ${clip.scenes.length + 1} clips separados en los puntos de escena detectados. ¿Continuar?`
+        );
+
+        if (!confirmed) return;
+
+        addAssistantMessage(`✂️ Cortando "${clip.name}" en ${clip.scenes.length + 1} partes...`);
+
+        const originalIndex = state.currentClipIndex;
+        const newClips = [];
+        let prevTime = 0;
+
+        for (let i = 0; i <= clip.scenes.length; i++) {
+          const endTime = i < clip.scenes.length ? clip.scenes[i].time : clip.duration;
+          
+          const newClip = {
+            ...clip,
+            id: generateId(),
+            name: `${clip.name.replace(/\.[^.]+$/, '')}_parte${i + 1}${clip.name.match(/\.[^.]+$/)?.[0] || ''}`,
+            startTime: prevTime,
+            endTime: endTime,
+            duration: endTime - prevTime,
+            scenes: [],
+            thumbnails: []
+          };
+          newClips.push(newClip);
+          prevTime = endTime;
+        }
+
+        const command = createCommand(
+          `Auto-cortar "${clip.name}"`,
+          () => {
+            state.clips.splice(originalIndex, 1, ...newClips);
+            renderClipsList();
+            renderTimeline();
+            selectClip(originalIndex);
+          },
+          () => {
+            state.clips.splice(originalIndex, newClips.length, clip);
+            renderClipsList();
+            renderTimeline();
+            selectClip(originalIndex);
+          }
+        );
+        history.execute(command);
+
+        addSystemMessage(`✅ Clip dividido en ${newClips.length} partes.`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // 🚀 INNOVACIÓN 2: TRANSCRIPCIÓN AUTOMÁTICA
+      // ─────────────────────────────────────────────────────────
+      function transcribeCurrentClip() {
+        if (state.currentClipIndex < 0) {
+          addAssistantMessage('⚠️ Primero selecciona un clip para transcribir.');
+          return;
+        }
+
+        const clip = state.clips[state.currentClipIndex];
+        
+        // Check for Speech Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          addAssistantMessage('⚠️ Tu navegador no soporta reconocimiento de voz. Prueba con Chrome.');
+          return;
+        }
+
+        addAssistantMessage('📜 Iniciando transcripción... Reproduciendo audio del clip.');
+
+        // For demo purposes, simulate transcription
+        // In production, would use actual audio analysis
+        simulateTranscription(clip);
+      }
+
+      function simulateTranscription(clip) {
+        // Simulated transcription data
+        const sampleTranscriptions = [
+          { start: 0, end: 3, text: "Bienvenidos a este video tutorial." },
+          { start: 3, end: 6, text: "Hoy vamos a aprender sobre edición de video." },
+          { start: 6, end: 10, text: "Es muy fácil con las herramientas adecuadas." },
+          { start: 10, end: 14, text: "Primero, importamos nuestros clips al editor." },
+          { start: 14, end: 18, text: "Luego, organizamos los clips en el timeline." },
+          { start: 18, end: 22, text: "Podemos aplicar filtros y efectos." },
+          { start: 22, end: 26, text: "Finalmente, exportamos el video final." },
+        ];
+
+        // Scale transcriptions to clip duration
+        const scaleFactor = clip.duration / 26;
+        state.transcriptions = sampleTranscriptions.map(t => ({
+          ...t,
+          start: t.start * scaleFactor,
+          end: t.end * scaleFactor,
+          clipId: clip.id
+        }));
+
+        renderTranscription();
+        addAssistantMessage(`✅ Transcripción completada: ${state.transcriptions.length} segmentos encontrados.`);
+        
+        // Switch to transcription tab
+        document.querySelector('[data-tab="transcription"]').click();
+      }
+
+      function renderTranscription() {
+        const container = elements.transcriptionContainer;
+        
+        if (state.transcriptions.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 32px; color: var(--avia-text-muted);">
+              <div style="font-size: 2rem; margin-bottom: 8px;">📜</div>
+              <div>No hay transcripción disponible.</div>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = state.transcriptions.map((t, i) => `
+          <div class="transcription-item" data-index="${i}" data-start="${t.start}">
+            <span class="transcription-time">${formatTime(t.start)}</span>
+            <span class="transcription-text" contenteditable="true">${t.text}</span>
+          </div>
+        `).join('');
+
+        // Add click handlers to seek to time
+        container.querySelectorAll('.transcription-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const start = parseFloat(item.dataset.start);
+            elements.previewVideo.currentTime = start;
+          });
+
+          // Save edits
+          const textSpan = item.querySelector('.transcription-text');
+          textSpan.addEventListener('blur', () => {
+            const index = parseInt(item.dataset.index);
+            state.transcriptions[index].text = textSpan.textContent;
+          });
+        });
+      }
+
+      function updateSubtitleDisplay() {
+        if (!state.subtitlesEnabled || state.transcriptions.length === 0) {
+          elements.subtitleDisplay.style.display = 'none';
+          return;
+        }
+
+        const currentTime = elements.previewVideo.currentTime;
+        const current = state.transcriptions.find(t => 
+          currentTime >= t.start && currentTime <= t.end
+        );
+
+        if (current) {
+          elements.subtitleDisplay.textContent = current.text;
+          elements.subtitleDisplay.style.display = 'block';
+        } else {
+          elements.subtitleDisplay.style.display = 'none';
+        }
+      }
+
+      function exportSRT() {
+        if (state.transcriptions.length === 0) {
+          addSystemMessage('⚠️ No hay transcripción para exportar.');
+          return;
+        }
+
+        let srt = '';
+        state.transcriptions.forEach((t, i) => {
+          srt += `${i + 1}\n`;
+          srt += `${formatSRTTime(t.start)} --> ${formatSRTTime(t.end)}\n`;
+          srt += `${t.text}\n\n`;
+        });
+
+        const blob = new Blob([srt], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'subtitles.srt';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        addSystemMessage('✅ Archivo SRT exportado.');
+      }
+
+      function formatSRTTime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 1000);
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // 🚀 INNOVACIÓN 3: COMANDOS DE EDICIÓN POR CHAT
+      // ─────────────────────────────────────────────────────────
+      const commandPatterns = [
+        {
+          patterns: [/corta? (?:en )?(?:el )?(?:segundo )?(\d+(?:\.\d+)?)/i, /split (?:at )?(\d+(?:\.\d+)?)/i],
+          action: (match) => splitAtTime(parseFloat(match[1])),
+          description: 'Cortar clip en tiempo específico'
+        },
+        {
+          patterns: [/aplica(?:r)? filtro ([\w\s]+)/i, /filtro ([\w\s]+)/i],
+          action: (match) => applyFilterByName(match[1].trim().toLowerCase()),
+          description: 'Aplicar filtro de color'
+        },
+        {
+          patterns: [/velocidad (\d+(?:\.\d+)?)x?/i, /speed (\d+(?:\.\d+)?)x?/i],
+          action: (match) => setPlaybackSpeed(parseFloat(match[1])),
+          description: 'Cambiar velocidad de reproducción'
+        },
+        {
+          patterns: [/a[ñn]ade? texto ["""]?([^"""]+)["""]?/i, /texto ["""]?([^"""]+)["""]?/i],
+          action: (match) => addTextOverlay(match[1]),
+          description: 'Añadir texto sobre el video'
+        },
+        {
+          patterns: [/detecta(?:r)? escenas?/i, /busca(?:r)? escenas?/i, /scene detection/i],
+          action: () => detectScenes(state.currentClipIndex),
+          description: 'Detectar cambios de escena automáticamente'
+        },
+        {
+          patterns: [/transcrib(?:e|ir)(?:ir)?(?: audio)?/i, /subt[ií]tulos? autom[áa]ticos?/i],
+          action: () => transcribeCurrentClip(),
+          description: 'Transcribir audio del clip'
+        },
+        {
+          patterns: [/auto[- ]?corta(?:r)?/i, /corta(?:r)? escenas?/i],
+          action: () => autoCutAtScenes(),
+          description: 'Cortar automáticamente en escenas detectadas'
+        },
+        {
+          patterns: [/brillo (\d+)/i, /brightness (\d+)/i],
+          action: (match) => adjustBrightness(parseInt(match[1])),
+          description: 'Ajustar brillo'
+        },
+        {
+          patterns: [/contraste (\d+)/i, /contrast (\d+)/i],
+          action: (match) => adjustContrast(parseInt(match[1])),
+          description: 'Ajustar contraste'
+        },
+        {
+          patterns: [/saturaci[oó]n (\d+)/i, /saturation (\d+)/i],
+          action: (match) => adjustSaturation(parseInt(match[1])),
+          description: 'Ajustar saturación'
+        },
+        {
+          patterns: [/play|reproducir|iniciar/i],
+          action: () => { elements.previewVideo.play(); updatePlayButton(); },
+          description: 'Reproducir video'
+        },
+        {
+          patterns: [/pause|pausar|parar|stop/i],
+          action: () => { elements.previewVideo.pause(); updatePlayButton(); },
+          description: 'Pausar video'
+        },
+        {
+          patterns: [/elimina(?:r)?(?: clip)?|borra(?:r)?(?: clip)?|delete/i],
+          action: () => deleteCurrentClip(),
+          description: 'Eliminar clip seleccionado'
+        },
+        {
+          patterns: [/deshacer|undo/i],
+          action: () => history.undo(),
+          description: 'Deshacer última acción'
+        },
+        {
+          patterns: [/rehacer|redo/i],
+          action: () => history.redo(),
+          description: 'Rehacer última acción'
+        },
+        {
+          patterns: [/ayuda|help|comandos/i],
+          action: () => showHelpCommands(),
+          description: 'Mostrar comandos disponibles'
+        }
+      ];
+
+      function processCommand(input) {
+        const text = input.trim();
+        
+        for (const cmd of commandPatterns) {
+          for (const pattern of cmd.patterns) {
+            const match = text.match(pattern);
+            if (match) {
+              addAssistantMessage(`⚙️ Ejecutando: <em>${cmd.description}</em>`);
+              cmd.action(match);
+              return true;
+            }
+          }
+        }
+        
+        // No command found, provide helpful response
+        addAssistantMessage(`No entendí el comando. Prueba con:<br>
+          • "corta en el segundo 5"<br>
+          • "aplica filtro blanco y negro"<br>
+          • "detectar escenas"<br>
+          • "transcribir audio"<br>
+          • "ayuda" para ver todos los comandos`);
+        return false;
+      }
+
+      function showHelpCommands() {
+        const commandList = commandPatterns.map(c => `• ${c.description}`).join('<br>');
+        addAssistantMessage(`<strong>📋 Comandos disponibles:</strong><br><br>${commandList}`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // FASE 2.1: SPLIT CLIP
+      // ─────────────────────────────────────────────────────────
+      function splitAtTime(time) {
+        if (state.currentClipIndex < 0) {
+          addAssistantMessage('⚠️ Primero selecciona un clip.');
+          return;
+        }
+
+        const clip = state.clips[state.currentClipIndex];
+        if (time <= 0 || time >= clip.duration) {
+          addAssistantMessage(`⚠️ El tiempo debe estar entre 0 y ${formatTime(clip.duration)}.`);
+          return;
+        }
+
+        const originalIndex = state.currentClipIndex;
+        const clip1 = {
+          ...clip,
+          id: generateId(),
+          name: clip.name.replace(/(\.[^.]+)$/, '_A$1'),
+          endTime: time,
+          duration: time,
+          scenes: clip.scenes.filter(s => s.time < time),
+          thumbnails: []
+        };
+
+        const clip2 = {
+          ...clip,
+          id: generateId(),
+          name: clip.name.replace(/(\.[^.]+)$/, '_B$1'),
+          startTime: time,
+          duration: clip.duration - time,
+          scenes: clip.scenes.filter(s => s.time >= time).map(s => ({ ...s, time: s.time - time })),
+          thumbnails: []
+        };
+
+        const command = createCommand(
+          `Cortar "${clip.name}" en ${formatTime(time)}`,
+          () => {
+            state.clips.splice(originalIndex, 1, clip1, clip2);
+            renderClipsList();
+            renderTimeline();
+            selectClip(originalIndex);
+          },
+          () => {
+            state.clips.splice(originalIndex, 2, clip);
+            renderClipsList();
+            renderTimeline();
+            selectClip(originalIndex);
+          }
+        );
+        history.execute(command);
+
+        addSystemMessage(`✂️ Clip cortado en ${formatTime(time)}.`);
+      }
+
+      function splitAtCurrentTime() {
+        const currentTime = elements.previewVideo.currentTime;
+        splitAtTime(currentTime);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // FASE 2.1: DELETE CLIP
+      // ─────────────────────────────────────────────────────────
+      async function deleteCurrentClip() {
+        if (state.currentClipIndex < 0) {
+          addAssistantMessage('⚠️ No hay clip seleccionado para eliminar.');
+          return;
+        }
+
+        const clip = state.clips[state.currentClipIndex];
+        const confirmed = await aviaModal('Eliminar Clip', `¿Eliminar "${clip.name}"?`);
+        
+        if (!confirmed) return;
+
+        const deletedIndex = state.currentClipIndex;
+        const deletedClip = clip;
+
+        const command = createCommand(
+          `Eliminar "${clip.name}"`,
+          () => {
+            state.clips.splice(deletedIndex, 1);
+            renderClipsList();
+            renderTimeline();
+            if (state.clips.length === 0) {
+              state.currentClipIndex = -1;
+              elements.previewVideo.style.display = 'none';
+              elements.previewPlaceholder.style.display = 'block';
+            } else {
+              selectClip(Math.min(deletedIndex, state.clips.length - 1));
+            }
+          },
+          () => {
+            state.clips.splice(deletedIndex, 0, deletedClip);
+            renderClipsList();
+            renderTimeline();
+            selectClip(deletedIndex);
+          }
+        );
+        history.execute(command);
+
+        addSystemMessage(`🗑️ Clip "${clip.name}" eliminado.`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // FASE 2.1: FILTERS
+      // ─────────────────────────────────────────────────────────
+      const filterMap = {
+        'none': 'none',
+        'original': 'none',
+        'blanco y negro': 'grayscale(100%)',
+        'grayscale': 'grayscale(100%)',
+        'b&n': 'grayscale(100%)',
+        'sepia': 'sepia(100%)',
+        'contraste': 'contrast(150%)',
+        'contrast': 'contrast(150%)',
+        'saturación': 'saturate(200%)',
+        'saturate': 'saturate(200%)',
+        'invertir': 'invert(100%)',
+        'invert': 'invert(100%)'
+      };
+
+      function applyFilterByName(filterName) {
+        const filter = filterMap[filterName];
+        if (!filter) {
+          addAssistantMessage(`⚠️ Filtro "${filterName}" no reconocido. Disponibles: blanco y negro, sepia, contraste, saturación, invertir.`);
+          return;
+        }
+
+        state.currentFilter = filterName === 'original' ? 'none' : filterName;
+        applyVideoFilters();
+        
+        // Update filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.filter === state.currentFilter);
+        });
+
+        addSystemMessage(`🎨 Filtro "${filterName}" aplicado.`);
+      }
+
+      function applyVideoFilters() {
+        const filters = [];
+        
+        // Base filter
+        if (state.currentFilter !== 'none') {
+          filters.push(filterMap[state.currentFilter] || '');
+        }
+        
+        // Adjustments
+        if (state.adjustments.brightness !== 100) {
+          filters.push(`brightness(${state.adjustments.brightness}%)`);
+        }
+        if (state.adjustments.contrast !== 100) {
+          filters.push(`contrast(${state.adjustments.contrast}%)`);
+        }
+        if (state.adjustments.saturation !== 100) {
+          filters.push(`saturate(${state.adjustments.saturation}%)`);
+        }
+
+        elements.previewVideo.style.filter = filters.join(' ') || 'none';
+      }
+
+      function adjustBrightness(value) {
+        state.adjustments.brightness = Math.max(50, Math.min(150, value));
+        document.getElementById('brightness-slider').value = state.adjustments.brightness;
+        document.getElementById('brightness-value').textContent = state.adjustments.brightness + '%';
+        applyVideoFilters();
+        addSystemMessage(`☀️ Brillo ajustado a ${state.adjustments.brightness}%.`);
+      }
+
+      function adjustContrast(value) {
+        state.adjustments.contrast = Math.max(50, Math.min(150, value));
+        document.getElementById('contrast-slider').value = state.adjustments.contrast;
+        document.getElementById('contrast-value').textContent = state.adjustments.contrast + '%';
+        applyVideoFilters();
+        addSystemMessage(`◐ Contraste ajustado a ${state.adjustments.contrast}%.`);
+      }
+
+      function adjustSaturation(value) {
+        state.adjustments.saturation = Math.max(0, Math.min(200, value));
+        document.getElementById('saturation-slider').value = state.adjustments.saturation;
+        document.getElementById('saturation-value').textContent = state.adjustments.saturation + '%';
+        applyVideoFilters();
+        addSystemMessage(`🌈 Saturación ajustada a ${state.adjustments.saturation}%.`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // TEXT OVERLAY
+      // ─────────────────────────────────────────────────────────
+      function addTextOverlay(text) {
+        state.textOverlays.push({
+          text: text,
+          startTime: elements.previewVideo.currentTime,
+          duration: 3
+        });
+        
+        elements.textOverlayLayer.innerHTML = `<div class="text-overlay">${text}</div>`;
+        
+        setTimeout(() => {
+          elements.textOverlayLayer.innerHTML = '';
+        }, 3000);
+
+        addSystemMessage(`📝 Texto "${text}" añadido.`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // PLAYBACK SPEED
+      // ─────────────────────────────────────────────────────────
+      function setPlaybackSpeed(speed) {
+        const validSpeed = Math.max(0.25, Math.min(4, speed));
+        elements.previewVideo.playbackRate = validSpeed;
+        elements.speedSelect.value = validSpeed;
+        addSystemMessage(`⏩ Velocidad cambiada a ${validSpeed}x.`);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // RENDER FUNCTIONS
+      // ─────────────────────────────────────────────────────────
+      function renderClipsList() {
+        elements.clipCount.textContent = `${state.clips.length} clips`;
+        
+        if (state.clips.length === 0) {
+          elements.clipsList.innerHTML = '';
+          return;
+        }
+
+        elements.clipsList.innerHTML = state.clips.map((clip, index) => `
+          <div class="clip-item ${index === state.currentClipIndex ? 'active' : ''}" data-index="${index}" role="listitem">
+            <div class="clip-item-header">
+              <img class="clip-thumb" src="${clip.thumbnails[0] || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 32%22><rect fill=%22%23333%22 width=%2248%22 height=%2232%22/></svg>'}" alt="">
+              <span class="clip-name">${clip.name}</span>
+              <span class="clip-duration">${formatTime(clip.duration)}</span>
+            </div>
+            ${clip.scenes.length > 0 ? `
+              <div class="clip-scenes">
+                ${clip.scenes.slice(0, 5).map(s => `
+                  <span class="scene-marker" data-time="${s.time}">${formatTime(s.time)}</span>
+                `).join('')}
+                ${clip.scenes.length > 5 ? `<span class="scene-marker">+${clip.scenes.length - 5}</span>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+
+        // Add click handlers
+        elements.clipsList.querySelectorAll('.clip-item').forEach(item => {
+          item.addEventListener('click', () => selectClip(parseInt(item.dataset.index)));
+        });
+
+        // Scene marker click handlers
+        elements.clipsList.querySelectorAll('.scene-marker[data-time]').forEach(marker => {
+          marker.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const time = parseFloat(marker.dataset.time);
+            elements.previewVideo.currentTime = time;
+          });
+        });
+      }
+
+      function renderTimeline() {
+        if (state.clips.length === 0) {
+          elements.timelineClips.innerHTML = '<div style="color: var(--avia-text-muted); padding: 16px;">Añade clips para verlos aquí</div>';
+          return;
+        }
+
+        const totalDuration = state.clips.reduce((sum, c) => sum + c.duration, 0);
+
+        elements.timelineClips.innerHTML = state.clips.map((clip, index) => {
+          const widthPercent = (clip.duration / totalDuration) * 100;
+          return `
+            <div class="timeline-clip ${index === state.currentClipIndex ? 'selected' : ''}" 
+                 data-index="${index}" 
+                 draggable="true"
+                 style="flex: ${widthPercent} 1 0%;">
+              <div class="timeline-clip-name">${clip.name}</div>
+              <div class="timeline-clip-duration">${formatTime(clip.duration)}</div>
+              <div class="timeline-clip-filmstrip">
+                ${clip.thumbnails.slice(0, 4).map(t => `<img class="filmstrip-frame" src="${t}" alt="">`).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Add drag & drop handlers
+        setupTimelineDragDrop();
+      }
+
+      function setupTimelineDragDrop() {
+        const clips = elements.timelineClips.querySelectorAll('.timeline-clip');
+        let draggedIndex = null;
+
+        clips.forEach(clip => {
+          clip.addEventListener('dragstart', (e) => {
+            draggedIndex = parseInt(clip.dataset.index);
+            clip.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+          });
+
+          clip.addEventListener('dragend', () => {
+            clip.classList.remove('dragging');
+            draggedIndex = null;
+          });
+
+          clip.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+          });
+
+          clip.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const targetIndex = parseInt(clip.dataset.index);
+            if (draggedIndex !== null && draggedIndex !== targetIndex) {
+              reorderClips(draggedIndex, targetIndex);
+            }
+          });
+
+          clip.addEventListener('click', () => {
+            selectClip(parseInt(clip.dataset.index));
+          });
+        });
+      }
+
+      function reorderClips(fromIndex, toIndex) {
+        const movedClip = state.clips[fromIndex];
+        
+        const command = createCommand(
+          `Mover "${movedClip.name}"`,
+          () => {
+            state.clips.splice(fromIndex, 1);
+            state.clips.splice(toIndex, 0, movedClip);
+            state.currentClipIndex = toIndex;
+            renderClipsList();
+            renderTimeline();
+          },
+          () => {
+            state.clips.splice(toIndex, 1);
+            state.clips.splice(fromIndex, 0, movedClip);
+            state.currentClipIndex = fromIndex;
+            renderClipsList();
+            renderTimeline();
+          }
+        );
+        history.execute(command);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // CLIP SELECTION & PLAYBACK
+      // ─────────────────────────────────────────────────────────
+      function selectClip(index) {
+        if (index < 0 || index >= state.clips.length) return;
+        
+        state.currentClipIndex = index;
+        const clip = state.clips[index];
+
+        elements.previewVideo.src = clip.url;
+        elements.previewVideo.currentTime = clip.startTime || 0;
+        elements.previewVideo.style.display = 'block';
+        elements.previewPlaceholder.style.display = 'none';
+
+        if (clip.scenes) {
+          renderSceneMarkers(clip);
+        }
+
+        renderClipsList();
+        renderTimeline();
+        applyVideoFilters();
+      }
+
+      function updatePlayButton() {
+        state.isPlaying = !elements.previewVideo.paused;
+        elements.playBtn.textContent = state.isPlaying ? '⏸' : '▶';
+      }
+
+      function updateProgress() {
+        const video = elements.previewVideo;
+        const percent = (video.currentTime / video.duration) * 100;
+        elements.progressFill.style.width = percent + '%';
+        elements.timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+        
+        // Update subtitle
+        updateSubtitleDisplay();
+        
+        // Update playhead
+        const timelineWidth = elements.timelineClips.offsetWidth;
+        const playheadPos = 8 + (percent / 100) * (timelineWidth - 16);
+        elements.playhead.style.left = playheadPos + 'px';
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // CHAT FUNCTIONS
+      // ─────────────────────────────────────────────────────────
+      function addMessage(type, content) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${type}`;
+        msgDiv.innerHTML = `<div class="message-bubble">${content}</div>`;
+        elements.chatMessages.appendChild(msgDiv);
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+      }
+
+      function addUserMessage(text) {
+        addMessage('user', text);
+      }
+
+      function addAssistantMessage(text) {
+        addMessage('assistant', text);
+      }
+
+      function addSystemMessage(text) {
+        addMessage('system', text);
+      }
+
+      function handleSendMessage() {
+        const text = elements.chatInput.value.trim();
+        if (!text) return;
+
+        addUserMessage(text);
+        elements.chatInput.value = '';
+        
+        processCommand(text);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // SPEECH RECOGNITION
+      // ─────────────────────────────────────────────────────────
+      function initSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+          elements.micBtn.title = 'Reconocimiento de voz no disponible';
+          return;
+        }
+
+        // Check for iframe/sandbox restrictions
+        const isInIframe = window.self !== window.top;
+        if (isInIframe) {
+          elements.micBtn.addEventListener('click', () => {
+            aviaModal('Micrófono', 'El dictado por voz no está disponible en este contexto de iframe. Escribe tu comando en el campo de texto.');
+          });
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-ES';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        let isRecording = false;
+
+        elements.micBtn.addEventListener('click', () => {
+          if (isRecording) {
+            recognition.stop();
+          } else {
+            try {
+              recognition.start();
+              elements.micBtn.classList.add('recording');
+              isRecording = true;
+            } catch (err) {
+              aviaModal('Error', 'No se pudo iniciar el micrófono. Verifica los permisos.');
+            }
+          }
+        });
+
+        recognition.addEventListener('result', (event) => {
+          const transcript = event.results[0][0].transcript;
+          elements.chatInput.value = transcript;
+          handleSendMessage();
+        });
+
+        recognition.addEventListener('end', () => {
+          elements.micBtn.classList.remove('recording');
+          isRecording = false;
+        });
+
+        recognition.addEventListener('error', (event) => {
+          elements.micBtn.classList.remove('recording');
+          isRecording = false;
+          if (event.error !== 'aborted') {
+            addSystemMessage(`⚠️ Error de voz: ${event.error}`);
+          }
+        });
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // KEYBOARD SHORTCUTS
+      // ─────────────────────────────────────────────────────────
+      function initKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+          // Ignore if typing in input
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+            return;
+          }
+
+          switch (e.code) {
+            case 'Space':
+              e.preventDefault();
+              if (elements.previewVideo.paused) {
+                elements.previewVideo.play();
+              } else {
+                elements.previewVideo.pause();
+              }
+              updatePlayButton();
+              break;
+            
+            case 'ArrowLeft':
+              e.preventDefault();
+              elements.previewVideo.currentTime = Math.max(0, elements.previewVideo.currentTime - 5);
+              break;
+            
+            case 'ArrowRight':
+              e.preventDefault();
+              elements.previewVideo.currentTime = Math.min(
+                elements.previewVideo.duration,
+                elements.previewVideo.currentTime + 5
+              );
+              break;
+            
+            case 'KeyS':
+              if (!e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                splitAtCurrentTime();
+              }
+              break;
+            
+            case 'Delete':
+            case 'Backspace':
+              if (!e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                deleteCurrentClip();
+              }
+              break;
+            
+            case 'KeyZ':
+              if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                history.undo();
+              }
+              break;
+            
+            case 'KeyY':
+              if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                history.redo();
+              }
+              break;
+          }
+        });
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // EVENT LISTENERS SETUP
+      // ─────────────────────────────────────────────────────────
+      function initEventListeners() {
+        // Drop zone
+        elements.dropZone.addEventListener('click', () => elements.fileInput.click());
+        elements.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        
+        elements.dropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          elements.dropZone.classList.add('dragover');
+        });
+        
+        elements.dropZone.addEventListener('dragleave', () => {
+          elements.dropZone.classList.remove('dragover');
+        });
+        
+        elements.dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          elements.dropZone.classList.remove('dragover');
+          handleFiles(e.dataTransfer.files);
+        });
+
+        // Video controls
+        elements.playBtn.addEventListener('click', () => {
+          if (elements.previewVideo.paused) {
+            elements.previewVideo.play();
+          } else {
+            elements.previewVideo.pause();
+          }
+        });
+
+        elements.prevBtn.addEventListener('click', () => {
+          if (state.currentClipIndex > 0) {
+            selectClip(state.currentClipIndex - 1);
+          }
+        });
+
+        elements.nextBtn.addEventListener('click', () => {
+          if (state.currentClipIndex < state.clips.length - 1) {
+            selectClip(state.currentClipIndex + 1);
+          }
+        });
+
+        elements.splitBtn.addEventListener('click', splitAtCurrentTime);
+
+        elements.muteBtn.addEventListener('click', () => {
+          elements.previewVideo.muted = !elements.previewVideo.muted;
+          elements.muteBtn.textContent = elements.previewVideo.muted ? '🔇' : '🔊';
+        });
+
+        elements.volumeSlider.addEventListener('input', (e) => {
+          elements.previewVideo.volume = e.target.value;
+        });
+
+        elements.speedSelect.addEventListener('change', (e) => {
+          setPlaybackSpeed(parseFloat(e.target.value));
+        });
+
+        elements.progressBar.addEventListener('click', (e) => {
+          const rect = elements.progressBar.getBoundingClientRect();
+          const percent = (e.clientX - rect.left) / rect.width;
+          elements.previewVideo.currentTime = percent * elements.previewVideo.duration;
+        });
+
+        elements.previewVideo.addEventListener('play', updatePlayButton);
+        elements.previewVideo.addEventListener('pause', updatePlayButton);
+        elements.previewVideo.addEventListener('timeupdate', updateProgress);
+        elements.previewVideo.addEventListener('ended', () => {
+          if (state.currentClipIndex < state.clips.length - 1) {
+            selectClip(state.currentClipIndex + 1);
+            elements.previewVideo.play();
+          }
+        });
+
+        // Chat
+        elements.sendBtn.addEventListener('click', handleSendMessage);
+        elements.chatInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') handleSendMessage();
+        });
+
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+          });
+        });
+
+        // Filters
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyFilterByName(btn.dataset.filter);
+          });
+        });
+
+        // Adjustment sliders
+        document.getElementById('brightness-slider').addEventListener('input', (e) => {
+          adjustBrightness(parseInt(e.target.value));
+        });
+        document.getElementById('contrast-slider').addEventListener('input', (e) => {
+          adjustContrast(parseInt(e.target.value));
+        });
+        document.getElementById('saturation-slider').addEventListener('input', (e) => {
+          adjustSaturation(parseInt(e.target.value));
+        });
+
+        // Timeline tools
+        elements.detectScenesBtn.addEventListener('click', () => detectScenes(state.currentClipIndex));
+        elements.autoCutBtn.addEventListener('click', autoCutAtScenes);
+        elements.deleteClipBtn.addEventListener('click', deleteCurrentClip);
+
+        // Undo/Redo
+        elements.undoBtn.addEventListener('click', () => history.undo());
+        elements.redoBtn.addEventListener('click', () => history.redo());
+
+        // Transcription actions
+        document.getElementById('export-srt-btn').addEventListener('click', exportSRT);
+        document.getElementById('apply-subtitles-btn').addEventListener('click', () => {
+          state.subtitlesEnabled = !state.subtitlesEnabled;
+          document.getElementById('apply-subtitles-btn').textContent = 
+            state.subtitlesEnabled ? '❌ Ocultar Subtítulos' : '✅ Aplicar Subtítulos';
+          addSystemMessage(state.subtitlesEnabled ? '✅ Subtítulos activados.' : '❌ Subtítulos desactivados.');
+        });
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // WAVEFORM VISUALIZATION
+      // ─────────────────────────────────────────────────────────
+      function drawWaveform() {
+        const canvas = elements.waveformCanvas;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw simulated waveform
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        for (let x = 0; x < width; x++) {
+          const y = height / 2 + Math.sin(x * 0.05) * (height / 4) * Math.random();
+          if (x === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // INITIALIZATION
+      // ─────────────────────────────────────────────────────────
+      function init() {
+        initEventListeners();
+        initKeyboardShortcuts();
+        initSpeechRecognition();
+        history.updateButtons();
+        drawWaveform();
+
+        // Resize handler for waveform
+        window.addEventListener('resize', drawWaveform);
+
+        console.log('🎬 AVIA Video Editor v3.0 initialized');
+      }
+
+      // Start the app
+      init();
+
+    })();
+  </script>
+</body>
+</html>

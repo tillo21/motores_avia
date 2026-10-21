@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior v5.0 - Neural Project Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        .glass {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        
+        .neural-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .neural-node:hover {
+            transform: scale(1.1);
+        }
+        
+        .task-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: move;
+            transition: all 0.2s;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .timeline-event {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .timeline-event::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+        
+        .timeline-event::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 12px;
+            width: 2px;
+            height: calc(100% + 1.5rem);
+            background: var(--border);
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .badge-info {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .kanban-column {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            min-height: 400px;
+        }
+        
+        .ai-insight {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border-left: 3px solid var(--secondary);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Onboarding Tour -->
+    <div id="onboarding" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">🚀 Bienvenido a AVIA Senior v5.0</h2>
+                <button onclick="closeOnboarding()" class="text-gray-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="tour-content" class="space-y-4">
+                <div class="tour-step">
+                    <h3 class="text-lg font-semibold mb-2">🧠 Dashboard Neural</h3>
+                    <p class="text-gray-400">Visualiza la red de agentes y sus conexiones en tiempo real</p>
+                </div>
+                <div class="tour-step">
+                    <h3 class="text-lg font-semibold mb-2">📋 Kanban Inteligente</h3>
+                    <p class="text-gray-400">Gestiona tareas con predicción de riesgos basada en IA</p>
+                </div>
+                <div class="tour-step">
+                    <h3 class="text-lg font-semibold mb-2">⏱️ Timeline Interactiva</h3>
+                    <p class="text-gray-400">Rastrea eventos históricos y planifica el futuro</p>
+                </div>
+                <div class="tour-step">
+                    <h3 class="text-lg font-semibold mb-2">⚡ Atajos de Teclado</h3>
+                    <div class="bg-gray-800 p-3 rounded-lg space-y-2">
+                        <div class="flex justify-between">
+                            <span>Dashboard Neural</span>
+                            <kbd class="bg-gray-700 px-2 py-1 rounded">Ctrl + 1</kbd>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Kanban</span>
+                            <kbd class="bg-gray-700 px-2 py-1 rounded">Ctrl + 2</kbd>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Timeline</span>
+                            <kbd class="bg-gray-700 px-2 py-1 rounded">Ctrl + 3</kbd>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Buscar</span>
+                            <kbd class="bg-gray-700 px-2 py-1 rounded">Ctrl + K</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="closeOnboarding()" class="btn btn-primary w-full mt-4">
+                <i data-lucide="check"></i>
+                Comenzar
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="glass sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i data-lucide="brain" class="w-8 h-8 text-blue-500"></i>
+                <div>
+                    <h1 class="text-xl font-bold">AVIA Senior v5.0</h1>
+                    <p class="text-xs text-gray-400">Neural Project Management</p>
+                </div>
+            </div>
+            
+            <nav class="flex gap-2">
+                <button onclick="showView('neural')" id="nav-neural" class="btn btn-primary">
+                    <i data-lucide="network"></i>
+                    Neural
+                </button>
+                <button onclick="showView('kanban')" id="nav-kanban" class="btn btn-primary opacity-50">
+                    <i data-lucide="kanban"></i>
+                    Kanban
+                </button>
+                <button onclick="showView('timeline')" id="nav-timeline" class="btn btn-primary opacity-50">
+                    <i data-lucide="clock"></i>
+                    Timeline
+                </button>
+            </nav>
+            
+            <div class="flex gap-2">
+                <button onclick="openHelp()" class="btn btn-primary opacity-70">
+                    <i data-lucide="help-circle"></i>
+                </button>
+                <button onclick="toggleTheme()" class="btn btn-primary opacity-70">
+                    <i data-lucide="moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Metrics Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-2">
+                    <i data-lucide="users" class="w-5 h-5 text-blue-400"></i>
+                    <span class="badge badge-success">+12%</span>
+                </div>
+                <div class="text-2xl font-bold" id="metric-agents">24</div>
+                <div class="text-sm text-gray-400">Agentes Activos</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-2">
+                    <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+                    <span class="badge badge-success">+8%</span>
+                </div>
+                <div class="text-2xl font-bold" id="metric-tasks">1,847</div>
+                <div class="text-sm text-gray-400">Tareas Completadas</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-2">
+                    <i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-400"></i>
+                    <span class="badge badge-warning">3 Alertas</span>
+                </div>
+                <div class="text-2xl font-bold" id="metric-risk">7.2%</div>
+                <div class="text-sm text-gray-400">Riesgo Promedio</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-2">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-purple-400"></i>
+                    <span class="badge badge-info">Óptimo</span>
+                </div>
+                <div class="text-2xl font-bold" id="metric-efficiency">94.3%</div>
+                <div class="text-sm text-gray-400">Eficiencia IA</div>
+            </div>
+        </div>
+
+        <!-- Neural Dashboard View -->
+        <div id="view-neural" class="view-container">
+            <div class="glass rounded-xl p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="network"></i>
+                    Red Neural de Agentes
+                </h2>
+                <div id="neural-canvas" class="w-full h-96 bg-gray-900 rounded-lg relative overflow-hidden"></div>
+                
+                <div class="ai-insight">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-purple-400 mt-1"></i>
+                        <div>
+                            <h4 class="font-semibold mb-1">💡 Insight IA</h4>
+                            <p class="text-sm text-gray-400">El agente "Data Processor #3" muestra 23% más eficiencia cuando trabaja con "Analytics Engine #1". Considera priorizar esta dupla para tareas críticas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanban View -->
+        <div id="view-kanban" class="view-container hidden">
+            <div class="glass rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <i data-lucide="kanban"></i>
+                        Kanban Inteligente
+                    </h2>
+                    <button onclick="addTask()" class="btn btn-primary">
+                        <i data-lucide="plus"></i>
+                        Nueva Tarea
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="circle-dashed" class="w-4 h-4"></i>
+                            Por Hacer (5)
+                        </h3>
+                        <div id="column-todo" class="space-y-3">
+                            <div class="task-card">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-medium">Optimizar modelo ML</h4>
+                                    <span class="badge badge-danger">Alta</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mb-2">Mejorar precisión del modelo de predicción</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex gap-1">
+                                        <span class="badge badge-info text-xs">IA</span>
+                                        <span class="badge badge-info text-xs">ML</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">Riesgo: 8.3%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="task-card">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-medium">Actualizar documentación</h4>
+                                    <span class="badge badge-warning">Media</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mb-2">API v5.0 endpoints y schemas</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex gap-1">
+                                        <span class="badge badge-info text-xs">Docs</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">Riesgo: 3.1%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="loader" class="w-4 h-4"></i>
+                            En Progreso (3)
+                        </h3>
+                        <div id="column-doing" class="space-y-3">
+                            <div class="task-card">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-medium">Implementar WebSocket</h4>
+                                    <span class="badge badge-warning">Media</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mb-2">Real-time para dashboard neural</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex gap-1">
+                                        <span class="badge badge-info text-xs">Backend</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">Riesgo: 5.7%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            Completado (12)
+                        </h3>
+                        <div id="column-done" class="space-y-3">
+                            <div class="task-card opacity-70">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-medium">Design System v5.0</h4>
+                                    <span class="badge badge-success">Baja</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mb-2">Componentes React completos</p>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex gap-1">
+                                        <span class="badge badge-success text-xs">✓ Completado</span>
+                                    </div>
+                                    <span class="text-xs text-gray-500">0% riesgo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-insight mt-6">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-purple-400 mt-1"></i>
+                        <div>
+                            <h4 class="font-semibold mb-1">🎯 Recomendación IA</h4>
+                            <p class="text-sm text-gray-400">La tarea "Optimizar modelo ML" tiene alta prioridad pero riesgo elevado (8.3%). Sugerencia: asignar al agente "ML Expert #2" con historial del 96% de éxito en tareas similares.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div id="view-timeline" class="view-container hidden">
+            <div class="glass rounded-xl p-6">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                    <i data-lucide="clock"></i>
+                    Timeline de Eventos
+                </h2>
+                
+                <div class="flex gap-2 mb-6">
+                    <button onclick="filterTimeline('all')" class="btn btn-primary text-sm">Todos</button>
+                    <button onclick="filterTimeline('agent')" class="btn btn-primary text-sm opacity-50">Agentes</button>
+                    <button onclick="filterTimeline('task')" class="btn btn-primary text-sm opacity-50">Tareas</button>
+                    <button onclick="filterTimeline('system')" class="btn btn-primary text-sm opacity-50">Sistema</button>
+                </div>
+                
+                <div id="timeline-container" class="space-y-4">
+                    <div class="timeline-event" data-type="agent">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i data-lucide="user-plus" class="w-4 h-4 text-green-400"></i>
+                                    <span class="font-semibold">Nuevo agente conectado</span>
+                                </div>
+                                <p class="text-sm text-gray-400">"Neural Processor #7" se unió a la red</p>
+                            </div>
+                            <span class="text-xs text-gray-500">Hace 5 min</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-event" data-type="task">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i>
+                                    <span class="font-semibold">Tarea completada</span>
+                                </div>
+                                <p class="text-sm text-gray-400">"Design System v5.0" - 100% éxito</p>
+                            </div>
+                            <span class="text-xs text-gray-500">Hace 23 min</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-event" data-type="system">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i>
+                                    <span class="font-semibold">Alerta de rendimiento</span>
+                                </div>
+                                <p class="text-sm text-gray-400">Uso de memoria al 87% - Optimización recomendada</p>
+                            </div>
+                            <span class="text-xs text-gray-500">Hace 1 hora</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-event" data-type="agent">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i data-lucide="zap" class="w-4 h-4 text-purple-400"></i>
+                                    <span class="font-semibold">Optimización automática</span>
+                                </div>
+                                <p class="text-sm text-gray-400">IA redistribuyó 12 tareas para mejor eficiencia</p>
+                            </div>
+                            <span class="text-xs text-gray-500">Hace 2 horas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-event" data-type="task">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i data-lucide="git-branch" class="w-4 h-4 text-blue-400"></i>
+                                    <span class="font-semibold">Nueva tarea creada</span>
+                                </div>
+                                <p class="text-sm text-gray-400">"Implementar WebSocket" - Prioridad: Media</p>
+                            </div>
+                            <span class="text-xs text-gray-500">Hace 3 horas</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-insight mt-6">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-purple-400 mt-1"></i>
+                        <div>
+                            <h4 class="font-semibold mb-1">📊 Análisis Predictivo</h4>
+                            <p class="text-sm text-gray-400">Basado en patrones históricos, se espera un incremento del 15% en carga de trabajo durante las próximas 4 horas. Considera escalar 2 agentes adicionales.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+        
+        // State Management
+        const state = {
+            currentView: 'neural',
+            theme: 'dark',
+            agents: [],
+            tasks: [],
+            events: []
+        };
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initNeuralCanvas();
+            initKeyboardShortcuts();
+            loadData();
+            
+            // Show onboarding for first-time users
+            if (!localStorage.getItem('onboarding-completed')) {
+                document.getElementById('onboarding').classList.add('active');
+            }
+        });
+        
+        // Neural Canvas Visualization
+        function initNeuralCanvas() {
+            const canvas = document.getElementById('neural-canvas');
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            
+            const svg = d3.select('#neural-canvas')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            // Generate random agents network
+            const nodes = Array.from({length: 12}, (_, i) => ({
+                id: i,
+                name: `Agent ${i + 1}`,
+                x: Math.random() * width,
+                y: Math.random() * height,
+                status: Math.random() > 0.3 ? 'active' : 'idle'
+            }));
+            
+            const links = [];
+            for (let i = 0; i < nodes.length; i++) {
+                const numConnections = Math.floor(Math.random() * 3) + 1;
+                for (let j = 0; j < numConnections; j++) {
+                    const target = Math.floor(Math.random() * nodes.length);
+                    if (target !== i) {
+                        links.push({source: i, target: target});
+                    }
+                }
+            }
+            
+            // Draw links
+            const link = svg.selectAll('.link')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('x1', d => nodes[d.source].x)
+                .attr('y1', d => nodes[d.source].y)
+                .attr('x2', d => nodes[d.target].x)
+                .attr('y2', d => nodes[d.target].y)
+                .attr('stroke', '#334155')
+                .attr('stroke-width', 1)
+                .attr('opacity', 0.3);
+            
+            // Draw nodes
+            const node = svg.selectAll('.node')
+                .data(nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'neural-node')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+            
+            node.append('circle')
+                .attr('r', 20)
+                .attr('fill', d => d.status === 'active' ? '#3b82f6' : '#1e293b')
+                .attr('stroke', d => d.status === 'active' ? '#60a5fa' : '#334155')
+                .attr('stroke-width', 2);
+            
+            node.append('text')
+                .attr('text-anchor', 'middle')
+                .attr('dy', 4)
+                .attr('fill', '#f1f5f9')
+                .attr('font-size', '10px')
+                .text(d => d.id + 1);
+            
+            // Animate nodes
+            setInterval(() => {
+                node.selectAll('circle')
+                    .transition()
+                    .duration(1000)
+                    .attr('r', 22)
+                    .transition()
+                    .duration(1000)
+                    .attr('r', 20);
+            }, 2000);
+        }
+        
+        // View Management
+        function showView(view) {
+            const views = ['neural', 'kanban', 'timeline'];
+            views.forEach(v => {
+                document.getElementById(`view-${v}`).classList.toggle('hidden', v !== view);
+                document.getElementById(`nav-${v}`).classList.toggle('opacity-50', v !== view);
+            });
+            state.currentView = view;
+        }
+        
+        // Keyboard Shortcuts
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case '1':
+                            e.preventDefault();
+                            showView('neural');
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            showView('kanban');
+                            break;
+                        case '3':
+                            e.preventDefault();
+                            showView('timeline');
+                            break;
+                        case 'k':
+                            e.preventDefault();
+                            alert('🔍 Función de búsqueda próximamente');
+                            break;
+                    }
+                }
+            });
+        }
+        
+        // Onboarding
+        function closeOnboarding() {
+            document.getElementById('onboarding').classList.remove('active');
+            localStorage.setItem('onboarding-completed', 'true');
+        }
+        
+        function openHelp() {
+            document.getElementById('onboarding').classList.add('active');
+        }
+        
+        // Data Management
+        function loadData() {
+            // Simulate loading from backend
+            const saved = localStorage.getItem('avia-data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                state.agents = data.agents || [];
+                state.tasks = data.tasks || [];
+                state.events = data.events || [];
+            }
+            updateMetrics();
+        }
+        
+        function saveData() {
+            localStorage.setItem('avia-data', JSON.stringify({
+                agents: state.agents,
+                tasks: state.tasks,
+                events: state.events
+            }));
+        }
+        
+        // AI Prediction (Simple Algorithm)
+        function predictTaskRisk(task) {
+            let risk = 0;
+            if (task.priority === 'high') risk += 30;
+            if (task.priority === 'medium') risk += 15;
+            if (task.dependencies && task.dependencies.length > 2) risk += 20;
+            if (task.estimatedHours > 8) risk += 25;
+            return Math.min(risk, 95);
+        }
+        
+        // Metrics Update
+        function updateMetrics() {
+            // Simulate real-time updates
+            setInterval(() => {
+                const agentCount = document.getElementById('metric-agents');
+                const current = parseInt(agentCount.textContent);
+                agentCount.textContent = current + Math.floor(Math.random() * 3 - 1);
+            }, 5000);
+        }
+        
+        // Task Management
+        function addTask() {
+            const taskName = prompt('Nombre de la tarea:');
+            if (taskName) {
+                alert(`✅ Tarea "${taskName}" creada. Asignando agente óptimo con IA...`);
+            }
+        }
+        
+        // Timeline Filtering
+        function filterTimeline(type) {
+            const events = document.querySelectorAll('.timeline-event');
+            events.forEach(event => {
+                if (type === 'all') {
+                    event.style.display = 'block';
+                } else {
+                    event.style.display = event.dataset.type === type ? 'block' : 'none';
+                }
+            });
+        }
+        
+        // Theme Toggle
+        function toggleTheme() {
+            alert('🎨 Tema claro próximamente en v5.1');
+        }
+        
+        // Security: Basic encryption simulation
+        function encryptData(data) {
+            return btoa(JSON.stringify(data));
+        }
+        
+        function decryptData(encrypted) {
+            return JSON.parse(atob(encrypted));
+        }
+    </script>
+</body>
+</html>

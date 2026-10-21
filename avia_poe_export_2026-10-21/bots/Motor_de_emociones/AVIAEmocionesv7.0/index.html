@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Motor Emociones - PoC Capa 1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .metric-value {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 18px;
+        }
+        
+        .emotions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .emotion-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .emotion-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .emotion-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .emotion-icon {
+            font-size: 24px;
+        }
+        
+        .emotion-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .emotion-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.8s ease-out;
+        }
+        
+        .emotion-score {
+            font-size: 14px;
+            color: #666;
+            text-align: right;
+        }
+        
+        .explanation {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .explanation h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        
+        .explanation ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .explanation li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+        }
+        
+        .explanation li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 0;
+            }
+            
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 AVIA Motor de Emociones v7.0</h1>
+            <p>Proof of Concept - Capa 1: Diccionario Lingüístico</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <label for="textInput">Escribe tu texto para analizar:</label>
+                <textarea 
+                    id="textInput" 
+                    rows="6" 
+                    placeholder="Ejemplo: Estoy muy nervioso por el examen de mañana..."
+                ></textarea>
+            </div>
+            
+            <button class="btn" onclick="analyzeText()">🔍 Analizar Emociones</button>
+            
+            <div class="results" id="results">
+                <h2 style="margin-bottom: 20px; color: #667eea;">📊 Resultados del Análisis</h2>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <span class="stat-value" id="latency">-</span>
+                        <span class="stat-label">Latencia (ms)</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value" id="wordCount">-</span>
+                        <span class="stat-label">Palabras</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value" id="matchCount">-</span>
+                        <span class="stat-label">Coincidencias</span>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 25px 0 15px 0; color: #555;">Emociones Detectadas:</h3>
+                <div class="emotions-grid" id="emotionsGrid"></div>
+                
+                <div class="explanation" id="explanation"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LÉXICO AFECTIVO - 500 palabras base (versión simplificada para PoC)
+        const lexiconEmotions = {
+            // ALEGRÍA
+            'feliz': { emotion: 'alegría', intensity: 0.9 },
+            'contento': { emotion: 'alegría', intensity: 0.8 },
+            'alegre': { emotion: 'alegría', intensity: 0.9 },
+            'emocionado': { emotion: 'alegría', intensity: 0.85 },
+            'entusiasmado': { emotion: 'alegría', intensity: 0.85 },
+            'satisfecho': { emotion: 'alegría', intensity: 0.7 },
+            'orgulloso': { emotion: 'alegría', intensity: 0.8 },
+            'encantado': { emotion: 'alegría', intensity: 0.9 },
+            'dichoso': { emotion: 'alegría', intensity: 0.9 },
+            'eufórico': { emotion: 'alegría', intensity: 1.0 },
+            'radiante': { emotion: 'alegría', intensity: 0.9 },
+            'optimista': { emotion: 'alegría', intensity: 0.7 },
+            'genial': { emotion: 'alegría', intensity: 0.8 },
+            'maravilloso': { emotion: 'alegría', intensity: 0.9 },
+            'fantástico': { emotion: 'alegría', intensity: 0.9 },
+            
+            // TRISTEZA
+            'triste': { emotion: 'tristeza', intensity: 0.9 },
+            'deprimido': { emotion: 'tristeza', intensity: 1.0 },
+            'melancólico': { emotion: 'tristeza', intensity: 0.8 },
+            'desanimado': { emotion: 'tristeza', intensity: 0.8 },
+            'abatido': { emotion: 'tristeza', intensity: 0.9 },
+            'desesperanzado': { emotion: 'tristeza', intensity: 1.0 },
+            'desolado': { emotion: 'tristeza', intensity: 0.95 },
+            'afligido': { emotion: 'tristeza', intensity: 0.85 },
+            'apenado': { emotion: 'tristeza', intensity: 0.75 },
+            'sombrío': { emotion: 'tristeza', intensity: 0.8 },
+            'lloro': { emotion: 'tristeza', intensity: 0.9 },
+            'llorar': { emotion: 'tristeza', intensity: 0.9 },
+            
+            // MIEDO
+            'miedo': { emotion: 'miedo', intensity: 0.9 },
+            'asustado': { emotion: 'miedo', intensity: 0.9 },
+            'aterrado': { emotion: 'miedo', intensity: 1.0 },
+            'nervioso': { emotion: 'miedo', intensity: 0.8 },
+            'ansioso': { emotion: 'miedo', intensity: 0.85 },
+            'preocupado': { emotion: 'miedo', intensity: 0.75 },
+            'temeroso': { emotion: 'miedo', intensity: 0.9 },
+            'pánico': { emotion: 'miedo', intensity: 1.0 },
+            'inquieto': { emotion: 'miedo', intensity: 0.7 },
+            'angustiado': { emotion: 'miedo', intensity: 0.9 },
+            'alarmado': { emotion: 'miedo', intensity: 0.85 },
+            'espantado': { emotion: 'miedo', intensity: 0.95 },
+            
+            // IRA
+            'enfadado': { emotion: 'ira', intensity: 0.8 },
+            'enojado': { emotion: 'ira', intensity: 0.85 },
+            'furioso': { emotion: 'ira', intensity: 1.0 },
+            'molesto': { emotion: 'ira', intensity: 0.7 },
+            'irritado': { emotion: 'ira', intensity: 0.75 },
+            'rabioso': { emotion: 'ira', intensity: 0.95 },
+            'indignado': { emotion: 'ira', intensity: 0.85 },
+            'frustrado': { emotion: 'ira', intensity: 0.8 },
+            'exasperado': { emotion: 'ira', intensity: 0.85 },
+            'resentido': { emotion: 'ira', intensity: 0.8 },
+            'hostil': { emotion: 'ira', intensity: 0.9 },
+            
+            // ASCO
+            'asco': { emotion: 'asco', intensity: 0.9 },
+            'repugnante': { emotion: 'asco', intensity: 0.95 },
+            'asqueroso': { emotion: 'asco', intensity: 0.95 },
+            'nauseabundo': { emotion: 'asco', intensity: 1.0 },
+            'repulsivo': { emotion: 'asco', intensity: 0.95 },
+            'desagradable': { emotion: 'asco', intensity: 0.7 },
+            'repelente': { emotion: 'asco', intensity: 0.85 },
+            
+            // SORPRESA
+            'sorprendido': { emotion: 'sorpresa', intensity: 0.9 },
+            'asombrado': { emotion: 'sorpresa', intensity: 0.95 },
+            'impactado': { emotion: 'sorpresa', intensity: 0.9 },
+            'atónito': { emotion: 'sorpresa', intensity: 1.0 },
+            'desconcertado': { emotion: 'sorpresa', intensity: 0.8 },
+            'perplejo': { emotion: 'sorpresa', intensity: 0.85 },
+            'maravillado': { emotion: 'sorpresa', intensity: 0.9 },
+            
+            // ANTICIPACIÓN
+            'esperando': { emotion: 'anticipación', intensity: 0.7 },
+            'expectante': { emotion: 'anticipación', intensity: 0.8 },
+            'ansioso': { emotion: 'anticipación', intensity: 0.8 },
+            'ilusionado': { emotion: 'anticipación', intensity: 0.85 },
+            'impaciente': { emotion: 'anticipación', intensity: 0.8 },
+            'preparado': { emotion: 'anticipación', intensity: 0.7 },
+            'mañana': { emotion: 'anticipación', intensity: 0.5 },
+            'pronto': { emotion: 'anticipación', intensity: 0.6 },
+            'futuro': { emotion: 'anticipación', intensity: 0.6 },
+            'examen': { emotion: 'anticipación', intensity: 0.7 },
+            'entrevista': { emotion: 'anticipación', intensity: 0.75 },
+            
+            // CONFIANZA
+            'confiado': { emotion: 'confianza', intensity: 0.8 },
+            'seguro': { emotion: 'confianza', intensity: 0.85 },
+            'tranquilo': { emotion: 'confianza', intensity: 0.7 },
+            'calmado': { emotion: 'confianza', intensity: 0.75 },
+            'sereno': { emotion: 'confianza', intensity: 0.8 },
+            'relajado': { emotion: 'confianza', intensity: 0.75 },
+            'capaz': { emotion: 'confianza', intensity: 0.8 },
+            'preparado': { emotion: 'confianza', intensity: 0.75 }
+        };
+
+        // MODIFICADORES DE INTENSIDAD
+        const intensifiers = {
+            'muy': 0.3,
+            'mucho': 0.3,
+            'bastante': 0.2,
+            'extremadamente': 0.5,
+            'super': 0.4,
+            'demasiado': 0.4,
+            'tan': 0.3,
+            'realmente': 0.3,
+            'increíblemente': 0.4,
+            'poco': -0.3,
+            'algo': -0.2,
+            'apenas': -0.4,
+            'levemente': -0.3
+        };
+
+        // MAPEO DE EMOCIONES A ICONOS Y COLORES
+        const emotionConfig = {
+            'alegría': { icon: '😊', color: '#FFD700' },
+            'tristeza': { icon: '😢', color: '#4682B4' },
+            'miedo': { icon: '😨', color: '#9370DB' },
+            'ira': { icon: '😠', color: '#DC143C' },
+            'asco': { icon: '🤢', color: '#8B4513' },
+            'sorpresa': { icon: '😲', color: '#FF8C00' },
+            'anticipación': { icon: '🤔', color: '#32CD32' },
+            'confianza': { icon: '😌', color: '#20B2AA' }
+        };
+
+        function normalizeText(text) {
+            return text.toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^\w\s]/g, ' ')
+                .trim();
+        }
+
+        function tokenize(text) {
+            return normalizeText(text).split(/\s+/);
+        }
+
+        function analyzeText() {
+            const startTime = performance.now();
+            
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text) {
+                alert('Por favor, escribe un texto para analizar.');
+                return;
+            }
+
+            // Tokenización
+            const tokens = tokenize(text);
+            const wordCount = tokens.length;
+
+            // Inicializar scores
+            const emotionScores = {
+                'alegría': 0,
+                'tristeza': 0,
+                'miedo': 0,
+                'ira': 0,
+                'asco': 0,
+                'sorpresa': 0,
+                'anticipación': 0,
+                'confianza': 0
+            };
+
+            const detectedWords = [];
+            const explanations = [];
+
+            // Análisis token por token
+            for (let i = 0; i < tokens.length; i++) {
+                const token = tokens[i];
+                
+                if (lexiconEmotions[token]) {
+                    const emotionData = lexiconEmotions[token];
+                    let intensity = emotionData.intensity;
+                    
+                    // Verificar modificadores antes del token
+                    if (i > 0 && intensifiers[tokens[i-1]]) {
+                        const modifier = intensifiers[tokens[i-1]];
+                        intensity = Math.max(0, Math.min(1, intensity + modifier));
+                        explanations.push(`"${tokens[i-1]} ${token}" → ${emotionData.emotion} (intensidad ajustada: ${intensity.toFixed(2)})`);
+                    } else {
+                        explanations.push(`"${token}" → ${emotionData.emotion} (${intensity.toFixed(2)})`);
+                    }
+                    
+                    emotionScores[emotionData.emotion] += intensity;
+                    detectedWords.push(token);
+                }
+            }
+
+            // Normalizar scores
+            const maxScore = Math.max(...Object.values(emotionScores));
+            if (maxScore > 0) {
+                for (let emotion in emotionScores) {
+                    emotionScores[emotion] = emotionScores[emotion] / maxScore;
+                }
+            }
+
+            const endTime = performance.now();
+            const latency = Math.round(endTime - startTime);
+
+            // Mostrar resultados
+            displayResults(emotionScores, latency, wordCount, detectedWords.length, explanations);
+        }
+
+        function displayResults(scores, latency, wordCount, matchCount, explanations) {
+            // Actualizar métricas
+            document.getElementById('latency').textContent = latency;
+            document.getElementById('wordCount').textContent = wordCount;
+            document.getElementById('matchCount').textContent = matchCount;
+
+            // Ordenar emociones por score
+            const sortedEmotions = Object.entries(scores)
+                .sort((a, b) => b[1] - a[1])
+                .filter(([_, score]) => score > 0);
+
+            // Renderizar emociones
+            const grid = document.getElementById('emotionsGrid');
+            grid.innerHTML = '';
+
+            sortedEmotions.forEach(([emotion, score]) => {
+                const config = emotionConfig[emotion];
+                const percentage = Math.round(score * 100);
+                
+                const card = document.createElement('div');
+                card.className = 'emotion-card';
+                card.innerHTML = `
+                    <div class="emotion-name">
+                        <span class="emotion-icon">${config.icon}</span>
+                        <span>${emotion.charAt(0).toUpperCase() + emotion.slice(1)}</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill" style="width: ${percentage}%; background: ${config.color}"></div>
+                    </div>
+                    <div class="emotion-score">${percentage}%</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            // Renderizar explicaciones
+            const explanationDiv = document.getElementById('explanation');
+            if (explanations.length > 0) {
+                explanationDiv.innerHTML = `
+                    <h3>💡 Explicación del Análisis</h3>
+                    <ul>
+                        ${explanations.map(exp => `<li>${exp}</li>`).join('')}
+                    </ul>
+                `;
+            } else {
+                explanationDiv.innerHTML = `
+                    <h3>💡 Explicación del Análisis</h3>
+                    <p>No se detectaron palabras emocionales en el léxico. Intenta con otro texto.</p>
+                `;
+            }
+
+            // Mostrar sección de resultados
+            document.getElementById('results').classList.add('show');
+            
+            // Scroll suave
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Permitir análisis con Enter (Ctrl+Enter)
+        document.getElementById('textInput').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                analyzeText();
+            }
+        });
+    </script>
+</body>
+</html>

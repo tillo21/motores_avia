@@ -1,0 +1,1669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orquestador de Agentes AVIA v1.1.1</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #1a1a2e;
+            --bg-input: #16213e;
+            --gold: #ffd700;
+            --gold-dim: rgba(255, 215, 0, 0.1);
+            --cyan: #00d4ff;
+            --purple: #b794f6;
+            --green: #4ade80;
+            --red: #f87171;
+            --orange: #f59e0b;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --border: rgba(255, 215, 0, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--gold-dim), transparent);
+            filter: blur(60px);
+            z-index: -1;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gold), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .version {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--gold);
+            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title i {
+            color: var(--gold);
+        }
+
+        /* Ontology Selector */
+        .ontology-selector {
+            margin-bottom: 1.5rem;
+        }
+
+        .ontology-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--gold);
+        }
+
+        .ontology-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .ontology-chip {
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 0.6rem 1.2rem;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ontology-chip:hover {
+            border-color: var(--gold);
+            background: var(--gold-dim);
+            transform: translateY(-2px);
+        }
+
+        .ontology-chip.active {
+            border-color: var(--gold);
+            background: var(--gold);
+            color: var(--bg-dark);
+            font-weight: 600;
+        }
+
+        .ontology-chip:focus-visible {
+            outline: 3px solid var(--gold);
+            outline-offset: 2px;
+        }
+
+        /* Transmedia Input Zone */
+        .transmedia-zone {
+            background: var(--bg-input);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .transmedia-zone:hover,
+        .transmedia-zone.drag-over {
+            border-color: var(--cyan);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .transmedia-zone i {
+            font-size: 3rem;
+            color: var(--cyan);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .transmedia-zone p {
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            color: var(--cyan);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .attached-files {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .file-badge {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .file-badge i {
+            color: var(--cyan);
+        }
+
+        .file-badge .remove-file {
+            background: none;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+        }
+
+        /* Input Area */
+        textarea {
+            width: 100%;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            padding: 1rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px var(--gold-dim);
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .mode-chip {
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 0.6rem 1.2rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-chip:hover {
+            border-color: var(--purple);
+            transform: translateY(-2px);
+        }
+
+        .mode-chip.active {
+            border-color: var(--purple);
+            background: var(--purple);
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--gold), #ffed4e);
+            color: var(--bg-dark);
+            border: none;
+            padding: 0.9rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--cyan);
+            box-shadow: 0 8px 24px rgba(0, 212, 255, 0.2);
+        }
+
+        /* Pipeline */
+        .pipeline-container {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .pipeline-track {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .pipeline-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--bg-input);
+            z-index: 0;
+        }
+
+        .pipeline-progress {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--cyan));
+            width: 0%;
+            transition: width 0.5s ease;
+            z-index: 1;
+        }
+
+        .agent-node {
+            background: var(--bg-card);
+            border: 3px solid var(--border);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+            transition: all 0.4s ease;
+            cursor: pointer;
+        }
+
+        .agent-node:hover {
+            transform: scale(1.1);
+        }
+
+        .agent-node.activating {
+            border-color: var(--cyan);
+            background: rgba(0, 212, 255, 0.1);
+            animation: pulse 1s infinite;
+        }
+
+        .agent-node.complete {
+            border-color: var(--green);
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
+        }
+
+        .agent-node i {
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+
+        .agent-node.activating i {
+            color: var(--cyan);
+        }
+
+        .agent-node.complete i {
+            color: var(--green);
+        }
+
+        .agent-label {
+            position: absolute;
+            bottom: -30px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-align: center;
+            width: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Output */
+        .output-content {
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            min-height: 300px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .output-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .output-content::-webkit-scrollbar-track {
+            background: var(--bg-card);
+        }
+
+        .output-content::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+
+        /* Memory Panel */
+        .memory-panel {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .memory-item {
+            background: var(--bg-card);
+            border-left: 3px solid var(--cyan);
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .memory-item:hover {
+            background: var(--gold-dim);
+            border-left-color: var(--gold);
+        }
+
+        .memory-item-title {
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 0.25rem;
+        }
+
+        .memory-item-date {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        /* Examples */
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .example-card {
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .example-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.2);
+        }
+
+        .example-card:focus-visible {
+            outline: 3px solid var(--gold);
+            outline-offset: 2px;
+        }
+
+        .example-title {
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .example-desc {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .ontology-chips {
+                justify-content: center;
+            }
+
+            .pipeline-track {
+                overflow-x: auto;
+                justify-content: flex-start;
+                gap: 2rem;
+                padding-bottom: 1rem;
+            }
+
+            .agent-node {
+                width: 60px;
+                height: 60px;
+            }
+
+            .agent-node i {
+                font-size: 1.2rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .examples-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        :focus-visible {
+            outline: 3px solid var(--gold);
+            outline-offset: 2px;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--text-dim);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-offline {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--red);
+            border: 1px solid var(--red);
+        }
+
+        .status-online {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--green);
+            border: 1px solid var(--green);
+        }
+
+        .status-demo {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--orange);
+            border: 1px solid var(--orange);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">🧬</div>
+            <h1>Orquestador de Agentes AVIA</h1>
+            <p class="version">v1.1.1 · AVIA-Studio v5.2 + Gold-Rule-007</p>
+            <p class="subtitle">Metodología AMS · Constelación Económica de Consenso</p>
+            <div style="margin-top: 1rem;">
+                <span class="status-badge status-demo" id="statusBadge">
+                    <i class="fas fa-flask"></i> Inicializando...
+                </span>
+            </div>
+        </header>
+
+        <!-- Input Card -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-brain"></i>
+                Entrada del Proyecto
+            </h2>
+
+            <!-- Ontology Selector -->
+            <div class="ontology-selector">
+                <label for="ontologySelect">Tipo de entrada ontológica:</label>
+                <div class="ontology-chips" role="radiogroup" aria-label="Seleccionar tipo de entrada">
+                    <button class="ontology-chip active" data-category="prompt_creativo" role="radio" aria-checked="true" tabindex="0">
+                        🎨 Prompt Creativo
+                    </button>
+                    <button class="ontology-chip" data-category="claim_verificable" role="radio" aria-checked="false" tabindex="-1">
+                        🔍 Claim Verificable
+                    </button>
+                    <button class="ontology-chip" data-category="proyecto_estructurable" role="radio" aria-checked="false" tabindex="-1">
+                        🏗️ Proyecto Estructurable
+                    </button>
+                    <button class="ontology-chip" data-category="contenido_transmedia" role="radio" aria-checked="false" tabindex="-1">
+                        🎬 Contenido Transmedia
+                    </button>
+                    <button class="ontology-chip" data-category="auditoria_riesgo" role="radio" aria-checked="false" tabindex="-1">
+                        🛡️ Auditoría Riesgo
+                    </button>
+                    <button class="ontology-chip" data-category="memoria_conocimiento" role="radio" aria-checked="false" tabindex="-1">
+                        🧠 Memoria Conocimiento
+                    </button>
+                </div>
+            </div>
+
+            <!-- Transmedia Input Zone -->
+            <div class="transmedia-zone" id="dropzone" tabindex="0" role="button" aria-label="Zona de carga de archivos transmedia">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Arrastra archivos aquí (PDF, imágenes, audio, video, documentos)</p>
+                <p><button class="link-btn" id="browseBtn">o explora tu dispositivo</button></p>
+                <input type="file" id="fileInput" multiple accept="*/*" hidden aria-label="Seleccionar archivos">
+            </div>
+            <div class="attached-files" id="attachedFiles" role="list" aria-label="Archivos adjuntos"></div>
+
+            <!-- Text Input -->
+            <label for="userInput" class="sr-only">Describe tu idea, proyecto o necesidad</label>
+            <textarea 
+                id="userInput" 
+                placeholder="Describe tu idea, proyecto o necesidad aquí... (Cmd/Ctrl + Enter para procesar)"
+                aria-describedby="inputHelp"
+            ></textarea>
+            <span id="inputHelp" class="sr-only">Escribe tu entrada y presiona Cmd+Enter para procesar, o usa el botón de procesar</span>
+
+            <!-- Mode Selector -->
+            <div class="mode-selector" role="radiogroup" aria-label="Seleccionar modo de procesamiento">
+                <button class="mode-chip active" data-mode="AUTO" role="radio" aria-checked="true">AUTO</button>
+                <button class="mode-chip" data-mode="RÁPIDO" role="radio" aria-checked="false">RÁPIDO</button>
+                <button class="mode-chip" data-mode="AUDITORÍA" role="radio" aria-checked="false">AUDITORÍA</button>
+                <button class="mode-chip" data-mode="PROYECTO" role="radio" aria-checked="false">PROYECTO</button>
+                <button class="mode-chip" data-mode="STUDIO" role="radio" aria-checked="false">STUDIO</button>
+                <button class="mode-chip" data-mode="LAB" role="radio" aria-checked="false">LAB</button>
+            </div>
+
+            <!-- Buttons -->
+            <div class="btn-group">
+                <button class="btn" id="processBtn" aria-label="Procesar entrada con AVIA">
+                    <i class="fas fa-rocket"></i>
+                    Procesar con AVIA
+                </button>
+                <button class="btn btn-secondary" id="clearBtn" aria-label="Limpiar entrada">
+                    <i class="fas fa-eraser"></i>
+                    Limpiar
+                </button>
+                <button class="btn btn-secondary" id="exportTraceBtn" aria-label="Exportar traza Pukkart">
+                    <i class="fas fa-download"></i>
+                    Trace Pukkart
+                </button>
+            </div>
+        </div>
+
+        <!-- Pipeline Card -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-project-diagram"></i>
+                Pipeline de Agentes AVIA
+            </h2>
+            <div class="pipeline-container" role="progressbar" aria-label="Pipeline de procesamiento AVIA" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="pipeline-track" id="pipelineTrack">
+                    <div class="pipeline-line"></div>
+                    <div class="pipeline-progress" id="pipelineProgress"></div>
+                    
+                    <div class="agent-node" data-agent="Router" tabindex="0" role="button" aria-label="Agente Router">
+                        <i class="fas fa-route"></i>
+                        <span class="agent-label">Router</span>
+                    </div>
+                    <div class="agent-node" data-agent="Ontologia" tabindex="0" role="button" aria-label="Agente Ontología">
+                        <i class="fas fa-sitemap"></i>
+                        <span class="agent-label">Ontología</span>
+                    </div>
+                    <div class="agent-node" data-agent="Auditor" tabindex="0" role="button" aria-label="Agente Auditor">
+                        <i class="fas fa-shield-alt"></i>
+                        <span class="agent-label">Auditor</span>
+                    </div>
+                    <div class="agent-node" data-agent="Transmedia" tabindex="0" role="button" aria-label="Agente Transmedia">
+                        <i class="fas fa-photo-video"></i>
+                        <span class="agent-label">Transmedia</span>
+                    </div>
+                    <div class="agent-node" data-agent="Studio" tabindex="0" role="button" aria-label="Agente Studio">
+                        <i class="fas fa-palette"></i>
+                        <span class="agent-label">Studio</span>
+                    </div>
+                    <div class="agent-node" data-agent="Synapse" tabindex="0" role="button" aria-label="Agente Synapse">
+                        <i class="fas fa-brain"></i>
+                        <span class="agent-label">Synapse</span>
+                    </div>
+                    <div class="agent-node" data-agent="Pukkart" tabindex="0" role="button" aria-label="Agente Pukkart">
+                        <i class="fas fa-fingerprint"></i>
+                        <span class="agent-label">Pukkart</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Card -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-file-code"></i>
+                Resultado
+            </h2>
+            <div class="output-content" id="output" role="log" aria-live="polite" aria-label="Salida del procesamiento">
+                Esperando entrada...
+            </div>
+        </div>
+
+        <!-- Memory Panel -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-history"></i>
+                AVIA-Synapse · Memoria
+            </h2>
+            <div class="memory-panel" id="memoryPanel" role="list" aria-label="Historial de memoria AVIA-Synapse">
+                <p style="color: var(--text-dim); text-align: center;">Inicializando sistema de memoria...</p>
+            </div>
+        </div>
+
+        <!-- Examples Card -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-lightbulb"></i>
+                Ejemplos de Uso
+            </h2>
+            <div class="examples-grid" id="exampleCards">
+                <div class="example-card" tabindex="0" role="button" data-example="prompt_creativo">
+                    <div class="example-title">
+                        <i class="fas fa-magic"></i>
+                        Prompt Creativo
+                    </div>
+                    <p class="example-desc">
+                        "Diseña un sistema gamificado para fomentar la lectura en adolescentes, incluyendo mecánicas, recompensas y narrativa."
+                    </p>
+                </div>
+                <div class="example-card" tabindex="0" role="button" data-example="auditoria">
+                    <div class="example-title">
+                        <i class="fas fa-search"></i>
+                        Auditoría
+                    </div>
+                    <p class="example-desc">
+                        "Audita el siguiente claim: 'El 85% de las empresas que implementan IA aumentan su productividad en 40%'. Verifica fuentes y evalúa evidencia."
+                    </p>
+                </div>
+                <div class="example-card" tabindex="0" role="button" data-example="proyecto">
+                    <div class="example-title">
+                        <i class="fas fa-tasks"></i>
+                        Proyecto Complejo
+                    </div>
+                    <p class="example-desc">
+                        "Crea un plan completo para desarrollar una plataforma educativa accesible con contenido transmedia, incluyendo arquitectura, fases y métricas."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // AVIA-Gold-Rule-007: Capability Detection System
+        // ==========================================
+
+        const CapabilityGuard = {
+            capabilities: {
+                localStorage: null,
+                sessionStorage: null,
+                indexedDB: null,
+                fileAPI: null,
+                serviceWorker: null
+            },
+
+            detect() {
+                // localStorage
+                try {
+                    const test = '__avia_test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    this.capabilities.localStorage = true;
+                } catch (e) {
+                    this.capabilities.localStorage = false;
+                    console.warn('⚠️ localStorage no disponible:', e.message);
+                }
+
+                // sessionStorage
+                try {
+                    const test = '__avia_test__';
+                    sessionStorage.setItem(test, test);
+                    sessionStorage.removeItem(test);
+                    this.capabilities.sessionStorage = true;
+                } catch (e) {
+                    this.capabilities.sessionStorage = false;
+                    console.warn('⚠️ sessionStorage no disponible:', e.message);
+                }
+
+                // IndexedDB
+                this.capabilities.indexedDB = !!window.indexedDB;
+
+                // File API
+                this.capabilities.fileAPI = !!(window.File && window.FileReader && window.FileList && window.Blob);
+
+                // Service Worker
+                this.capabilities.serviceWorker = 'serviceWorker' in navigator;
+
+                // Log estado
+                console.log('🔍 AVIA Capability Check:', this.capabilities);
+                
+                return this.capabilities;
+            },
+
+            isAvailable(capability) {
+                if (this.capabilities[capability] === null) {
+                    this.detect();
+                }
+                return this.capabilities[capability] === true;
+            },
+
+            getStorageEngine() {
+                if (this.isAvailable('localStorage')) return 'localStorage';
+                if (this.isAvailable('sessionStorage')) return 'sessionStorage';
+                if (this.isAvailable('indexedDB')) return 'indexedDB';
+                return 'memory'; // Fallback final
+            }
+        };
+
+        // ==========================================
+        // AVIA-Studio v1.1.1 — JavaScript Core
+        // ==========================================
+
+        // State
+        const state = {
+            selectedCategory: 'prompt_creativo',
+            selectedMode: 'AUTO',
+            files: [],
+            processing: false,
+            trace: []
+        };
+
+        // Ontology Configuration
+        const ONTOLOGY = {
+            prompt_creativo: {
+                icon: '🎨',
+                agents: ['Router', 'Ontologia', 'Transmedia', 'Studio'],
+                keywords: ['generar', 'crear', 'diseñar', 'imaginar', 'desarrollar']
+            },
+            claim_verificable: {
+                icon: '🔍',
+                agents: ['Router', 'Auditor', 'Ontologia', 'Pukkart'],
+                keywords: ['según', 'estudio', 'porcentaje', 'afirma', 'evidencia']
+            },
+            proyecto_estructurable: {
+                icon: '🏗️',
+                agents: ['Router', 'Ontologia', 'Studio', 'Synapse', 'Pukkart'],
+                keywords: ['proyecto', 'plan', 'implementar', 'desarrollar', 'fase']
+            },
+            contenido_transmedia: {
+                icon: '🎬',
+                agents: ['Router', 'Transmedia', 'Studio', 'Synapse'],
+                keywords: ['video', 'audio', 'imagen', 'multimedia', 'contenido']
+            },
+            auditoria_riesgo: {
+                icon: '🛡️',
+                agents: ['Router', 'Auditor', 'Ontologia', 'Pukkart'],
+                keywords: ['auditar', 'verificar', 'riesgo', 'seguridad', 'validar']
+            },
+            memoria_conocimiento: {
+                icon: '🧠',
+                agents: ['Router', 'Synapse', 'Ontologia', 'Pukkart'],
+                keywords: ['recordar', 'memoria', 'histórico', 'anterior', 'contexto']
+            }
+        };
+
+        // ==========================================
+        // AVIA-Synapse v2.0 — Storage Agnostic
+        // ==========================================
+
+        const AVIASynapse = {
+            storageEngine: null,
+            memoryCache: {}, // Fallback en RAM
+            
+            init() {
+                this.storageEngine = CapabilityGuard.getStorageEngine();
+                console.log(`🧠 AVIA-Synapse activado con: ${this.storageEngine}`);
+                
+                if (this.storageEngine === 'memory') {
+                    this.showStorageDegradationWarning();
+                }
+                
+                this.renderMemory();
+            },
+
+            remember(key, value, category) {
+                const memory = this.getMemory();
+                memory[key] = {
+                    value,
+                    category,
+                    timestamp: Date.now(),
+                    date: new Date().toLocaleString('es-ES')
+                };
+                
+                try {
+                    this._persist(memory);
+                    console.log(`✅ Memoria guardada: ${key}`);
+                } catch (e) {
+                    console.error('❌ Error persistiendo memoria:', e);
+                    // Fallback a memoria volátil
+                    this.memoryCache = memory;
+                    console.warn('⚠️ Usando memoria volátil (se perderá al recargar)');
+                }
+                
+                this.renderMemory();
+            },
+
+            getMemory() {
+                try {
+                    switch (this.storageEngine) {
+                        case 'localStorage':
+                            return JSON.parse(localStorage.getItem('avia_memory') || '{}');
+                        
+                        case 'sessionStorage':
+                            return JSON.parse(sessionStorage.getItem('avia_memory') || '{}');
+                        
+                        case 'indexedDB':
+                            // Simplificado: en producción usar async/await con IndexedDB API
+                            return this.memoryCache;
+                        
+                        default:
+                            return this.memoryCache;
+                    }
+                } catch (e) {
+                    console.error('❌ Error leyendo memoria:', e);
+                    return this.memoryCache;
+                }
+            },
+
+            recall(key) {
+                const memory = this.getMemory();
+                return memory[key] || null;
+            },
+
+            _persist(memory) {
+                const serialized = JSON.stringify(memory);
+                
+                switch (this.storageEngine) {
+                    case 'localStorage':
+                        localStorage.setItem('avia_memory', serialized);
+                        break;
+                    
+                    case 'sessionStorage':
+                        sessionStorage.setItem('avia_memory', serialized);
+                        break;
+                    
+                    case 'indexedDB':
+                        // TODO: Implementar con IndexedDB API real
+                        this.memoryCache = memory;
+                        break;
+                    
+                    default:
+                        this.memoryCache = memory;
+                }
+            },
+
+            showStorageDegradationWarning() {
+                const warningBanner = document.createElement('div');
+                warningBanner.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    background: linear-gradient(135deg, #f59e0b, #ea580c);
+                    color: white;
+                    padding: 1rem;
+                    text-align: center;
+                    font-weight: 600;
+                    z-index: 9999;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                warningBanner.innerHTML = `
+                    ⚠️ Modo degradado: almacenamiento persistente no disponible. 
+                    La memoria se perderá al recargar la página. 
+                    <button onclick="this.parentElement.remove()" style="
+                        background: white;
+                        color: #ea580c;
+                        border: none;
+                        padding: 0.3rem 0.8rem;
+                        border-radius: 4px;
+                        margin-left: 1rem;
+                        cursor: pointer;
+                        font-weight: 700;
+                    ">Entendido</button>
+                `;
+                document.body.prepend(warningBanner);
+                
+                // Auto-hide después de 8 segundos
+                setTimeout(() => warningBanner.remove(), 8000);
+            },
+
+            renderMemory() {
+                const memory = this.getMemory();
+                const panel = document.getElementById('memoryPanel');
+                const entries = Object.entries(memory);
+
+                if (entries.length === 0) {
+                    panel.innerHTML = `
+                        <p style="color: var(--text-dim); text-align: center;">
+                            No hay memoria almacenada aún.
+                            ${this.storageEngine === 'memory' ? '<br><small style="color: var(--red);">(Modo volátil activo)</small>' : ''}
+                        </p>
+                    `;
+                    return;
+                }
+
+                panel.innerHTML = entries.reverse().slice(0, 10).map(([key, data]) => `
+                    <div class="memory-item" role="listitem" tabindex="0" data-memory-key="${key}">
+                        <div class="memory-item-title">
+                            ${data.category && ONTOLOGY[data.category] ? ONTOLOGY[data.category].icon : '📝'} 
+                            ${key}
+                        </div>
+                        <div class="memory-item-date">${data.date}</div>
+                    </div>
+                `).join('');
+
+                // Re-attach event handlers
+                document.querySelectorAll('.memory-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const key = item.dataset.memoryKey;
+                        const data = AVIASynapse.recall(key);
+                        if (data) {
+                            document.getElementById('userInput').value = data.value;
+                        }
+                    });
+
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            item.click();
+                        }
+                    });
+                });
+            }
+        };
+
+        // AVIA-Pukkart (Traceability)
+        const AVIAPukkart = {
+            log(event, data) {
+                state.trace.push({
+                    timestamp: new Date().toISOString(),
+                    event,
+                    storageEngine: AVIASynapse.storageEngine,
+                    capabilities: CapabilityGuard.capabilities,
+                    ...data
+                });
+            },
+
+            export() {
+                const blob = new Blob([JSON.stringify(state.trace, null, 2)], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `pukkart-trace-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        };
+
+        // Transmedia Handler
+        const TransmediaHandler = {
+            async processFile(file) {
+                if (!CapabilityGuard.isAvailable('fileAPI')) {
+                    alert('⚠️ File API no disponible en este entorno. Usa un navegador moderno o abre desde servidor HTTPS.');
+                    return;
+                }
+
+                const type = this.detectType(file);
+                const content = await this.parseFile(file, type);
+                
+                state.files.push({
+                    name: file.name,
+                    type,
+                    size: file.size,
+                    content
+                });
+
+                this.renderFiles();
+                AVIAPukkart.log('file_attached', { filename: file.name, type });
+            },
+
+            detectType(file) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                const typeMap = {
+                    pdf: 'document',
+                    doc: 'document',
+                    docx: 'document',
+                    jpg: 'image',
+                    jpeg: 'image',
+                    png: 'image',
+                    gif: 'image',
+                    mp3: 'audio',
+                    wav: 'audio',
+                    mp4: 'video',
+                    txt: 'text',
+                    md: 'text'
+                };
+                return typeMap[ext] || 'unknown';
+            },
+
+            async parseFile(file, type) {
+                try {
+                    if (type === 'text') {
+                        return await file.text();
+                    } else if (type === 'image') {
+                        return await this.readAsDataURL(file);
+                    }
+                    return `[Archivo ${type}: ${file.name}]`;
+                } catch (e) {
+                    console.error('❌ Error parseando archivo:', e);
+                    return `[Error leyendo ${file.name}]`;
+                }
+            },
+
+            readAsDataURL(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            },
+
+            renderFiles() {
+                const container = document.getElementById('attachedFiles');
+                container.innerHTML = state.files.map((file, index) => `
+                    <div class="file-badge" role="listitem">
+                        <i class="fas fa-file"></i>
+                        <span>${file.name}</span>
+                        <button class="remove-file" data-index="${index}" aria-label="Eliminar ${file.name}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('');
+
+                // Add remove handlers
+                document.querySelectorAll('.remove-file').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const index = parseInt(btn.dataset.index);
+                        state.files.splice(index, 1);
+                        this.renderFiles();
+                    });
+                });
+            }
+        };
+
+        // Pipeline Animation
+        const Pipeline = {
+            reset() {
+                document.querySelectorAll('.agent-node').forEach(node => {
+                    node.classList.remove('activating', 'complete');
+                });
+                document.getElementById('pipelineProgress').style.width = '0%';
+            },
+
+            async activate(agentName) {
+                const node = document.querySelector(`[data-agent="${agentName}"]`);
+                if (node) {
+                    node.classList.add('activating');
+                    await this.sleep(1200);
+                    node.classList.remove('activating');
+                    node.classList.add('complete');
+                }
+            },
+
+            updateProgress(percentage) {
+                document.getElementById('pipelineProgress').style.width = percentage + '%';
+            },
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        };
+
+        // AVIA Simulator v7.2
+        const AVIASimulator = {
+            async process(input, category, mode, files) {
+                const agents = ONTOLOGY[category].agents;
+                let output = `# 🧬 AVIA-Proyecto — Resultado\n\n`;
+                output += `**Modo:** ${mode} | **Categoría:** ${ONTOLOGY[category].icon} ${category}\n`;
+                output += `**Storage Engine:** ${AVIASynapse.storageEngine}\n`;
+                output += `**Archivos adjuntos:** ${files.length}\n\n`;
+                output += `---\n\n`;
+
+                for (let i = 0; i < agents.length; i++) {
+                    const agent = agents[i];
+                    await Pipeline.activate(agent);
+                    Pipeline.updateProgress((i + 1) / agents.length * 100);
+
+                    output += this.generateAgentResponse(agent, input, category, files);
+                    this.updateOutput(output);
+                    await Pipeline.sleep(800);
+                }
+
+                output += `\n---\n\n## ✅ Procesamiento Completado\n\n`;
+                output += `**Quality Score:** 9.5/10\n`;
+                output += `**Estado:** VALIDADO (AVIA v5.1 + Gold-Rule-007)\n`;
+                output += `**Trazabilidad:** ${state.trace.length} eventos registrados\n`;
+                output += `**Capability Check:** ✅ Pasado\n\n`;
+                output += `*Simulado con AVIA-Studio v7.2 · Storage: ${AVIASynapse.storageEngine}*`;
+
+                this.updateOutput(output);
+                return output;
+            },
+
+            generateAgentResponse(agent, input, category, files) {
+                const responses = {
+                    Router: `### 🚦 Router\n✅ Entrada clasificada como: **${category}**\n✅ Modo seleccionado: **${state.selectedMode}**\n✅ Ruta determinada: **${this.determineRoute(category)}**\n\n`,
+                    
+                    Ontologia: `### 🗺️ Ontología\n**Conceptos clave:** ${this.extractKeywords(input, category).join(', ')}\n**Dominio detectado:** ${this.detectDomain(input)}\n**Relaciones:** ${this.mapRelations(input)}\n\n`,
+                    
+                    Auditor: `### 🛡️ Auditor\n**Claims detectados:** ${this.countClaims(input)}\n**Nivel de evidencia requerido:** ${category === 'claim_verificable' ? 'ALTO' : 'MEDIO'}\n**Riesgos identificados:** ${this.identifyRisks(input)}\n**Recomendación:** ${this.auditRecommendation(input)}\n\n`,
+                    
+                    Transmedia: `### 🎬 Transmedia\n**Archivos procesados:** ${files.length}\n**Formatos detectados:** ${files.map(f => f.type).join(', ') || 'ninguno'}\n**Contenido extraído:** ${files.length > 0 ? 'Disponible para análisis' : 'No aplicable'}\n\n`,
+                    
+                    Studio: `### 🎨 Studio\n**Artefacto propuesto:** ${this.proposeArtifact(input, category)}\n**Formato de salida:** ${this.suggestFormat(category)}\n**Complejidad estimada:** ${this.estimateComplexity(input)}\n\n`,
+                    
+                    Synapse: `### 🧠 Synapse\n**Storage Engine:** ${AVIASynapse.storageEngine}\n**Memoria consultada:** ${Object.keys(AVIASynapse.getMemory()).length} entradas\n**Contexto relacionado:** ${this.findRelatedMemory(input)}\n**Almacenamiento:** ${AVIASynapse.storageEngine === 'memory' ? 'Volátil (RAM)' : 'Persistente'}\n\n`,
+                    
+                    Pukkart: `### 🔒 Pukkart\n**Eventos trazados:** ${state.trace.length}\n**Fingerprint:** ${this.generateFingerprint()}\n**Integridad:** Verificada\n**Capabilities logged:** ✅\n\n`
+                };
+
+                return responses[agent] || `### ${agent}\nProcesando...\n\n`;
+            },
+
+            determineRoute(category) {
+                const routes = {
+                    prompt_creativo: 'STUDIO → OUTPUT',
+                    claim_verificable: 'AUDITORÍA → EVIDENCIA',
+                    proyecto_estructurable: 'PROYECTO → FASES',
+                    contenido_transmedia: 'TRANSMEDIA → STUDIO',
+                    auditoria_riesgo: 'AUDITORÍA → RIESGO',
+                    memoria_conocimiento: 'SYNAPSE → CONTEXTO'
+                };
+                return routes[category] || 'AUTO';
+            },
+
+            extractKeywords(input, category) {
+                const words = input.toLowerCase().split(/\s+/);
+                const keywords = ONTOLOGY[category].keywords;
+                return words.filter(w => keywords.includes(w) || w.length > 6).slice(0, 5);
+            },
+
+            detectDomain(input) {
+                const domains = {
+                    'educación': ['educar', 'aprender', 'enseñar', 'estudiante'],
+                    'tecnología': ['software', 'app', 'sistema', 'digital'],
+                    'salud': ['salud', 'médico', 'paciente', 'terapia'],
+                    'negocio': ['empresa', 'cliente', 'venta', 'mercado']
+                };
+
+                for (let [domain, words] of Object.entries(domains)) {
+                    if (words.some(w => input.toLowerCase().includes(w))) {
+                        return domain;
+                    }
+                }
+                return 'general';
+            },
+
+            mapRelations(input) {
+                return input.length > 100 ? 'Complejas (multi-dominio)' : 'Simples (mono-dominio)';
+            },
+
+            countClaims(input) {
+                const claimIndicators = ['según', 'estudio', '%', 'afirma', 'evidencia'];
+                return claimIndicators.filter(c => input.toLowerCase().includes(c)).length;
+            },
+
+            identifyRisks(input) {
+                if (input.toLowerCase().includes('datos') || input.toLowerCase().includes('personal')) {
+                    return 'Privacidad (MEDIO)';
+                }
+                return 'Bajo';
+            },
+
+            auditRecommendation(input) {
+                return input.length > 200 ? 'Desglosar en claims independientes' : 'Verificar fuentes primarias';
+            },
+
+            proposeArtifact(input, category) {
+                const artifacts = {
+                    prompt_creativo: 'Prompt maestro estructurado',
+                    claim_verificable: 'Informe de auditoría',
+                    proyecto_estructurable: 'Plan de proyecto con fases',
+                    contenido_transmedia: 'Paquete multimedia',
+                    auditoria_riesgo: 'Matriz de riesgos',
+                    memoria_conocimiento: 'Base de conocimiento'
+                };
+                return artifacts[category];
+            },
+
+            suggestFormat(category) {
+                const formats = {
+                    prompt_creativo: 'Markdown + JSON',
+                    claim_verificable: 'Markdown + Evidence Log',
+                    proyecto_estructurable: 'AVIA Pipeline JSON',
+                    contenido_transmedia: 'Assets + Metadata',
+                    auditoria_riesgo: 'PDF + CSV',
+                    memoria_conocimiento: 'JSON + Markdown'
+                };
+                return formats[category];
+            },
+
+            estimateComplexity(input) {
+                if (input.length < 100) return 'BAJA';
+                if (input.length < 300) return 'MEDIA';
+                return 'ALTA';
+            },
+
+            findRelatedMemory(input) {
+                const memory = AVIASynapse.getMemory();
+                const entries = Object.entries(memory);
+                if (entries.length === 0) return 'Ninguno';
+                return `${entries.length} entrada(s) relacionada(s)`;
+            },
+
+            generateFingerprint() {
+                return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            },
+
+            updateOutput(text) {
+                document.getElementById('output').textContent = text;
+            }
+        };
+
+        // Status Badge Update
+        function updateStatusBadge() {
+            const badge = document.getElementById('statusBadge');
+            const engine = CapabilityGuard.getStorageEngine();
+            
+            const statusConfig = {
+                localStorage: {
+                    icon: '✅',
+                    text: 'Modo Completo (localStorage)',
+                    class: 'status-online'
+                },
+                sessionStorage: {
+                    icon: '⚠️',
+                    text: 'Modo Sesión (sessionStorage)',
+                    class: 'status-demo'
+                },
+                indexedDB: {
+                    icon: '🔄',
+                    text: 'Modo IndexedDB',
+                    class: 'status-online'
+                },
+                memory: {
+                    icon: '⚡',
+                    text: 'Modo Volátil (RAM)',
+                    class: 'status-offline'
+                }
+            };
+            
+            const config = statusConfig[engine];
+            badge.className = `status-badge ${config.class}`;
+            badge.innerHTML = `<i class="fas fa-info-circle"></i> ${config.icon} ${config.text}`;
+        }
+
+        // Event Handlers
+        function initEventHandlers() {
+            // Ontology chips
+            document.querySelectorAll('.ontology-chip').forEach(chip => {
+                chip.addEventListener('click', () => selectOntologyChip(chip));
+                chip.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectOntologyChip(chip);
+                    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                        navigateChips(chip, e.key === 'ArrowRight' ? 1 : -1);
+                    }
+                });
+            });
+
+            // Mode chips
+            document.querySelectorAll('.mode-chip').forEach(chip => {
+                chip.addEventListener('click', () => selectModeChip(chip));
+            });
+
+            // Dropzone
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('drag-over');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('drag-over');
+            });
+
+            dropzone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+                const files = Array.from(e.dataTransfer.files);
+                for (let file of files) {
+                    await TransmediaHandler.processFile(file);
+                }
+            });
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInput.click();
+                }
+            });
+
+            document.getElementById('browseBtn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                for (let file of files) {
+                    await TransmediaHandler.processFile(file);
+                }
+                fileInput.value = '';
+            });
+
+            // Process button
+            document.getElementById('processBtn').addEventListener('click', processInput);
+
+            // Clear button
+            document.getElementById('clearBtn').addEventListener('click', () => {
+                document.getElementById('userInput').value = '';
+                state.files = [];
+                TransmediaHandler.renderFiles();
+                document.getElementById('output').textContent = 'Esperando entrada...';
+                Pipeline.reset();
+            });
+
+            // Export trace button
+            document.getElementById('exportTraceBtn').addEventListener('click', () => {
+                AVIAPukkart.export();
+            });
+
+            // Keyboard shortcuts
+            document.getElementById('userInput').addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    processInput();
+                }
+            });
+
+            // Example cards
+            document.querySelectorAll('.example-card').forEach(card => {
+                card.addEventListener('click', () => loadExample(card));
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        loadExample(card);
+                    }
+                });
+            });
+        }
+
+        function selectOntologyChip(chip) {
+            document.querySelectorAll('.ontology-chip').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-checked', 'false');
+                c.setAttribute('tabindex', '-1');
+            });
+            chip.classList.add('active');
+            chip.setAttribute('aria-checked', 'true');
+            chip.setAttribute('tabindex', '0');
+            state.selectedCategory = chip.dataset.category;
+            AVIAPukkart.log('category_selected', { category: state.selectedCategory });
+        }
+
+        function navigateChips(currentChip, direction) {
+            const chips = Array.from(document.querySelectorAll('.ontology-chip'));
+            const currentIndex = chips.indexOf(currentChip);
+            const nextIndex = (currentIndex + direction + chips.length) % chips.length;
+            chips[nextIndex].focus();
+        }
+
+        function selectModeChip(chip) {
+            document.querySelectorAll('.mode-chip').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-checked', 'false');
+            });
+            chip.classList.add('active');
+            chip.setAttribute('aria-checked', 'true');
+            state.selectedMode = chip.dataset.mode;
+            AVIAPukkart.log('mode_selected', { mode: state.selectedMode });
+        }
+
+        async function processInput() {
+            const input = document.getElementById('userInput').value.trim();
+            
+            if (!input && state.files.length === 0) {
+                alert('Por favor, ingresa texto o adjunta archivos antes de procesar.');
+                return;
+            }
+
+            if (state.processing) return;
+            state.processing = true;
+
+            const btn = document.getElementById('processBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Procesando...';
+
+            AVIAPukkart.log('processing_started', {
+                category: state.selectedCategory,
+                mode: state.selectedMode,
+                input_length: input.length,
+                files_count: state.files.length
+            });
+
+            Pipeline.reset();
+            document.getElementById('output').textContent = 'Procesando...';
+
+            try {
+                const result = await AVIASimulator.process(
+                    input,
+                    state.selectedCategory,
+                    state.selectedMode,
+                    state.files
+                );
+
+                // Save to memory
+                const memoryKey = input.substring(0, 50) + (input.length > 50 ? '...' : '');
+                AVIASynapse.remember(memoryKey, input, state.selectedCategory);
+
+                AVIAPukkart.log('processing_completed', {
+                    success: true,
+                    output_length: result.length
+                });
+
+            } catch (error) {
+                document.getElementById('output').textContent = `❌ Error: ${error.message}`;
+                AVIAPukkart.log('processing_error', { error: error.message });
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rocket"></i> Procesar con AVIA';
+            state.processing = false;
+        }
+
+        function loadExample(card) {
+            const examples = {
+                prompt_creativo: "Diseña un sistema gamificado para fomentar la lectura en adolescentes de 13-17 años, incluyendo mecánicas de juego, sistema de recompensas, narrativa envolvente y métricas de seguimiento del progreso lector.",
+                auditoria: "Audita el siguiente claim: 'El 85% de las empresas que implementan sistemas de IA aumentan su productividad en un 40% durante el primer año'. Verifica fuentes, evalúa evidencia disponible, identifica sesgos y proporciona un nivel de confianza.",
+                proyecto: "Crea un plan de proyecto completo para desarrollar una plataforma educativa inclusiva con contenido transmedia accesible (WCAG 2.1 AA), incluyendo arquitectura técnica, fases de implementación, equipo necesario, presupuesto estimado y métricas de éxito."
+            };
+
+            const exampleType = card.dataset.example;
+            const text = examples[exampleType];
+            
+            if (text) {
+                document.getElementById('userInput').value = text;
+                
+                // Auto-select category
+                if (exampleType === 'prompt_creativo') {
+                    document.querySelector('[data-category="prompt_creativo"]').click();
+                } else if (exampleType === 'auditoria') {
+                    document.querySelector('[data-category="auditoria_riesgo"]').click();
+                } else if (exampleType === 'proyecto') {
+                    document.querySelector('[data-category="proyecto_estructurable"]').click();
+                }
+
+                // Scroll to input
+                document.getElementById('userInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('userInput').focus();
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            CapabilityGuard.detect();
+            AVIASynapse.init();
+            updateStatusBadge();
+            initEventHandlers();
+            AVIAPukkart.log('app_initialized', { version: 'v1.1.1', goldRule: '007' });
+            console.log('🧬 AVIA-Proyecto v1.1.1 inicializado con Gold-Rule-007');
+        });
+    </script>
+</body>
+</html>

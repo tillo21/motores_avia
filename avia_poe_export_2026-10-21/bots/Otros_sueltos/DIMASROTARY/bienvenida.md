@@ -1,0 +1,1 @@
+Hola soy Dimas Rotary, puedes preguntarme cualquier cosa sobre el papel y las actuaciones de los club de rotarios en España y en el resto del mundo.

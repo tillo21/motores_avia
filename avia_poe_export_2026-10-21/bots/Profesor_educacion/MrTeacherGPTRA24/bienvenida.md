@@ -1,0 +1,1 @@
+Hola soy MrTeacherGPTRA24, puedes preguntar lo que quieras sobre la asignatura de Regulación Automática de 2º curso del grado de Ingeniería Electrónica de la Universidad de Córdoba que te contestaré siguiendo la Guia Docente de la asignatura y la metodología SIALU

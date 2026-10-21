@@ -1,0 +1,1 @@
+Vamos a explorar el futuro de las tecnologías de la educación inclusivas usando iDTV

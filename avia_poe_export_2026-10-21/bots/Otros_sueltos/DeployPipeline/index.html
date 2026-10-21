@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Senior — Deployment Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+:root{
+  --bg:#09090B;--bg2:#18181B;--bg3:#27272A;--bg-card:#1C1C1F;
+  --text:#FAFAFA;--text2:#A1A1AA;--text3:#52525B;
+  --emerald:#10B981;--emerald-bg:rgba(16,185,129,.1);--emerald-border:rgba(16,185,129,.3);
+  --amber:#F59E0B;--amber-bg:rgba(245,158,11,.1);--amber-border:rgba(245,158,11,.3);
+  --red:#EF4444;--red-bg:rgba(239,68,68,.08);--red-border:rgba(239,68,68,.25);
+  --sky:#38BDF8;--sky-bg:rgba(56,189,248,.08);--sky-border:rgba(56,189,248,.25);
+  --violet:#8B5CF6;--violet-bg:rgba(139,92,246,.08);
+  --border:#27272A;--border2:#3F3F46;
+  --shadow:0 4px 24px rgba(0,0,0,.5);
+  --r:12px;--rs:8px;--rx:4px;
+  --mono:'Geist Mono',monospace;--sans:'Inter Tight',sans-serif;
+  --tr:.25s ease;
+}
+html:not(.dark){
+  --bg:#FAFAFA;--bg2:#F4F4F5;--bg3:#E4E4E7;--bg-card:#FFFFFF;
+  --text:#09090B;--text2:#71717A;--text3:#A1A1AA;
+  --emerald:#059669;--emerald-bg:rgba(5,150,105,.06);--emerald-border:rgba(5,150,105,.2);
+  --amber:#D97706;--amber-bg:rgba(217,119,6,.06);--amber-border:rgba(217,119,6,.2);
+  --red:#DC2626;--red-bg:rgba(220,38,38,.05);--red-border:rgba(220,38,38,.2);
+  --sky:#0284C7;--sky-bg:rgba(2,132,199,.05);--sky-border:rgba(2,132,199,.2);
+  --violet:#7C3AED;--violet-bg:rgba(124,58,237,.05);
+  --border:#E4E4E7;--border2:#D4D4D8;
+  --shadow:0 4px 24px rgba(0,0,0,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh}
+.app{max-width:1100px;margin:0 auto;padding:18px 14px 48px}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;animation:fi .5s ease}
+.hdr-icon{width:40px;height:40px;border-radius:var(--rs);background:var(--emerald-bg);border:1px solid var(--emerald-border);display:flex;align-items:center;justify-content:center;color:var(--emerald);font-size:16px;flex-shrink:0}
+.hdr h1{font-weight:900;font-size:clamp(17px,3.5vw,24px);letter-spacing:-.3px}
+.hdr h1 em{font-style:normal;color:var(--emerald)}
+.hdr-sub{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.5px}
+.hdr-right{margin-left:auto;display:flex;gap:8px;flex-shrink:0}
+
+.btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:11px;font-weight:600;padding:8px 14px;border-radius:100px;border:1px solid var(--border);background:var(--bg-card);color:var(--text2);cursor:pointer;transition:var(--tr);white-space:nowrap}
+.btn:hover{border-color:var(--border2);color:var(--text)} .btn:disabled{opacity:.4;cursor:not-allowed}
+.btn i{font-size:10px}
+.btn-em{background:var(--emerald);color:#fff;border-color:var(--emerald)} .btn-em:hover{opacity:.85;color:#fff}
+.btn-red{background:var(--red);color:#fff;border-color:var(--red)} .btn-red:hover{opacity:.85;color:#fff}
+
+/* Pipeline Visual */
+.pipeline{display:flex;gap:0;align-items:stretch;overflow-x:auto;padding:4px 0 12px;margin-bottom:20px;scroll-snap-type:x mandatory;animation:fi .5s ease .1s both}
+.stage{flex:1;min-width:160px;scroll-snap-align:start;position:relative;display:flex;flex-direction:column}
+.stage-connector{position:absolute;top:36px;right:-12px;width:24px;height:2px;z-index:2}
+.stage:last-child .stage-connector{display:none}
+.connector-line{height:2px;width:100%;background:var(--border);position:relative}
+.connector-line::after{content:'';position:absolute;right:0;top:-3px;width:0;height:0;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:6px solid var(--border)}
+.stage.done .connector-line{background:var(--emerald)}.stage.done .connector-line::after{border-left-color:var(--emerald)}
+.stage.active .connector-line{background:linear-gradient(90deg,var(--emerald),var(--amber))}.stage.active .connector-line::after{border-left-color:var(--amber)}
+
+.stage-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;flex:1;transition:var(--tr);cursor:pointer;position:relative;overflow:hidden}
+.stage-card:hover{border-color:var(--border2)}
+.stage.done .stage-card{border-color:var(--emerald-border)}
+.stage.active .stage-card{border-color:var(--amber-border);box-shadow:0 0 20px var(--amber-bg)}
+.stage.failed .stage-card{border-color:var(--red-border)}
+.stage.waiting .stage-card{border-color:var(--border);opacity:.6}
+
+.stage-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stage.done .stage-card::before{background:var(--emerald)}
+.stage.active .stage-card::before{background:var(--amber);animation:glow 2s ease-in-out infinite}
+.stage.failed .stage-card::before{background:var(--red)}
+.stage.waiting .stage-card::before{background:var(--text3)}
+
+.stage-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.stage-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.stage.done .stage-icon{background:var(--emerald-bg);color:var(--emerald)}
+.stage.active .stage-icon{background:var(--amber-bg);color:var(--amber)}
+.stage.failed .stage-icon{background:var(--red-bg);color:var(--red)}
+.stage.waiting .stage-icon{background:var(--bg3);color:var(--text3)}
+.stage-name{font-weight:700;font-size:13px;flex:1}
+.stage-dur{font-family:var(--mono);font-size:10px;color:var(--text3)}
+
+.stage-desc{font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px}
+.stage-checks{display:flex;flex-direction:column;gap:4px}
+.check-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.check-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.check-dot.pass{background:var(--emerald)} .check-dot.fail{background:var(--red)} .check-dot.wait{background:var(--text3)} .check-dot.run{background:var(--amber);animation:pulse 1s infinite}
+
+/* Logs */
+.logs-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px;overflow:hidden;animation:fi .5s ease .2s both}
+.logs-header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.logs-header span{font-weight:700;font-size:13px;flex:1}
+.logs-chevron{color:var(--text3);transition:transform var(--tr);font-size:11px}
+.logs-panel.open .logs-chevron{transform:rotate(180deg)}
+.logs-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.logs-panel.open .logs-body{max-height:4000px}
+.log-scroll{max-height:300px;overflow-y:auto;padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.7;background:var(--bg)}
+.log-line{display:flex;gap:8px}
+.log-ts{color:var(--text3);flex-shrink:0;min-width:70px}
+.log-tag{font-weight:600;min-width:56px;flex-shrink:0}
+.log-tag.info{color:var(--sky)} .log-tag.ok{color:var(--emerald)} .log-tag.warn{color:var(--amber)} .log-tag.err{color:var(--red)} .log-tag.step{color:var(--violet)}
+.log-msg{color:var(--text2);word-break:break-word}
+
+/* Approvals & Rollback */
+.actions-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;animation:fi .5s ease .25s both}
+.action-card{flex:1;min-width:200px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px}
+.action-title{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px}
+.action-title i{font-size:12px}
+.action-desc{font-size:11.5px;color:var(--text2);line-height:1.5}
+.action-btns{display:flex;gap:6px;margin-top:auto}
+
+/* Environments */
+.env-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;animation:fi .5s ease .15s both}
+.env-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:var(--bg-card);color:var(--text2);cursor:default;transition:var(--tr)}
+.env-dot{width:7px;height:7px;border-radius:50%}
+
+/* AI */
+.ai-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;animation:fi .5s ease .3s both}
+.ai-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ai-badge{width:30px;height:30px;border-radius:var(--rs);background:var(--emerald-bg);border:1px solid var(--emerald-border);display:flex;align-items:center;justify-content:center;color:var(--emerald);font-size:13px;flex-shrink:0}
+.ai-t{font-weight:700;font-size:13px} .ai-s{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.ai-btns{margin-left:auto;display:flex;gap:6px}
+.ai-body{padding:14px;min-height:50px}
+.ai-ph{color:var(--text3);font-size:12px;font-style:italic;display:flex;align-items:center;gap:6px}
+.ai-md{font-size:13px;line-height:1.65;color:var(--text2)}
+.ai-md h1,.ai-md h2,.ai-md h3,.ai-md h4{color:var(--text);margin:14px 0 6px}
+.ai-md h2{font-size:16px;border-bottom:1px solid var(--border);padding-bottom:5px}
+.ai-md h3{font-size:14px} .ai-md p{margin-bottom:8px}
+.ai-md ul,.ai-md ol{margin:4px 0 10px 16px} .ai-md li{margin-bottom:4px}
+.ai-md code{font-family:var(--mono);font-size:11px;background:var(--bg3);padding:1px 5px;border-radius:3px;color:var(--emerald)}
+.ai-md pre{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);padding:10px;overflow-x:auto;margin:8px 0}
+.ai-md pre code{background:none;padding:0;color:var(--text)} .ai-md strong{color:var(--text)}
+.ai-md table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.ai-md th,.ai-md td{border:1px solid var(--border);padding:6px 8px;text-align:left}
+.ai-md th{background:var(--bg2);font-weight:600;color:var(--text)}
+.ai-md blockquote{border-left:3px solid var(--emerald);padding:4px 12px;margin:8px 0;background:var(--emerald-bg);border-radius:0 var(--rx) var(--rx) 0}
+
+.typing{display:inline-flex;gap:3px;align-items:center}
+.typing span{width:5px;height:5px;background:var(--emerald);border-radius:50%;animation:bounce 1.2s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:.15s} .typing span:nth-child(3){animation-delay:.3s}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:999;animation:fi .15s ease}
+.modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:24px;max-width:380px;width:90%;box-shadow:var(--shadow)}
+.modal-box h3{font-size:15px;margin-bottom:8px} .modal-box p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+
+.footer{text-align:center;padding:20px;color:var(--text3);font-size:10px;font-family:var(--mono)}
+
+@keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes glow{0%,100%{opacity:.7}50%{opacity:1}}
+
+@media(max-width:700px){
+  .pipeline{gap:0} .stage{min-width:140px}
+  .actions-row{flex-direction:column}
+  .hdr-right{width:100%} .hdr-right .btn{flex:1;justify-content:center}
+  .ai-btns{width:100%;margin-left:0;margin-top:4px} .ai-btns .btn{flex:1;justify-content:center}
+}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <div class="hdr-icon"><i class="fas fa-rocket"></i></div>
+    <div>
+      <h1>Deploy <em>Pipeline</em></h1>
+      <div class="hdr-sub">AVIA Senior &middot; Sprint 4 Release v1.4.0</div>
+    </div>
+    <div class="hdr-right">
+      <button class="btn" id="btnReset"><i class="fas fa-rotate"></i> Reset</button>
+      <button class="btn btn-em" id="btnDeploy"><i class="fas fa-play"></i> Run Pipeline</button>
+    </div>
+  </div>
+
+  <!-- Environment chips -->
+  <div class="env-bar" id="envBar">
+    <div class="env-chip"><span class="env-dot" style="background:var(--emerald)"></span> dev &mdash; v1.4.0-rc3</div>
+    <div class="env-chip"><span class="env-dot" style="background:var(--amber)"></span> staging &mdash; v1.3.2</div>
+    <div class="env-chip"><span class="env-dot" style="background:var(--sky)"></span> production &mdash; v1.3.2</div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="pipeline" id="pipeline"></div>
+
+  <!-- Approval + Rollback -->
+  <div class="actions-row">
+    <div class="action-card">
+      <div class="action-title"><i class="fas fa-shield-check" style="color:var(--emerald)"></i> Gate de Aprobaci&oacute;n</div>
+      <div class="action-desc">Se requiere aprobaci&oacute;n manual antes de promover a producci&oacute;n. El pipeline se pausa autom&aacute;ticamente en el stage de staging.</div>
+      <div class="action-btns">
+        <button class="btn btn-em" id="btnApprove" disabled><i class="fas fa-check"></i> Aprobar</button>
+        <button class="btn" id="btnReject" disabled><i class="fas fa-xmark"></i> Rechazar</button>
+      </div>
+    </div>
+    <div class="action-card">
+      <div class="action-title"><i class="fas fa-clock-rotate-left" style="color:var(--red)"></i> Rollback</div>
+      <div class="action-desc">Revierte producci&oacute;n a la versi&oacute;n anterior (v1.3.1). Se ejecuta instant&aacute;neamente usando la imagen Docker cacheada.</div>
+      <div class="action-btns">
+        <button class="btn btn-red" id="btnRollback" disabled><i class="fas fa-rotate-left"></i> Rollback a v1.3.1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="logs-panel" id="logsPanel">
+    <div class="logs-header" id="logsToggle">
+      <i class="fas fa-terminal" style="color:var(--text3);font-size:12px"></i>
+      <span>Pipeline Logs</span>
+      <span id="logCount" style="font-family:var(--mono);font-size:10px;color:var(--text3)">0 lines</span>
+      <i class="fas fa-chevron-down logs-chevron"></i>
+    </div>
+    <div class="logs-body">
+      <div class="log-scroll" id="logScroll"></div>
+    </div>
+  </div>
+
+  <!-- AI -->
+  <div class="ai-section">
+    <div class="ai-bar">
+      <div class="ai-badge"><i class="fas fa-shield-halved"></i></div>
+      <div><div class="ai-t">Deploy Intelligence</div><div class="ai-s">Claude Sonnet 4.5</div></div>
+      <div class="ai-btns">
+        <button class="btn" id="btnAiReview"><i class="fas fa-magnifying-glass"></i> Pre-deploy Review</button>
+        <button class="btn" id="btnAiPost"><i class="fas fa-chart-line"></i> Post-deploy Plan</button>
+      </div>
+    </div>
+    <div class="ai-body"><div class="ai-md" id="aiOut"><div class="ai-ph"><i class="fas fa-sparkles"></i> Ejecuta el pipeline o solicita un an&aacute;lisis de deploy</div></div></div>
+  </div>
+
+  <div class="footer">AVIA Senior &middot; Deployment Pipeline &middot; <span style="color:var(--emerald)">v1.4.0</span></div>
+</div>
+
+<script>
+/* ═══════ Dark Mode ═══════ */
+(function(){
+  document.documentElement.classList.add("dark");
+  if(window.matchMedia&&!window.matchMedia("(prefers-color-scheme:dark)").matches){document.documentElement.classList.remove("dark")}
+  window.matchMedia("(prefers-color-scheme:dark)").addEventListener("change",function(e){document.documentElement.classList.toggle("dark",e.matches)});
+})();
+if(typeof marked!=="undefined"){marked.setOptions({breaks:true,gfm:true})}
+
+/* ═══════ Pipeline Stages ═══════ */
+var STAGES = [
+  { id:"build", name:"Build", icon:"fa-hammer", dur:"~45s",
+    desc:"Compilaci\u00f3n Vue 3, tree-shaking, asset optimization",
+    checks:[
+      {label:"npm install",id:"build-1"},
+      {label:"Lint + Prettier",id:"build-2"},
+      {label:"TypeScript check",id:"build-3"},
+      {label:"Build bundle",id:"build-4"}
+    ]},
+  { id:"test", name:"Unit Tests", icon:"fa-flask-vial", dur:"~1m 20s",
+    desc:"Jest + Vue Test Utils, 87% cobertura m\u00ednima",
+    checks:[
+      {label:"Pacientes suite (24 tests)",id:"test-1"},
+      {label:"Historial suite (18 tests)",id:"test-2"},
+      {label:"Terapias suite (15 tests)",id:"test-3"},
+      {label:"Calendario suite (12 tests)",id:"test-4"},
+      {label:"Auth suite (8 tests)",id:"test-5"},
+      {label:"Cobertura \u2265 87%",id:"test-6"}
+    ]},
+  { id:"integ", name:"Integration", icon:"fa-plug", dur:"~2m",
+    desc:"Tests E2E con Cypress + contract tests API",
+    checks:[
+      {label:"API contract tests",id:"integ-1"},
+      {label:"E2E flujo pacientes",id:"integ-2"},
+      {label:"E2E flujo terapias",id:"integ-3"},
+      {label:"WCAG 2.1 AA audit",id:"integ-4"}
+    ]},
+  { id:"staging", name:"Staging", icon:"fa-server", dur:"~30s",
+    desc:"Deploy a staging, smoke tests autom\u00e1ticos",
+    checks:[
+      {label:"Docker build + push",id:"stg-1"},
+      {label:"Deploy k8s staging",id:"stg-2"},
+      {label:"Health check",id:"stg-3"},
+      {label:"Smoke tests",id:"stg-4"}
+    ]},
+  { id:"gate", name:"Approval Gate", icon:"fa-shield-check", dur:"Manual",
+    desc:"Aprobaci\u00f3n manual requerida para producci\u00f3n",
+    checks:[
+      {label:"Review staging env",id:"gate-1"},
+      {label:"QA sign-off",id:"gate-2"},
+      {label:"PM approval",id:"gate-3"}
+    ]},
+  { id:"prod", name:"Production", icon:"fa-globe", dur:"~1m",
+    desc:"Blue-green deploy con canary al 10%",
+    checks:[
+      {label:"Canary 10%",id:"prod-1"},
+      {label:"Monitor 60s",id:"prod-2"},
+      {label:"Full rollout",id:"prod-3"},
+      {label:"DNS switch",id:"prod-4"}
+    ]}
+];
+
+/* State for each check: "wait","run","pass","fail" */
+var checkStates = {};
+var stageStates = {};
+var logLines = [];
+var pipelineRunning = false;
+var pipelinePhase = "idle"; /* idle, running, paused_gate, prod_running, done, failed, rolledback */
+
+function initStates(){
+  checkStates={};stageStates={};logLines=[];
+  STAGES.forEach(function(s){
+    stageStates[s.id]="waiting";
+    s.checks.forEach(function(c){checkStates[c.id]="wait"});
+  });
+  pipelinePhase="idle";
+}
+initStates();
+
+/* ═══════ Render Pipeline ═══════ */
+function renderPipeline(){
+  var el=document.getElementById("pipeline");el.innerHTML="";
+  STAGES.forEach(function(s,i){
+    var state=stageStates[s.id];
+    var div=document.createElement("div");
+    div.className="stage "+state;
+    div.innerHTML=
+      '<div class="stage-card">'+
+        '<div class="stage-top">'+
+          '<div class="stage-icon"><i class="fas '+s.icon+'"></i></div>'+
+          '<div class="stage-name">'+s.name+'</div>'+
+          '<div class="stage-dur">'+s.dur+'</div>'+
+        '</div>'+
+        '<div class="stage-desc">'+s.desc+'</div>'+
+        '<div class="stage-checks">'+s.checks.map(function(c){
+          var st=checkStates[c.id];
+          return '<div class="check-row"><span class="check-dot '+st+'"></span><span>'+c.label+'</span></div>';
+        }).join('')+'</div>'+
+      '</div>'+
+      (i<STAGES.length-1?'<div class="stage-connector"><div class="connector-line"></div></div>':'');
+    el.appendChild(div);
+  });
+}
+
+/* ═══════ Logs ═══════ */
+document.getElementById("logsToggle").addEventListener("click",function(){
+  document.getElementById("logsPanel").classList.toggle("open");
+});
+
+function addLog(tag,msg){
+  var now=new Date();
+  var ts=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+":"+String(now.getSeconds()).padStart(2,"0");
+  logLines.push({ts:ts,tag:tag,msg:msg});
+  var scroll=document.getElementById("logScroll");
+  var line=document.createElement("div");
+  line.className="log-line";
+  line.innerHTML='<span class="log-ts">'+ts+'</span><span class="log-tag '+tag+'">'+tag.toUpperCase()+'</span><span class="log-msg">'+msg+'</span>';
+  scroll.appendChild(line);
+  scroll.scrollTop=scroll.scrollHeight;
+  document.getElementById("logCount").textContent=logLines.length+" lines";
+}
+
+/* ═══════ Simulate delay ═══════ */
+function wait(ms){return new Promise(function(r){setTimeout(r,ms)})}
+
+/* ═══════ Run Stage Checks ═══════ */
+async function runChecks(stage, failChance){
+  stageStates[stage.id]="active";
+  renderPipeline();
+  addLog("step","Starting: "+stage.name);
+
+  for(var i=0;i<stage.checks.length;i++){
+    var c=stage.checks[i];
+    checkStates[c.id]="run";
+    renderPipeline();
+    addLog("info","Running: "+c.label);
+
+    var dur=400+Math.random()*800;
+    await wait(dur);
+
+    var failed=Math.random()<(failChance||0);
+    if(failed){
+      checkStates[c.id]="fail";
+      stageStates[stage.id]="failed";
+      renderPipeline();
+      addLog("err","FAILED: "+c.label);
+      return false;
+    }
+    checkStates[c.id]="pass";
+    renderPipeline();
+    addLog("ok","Passed: "+c.label+" ("+(dur/1000).toFixed(1)+"s)");
+  }
+
+  stageStates[stage.id]="done";
+  renderPipeline();
+  addLog("ok",stage.name+" completed successfully");
+  return true;
+}
+
+/* ═══════ Main Pipeline ═══════ */
+async function runPipeline(){
+  if(pipelineRunning)return;
+  pipelineRunning=true;
+  pipelinePhase="running";
+  initStates();
+  document.getElementById("logScroll").innerHTML="";
+  renderPipeline();
+  updateButtons();
+
+  addLog("info","Pipeline started for AVIA Senior v1.4.0");
+  addLog("info","Commit: feat(sprint4): complete template integration");
+
+  // Open logs
+  document.getElementById("logsPanel").classList.add("open");
+
+  // Build
+  var ok=await runChecks(STAGES[0],0.03);
+  if(!ok){pipelineRunning=false;pipelinePhase="failed";updateButtons();return}
+
+  // Unit Tests
+  ok=await runChecks(STAGES[1],0.05);
+  if(!ok){pipelineRunning=false;pipelinePhase="failed";updateButtons();return}
+
+  // Integration
+  ok=await runChecks(STAGES[2],0.07);
+  if(!ok){pipelineRunning=false;pipelinePhase="failed";updateButtons();return}
+
+  // Staging
+  ok=await runChecks(STAGES[3],0.02);
+  if(!ok){pipelineRunning=false;pipelinePhase="failed";updateButtons();return}
+
+  // Gate — pause
+  stageStates["gate"]="active";
+  pipelinePhase="paused_gate";
+  renderPipeline();
+  addLog("warn","PAUSED: Awaiting manual approval for production deploy");
+  pipelineRunning=false;
+  updateButtons();
+  updateEnvChips("staging","v1.4.0-rc3");
+}
+
+/* ═══════ Approval ═══════ */
+async function approveGate(){
+  if(pipelinePhase!=="paused_gate")return;
+  pipelineRunning=true;
+  pipelinePhase="prod_running";
+  addLog("ok","Approval granted. Proceeding to production.");
+
+  // Mark gate checks as pass
+  STAGES[4].checks.forEach(function(c){checkStates[c.id]="pass"});
+  stageStates["gate"]="done";
+  renderPipeline();
+  updateButtons();
+
+  // Production
+  var ok=await runChecks(STAGES[5],0.04);
+  if(!ok){
+    pipelineRunning=false;pipelinePhase="failed";
+    addLog("err","PRODUCTION DEPLOY FAILED. Rollback recommended.");
+    updateButtons();return;
+  }
+
+  pipelineRunning=false;
+  pipelinePhase="done";
+  addLog("ok","=== PIPELINE COMPLETE === AVIA Senior v1.4.0 is LIVE ===");
+  updateButtons();
+  updateEnvChips("production","v1.4.0");
+}
+
+function rejectGate(){
+  if(pipelinePhase!=="paused_gate")return;
+  STAGES[4].checks.forEach(function(c){checkStates[c.id]="fail"});
+  stageStates["gate"]="failed";
+  pipelinePhase="failed";
+  renderPipeline();
+  addLog("err","Deployment REJECTED. Pipeline aborted.");
+  updateButtons();
+}
+
+/* ═══════ Rollback ═══════ */
+function doRollback(){
+  showModal("Confirmar Rollback","Se revertir\u00e1 producci\u00f3n a v1.3.1. Los pods actuales ser\u00e1n reemplazados. \u00bfContinuar?",function(){
+    addLog("warn","ROLLBACK initiated to v1.3.1");
+    addLog("info","Pulling cached image: avia-senior:v1.3.1");
+    addLog("ok","Rollback complete. Production running v1.3.1");
+    pipelinePhase="rolledback";
+    updateButtons();
+    updateEnvChips("production","v1.3.1 (rollback)");
+  });
+}
+
+/* ═══════ Update Buttons ═══════ */
+function updateButtons(){
+  var btnDeploy=document.getElementById("btnDeploy");
+  var btnApprove=document.getElementById("btnApprove");
+  var btnReject=document.getElementById("btnReject");
+  var btnRollback=document.getElementById("btnRollback");
+
+  btnDeploy.disabled=pipelineRunning;
+  btnApprove.disabled=pipelinePhase!=="paused_gate";
+  btnReject.disabled=pipelinePhase!=="paused_gate";
+  btnRollback.disabled=!(pipelinePhase==="done"||pipelinePhase==="failed");
+
+  if(pipelineRunning){
+    btnDeploy.innerHTML='<span class="spin"></span> Running...';
+  } else if(pipelinePhase==="done"){
+    btnDeploy.innerHTML='<i class="fas fa-check"></i> Deployed';
+  } else if(pipelinePhase==="paused_gate"){
+    btnDeploy.innerHTML='<i class="fas fa-pause"></i> Awaiting Approval';
+  } else {
+    btnDeploy.innerHTML='<i class="fas fa-play"></i> Run Pipeline';
+  }
+}
+
+/* ═══════ Env Chips ═══════ */
+function updateEnvChips(env,version){
+  var chips=document.getElementById("envBar").children;
+  if(env==="staging"){chips[1].innerHTML='<span class="env-dot" style="background:var(--emerald)"></span> staging \u2014 '+version}
+  if(env==="production"){chips[2].innerHTML='<span class="env-dot" style="background:var(--emerald)"></span> production \u2014 '+version}
+}
+
+/* ═══════ Modal ═══════ */
+function showModal(title,msg,onOk){
+  var ov=document.createElement("div");
+  ov.className="modal-overlay";
+  ov.innerHTML='<div class="modal-box"><h3>'+title+'</h3><p>'+msg+'</p><div class="modal-actions"><button class="btn" id="mCancel">Cancelar</button><button class="btn btn-red" id="mOk">Confirmar</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#mCancel").addEventListener("click",function(){ov.remove()});
+  ov.querySelector("#mOk").addEventListener("click",function(){ov.remove();onOk()});
+  ov.addEventListener("click",function(e){if(e.target===ov)ov.remove()});
+}
+
+/* ═══════ Wire Buttons ═══════ */
+document.getElementById("btnDeploy").addEventListener("click",function(){runPipeline()});
+document.getElementById("btnApprove").addEventListener("click",function(){approveGate()});
+document.getElementById("btnReject").addEventListener("click",function(){rejectGate()});
+document.getElementById("btnRollback").addEventListener("click",function(){doRollback()});
+document.getElementById("btnReset").addEventListener("click",function(){
+  initStates();pipelineRunning=false;pipelinePhase="idle";
+  document.getElementById("logScroll").innerHTML="";logLines=[];
+  document.getElementById("logCount").textContent="0 lines";
+  renderPipeline();updateButtons();
+  var chips=document.getElementById("envBar");
+  chips.children[0].innerHTML='<span class="env-dot" style="background:var(--emerald)"></span> dev \u2014 v1.4.0-rc3';
+  chips.children[1].innerHTML='<span class="env-dot" style="background:var(--amber)"></span> staging \u2014 v1.3.2';
+  chips.children[2].innerHTML='<span class="env-dot" style="background:var(--sky)"></span> production \u2014 v1.3.2';
+});
+
+/* ═══════ AI ═══════ */
+var aiRunning=false;
+
+function parseBotResponseJson(text){
+  text=text.replace(/\*Thinking\.\.\.\*\n\n(?:> [^\n]*\n?)*/g,'');
+  text=text.replace(/\n*---\n+(?:Learn more|Related searches):\n[\s\S]*$/,'');
+  var cb=text.match(/```json\s*([\[{][\s\S]*?[\]}])\s*```/);
+  if(cb)return JSON.parse(cb[1]);
+  var raw=text.match(/[\[{][\s\S]*[\]}]/);
+  if(raw)return JSON.parse(raw[0]);
+  throw new Error('No JSON found');
+}
+
+function setAiBtns(d){document.getElementById("btnAiReview").disabled=d;document.getElementById("btnAiPost").disabled=d}
+function resetAiLabels(){document.getElementById("btnAiReview").innerHTML='<i class="fas fa-magnifying-glass"></i> Pre-deploy Review';document.getElementById("btnAiPost").innerHTML='<i class="fas fa-chart-line"></i> Post-deploy Plan'}
+
+function handleAi(result){
+  var msg=result.responses[0];if(!msg)return;var el=document.getElementById("aiOut");
+  if(msg.status==="error"){el.innerHTML='<div style="color:var(--red)"><i class="fas fa-triangle-exclamation"></i> '+(msg.statusText||"Error")+'</div>';aiRunning=false;setAiBtns(false);resetAiLabels();return}
+  if(msg.status==="incomplete"){try{el.innerHTML=marked.parse(msg.content)}catch(_e){el.textContent=msg.content}return}
+  if(msg.status==="complete"){try{el.innerHTML=marked.parse(msg.content)}catch(_e){el.textContent=msg.content}aiRunning=false;setAiBtns(false);resetAiLabels()}
+}
+
+if(window.Poe){
+  window.Poe.registerHandler("ai-review",handleAi);
+  window.Poe.registerHandler("ai-post",handleAi);
+}
+
+function buildDeployContext(){
+  var ctx="AVIA Senior Deployment Pipeline (Sprint 4, v1.4.0)\n";
+  ctx+="Sistema: gesti\u00f3n de residencias de adultos mayores. Stack: Vue 3 + REST API + PostgreSQL + Docker + Kubernetes\n";
+  ctx+="Pipeline stages: Build \u2192 Unit Tests \u2192 Integration \u2192 Staging \u2192 Approval Gate \u2192 Production (blue-green + canary 10%)\n\n";
+  ctx+="Estado actual del pipeline: "+pipelinePhase+"\n";
+  STAGES.forEach(function(s){ctx+=s.name+" ["+stageStates[s.id]+"]: "+s.checks.map(function(c){return c.label+" ("+checkStates[c.id]+")"}).join(", ")+"\n"});
+  ctx+="\nLogs recientes:\n";
+  logLines.slice(-15).forEach(function(l){ctx+=l.ts+" ["+l.tag+"] "+l.msg+"\n"});
+  ctx+="\nFeatures en esta release:\n";
+  ctx+="- 6 templates nuevos (Dashboard Paciente, Historial Cl\u00ednico, Formulario Ingreso, Calendario, Terapias, Seguimiento Grupal)\n";
+  ctx+="- Integraci\u00f3n API REST completa con JWT auth\n";
+  ctx+="- 87% cobertura de tests\n";
+  ctx+="- Accesibilidad WCAG 2.1 AA\n";
+  ctx+="- Carryover pendiente: E2E tests parciales, deuda t\u00e9cnica cr\u00edtica\n";
+  return ctx;
+}
+
+document.getElementById("btnAiReview").addEventListener("click",async function(){
+  if(aiRunning)return;aiRunning=true;setAiBtns(true);
+  this.innerHTML='<span class="spin"></span> Analizando...';
+  document.getElementById("aiOut").innerHTML='<div class="typing"><span></span><span></span><span></span></div>';
+  if(!window.Poe){document.getElementById("aiOut").innerHTML='<div style="color:var(--red)">Poe API no disponible</div>';aiRunning=false;setAiBtns(false);resetAiLabels();return}
+  try{
+    await window.Poe.sendUserMessage("@Claude-Sonnet-4.5 Realiza un pre-deploy review completo basado en el estado actual del pipeline:\n\n"+buildDeployContext()+"\n\nIncluye: 1) Checklist de readiness (go/no-go por cada \u00e1rea), 2) Riesgos de deployment, 3) Impacto estimado en usuarios, 4) Dependencias externas, 5) Plan de comunicaci\u00f3n, 6) Ventana de deploy \u00f3ptima, 7) Recomendaci\u00f3n final GO/NO-GO. Formato Markdown en espa\u00f1ol.",{handler:"ai-review",stream:true,openChat:false,parameters:{}});
+  }catch(err){document.getElementById("aiOut").innerHTML='<div style="color:var(--red)">'+err.message+'</div>';aiRunning=false;setAiBtns(false);resetAiLabels()}
+});
+
+document.getElementById("btnAiPost").addEventListener("click",async function(){
+  if(aiRunning)return;aiRunning=true;setAiBtns(true);
+  this.innerHTML='<span class="spin"></span> Generando...';
+  document.getElementById("aiOut").innerHTML='<div class="typing"><span></span><span></span><span></span></div>';
+  if(!window.Poe){document.getElementById("aiOut").innerHTML='<div style="color:var(--red)">Poe API no disponible</div>';aiRunning=false;setAiBtns(false);resetAiLabels();return}
+  try{
+    await window.Poe.sendUserMessage("@Claude-Sonnet-4.5 Genera un plan post-deployment completo para AVIA Senior v1.4.0:\n\n"+buildDeployContext()+"\n\nIncluye: 1) Monitoreo primeras 24h (m\u00e9tricas clave, umbrales de alerta, dashboards), 2) Criterios de rollback autom\u00e1tico, 3) Plan de canary progresivo (10% \u2192 25% \u2192 50% \u2192 100%), 4) Checklist post-deploy por equipo (dev, QA, ops, soporte), 5) Plan de comunicaci\u00f3n a usuarios, 6) M\u00e9tricas de \u00e9xito a 7 d\u00edas. Formato Markdown en espa\u00f1ol.",{handler:"ai-post",stream:true,openChat:false,parameters:{}});
+  }catch(err){document.getElementById("aiOut").innerHTML='<div style="color:var(--red)">'+err.message+'</div>';aiRunning=false;setAiBtns(false);resetAiLabels()}
+});
+
+/* ═══════ Init ═══════ */
+renderPipeline();
+updateButtons();
+</script>
+</body>
+</html>
+

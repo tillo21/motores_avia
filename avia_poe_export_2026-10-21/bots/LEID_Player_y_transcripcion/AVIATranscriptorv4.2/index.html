@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA-Transcriptor v4.2.0</title>
+    <meta name="description" content="Transcriptor de audio accesible con IA, resumen inteligente y traducción multiidioma">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Región de anuncios ARIA para lectores de pantalla -->
+    <div id="anunciador" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+    <!-- Contenedor principal -->
+    <div class="contenedor">
+        <!-- Encabezado -->
+        <header class="encabezado">
+            <h1>🎤 AVIA-Transcriptor</h1>
+            <p class="subtitulo">Transcripción accesible con inteligencia artificial</p>
+            <div class="version">v4.2.0</div>
+        </header>
+
+        <!-- Sección de carga de archivo -->
+        <section class="seccion-carga" aria-labelledby="titulo-carga">
+            <h2 id="titulo-carga" class="sr-only">Cargar archivo de audio</h2>
+            
+            <div class="zona-arrastre" 
+                 id="zonaArrastre" 
+                 role="button" 
+                 tabindex="0"
+                 aria-label="Zona de arrastre de archivos. Haz clic para seleccionar archivo o arrastra un archivo aquí"
+                 aria-describedby="descripcion-formatos">
+                <div class="icono-carga">📁</div>
+                <p class="texto-carga">Arrastra tu archivo de audio aquí</p>
+                <p class="texto-secundario">o haz clic para seleccionar</p>
+                <p id="descripcion-formatos" class="formatos-soportados">
+                    Formatos: MP3, WAV, M4A, OGG, FLAC (max 25MB)
+                </p>
+            </div>
+
+            <input type="file" 
+                   id="inputArchivo" 
+                   class="input-archivo" 
+                   accept="audio/*"
+                   aria-label="Seleccionar archivo de audio">
+        </section>
+
+        <!-- Información del archivo cargado -->
+        <section id="infoArchivo" class="info-archivo" style="display:none;" aria-labelledby="titulo-info">
+            <h2 id="titulo-info" class="sr-only">Información del archivo</h2>
+            <div class="tarjeta-archivo">
+                <div class="encabezado-archivo">
+                    <span class="icono-archivo">🎵</span>
+                    <div class="detalles-archivo">
+                        <p class="nombre-archivo" id="nombreArchivo"></p>
+                        <p class="meta-archivo" id="metaArchivo"></p>
+                    </div>
+                </div>
+                <button id="botonCambiar" 
+                        class="boton-cambiar" 
+                        aria-label="Cambiar archivo de audio">
+                    🔄 Cambiar archivo
+                </button>
+            </div>
+        </section>
+
+        <!-- Reproductor de audio -->
+        <section id="reproductorSeccion" class="reproductor-seccion" style="display:none;" aria-labelledby="titulo-reproductor">
+            <h2 id="titulo-reproductor" class="sr-only">Reproductor de audio</h2>
+            <audio id="reproductor" 
+                   class="reproductor" 
+                   controls 
+                   aria-label="Reproductor de audio cargado">
+                Tu navegador no soporta el elemento de audio.
+            </audio>
+        </section>
+
+        <!-- Botón de transcripción -->
+        <section id="seccionTranscripcion" class="seccion-accion" style="display:none;">
+            <button id="botonTranscribir" 
+                    class="boton-principal" 
+                    aria-label="Iniciar transcripción del audio">
+                🎙️ Transcribir Audio
+            </button>
+            <p class="nota-info">
+                ℹ️ La transcripción puede tardar entre 30 segundos y 2 minutos según la duración del audio
+            </p>
+        </section>
+
+        <!-- Indicador de estado de IA -->
+        <section id="indicadorIA" class="indicador-ia" style="display:none;" role="status" aria-live="polite">
+            <div class="spinner"></div>
+            <p id="textoEstadoIA" class="texto-estado">Procesando...</p>
+        </section>
+
+        <!-- Resultados de IA -->
+        <section id="resultadoIA" class="resultado-ia" style="display:none;" aria-labelledby="titulo-resultado">
+            <h2 id="titulo-resultado" class="sr-only">Resultados de procesamiento</h2>
+            <div id="resultadoIAContenido" class="resultado-contenido"></div>
+        </section>
+
+        <!-- Controles de verificación de transcripción -->
+        <section id="controles-verificacion" class="controles-seccion" style="display:none;" aria-labelledby="titulo-verificacion">
+            <h3 id="titulo-verificacion" class="sr-only">Verificación de transcripción</h3>
+            <p class="texto-verificacion">¿La transcripción es correcta?</p>
+            <div class="botones-verificacion">
+                <button onclick="verificarTranscripcion(true)" 
+                        class="boton-verificar" 
+                        aria-label="Confirmar que la transcripción es correcta">
+                    ✓ Sí, es correcta
+                </button>
+                <button onclick="verificarTranscripcion(false)" 
+                        class="boton-rechazar" 
+                        aria-label="Rechazar transcripción e intentar de nuevo">
+                    ✗ No, reintentar
+                </button>
+            </div>
+        </section>
+
+        <!-- Botón de resumen -->
+        <section class="controles-seccion" aria-labelledby="titulo-resumen">
+            <h3 id="titulo-resumen" class="sr-only">Generación de resumen</h3>
+            <button id="botonResumen" 
+                    onclick="hacerResumen()" 
+                    disabled 
+                    class="boton-procesamiento" 
+                    aria-label="Generar resumen inteligente de la transcripción">
+                📝 Generar Resumen
+            </button>
+        </section>
+
+        <!-- Controles de traducción -->
+        <section id="controles-traduccion" class="controles-seccion" style="display:none;" aria-labelledby="titulo-traduccion">
+            <h3 id="titulo-traduccion" class="sr-only">Traducción automática</h3>
+            <label for="selector-idioma" class="etiqueta-selector">Traducir a:</label>
+            <select id="selector-idioma" class="selector-idioma" aria-label="Seleccionar idioma de destino para la traducción">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="it">Italiano</option>
+                <option value="pt">Português</option>
+                <option value="ru">Русский</option>
+                <option value="zh">中文</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="ar">العربية</option>
+            </select>
+            <button onclick="hacerTraduccion(document.getElementById('selector-idioma').value)" 
+                    class="boton-procesamiento" 
+                    aria-label="Iniciar traducción al idioma seleccionado">
+                🌐 Traducir
+            </button>
+        </section>
+
+        <!-- Área de errores -->
+        <section id="areaErrores" class="area-errores" style="display:none;" role="alert" aria-live="assertive">
+            <div class="mensaje-error">
+                <span class="icono-error">⚠️</span>
+                <p id="textoError"></p>
+            </div>
+        </section>
+
+        <!-- Pie de página -->
+        <footer class="pie-pagina">
+            <p>
+                AVIA-Transcriptor v4.2.0 | 
+                <a href="#" class="enlace-footer">Documentación</a> | 
+                <a href="#" class="enlace-footer">Accesibilidad</a> | 
+                <a href="#" class="enlace-footer">Privacidad</a>
+            </p>
+            <p class="creditos">
+                Desarrollado con ❤️ siguiendo principios de Inteligencia VIVA
+            </p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

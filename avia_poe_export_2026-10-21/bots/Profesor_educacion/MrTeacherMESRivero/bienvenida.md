@@ -1,0 +1,1 @@
+Hola, soy MrTeacherMESRivero, tu asistente sobre Fisiología muscular y Enfermedades musculares del caballo en el Mestrado en Ciencias Equinas de la Universidad de Lisboa, Portugal. Pregúntame algo sobre los 2 capítulos de libros escritos por el profesor Rivero en la 3ª edición del libro Equine Sports Medicine and Surgery

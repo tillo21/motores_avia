@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Senior — Rotation Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Inconsolata:wght@400;500;600;700&family=Lora:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+:root{
+  --bg:#F4F1EC;--bg2:#EBE7E0;--bg3:#E0DBD2;
+  --card:#FFFFFF;--card-h:#FDFCFA;
+  --text:#1B1B18;--text2:#5C5A52;--text3:#9C9889;
+  --ink:#0F0F0D;
+  --indigo:#4338CA;--indigo-bg:rgba(67,56,202,.06);--indigo-border:rgba(67,56,202,.18);
+  --teal:#0D9488;--teal-bg:rgba(13,148,136,.06);
+  --amber:#B45309;--amber-bg:rgba(180,83,9,.06);
+  --rose:#BE123C;--rose-bg:rgba(190,18,60,.06);
+  --border:#D8D3C8;--border2:#C5BFB2;
+  --shadow:0 2px 16px rgba(27,27,24,.06);
+  --r:16px;--rs:10px;--rx:6px;
+  --head:'Bricolage Grotesque',sans-serif;
+  --body:'Lora',serif;
+  --mono:'Inconsolata',monospace;
+  --tr:.25s ease;
+}
+html.dark{
+  --bg:#100F0D;--bg2:#1A1916;--bg3:#242320;
+  --card:#1E1D1A;--card-h:#25241F;
+  --text:#E8E4DB;--text2:#A09B8E;--text3:#5C5850;
+  --ink:#F2EFE8;
+  --indigo:#818CF8;--indigo-bg:rgba(129,140,248,.08);--indigo-border:rgba(129,140,248,.22);
+  --teal:#5EEAD4;--teal-bg:rgba(94,234,212,.07);
+  --amber:#FCD34D;--amber-bg:rgba(252,211,77,.07);
+  --rose:#FB7185;--rose-bg:rgba(251,113,133,.07);
+  --border:#2E2D28;--border2:#3D3B34;
+  --shadow:0 2px 16px rgba(0,0,0,.3);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100vh}
+
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at 30% 0%,var(--indigo-bg) 0%,transparent 55%),
+  radial-gradient(ellipse at 70% 100%,var(--teal-bg) 0%,transparent 50%);
+  pointer-events:none;z-index:0}
+
+.app{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:24px 16px 48px}
+
+/* Header */
+.hero{text-align:center;padding:16px 0 28px;animation:fi .6s ease}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--indigo);background:var(--indigo-bg);border:1px solid var(--indigo-border);padding:5px 14px;border-radius:100px;margin-bottom:14px}
+.hero h1{font-family:var(--head);font-weight:800;font-size:clamp(24px,5vw,40px);line-height:1.08;color:var(--ink);letter-spacing:-.5px;margin-bottom:6px}
+.hero h1 em{font-style:normal;color:var(--indigo)}
+.hero-sub{font-size:15px;color:var(--text2);max-width:520px;margin:0 auto;line-height:1.55}
+
+/* Rotation Cycle Visual */
+.cycle-bar{display:flex;gap:6px;justify-content:center;margin-bottom:28px;flex-wrap:wrap;animation:fi .5s ease .1s both}
+.cycle-chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:500;padding:7px 14px;border-radius:100px;background:var(--card);border:1px solid var(--border);color:var(--text2);transition:var(--tr)}
+.cycle-chip .dot{width:7px;height:7px;border-radius:50%}
+.cycle-arrow{color:var(--text3);font-size:10px;display:flex;align-items:center}
+
+/* Generate Button */
+.gen-section{text-align:center;margin-bottom:28px;animation:fi .5s ease .15s both}
+.btn-gen{display:inline-flex;align-items:center;gap:10px;background:var(--indigo);color:#fff;border:none;padding:13px 32px;border-radius:100px;font-family:var(--head);font-size:14px;font-weight:700;cursor:pointer;transition:var(--tr);box-shadow:0 4px 16px rgba(67,56,202,.25);letter-spacing:-.2px}
+.btn-gen:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(67,56,202,.35)}
+.btn-gen:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-gen i{font-size:13px}
+
+/* Progress */
+.progress-wrap{max-width:420px;margin:14px auto 0;display:none}
+.progress-wrap.active{display:block}
+.progress-track{height:3px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--indigo),var(--teal));border-radius:3px;width:0%;transition:width .5s ease}
+.progress-label{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;margin-top:6px}
+
+/* Cards */
+.cards{display:flex;flex-direction:column;gap:16px}
+.q-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:var(--tr);box-shadow:var(--shadow);animation:fiu .6s ease both}
+.q-card:nth-child(1){animation-delay:.2s} .q-card:nth-child(2){animation-delay:.3s} .q-card:nth-child(3){animation-delay:.4s}
+.q-card:hover{border-color:var(--border2)}
+
+.q-header{display:flex;align-items:center;gap:11px;padding:16px 18px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:background var(--tr)}
+.q-header:hover{background:var(--card-h)}
+.q-icon{width:38px;height:38px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.q-title-group{flex:1;min-width:0}
+.q-num{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.q-title{font-family:var(--head);font-weight:700;font-size:14px;color:var(--ink);line-height:1.3}
+.q-badge{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:4px 11px;border-radius:100px;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap}
+.q-badge.idle{background:var(--bg2);color:var(--text3)}
+.q-badge.loading{background:var(--amber-bg);color:var(--amber)}
+.q-badge.done{background:var(--teal-bg);color:var(--teal)}
+.q-badge.error{background:var(--rose-bg);color:var(--rose)}
+.q-chevron{color:var(--text3);font-size:11px;transition:transform var(--tr);margin-left:4px}
+.q-card.open .q-chevron{transform:rotate(180deg)}
+
+.q-body{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1)}
+.q-card.open .q-body{max-height:15000px}
+.q-content-wrap{position:relative}
+.q-content{padding:18px;font-size:15px;line-height:1.75;color:var(--text2)}
+
+/* Markdown */
+.q-content h1,.q-content h2,.q-content h3,.q-content h4{font-family:var(--head);color:var(--ink);margin:18px 0 8px;line-height:1.25}
+.q-content h1{font-size:20px} .q-content h2{font-size:17px;border-bottom:1px solid var(--border);padding-bottom:6px} .q-content h3{font-size:15px} .q-content h4{font-size:14px}
+.q-content p{margin-bottom:10px}
+.q-content ul,.q-content ol{margin:6px 0 14px 20px} .q-content li{margin-bottom:5px}
+.q-content code{font-family:var(--mono);font-size:13px;background:var(--bg2);padding:2px 6px;border-radius:4px;color:var(--indigo)}
+.q-content pre{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:14px;overflow-x:auto;margin:10px 0}
+.q-content pre code{background:none;padding:0;color:var(--text);font-size:12.5px;line-height:1.6}
+.q-content blockquote{border-left:3px solid var(--indigo);padding:8px 16px;margin:10px 0;background:var(--indigo-bg);border-radius:0 var(--rx) var(--rx) 0;font-style:italic;color:var(--text2)}
+.q-content strong{color:var(--ink)} .q-content em{color:var(--text2)}
+.q-content table{width:100%;border-collapse:collapse;margin:10px 0;font-family:var(--head);font-size:13px}
+.q-content th,.q-content td{border:1px solid var(--border);padding:8px 10px;text-align:left}
+.q-content th{background:var(--bg2);font-weight:600;color:var(--ink)}
+.q-content hr{border:none;border-top:1px solid var(--border);margin:18px 0}
+.q-content a{color:var(--indigo);text-decoration:underline;text-underline-offset:2px}
+
+.placeholder{color:var(--text3);font-style:italic;display:flex;align-items:center;gap:7px;font-size:14px}
+.placeholder i{font-size:13px}
+
+.typing{display:inline-flex;align-items:center;gap:4px}
+.typing span{width:5px;height:5px;background:var(--indigo);border-radius:50%;animation:bounce 1.2s ease-in-out infinite}
+.typing span:nth-child(2){animation-delay:.15s} .typing span:nth-child(3){animation-delay:.3s}
+
+.copy-btn{position:absolute;top:12px;right:12px;background:var(--bg2);border:1px solid var(--border);color:var(--text3);width:30px;height:30px;border-radius:var(--rx);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;transition:var(--tr);opacity:0;z-index:2}
+.q-content-wrap:hover .copy-btn{opacity:1}
+.copy-btn:hover{color:var(--indigo);border-color:var(--indigo)}
+
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+
+.footer{text-align:center;padding:28px;color:var(--text3);font-size:10.5px;font-family:var(--mono);letter-spacing:.3px}
+
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes fiu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+@media(max-width:600px){
+  .app{padding:14px 12px 36px}
+  .q-header{padding:12px 14px;gap:9px}
+  .q-content{padding:14px}
+  .q-icon{width:32px;height:32px;font-size:13px}
+  .q-title{font-size:13px}
+  .cycle-bar{gap:4px} .cycle-chip{padding:5px 10px;font-size:10px}
+}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hero">
+    <div class="hero-tag"><i class="fas fa-arrows-rotate"></i> Rotation Management</div>
+    <h1>Gesti&oacute;n de <em>Rotaciones</em></h1>
+    <div class="hero-sub">Automatizaci&oacute;n Jira, plantilla de comunicaci&oacute;n y m&eacute;tricas de impacto para las rotaciones del equipo AVIA Senior</div>
+  </div>
+
+  <!-- Rotation Cycle -->
+  <div class="cycle-bar">
+    <div class="cycle-chip"><span class="dot" style="background:var(--indigo)"></span> Frontend</div>
+    <span class="cycle-arrow"><i class="fas fa-arrow-right"></i></span>
+    <div class="cycle-chip"><span class="dot" style="background:var(--teal)"></span> Backend</div>
+    <span class="cycle-arrow"><i class="fas fa-arrow-right"></i></span>
+    <div class="cycle-chip"><span class="dot" style="background:var(--amber)"></span> QA</div>
+    <span class="cycle-arrow"><i class="fas fa-arrow-right"></i></span>
+    <div class="cycle-chip"><span class="dot" style="background:var(--rose)"></span> DevOps</div>
+    <span class="cycle-arrow"><i class="fas fa-arrow-right"></i></span>
+    <div class="cycle-chip"><span class="dot" style="background:var(--indigo)"></span> Frontend</div>
+  </div>
+
+  <!-- Generate -->
+  <div class="gen-section">
+    <button class="btn-gen" id="btnGen"><i class="fas fa-bolt"></i> Generar las 3 Consultas</button>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Iniciando...</div>
+    </div>
+  </div>
+
+  <!-- Question Cards -->
+  <div class="cards">
+    <!-- Q1: Jira Automation -->
+    <div class="q-card open" id="card-jira">
+      <div class="q-header" id="hdr-jira">
+        <div class="q-icon" style="background:var(--indigo-bg);color:var(--indigo)"><i class="fas fa-ticket"></i></div>
+        <div class="q-title-group">
+          <div class="q-num">Consulta 01</div>
+          <div class="q-title">Automatizaci&oacute;n de Tickets de Rotaci&oacute;n en Jira</div>
+        </div>
+        <div class="q-badge idle" id="badge-jira"><span>Pendiente</span></div>
+        <i class="fas fa-chevron-down q-chevron"></i>
+      </div>
+      <div class="q-body">
+        <div class="q-content-wrap" id="wrap-jira">
+          <div class="q-content" id="content-jira">
+            <div class="placeholder"><i class="fas fa-circle-info"></i> &iquest;C&oacute;mo automatizar la creaci&oacute;n de tickets de rotaci&oacute;n en Jira al iniciar cada Sprint?</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2: Communication Template -->
+    <div class="q-card" id="card-comms">
+      <div class="q-header" id="hdr-comms">
+        <div class="q-icon" style="background:var(--teal-bg);color:var(--teal)"><i class="fas fa-bullhorn"></i></div>
+        <div class="q-title-group">
+          <div class="q-num">Consulta 02</div>
+          <div class="q-title">Plantilla de Comunicaci&oacute;n para Rotaciones</div>
+        </div>
+        <div class="q-badge idle" id="badge-comms"><span>Pendiente</span></div>
+        <i class="fas fa-chevron-down q-chevron"></i>
+      </div>
+      <div class="q-body">
+        <div class="q-content-wrap" id="wrap-comms">
+          <div class="q-content" id="content-comms">
+            <div class="placeholder"><i class="fas fa-circle-info"></i> Plantilla para anunciar la estructura de rotaciones al equipo t&eacute;cnico</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3: Impact Metrics -->
+    <div class="q-card" id="card-metrics">
+      <div class="q-header" id="hdr-metrics">
+        <div class="q-icon" style="background:var(--amber-bg);color:var(--amber)"><i class="fas fa-chart-pie"></i></div>
+        <div class="q-title-group">
+          <div class="q-num">Consulta 03</div>
+          <div class="q-title">M&eacute;tricas de Impacto de las Rotaciones</div>
+        </div>
+        <div class="q-badge idle" id="badge-metrics"><span>Pendiente</span></div>
+        <i class="fas fa-chevron-down q-chevron"></i>
+      </div>
+      <div class="q-body">
+        <div class="q-content-wrap" id="wrap-metrics">
+          <div class="q-content" id="content-metrics">
+            <div class="placeholder"><i class="fas fa-circle-info"></i> M&eacute;tricas adicionales para evaluar el impacto en la velocidad del equipo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">AVIA Senior &middot; Rotation Management &middot; Powered by <span style="color:var(--indigo)">Claude Sonnet 4.5</span></div>
+</div>
+
+<script>
+/* ═══════ Dark Mode ═══════ */
+(function(){
+  if(window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches){document.documentElement.classList.add("dark")}
+  window.matchMedia("(prefers-color-scheme:dark)").addEventListener("change",function(e){document.documentElement.classList.toggle("dark",e.matches)});
+})();
+if(typeof marked!=="undefined"){marked.setOptions({breaks:true,gfm:true})}
+
+/* ═══════ Section Config ═══════ */
+var SECTIONS = {
+  jira: {
+    prompt: "En el contexto del equipo de desarrollo de AVIA Senior (sistema de gesti\u00f3n para residencias de adultos mayores, stack Vue 3 + REST API + PostgreSQL + Docker + Kubernetes, equipo de 6 personas: Tech Lead, Full Stack, 2 Frontend, QA, DevOps), \u00bfc\u00f3mo podemos automatizar la creaci\u00f3n de tickets de rotaci\u00f3n en Jira al iniciar cada nuevo Sprint? Incluye: 1) Configuraci\u00f3n de Jira Automation rules paso a paso, 2) Campos custom necesarios (rol actual, rol rotado, mentor asignado), 3) Webhook o API script para disparar la creaci\u00f3n, 4) Template del ticket de rotaci\u00f3n con subtareas de onboarding, 5) Integraci\u00f3n con Slack para notificaciones, 6) C\u00f3digo ejemplo (Python o JavaScript) para la automatizaci\u00f3n v\u00eda Jira REST API, 7) Manejo de excepciones (vacaciones, sprints especiales). Responde en espa\u00f1ol con formato Markdown detallado.",
+    badge: "badge-jira", content: "content-jira", wrap: "wrap-jira", card: "card-jira", label: "Jira Automation"
+  },
+  comms: {
+    prompt: "Para el equipo de AVIA Senior (6 desarrolladores en un sistema de gesti\u00f3n de residencias de adultos mayores), prop\u00f3n una plantilla de comunicaci\u00f3n completa para anunciar la nueva estructura de rotaciones al equipo t\u00e9cnico. Incluye: 1) Email formal al equipo con la justificaci\u00f3n del programa, 2) Documento de FAQ anticipando dudas comunes, 3) Calendario visual de rotaciones para los pr\u00f3ximos 4 sprints, 4) Gu\u00eda de onboarding por cada rol (Frontend, Backend, QA, DevOps), 5) Canales de soporte y mentoring, 6) Template para Slack/Teams con anuncio corto, 7) Plantilla de feedback post-rotaci\u00f3n. Responde en espa\u00f1ol con formato Markdown detallado, listo para copiar y usar.",
+    badge: "badge-comms", content: "content-comms", wrap: "wrap-comms", card: "card-comms", label: "Comunicaci\u00f3n"
+  },
+  metrics: {
+    prompt: "Para el equipo de AVIA Senior (6 devs, Sprint 4 cerr\u00f3 con velocity 42, cobertura 87%, 18 stories completadas), \u00bfqu\u00e9 m\u00e9tricas adicionales recomendar\u00edas para evaluar el impacto de las rotaciones de roles en la velocidad del equipo? Incluye: 1) M\u00e9tricas de productividad (velocity, throughput, cycle time antes/despu\u00e9s), 2) M\u00e9tricas de calidad (defect rate, code review turnaround, rework rate), 3) M\u00e9tricas de conocimiento (bus factor, cross-functional score, knowledge spread index), 4) M\u00e9tricas de equipo (satisfacci\u00f3n, engagement, colaboraci\u00f3n), 5) Dashboard sugerido con KPIs clave, 6) Baseline y targets para los primeros 3 sprints de rotaci\u00f3n, 7) Herramientas de medici\u00f3n recomendadas. Responde en espa\u00f1ol con formato Markdown detallado incluyendo tablas.",
+    badge: "badge-metrics", content: "content-metrics", wrap: "wrap-metrics", card: "card-metrics", label: "M\u00e9tricas"
+  }
+};
+
+/* ═══════ Toggle Cards ═══════ */
+document.getElementById("hdr-jira").addEventListener("click",function(){document.getElementById("card-jira").classList.toggle("open")});
+document.getElementById("hdr-comms").addEventListener("click",function(){document.getElementById("card-comms").classList.toggle("open")});
+document.getElementById("hdr-metrics").addEventListener("click",function(){document.getElementById("card-metrics").classList.toggle("open")});
+
+/* ═══════ State ═══════ */
+var generating = false;
+var completedCount = 0;
+
+/* ═══════ UI Helpers ═══════ */
+function updateBadge(key, state, text) {
+  var el = document.getElementById(SECTIONS[key].badge);
+  el.className = "q-badge " + state;
+  if (state === "loading") {
+    el.innerHTML = '<span class="spin" style="border-color:rgba(180,83,9,.3);border-top-color:var(--amber);width:10px;height:10px"></span><span>' + text + '</span>';
+  } else {
+    el.innerHTML = '<span>' + text + '</span>';
+  }
+}
+
+function showTyping(key) {
+  document.getElementById(SECTIONS[key].content).innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+}
+
+function renderMd(key, md) {
+  var el = document.getElementById(SECTIONS[key].content);
+  try { el.innerHTML = marked.parse(md); } catch (_e) { el.textContent = md; }
+}
+
+function showError(key, msg) {
+  document.getElementById(SECTIONS[key].content).innerHTML = '<div style="color:var(--rose);display:flex;align-items:center;gap:7px"><i class="fas fa-triangle-exclamation"></i> ' + msg + '</div>';
+}
+
+function updateProgress(pct, label) {
+  document.getElementById("progressWrap").classList.add("active");
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressLabel").textContent = label;
+}
+
+function addCopyBtn(key) {
+  var wrap = document.getElementById(SECTIONS[key].wrap);
+  if (wrap.querySelector(".copy-btn")) return;
+  var btn = document.createElement("button");
+  btn.className = "copy-btn";
+  btn.title = "Copiar";
+  btn.innerHTML = '<i class="fas fa-copy"></i>';
+  btn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    var el = document.getElementById(SECTIONS[key].content);
+    var text = el.innerText || el.textContent || "";
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text); }
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
+  });
+  wrap.appendChild(btn);
+}
+
+function onComplete(key) {
+  completedCount++;
+  var pct = Math.round((completedCount / 3) * 100);
+  var left = 3 - completedCount;
+  if (left > 0) {
+    updateProgress(pct, completedCount + "/3 completado \u2014 " + left + " restante" + (left > 1 ? "s" : ""));
+  } else {
+    updateProgress(100, "\u00a1Las 3 consultas han sido generadas!");
+    var btn = document.getElementById("btnGen");
+    btn.innerHTML = '<i class="fas fa-check"></i> Completado';
+    btn.disabled = false;
+    generating = false;
+    setTimeout(function() {
+      btn.innerHTML = '<i class="fas fa-rotate"></i> Regenerar';
+      btn.disabled = false;
+    }, 3000);
+  }
+  addCopyBtn(key);
+}
+
+/* ═══════ Handlers ═══════ */
+function makeHandler(key) {
+  return function(result) {
+    var msg = result.responses[0];
+    if (!msg) return;
+    if (msg.status === "error") {
+      updateBadge(key, "error", "Error");
+      showError(key, msg.statusText || "Error al generar");
+      onComplete(key);
+    } else if (msg.status === "incomplete") {
+      renderMd(key, msg.content);
+    } else if (msg.status === "complete") {
+      renderMd(key, msg.content);
+      updateBadge(key, "done", "Completado");
+      onComplete(key);
+    }
+  };
+}
+
+if (window.Poe) {
+  window.Poe.registerHandler("h-jira", makeHandler("jira"));
+  window.Poe.registerHandler("h-comms", makeHandler("comms"));
+  window.Poe.registerHandler("h-metrics", makeHandler("metrics"));
+}
+
+/* ═══════ Generate All ═══════ */
+document.getElementById("btnGen").addEventListener("click", generateAll);
+
+async function generateAll() {
+  if (generating) return;
+  generating = true;
+  completedCount = 0;
+
+  var btn = document.getElementById("btnGen");
+  btn.innerHTML = '<span class="spin"></span> Generando...';
+  btn.disabled = true;
+
+  var keys = ["jira", "comms", "metrics"];
+  keys.forEach(function(k) {
+    updateBadge(k, "loading", "Generando...");
+    showTyping(k);
+    var card = document.getElementById(SECTIONS[k].card);
+    if (!card.classList.contains("open")) card.classList.add("open");
+  });
+
+  updateProgress(5, "Enviando consultas a Claude Sonnet 4.5...");
+
+  if (!window.Poe) {
+    keys.forEach(function(k) {
+      updateBadge(k, "error", "Error");
+      showError(k, "Poe Embed API no disponible. Ejecuta esta app dentro de Poe.");
+    });
+    updateProgress(0, "Error: API no disponible");
+    btn.innerHTML = '<i class="fas fa-bolt"></i> Generar las 3 Consultas';
+    btn.disabled = false;
+    generating = false;
+    return;
+  }
+
+  var tasks = keys.map(function(k) {
+    return window.Poe.sendUserMessage(
+      "@Claude-Sonnet-4.5 " + SECTIONS[k].prompt,
+      { handler: "h-" + k, stream: true, openChat: false, parameters: {} }
+    ).catch(function(err) {
+      updateBadge(k, "error", "Error");
+      showError(k, err.message || "Error al enviar");
+      onComplete(k);
+    });
+  });
+
+  await Promise.allSettled(tasks);
+  updateProgress(15, "Consultas enviadas \u2014 generando respuestas...");
+}
+</script>
+</body>
+</html>
+

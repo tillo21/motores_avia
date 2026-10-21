@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Backend Service Layer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
+    <div id="app" class="p-8"></div>
+
+    <script>
+        // ============================================
+        // AVIA AUDITOR: SISTEMA DE VALIDACIÓN SCHEMA
+        // ============================================
+        const SchemaValidator = {
+            schemas: {
+                agent: {
+                    type: 'object',
+                    required: ['id', 'name', 'type', 'status'],
+                    properties: {
+                        id: { type: 'string', pattern: '^agent_[a-z0-9]+$' },
+                        name: { type: 'string', minLength: 3, maxLength: 50 },
+                        type: { type: 'string', enum: ['transcriber', 'analyzer', 'curator', 'monitor'] },
+                        status: { type: 'string', enum: ['active', 'idle', 'error', 'stopped'] },
+                        config: { type: 'object' },
+                        metrics: { type: 'object' }
+                    }
+                },
+                task: {
+                    type: 'object',
+                    required: ['id', 'type', 'status', 'priority'],
+                    properties: {
+                        id: { type: 'string', pattern: '^task_[a-z0-9]+$' },
+                        type: { type: 'string' },
+                        status: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
+                        priority: { type: 'number', minimum: 1, maximum: 5 },
+                        agentId: { type: 'string' },
+                        data: { type: 'object' },
+                        result: { type: 'object' }
+                    }
+                },
+                transcription: {
+                    type: 'object',
+                    required: ['id', 'text', 'confidence', 'timestamp'],
+                    properties: {
+                        id: { type: 'string' },
+                        text: { type: 'string', minLength: 1 },
+                        confidence: { type: 'number', minimum: 0, maximum: 1 },
+                        timestamp: { type: 'number' },
+                        language: { type: 'string' },
+                        segments: { type: 'array' }
+                    }
+                },
+                mediaFile: {
+                    type: 'object',
+                    required: ['id', 'name', 'type', 'size'],
+                    properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        type: { type: 'string', enum: ['audio', 'video'] },
+                        size: { type: 'number', minimum: 0 },
+                        duration: { type: 'number' },
+                        format: { type: 'string' }
+                    }
+                }
+            },
+
+            validate(schemaName, data) {
+                const schema = this.schemas[schemaName];
+                if (!schema) return { valid: false, errors: ['Schema no encontrado'] };
+
+                const errors = [];
+
+                if (schema.required) {
+                    for (const field of schema.required) {
+                        if (!(field in data)) {
+                            errors.push(`Campo requerido faltante: ${field}`);
+                        }
+                    }
+                }
+
+                for (const [key, value] of Object.entries(data)) {
+                    const propSchema = schema.properties[key];
+                    if (!propSchema) continue;
+
+                    if (propSchema.type && typeof value !== propSchema.type) {
+                        errors.push(`${key}: tipo incorrecto (esperado ${propSchema.type})`);
+                    }
+
+                    if (propSchema.type === 'string') {
+                        if (propSchema.minLength && value.length < propSchema.minLength) {
+                            errors.push(`${key}: longitud mínima ${propSchema.minLength}`);
+                        }
+                        if (propSchema.maxLength && value.length > propSchema.maxLength) {
+                            errors.push(`${key}: longitud máxima ${propSchema.maxLength}`);
+                        }
+                        if (propSchema.pattern && !new RegExp(propSchema.pattern).test(value)) {
+                            errors.push(`${key}: no cumple patrón requerido`);
+                        }
+                        if (propSchema.enum && !propSchema.enum.includes(value)) {
+                            errors.push(`${key}: debe ser uno de [${propSchema.enum.join(', ')}]`);
+                        }
+                    }
+
+                    if (propSchema.type === 'number') {
+                        if (propSchema.minimum !== undefined && value < propSchema.minimum) {
+                            errors.push(`${key}: mínimo ${propSchema.minimum}`);
+                        }
+                        if (propSchema.maximum !== undefined && value > propSchema.maximum) {
+                            errors.push(`${key}: máximo ${propSchema.maximum}`);
+                        }
+                    }
+                }
+
+                return { valid: errors.length === 0, errors };
+            }
+        };
+
+        // ============================================
+        // AVIA PERSISTENCIA: BACKEND SERVICE LAYER
+        // ============================================
+        class BackendService {
+            constructor() {
+                this.storage = new Map();
+                this.validator = SchemaValidator;
+                this.eventLog = [];
+            }
+
+            async create(collection, data, schemaName) {
+                const validation = this.validator.validate(schemaName, data);
+                if (!validation.valid) {
+                    throw new Error(`Validación fallida: ${validation.errors.join(', ')}`);
+                }
+
+                if (!this.storage.has(collection)) {
+                    this.storage.set(collection, new Map());
+                }
+
+                const store = this.storage.get(collection);
+                store.set(data.id, { ...data, createdAt: Date.now(), updatedAt: Date.now() });
+                
+                this.logEvent('CREATE', collection, data.id);
+                return { success: true, data };
+            }
+
+            async read(collection, id) {
+                const store = this.storage.get(collection);
+                if (!store || !store.has(id)) {
+                    throw new Error(`Recurso no encontrado: ${collection}/${id}`);
+                }
+                return { success: true, data: store.get(id) };
+            }
+
+            async update(collection, id, updates, schemaName) {
+                const store = this.storage.get(collection);
+                if (!store || !store.has(id)) {
+                    throw new Error(`Recurso no encontrado: ${collection}/${id}`);
+                }
+
+                const current = store.get(id);
+                const updated = { ...current, ...updates, updatedAt: Date.now() };
+
+                const validation = this.validator.validate(schemaName, updated);
+                if (!validation.valid) {
+                    throw new Error(`Validación fallida: ${validation.errors.join(', ')}`);
+                }
+
+                store.set(id, updated);
+                this.logEvent('UPDATE', collection, id);
+                return { success: true, data: updated };
+            }
+
+            async delete(collection, id) {
+                const store = this.storage.get(collection);
+                if (!store || !store.has(id)) {
+                    throw new Error(`Recurso no encontrado: ${collection}/${id}`);
+                }
+
+                store.delete(id);
+                this.logEvent('DELETE', collection, id);
+                return { success: true };
+            }
+
+            async list(collection, filters = {}) {
+                const store = this.storage.get(collection);
+                if (!store) return { success: true, data: [] };
+
+                let items = Array.from(store.values());
+
+                Object.entries(filters).forEach(([key, value]) => {
+                    items = items.filter(item => item[key] === value);
+                });
+
+                return { success: true, data: items, count: items.length };
+            }
+
+            logEvent(action, collection, id) {
+                this.eventLog.push({
+                    timestamp: Date.now(),
+                    action,
+                    collection,
+                    id
+                });
+            }
+
+            getEventLog() {
+                return this.eventLog.slice(-50);
+            }
+        }
+
+        // ============================================
+        // API REST SIMULATOR
+        // ============================================
+        class APIRestSimulator {
+            constructor(backendService) {
+                this.backend = backendService;
+                this.endpoints = this.setupEndpoints();
+            }
+
+            setupEndpoints() {
+                return {
+                    'POST /api/agents': (data) => this.backend.create('agents', data, 'agent'),
+                    'GET /api/agents/:id': (params) => this.backend.read('agents', params.id),
+                    'PUT /api/agents/:id': (params, data) => this.backend.update('agents', params.id, data, 'agent'),
+                    'DELETE /api/agents/:id': (params) => this.backend.delete('agents', params.id),
+                    'GET /api/agents': (query) => this.backend.list('agents', query),
+
+                    'POST /api/tasks': (data) => this.backend.create('tasks', data, 'task'),
+                    'GET /api/tasks/:id': (params) => this.backend.read('tasks', params.id),
+                    'PUT /api/tasks/:id': (params, data) => this.backend.update('tasks', params.id, data, 'task'),
+                    'DELETE /api/tasks/:id': (params) => this.backend.delete('tasks', params.id),
+                    'GET /api/tasks': (query) => this.backend.list('tasks', query),
+
+                    'POST /api/transcriptions': (data) => this.backend.create('transcriptions', data, 'transcription'),
+                    'GET /api/transcriptions/:id': (params) => this.backend.read('transcriptions', params.id),
+                    'GET /api/transcriptions': (query) => this.backend.list('transcriptions', query),
+
+                    'POST /api/media': (data) => this.backend.create('media', data, 'mediaFile'),
+                    'GET /api/media/:id': (params) => this.backend.read('media', params.id),
+                    'GET /api/media': (query) => this.backend.list('media', query),
+
+                    'GET /api/system/health': () => ({ success: true, status: 'healthy', timestamp: Date.now() }),
+                    'GET /api/system/metrics': () => this.getSystemMetrics(),
+                    'GET /api/system/logs': () => ({ success: true, logs: this.backend.getEventLog() })
+                };
+            }
+
+            async request(method, path, data = null, params = {}, query = {}) {
+                const endpoint = `${method} ${path}`;
+                const handler = this.endpoints[endpoint];
+
+                if (!handler) {
+                    throw new Error(`Endpoint no encontrado: ${endpoint}`);
+                }
+
+                try {
+                    const result = await handler(data || params || query, data);
+                    return { status: 200, ...result };
+                } catch (error) {
+                    return { status: 400, success: false, error: error.message };
+                }
+            }
+
+            getSystemMetrics() {
+                const collections = ['agents', 'tasks', 'transcriptions', 'media'];
+                const metrics = {};
+
+                collections.forEach(col => {
+                    const store = this.backend.storage.get(col);
+                    metrics[col] = store ? store.size : 0;
+                });
+
+                return {
+                    success: true,
+                    metrics,
+                    eventCount: this.backend.eventLog.length,
+                    uptime: Date.now()
+                };
+            }
+        }
+
+        // ============================================
+        // UI RENDERING
+        // ============================================
+        class BackendDashboard {
+            constructor() {
+                this.backend = new BackendService();
+                this.api = new APIRestSimulator(this.backend);
+                this.activeTab = 'test';
+                this.testResult = null;
+                this.metrics = null;
+                this.logs = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.render();
+                this.loadMetrics();
+                this.loadLogs();
+                setInterval(() => {
+                    this.loadMetrics();
+                    this.loadLogs();
+                }, 3000);
+            }
+
+            async loadMetrics() {
+                const result = await this.api.request('GET', '/api/system/metrics');
+                if (result.success) {
+                    this.metrics = result.metrics;
+                    this.render();
+                }
+            }
+
+            async loadLogs() {
+                const result = await this.api.request('GET', '/api/system/logs');
+                if (result.success) {
+                    this.logs = result.logs;
+                    if (this.activeTab === 'logs') this.render();
+                }
+            }
+
+            async runTestSuite() {
+                const results = [];
+
+                try {
+                    const agent = {
+                        id: 'agent_test_001',
+                        name: 'Test Agent',
+                        type: 'transcriber',
+                        status: 'active',
+                        config: { model: 'whisper-v3' }
+                    };
+                    const res = await this.api.request('POST', '/api/agents', agent);
+                    results.push({ test: 'Crear agente válido', success: res.success, result: res });
+                } catch (e) {
+                    results.push({ test: 'Crear agente válido', success: false, error: e.message });
+                }
+
+                try {
+                    const invalidAgent = {
+                        id: 'invalid',
+                        name: 'AB',
+                        type: 'unknown',
+                        status: 'active'
+                    };
+                    const res = await this.api.request('POST', '/api/agents', invalidAgent);
+                    results.push({ test: 'Rechazar agente inválido', success: !res.success, result: res });
+                } catch (e) {
+                    results.push({ test: 'Rechazar agente inválido', success: true, error: e.message });
+                }
+
+                try {
+                    const task = {
+                        id: 'task_test_001',
+                        type: 'transcribe',
+                        status: 'pending',
+                        priority: 3,
+                        agentId: 'agent_test_001',
+                        data: { fileId: 'file_001' }
+                    };
+                    const res = await this.api.request('POST', '/api/tasks', task);
+                    results.push({ test: 'Crear tarea', success: res.success, result: res });
+                } catch (e) {
+                    results.push({ test: 'Crear tarea', success: false, error: e.message });
+                }
+
+                try {
+                    const res = await this.api.request('GET', '/api/agents', null, {}, {});
+                    results.push({ test: 'Listar agentes', success: res.success && res.count > 0, result: res });
+                } catch (e) {
+                    results.push({ test: 'Listar agentes', success: false, error: e.message });
+                }
+
+                try {
+                    const res = await this.api.request('PUT', '/api/agents/:id', { status: 'idle' }, { id: 'agent_test_001' });
+                    results.push({ test: 'Actualizar agente', success: res.success, result: res });
+                } catch (e) {
+                    results.push({ test: 'Actualizar agente', success: false, error: e.message });
+                }
+
+                this.testResult = results;
+                this.render();
+            }
+
+            render() {
+                const app = document.getElementById('app');
+                app.innerHTML = `
+                    <div class="max-w-7xl mx-auto">
+                        <!-- Header -->
+                        <div class="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-6 mb-6 border border-white border-opacity-20">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-lg">
+                                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h1 class="text-3xl font-bold text-white">Backend Service Layer</h1>
+                                        <p class="text-purple-200">API REST + Validación Schema + AVIA Auditor</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse-glow"></div>
+                                    <span class="text-green-400 font-semibold">Sistema Activo</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div class="flex gap-2 mb-6">
+                            ${['test', 'metrics', 'logs', 'schemas'].map(tab => `
+                                <button onclick="dashboard.setTab('${tab}')" 
+                                    class="px-6 py-3 rounded-lg font-semibold transition-all ${
+                                        this.activeTab === tab
+                                            ? 'bg-purple-600 text-white shadow-lg'
+                                            : 'bg-white bg-opacity-10 text-purple-200 hover:bg-opacity-20'
+                                    }">
+                                    ${tab.toUpperCase()}
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <!-- Content -->
+                        <div class="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-6 border border-white border-opacity-20">
+                            ${this.renderContent()}
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="mt-6 text-center text-purple-300">
+                            <p class="text-sm">🌌 AVIA Backend Service Layer v2.0 | Validación Schema Activa | API REST Completo</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderContent() {
+                switch (this.activeTab) {
+                    case 'test':
+                        return this.renderTests();
+                    case 'metrics':
+                        return this.renderMetrics();
+                    case 'logs':
+                        return this.renderLogs();
+                    case 'schemas':
+                        return this.renderSchemas();
+                    default:
+                        return '';
+                }
+            }
+
+            renderTests() {
+                return `
+                    <div>
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                                <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                Suite de Tests Automáticos
+                            </h2>
+                            <button onclick="dashboard.runTestSuite()" 
+                                class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all">
+                                Ejecutar Tests
+                            </button>
+                        </div>
+
+                        ${this.testResult ? `
+                            <div class="space-y-3">
+                                ${this.testResult.map(test => `
+                                    <div class="p-4 rounded-lg border-l-4 ${
+                                        test.success
+                                            ? 'bg-green-500 bg-opacity-20 border-green-500'
+                                            : 'bg-red-500 bg-opacity-20 border-red-500'
+                                    }">
+                                        <div class="flex items-center gap-3">
+                                            <svg class="w-5 h-5 ${test.success ? 'text-green-400' : 'text-red-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${
+                                                    test.success 
+                                                        ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+                                                        : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+                                                }"></path>
+                                            </svg>
+                                            <span class="text-white font-semibold">${test.test}</span>
+                                        </div>
+                                        ${test.error ? `<p class="text-red-300 text-sm mt-2 ml-8">${test.error}</p>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p class="text-purple-200 text-center py-12">Haz clic en "Ejecutar Tests" para comenzar</p>'}
+                    </div>
+                `;
+            }
+
+            renderMetrics() {
+                if (!this.metrics) return '<p class="text-purple-200 text-center py-12">Cargando métricas...</p>';
+
+                return `
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                            </svg>
+                            Métricas del Sistema
+                        </h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            ${Object.entries(this.metrics).map(([key, value]) => `
+                                <div class="bg-white bg-opacity-10 rounded-lg p-4 border border-white border-opacity-20">
+                                    <div class="text-purple-300 text-sm uppercase mb-2">${key}</div>
+                                    <div class="text-3xl font-bold text-white">${value}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderLogs() {
+                return `
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Event Log (últimos 50)
+                        </h2>
+                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                            ${this.logs.slice().reverse().map(log => `
+                                <div class="bg-black bg-opacity-30 p-3 rounded font-mono text-sm text-green-300">
+                                    <span class="text-purple-400">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    <span class="text-yellow-400"> ${log.action}</span>
+                                    <span class="text-blue-400"> ${log.collection}/${log.id}</span>
+                                </div>
+                            `).join('') || '<p class="text-purple-200 text-center py-12">Sin eventos registrados</p>'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderSchemas() {
+                return `
+                    <div>
+                        <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            Schemas de Validación
+                        </h2>
+                        <div class="space-y-4">
+                            ${Object.entries(SchemaValidator.schemas).map(([name, schema]) => `
+                                <div class="bg-black bg-opacity-30 p-4 rounded-lg">
+                                    <h3 class="text-xl font-bold text-purple-300 mb-3">${name}</h3>
+                                    <pre class="text-green-300 text-sm overflow-x-auto">${JSON.stringify(schema, null, 2)}</pre>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            setTab(tab) {
+                this.activeTab = tab;
+                this.render();
+            }
+        }
+
+        // Initialize
+        const dashboard = new BackendDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataVis — Visualizador Universal</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-card: #151d2e;
+    --bg-card-hover: #1a2540;
+    --text-primary: #e8ecf4;
+    --text-secondary: #8892a8;
+    --text-muted: #5a6478;
+    --accent-cyan: #00e5ff;
+    --accent-magenta: #ff2d75;
+    --accent-amber: #ffb300;
+    --accent-lime: #76ff03;
+    --accent-violet: #b388ff;
+    --accent-coral: #ff6e40;
+    --border: rgba(255,255,255,0.06);
+    --glow-cyan: 0 0 20px rgba(0,229,255,0.15);
+    --glow-magenta: 0 0 20px rgba(255,45,117,0.15);
+    --radius: 14px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .light {
+    --bg-primary: #f0f2f5;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f8f9fb;
+    --text-primary: #1a1d26;
+    --text-secondary: #5a6478;
+    --text-muted: #8892a8;
+    --border: rgba(0,0,0,0.08);
+    --glow-cyan: 0 4px 20px rgba(0,229,255,0.1);
+    --glow-magenta: 0 4px 20px rgba(255,45,117,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(0,229,255,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(255,45,117,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(179,136,255,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .light body::before { opacity: 0.5; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(10,14,26,0.8);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .light .header { background: rgba(255,255,255,0.85); }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Chakra Petch', sans-serif;
+    font-weight: 700; font-size: 22px; letter-spacing: -0.5px; white-space: nowrap;
+  }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #fff;
+    box-shadow: var(--glow-cyan);
+  }
+  .logo span { color: var(--accent-cyan); }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .btn-icon {
+    width: 38px; height: 38px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-card); color: var(--text-secondary);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: var(--transition);
+  }
+  .btn-icon:hover {
+    background: var(--bg-card-hover); color: var(--accent-cyan); border-color: var(--accent-cyan);
+  }
+
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; padding: 20px 24px 8px; position: relative; z-index: 1;
+  }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 6px;
+    transition: var(--transition); animation: slideUp 0.6s ease backwards;
+  }
+  .stat-card:nth-child(1) { animation-delay: 0.05s; }
+  .stat-card:nth-child(2) { animation-delay: 0.1s; }
+  .stat-card:nth-child(3) { animation-delay: 0.15s; }
+  .stat-card:nth-child(4) { animation-delay: 0.2s; }
+  .stat-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); box-shadow: var(--glow-cyan); }
+  .stat-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+  .stat-value { font-family: 'Chakra Petch', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+  .stat-change { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .stat-change.up { color: var(--accent-lime); }
+  .stat-change.down { color: var(--accent-magenta); }
+
+  .tab-nav {
+    display: flex; gap: 4px; padding: 16px 24px 0; overflow-x: auto;
+    position: relative; z-index: 1; -webkit-overflow-scrolling: touch;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border: 1px solid transparent; border-radius: 10px;
+    background: transparent; color: var(--text-muted); cursor: pointer;
+    transition: var(--transition); white-space: nowrap; display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text-secondary); background: var(--bg-card); }
+  .tab-btn.active {
+    color: var(--accent-cyan); background: var(--bg-card);
+    border-color: rgba(0,229,255,0.2); box-shadow: var(--glow-cyan);
+  }
+
+  .dashboard {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    padding: 16px 24px 32px; position: relative; z-index: 1;
+  }
+  @media (max-width: 768px) {
+    .dashboard { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 420px) {
+    .stats-bar { grid-template-columns: 1fr; }
+    .header { padding: 12px 16px; }
+    .dashboard { padding: 12px 16px 24px; }
+    .tab-nav { padding: 12px 16px 0; }
+    .stats-bar { padding: 16px 16px 4px; }
+  }
+
+  .chart-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; display: flex; flex-direction: column; gap: 14px;
+    transition: var(--transition); animation: slideUp 0.6s ease backwards; min-height: 320px;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-card:hover { border-color: rgba(255,255,255,0.1); box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+  .light .chart-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .chart-title { font-family: 'Chakra Petch', sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 0.3px; }
+  .chart-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 20px; background: rgba(0,229,255,0.1); color: var(--accent-cyan);
+  }
+  .chart-badge.live { background: rgba(255,45,117,0.1); color: var(--accent-magenta); animation: pulse 2s infinite; }
+  .chart-wrap { flex: 1; position: relative; min-height: 0; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  .data-table-wrap { flex: 1; overflow: auto; border-radius: 8px; border: 1px solid var(--border); }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    position: sticky; top: 0; background: var(--bg-secondary);
+    font-family: 'Chakra Petch', sans-serif; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);
+    padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+  .data-table tr:hover td { background: var(--bg-card-hover); }
+  .val-up { color: var(--accent-lime); font-weight: 600; }
+  .val-down { color: var(--accent-magenta); font-weight: 600; }
+
+  .gauge-container { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; flex: 1; padding: 10px 0; }
+  .gauge { width: 130px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .gauge svg { width: 110px; height: 70px; }
+  .gauge-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+  .gauge-value { font-family: 'Chakra Petch', sans-serif; font-size: 22px; font-weight: 700; }
+
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .section { display: none; }
+  .section.active { display: grid; }
+
+  .sparkline-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex: 1; padding: 8px 0; }
+  .sparkline-item { flex: 1; min-width: 140px; text-align: center; }
+  .sparkline-item canvas { width: 100% !important; height: 50px !important; }
+  .sparkline-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-top: 6px; }
+
+  .progress-row { display: flex; flex-direction: column; gap: 14px; flex: 1; justify-content: center; padding: 8px 0; }
+  .progress-item { display: flex; align-items: center; gap: 12px; }
+  .progress-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); min-width: 80px; }
+  .progress-track { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+  .light .progress-track { background: rgba(0,0,0,0.06); }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); width: 0; }
+  .progress-pct { font-family: 'Chakra Petch', sans-serif; font-size: 13px; font-weight: 600; min-width: 42px; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">◈</div>
+    Data<span>Vis</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn-icon" id="refreshBtn" title="Actualizar datos"><i class="fas fa-sync-alt"></i></button>
+    <button class="btn-icon" id="themeBtn" title="Cambiar tema"><i class="fas fa-adjust"></i></button>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat-card">
+    <span class="stat-label">Ingresos</span>
+    <span class="stat-value" id="statRevenue">$0</span>
+    <span class="stat-change up" id="statRevenueChange">↑ 0%</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Usuarios</span>
+    <span class="stat-value" id="statUsers">0</span>
+    <span class="stat-change up" id="statUsersChange">↑ 0%</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Conversión</span>
+    <span class="stat-value" id="statConversion">0%</span>
+    <span class="stat-change down" id="statConvChange">↓ 0%</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Rendimiento</span>
+    <span class="stat-value" id="statPerf">0ms</span>
+    <span class="stat-change up" id="statPerfChange">↑ 0%</span>
+  </div>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="overview">◉ General</button>
+  <button class="tab-btn" data-tab="analytics">◈ Analítica</button>
+  <button class="tab-btn" data-tab="performance">⚡ Rendimiento</button>
+  <button class="tab-btn" data-tab="distribution">◎ Distribución</button>
+</div>
+
+<!-- Overview -->
+<div class="dashboard section active" id="overview">
+  <div class="chart-card wide" style="animation-delay:0.25s">
+    <div class="chart-header">
+      <span class="chart-title">Tendencia de Ingresos y Usuarios</span>
+      <span class="chart-badge live">● En vivo</span>
+    </div>
+    <div class="chart-wrap"><canvas id="mainLineChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.3s">
+    <div class="chart-header">
+      <span class="chart-title">Ventas por Categoría</span>
+      <span class="chart-badge">Mensual</span>
+    </div>
+    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.35s">
+    <div class="chart-header">
+      <span class="chart-title">Distribución de Tráfico</span>
+      <span class="chart-badge">Actual</span>
+    </div>
+    <div class="chart-wrap"><canvas id="doughnutChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Analytics -->
+<div class="dashboard section" id="analytics">
+  <div class="chart-card wide" style="animation-delay:0.1s">
+    <div class="chart-header">
+      <span class="chart-title">Análisis Multidimensional</span>
+      <span class="chart-badge">Q3 2026</span>
+    </div>
+    <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.15s">
+    <div class="chart-header">
+      <span class="chart-title">Actividad Semanal por Hora</span>
+      <span class="chart-badge">7 Días</span>
+    </div>
+    <div class="chart-wrap"><canvas id="heatmapChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.2s">
+    <div class="chart-header">
+      <span class="chart-title">Top Métricas del Sistema</span>
+      <span class="chart-badge">Rankings</span>
+    </div>
+    <div class="progress-row" id="progressMetrics"></div>
+  </div>
+</div>
+
+<!-- Performance -->
+<div class="dashboard section" id="performance">
+  <div class="chart-card wide" style="animation-delay:0.1s">
+    <div class="chart-header">
+      <span class="chart-title">Latencia del Sistema (Tiempo Real)</span>
+      <span class="chart-badge live">● Streaming</span>
+    </div>
+    <div class="chart-wrap"><canvas id="realtimeChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.15s">
+    <div class="chart-header">
+      <span class="chart-title">Indicadores de Salud</span>
+      <span class="chart-badge">Sistema</span>
+    </div>
+    <div class="gauge-container" id="gauges"></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.2s">
+    <div class="chart-header">
+      <span class="chart-title">Micro Tendencias</span>
+      <span class="chart-badge">24h</span>
+    </div>
+    <div class="sparkline-row" id="sparklines"></div>
+  </div>
+</div>
+
+<!-- Distribution -->
+<div class="dashboard section" id="distribution">
+  <div class="chart-card" style="animation-delay:0.1s">
+    <div class="chart-header">
+      <span class="chart-title">Distribución por Región</span>
+      <span class="chart-badge">Global</span>
+    </div>
+    <div class="chart-wrap"><canvas id="polarChart"></canvas></div>
+  </div>
+  <div class="chart-card" style="animation-delay:0.15s">
+    <div class="chart-header">
+      <span class="chart-title">Scatter: Precio vs Volumen</span>
+      <span class="chart-badge">Correlación</span>
+    </div>
+    <div class="chart-wrap"><canvas id="scatterChart"></canvas></div>
+  </div>
+  <div class="chart-card wide" style="animation-delay:0.2s">
+    <div class="chart-header">
+      <span class="chart-title">Datos en Detalle</span>
+      <span class="chart-badge">Tabla</span>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table" id="dataTable">
+        <thead><tr><th>Región</th><th>Ingresos</th><th>Usuarios</th><th>Crecimiento</th><th>Estado</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Theme Detection ─── */
+(function initTheme() {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.remove('light');
+  } else {
+    document.documentElement.classList.add('light');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+    if (e.matches) { document.documentElement.classList.remove('light'); }
+    else { document.documentElement.classList.add('light'); }
+  });
+})();
+
+document.getElementById('themeBtn').addEventListener('click', function() {
+  document.documentElement.classList.toggle('light');
+});
+
+/* ─── Helpers ─── */
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randF(min, max) { return +(Math.random() * (max - min) + min).toFixed(2); }
+function formatK(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+function formatMoney(n) { return '$' + n.toLocaleString('en-US'); }
+
+var months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+var weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+function isLight() { return document.documentElement.classList.contains('light'); }
+
+function chartColors() {
+  var s = getComputedStyle(document.documentElement);
+  return {
+    cyan: s.getPropertyValue('--accent-cyan').trim(),
+    magenta: s.getPropertyValue('--accent-magenta').trim(),
+    amber: s.getPropertyValue('--accent-amber').trim(),
+    lime: s.getPropertyValue('--accent-lime').trim(),
+    violet: s.getPropertyValue('--accent-violet').trim(),
+    coral: s.getPropertyValue('--accent-coral').trim(),
+    text: s.getPropertyValue('--text-muted').trim(),
+    grid: isLight() ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+  };
+}
+
+function baseOptions() {
+  var c = chartColors();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: c.text, font: { family: "'DM Sans'", size: 11, weight: '600' }, padding: 16, usePointStyle: true, pointStyleWidth: 8 }
+      },
+      tooltip: {
+        backgroundColor: isLight() ? '#fff' : '#151d2e',
+        titleColor: isLight() ? '#1a1d26' : '#e8ecf4',
+        bodyColor: isLight() ? '#5a6478' : '#8892a8',
+        borderColor: isLight() ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+        borderWidth: 1, cornerRadius: 8, padding: 10,
+        titleFont: { family: "'Chakra Petch'", weight: '600' },
+        bodyFont: { family: "'DM Sans'" },
+      }
+    },
+    scales: {
+      x: { ticks: { color: c.text, font: { family: "'DM Sans'", size: 11 } }, grid: { color: c.grid } },
+      y: { ticks: { color: c.text, font: { family: "'DM Sans'", size: 11 } }, grid: { color: c.grid } }
+    }
+  };
+}
+
+/* ─── Tab Nav ─── */
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ─── Stats ─── */
+function animateStats() {
+  document.getElementById('statRevenue').textContent = formatMoney(rand(180000, 250000));
+  document.getElementById('statUsers').textContent = formatK(rand(42000, 68000));
+  document.getElementById('statConversion').textContent = randF(3.2, 5.8) + '%';
+  document.getElementById('statPerf').textContent = rand(42, 120) + 'ms';
+  document.getElementById('statRevenueChange').textContent = '↑ ' + randF(5, 18) + '%';
+  document.getElementById('statUsersChange').textContent = '↑ ' + randF(8, 22) + '%';
+  document.getElementById('statConvChange').textContent = '↓ ' + randF(0.5, 3) + '%';
+  document.getElementById('statPerfChange').textContent = '↑ ' + randF(5, 15) + '%';
+}
+
+/* ─── Chart instances ─── */
+var charts = {};
+
+function createMainLineChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('mainLineChart').getContext('2d');
+  var revenueData = months.map(function() { return rand(15000, 45000); });
+  var usersData = months.map(function() { return rand(2000, 8000); });
+  var g1 = ctx.createLinearGradient(0, 0, 0, 300);
+  g1.addColorStop(0, 'rgba(0,229,255,0.2)'); g1.addColorStop(1, 'rgba(0,229,255,0)');
+  var g2 = ctx.createLinearGradient(0, 0, 0, 300);
+  g2.addColorStop(0, 'rgba(255,45,117,0.15)'); g2.addColorStop(1, 'rgba(255,45,117,0)');
+
+  charts.mainLine = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Ingresos ($)', data: revenueData, borderColor: c.cyan, backgroundColor: g1, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: c.cyan },
+        { label: 'Usuarios', data: usersData, borderColor: c.magenta, backgroundColor: g2, fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 6, pointHoverBackgroundColor: c.magenta }
+      ]
+    },
+    options: baseOptions()
+  });
+}
+
+function createBarChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('barChart').getContext('2d');
+  var cats = ['Tech', 'Moda', 'Salud', 'Hogar', 'Food', 'Media'];
+  var colors = [c.cyan, c.magenta, c.amber, c.lime, c.violet, c.coral];
+  var opts = baseOptions();
+  opts.plugins.legend = { display: false };
+  opts.scales.y.beginAtZero = true;
+
+  charts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [{
+        label: 'Ventas', data: cats.map(function() { return rand(5000, 35000); }),
+        backgroundColor: colors.map(function(cl) { return cl + '99'; }),
+        borderColor: colors, borderWidth: 2, borderRadius: 8, borderSkipped: false,
+      }]
+    },
+    options: opts
+  });
+}
+
+function createDoughnutChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('doughnutChart').getContext('2d');
+  var opts = baseOptions();
+  opts.cutout = '68%';
+  opts.scales = {};
+  opts.plugins.legend.position = 'bottom';
+
+  charts.doughnut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Orgánico', 'Directo', 'Social', 'Referido', 'Email'],
+      datasets: [{ data: [35, 25, 20, 12, 8], backgroundColor: [c.cyan + 'cc', c.magenta + 'cc', c.amber + 'cc', c.lime + 'cc', c.violet + 'cc'], borderColor: 'transparent', borderWidth: 0, spacing: 3, hoverOffset: 8 }]
+    },
+    options: opts
+  });
+}
+
+function createRadarChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('radarChart').getContext('2d');
+  var labels = ['UX', 'Rendimiento', 'SEO', 'Accesibilidad', 'Seguridad', 'Velocidad', 'Escalabilidad'];
+  var opts = baseOptions();
+  opts.scales = {
+    r: {
+      beginAtZero: true, max: 100,
+      ticks: { color: c.text, font: { size: 10 }, backdropColor: 'transparent' },
+      grid: { color: c.grid },
+      pointLabels: { color: c.text, font: { family: "'DM Sans'", size: 11, weight: '600' } },
+      angleLines: { color: c.grid }
+    }
+  };
+
+  charts.radar = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Actual', data: labels.map(function() { return rand(60, 98); }), borderColor: c.cyan, backgroundColor: c.cyan + '22', borderWidth: 2, pointRadius: 3, pointBackgroundColor: c.cyan },
+        { label: 'Objetivo', data: labels.map(function() { return rand(70, 100); }), borderColor: c.magenta, backgroundColor: c.magenta + '15', borderWidth: 2, pointRadius: 3, pointBackgroundColor: c.magenta }
+      ]
+    },
+    options: opts
+  });
+}
+
+function createHeatmapChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('heatmapChart').getContext('2d');
+  var hours = ['0h', '4h', '8h', '12h', '16h', '20h'];
+  var allColors = [c.cyan, c.magenta, c.amber, c.lime, c.violet, c.coral, '#ff8a65'];
+  var datasets = weekDays.map(function(day, i) {
+    return {
+      label: day, data: hours.map(function() { return rand(10, 100); }),
+      backgroundColor: allColors[i] + '99', borderColor: allColors[i], borderWidth: 1, borderRadius: 4
+    };
+  });
+  var opts = baseOptions();
+  opts.scales.x.stacked = true;
+  opts.scales.y.stacked = true;
+  opts.scales.y.beginAtZero = true;
+  opts.plugins.legend.position = 'bottom';
+
+  charts.heatmap = new Chart(ctx, { type: 'bar', data: { labels: hours, datasets: datasets }, options: opts });
+}
+
+function createProgressMetrics() {
+  var container = document.getElementById('progressMetrics');
+  container.innerHTML = '';
+  var items = [
+    { label: 'CPU', value: rand(40, 92), color: 'var(--accent-cyan)' },
+    { label: 'Memoria', value: rand(55, 88), color: 'var(--accent-magenta)' },
+    { label: 'Red', value: rand(20, 75), color: 'var(--accent-amber)' },
+    { label: 'Disco', value: rand(30, 85), color: 'var(--accent-lime)' },
+    { label: 'GPU', value: rand(15, 70), color: 'var(--accent-violet)' },
+  ];
+  items.forEach(function(m, i) {
+    var item = document.createElement('div');
+    item.className = 'progress-item';
+    item.innerHTML = '<span class="progress-label">' + m.label + '</span><div class="progress-track"><div class="progress-fill" style="background:' + m.color + ';"></div></div><span class="progress-pct" style="color:' + m.color + '">' + m.value + '%</span>';
+    container.appendChild(item);
+    requestAnimationFrame(function() {
+      setTimeout(function() { item.querySelector('.progress-fill').style.width = m.value + '%'; }, i * 100);
+    });
+  });
+}
+
+function createRealtimeChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('realtimeChart').getContext('2d');
+  var labels = []; var data = [];
+  for (var i = 0; i < 30; i++) { labels.push(i + 's'); data.push(rand(20, 120)); }
+  var grad = ctx.createLinearGradient(0, 0, 0, 250);
+  grad.addColorStop(0, 'rgba(0,229,255,0.15)'); grad.addColorStop(1, 'rgba(0,229,255,0)');
+  var opts = baseOptions();
+  opts.animation = { duration: 300 };
+  opts.plugins.legend = { display: false };
+
+  charts.realtime = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: [{ label: 'Latencia (ms)', data: data, borderColor: c.cyan, backgroundColor: grad, fill: true, tension: 0.3, borderWidth: 2, pointRadius: 0 }] },
+    options: opts
+  });
+
+  setInterval(function() {
+    if (!charts.realtime) return;
+    var d = charts.realtime.data;
+    d.datasets[0].data.shift(); d.datasets[0].data.push(rand(20, 120));
+    var last = parseInt(d.labels[d.labels.length - 1]);
+    d.labels.shift(); d.labels.push((last + 1) + 's');
+    charts.realtime.update('none');
+  }, 1000);
+}
+
+function createGauges() {
+  var container = document.getElementById('gauges');
+  container.innerHTML = '';
+  var trackColor = isLight() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  var items = [
+    { label: 'Uptime', value: randF(99.5, 99.99), max: 100, color: 'var(--accent-lime)', suffix: '%' },
+    { label: 'Carga', value: randF(0.5, 3.5), max: 5, color: 'var(--accent-amber)', suffix: '' },
+    { label: 'Errores', value: rand(0, 12), max: 100, color: 'var(--accent-magenta)', suffix: '/h' },
+  ];
+  items.forEach(function(item) {
+    var pct = (item.value / item.max) * 100;
+    var angle = (pct / 100) * 180;
+    var dashLen = ((angle / 180) * 157).toFixed(1);
+    var g = document.createElement('div');
+    g.className = 'gauge';
+    g.innerHTML = '<svg viewBox="0 0 120 70"><path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="' + trackColor + '" stroke-width="8" stroke-linecap="round"/><path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="' + item.color + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + dashLen + ' 157" style="transition: stroke-dasharray 1.5s cubic-bezier(0.4,0,0.2,1)"/></svg><span class="gauge-value" style="color:' + item.color + '">' + item.value + item.suffix + '</span><span class="gauge-label">' + item.label + '</span>';
+    container.appendChild(g);
+  });
+}
+
+function createSparklines() {
+  var container = document.getElementById('sparklines');
+  container.innerHTML = '';
+  var c = chartColors();
+  var names = ['API', 'CDN', 'DB', 'Cache'];
+  var colors = [c.cyan, c.magenta, c.amber, c.lime];
+
+  names.forEach(function(name, idx) {
+    var wrap = document.createElement('div');
+    wrap.className = 'sparkline-item';
+    var canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    var lbl = document.createElement('div');
+    lbl.className = 'sparkline-name';
+    lbl.textContent = name;
+    wrap.appendChild(lbl);
+    container.appendChild(wrap);
+
+    var sCtx = canvas.getContext('2d');
+    var sg = sCtx.createLinearGradient(0, 0, 0, 50);
+    sg.addColorStop(0, colors[idx] + '33'); sg.addColorStop(1, colors[idx] + '00');
+    var sData = [];
+    var sLabels = [];
+    for (var i = 0; i < 20; i++) { sLabels.push(i); sData.push(rand(5, 50)); }
+
+    new Chart(sCtx, {
+      type: 'line',
+      data: { labels: sLabels, datasets: [{ data: sData, borderColor: colors[idx], backgroundColor: sg, fill: true, tension: 0.4, borderWidth: 1.5, pointRadius: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } } }
+    });
+  });
+}
+
+function createPolarChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('polarChart').getContext('2d');
+  var opts = baseOptions();
+  opts.scales = { r: { beginAtZero: true, ticks: { color: c.text, backdropColor: 'transparent', font: { size: 10 } }, grid: { color: c.grid } } };
+  opts.plugins.legend.position = 'bottom';
+
+  charts.polar = new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels: ['América', 'Europa', 'Asia', 'África', 'Oceanía'],
+      datasets: [{ data: [rand(20, 50), rand(25, 55), rand(30, 60), rand(10, 30), rand(5, 20)], backgroundColor: [c.cyan + '99', c.magenta + '99', c.amber + '99', c.lime + '99', c.violet + '99'], borderColor: 'transparent', borderWidth: 0 }]
+    },
+    options: opts
+  });
+}
+
+function createScatterChart() {
+  var c = chartColors();
+  var ctx = document.getElementById('scatterChart').getContext('2d');
+  var opts = baseOptions();
+  opts.scales.x.title = { display: true, text: 'Precio ($)', color: c.text, font: { family: "'DM Sans'" } };
+  opts.scales.y.title = { display: true, text: 'Volumen', color: c.text, font: { family: "'DM Sans'" } };
+  opts.plugins.legend.position = 'top';
+
+  function genPts(count) { var a = []; for (var i = 0; i < count; i++) { a.push({ x: randF(10, 200), y: randF(100, 10000) }); } return a; }
+
+  charts.scatter = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Producto A', data: genPts(30), backgroundColor: c.cyan + '99', borderColor: c.cyan, borderWidth: 1, pointRadius: 5, pointHoverRadius: 8 },
+        { label: 'Producto B', data: genPts(30), backgroundColor: c.magenta + '99', borderColor: c.magenta, borderWidth: 1, pointRadius: 5, pointHoverRadius: 8 }
+      ]
+    },
+    options: opts
+  });
+}
+
+function createDataTable() {
+  var regions = [
+    { name: 'Norteamérica', flag: '\u{1F1FA}\u{1F1F8}' },
+    { name: 'Europa', flag: '\u{1F1EA}\u{1F1FA}' },
+    { name: 'Asia-Pacífico', flag: '\u{1F30F}' },
+    { name: 'Latinoamérica', flag: '\u{1F30E}' },
+    { name: 'Medio Oriente', flag: '\u{1F30D}' },
+    { name: 'África', flag: '\u{1F30D}' },
+    { name: 'Oceanía', flag: '\u{1F30F}' },
+  ];
+  var tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  regions.forEach(function(r) {
+    var rev = rand(50000, 500000);
+    var users = rand(5000, 80000);
+    var growth = randF(-5, 25);
+    var up = growth >= 0;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + r.flag + ' ' + r.name + '</td>' +
+      '<td style="font-family:\'Chakra Petch\';font-weight:600">' + formatMoney(rev) + '</td>' +
+      '<td style="font-family:\'Chakra Petch\';font-weight:600">' + formatK(users) + '</td>' +
+      '<td class="' + (up ? 'val-up' : 'val-down') + '">' + (up ? '↑' : '↓') + ' ' + Math.abs(growth) + '%</td>' +
+      '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (up ? 'var(--accent-lime)' : 'var(--accent-magenta)') + ';margin-right:6px"></span>' + (up ? 'Activo' : 'Revisión') + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+/* ─── Init ─── */
+function initAll() {
+  animateStats();
+  createMainLineChart();
+  createBarChart();
+  createDoughnutChart();
+  createRadarChart();
+  createHeatmapChart();
+  createProgressMetrics();
+  createRealtimeChart();
+  createGauges();
+  createSparklines();
+  createPolarChart();
+  createScatterChart();
+  createDataTable();
+}
+
+/* ─── Refresh ─── */
+document.getElementById('refreshBtn').addEventListener('click', function() {
+  Object.keys(charts).forEach(function(k) { if (charts[k] && charts[k].destroy) { charts[k].destroy(); } delete charts[k]; });
+  initAll();
+});
+
+/* ─── Boot ─── */
+initAll();
+</script>
+</body>
+</html>

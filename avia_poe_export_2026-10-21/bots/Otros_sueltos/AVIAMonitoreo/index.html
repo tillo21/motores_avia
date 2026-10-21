@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA v4.5 - Emergency Automation + Proactive Monitoring + Intelligent Alerting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: #00d9ff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .status-label {
+            color: #808080;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            color: #00ff88;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-icon {
+            font-size: 1.8em;
+        }
+
+        .card-title {
+            color: #00d9ff;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .metric-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .metric {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .metric:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-label {
+            color: #b0b0b0;
+            font-size: 0.95em;
+        }
+
+        .metric-value {
+            color: #00ff88;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .metric-value.warning {
+            color: #ffaa00;
+        }
+
+        .metric-value.critical {
+            color: #ff3366;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .alert-list {
+            display: grid;
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: transform 0.2s ease;
+        }
+
+        .alert-item:hover {
+            transform: translateX(5px);
+        }
+
+        .alert-item.critical {
+            border-left-color: #ff3366;
+            background: rgba(255, 51, 102, 0.1);
+        }
+
+        .alert-item.warning {
+            border-left-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.1);
+        }
+
+        .alert-item.info {
+            border-left-color: #00d9ff;
+            background: rgba(0, 217, 255, 0.1);
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .alert-time {
+            color: #808080;
+            font-size: 0.85em;
+        }
+
+        .alert-message {
+            color: #c0c0c0;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff 0%, #0099cc 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff3366 0%, #cc0044 100%);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 51, 102, 0.4);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00d9ff 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .automation-log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #808080;
+            min-width: 80px;
+        }
+
+        .log-message {
+            color: #c0c0c0;
+        }
+
+        .log-message.success {
+            color: #00ff88;
+        }
+
+        .log-message.error {
+            color: #ff3366;
+        }
+
+        .monitoring-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .monitor-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .monitor-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #00ff88;
+            margin: 10px 0;
+        }
+
+        .monitor-label {
+            color: #b0b0b0;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .badge.inactive {
+            background: rgba(128, 128, 128, 0.2);
+            color: #808080;
+        }
+
+        .badge.alert {
+            background: rgba(255, 51, 102, 0.2);
+            color: #ff3366;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: #808080;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #00d9ff;
+            border-bottom-color: #00d9ff;
+        }
+
+        .tab:hover {
+            color: #00d9ff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 217, 255, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .status-bar {
+                flex-direction: column;
+            }
+
+            .monitoring-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #00d9ff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: slideIn 0.5s ease;
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: 0.4s;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #00d9ff;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AVIA v4.5</h1>
+            <p class="subtitle">Emergency Automation + Proactive Monitoring + Intelligent Alerting</p>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-label">Estado del Sistema</div>
+                    <div class="status-value" id="systemStatus">✅ Operacional</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Alertas Activas</div>
+                    <div class="status-value" id="activeAlerts">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Automatizaciones</div>
+                    <div class="status-value" id="automationCount">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Última Actualización</div>
+                    <div class="status-value" id="lastUpdate">--:--:--</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('monitoring')">📊 Monitoreo</button>
+            <button class="tab" onclick="switchTab('alerts')">🚨 Alertas</button>
+            <button class="tab" onclick="switchTab('automation')">⚙️ Automatización</button>
+            <button class="tab" onclick="switchTab('analytics')">📈 Analíticas</button>
+        </div>
+
+        <div id="monitoring" class="tab-content active">
+            <div class="dashboard">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🖥️</span>
+                        <h2 class="card-title">Monitoreo de Servidores</h2>
+                    </div>
+                    <div class="monitoring-grid">
+                        <div class="monitor-item">
+                            <div class="monitor-label">CPU</div>
+                            <div class="monitor-value" id="cpuUsage">45%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 45%"></div>
+                            </div>
+                        </div>
+                        <div class="monitor-item">
+                            <div class="monitor-label">Memoria</div>
+                            <div class="monitor-value" id="memoryUsage">62%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 62%"></div>
+                            </div>
+                        </div>
+                        <div class="monitor-item">
+                            <div class="monitor-label">Disco</div>
+                            <div class="monitor-value" id="diskUsage">38%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 38%"></div>
+                            </div>
+                        </div>
+                        <div class="monitor-item">
+                            <div class="monitor-label">Red</div>
+                            <div class="monitor-value" id="networkUsage">23%</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 23%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🔍</span>
+                        <h2 class="card-title">Detección Proactiva</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Anomalías Detectadas</span>
+                            <span class="metric-value" id="anomalies">3</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tendencias Críticas</span>
+                            <span class="metric-value warning" id="trends">1</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Predicciones IA</span>
+                            <span class="metric-value" id="predictions">5</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Precisión del Modelo</span>
+                            <span class="metric-value" id="accuracy">94.7%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🌐</span>
+                        <h2 class="card-title">Servicios Monitoreados</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">API Gateway</span>
+                            <span class="metric-value">✅ Online</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Base de Datos</span>
+                            <span class="metric-value">✅ Online</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Cache Redis</span>
+                            <span class="metric-value warning">⚠️ Lento</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Message Queue</span>
+                            <span class="metric-value">✅ Online</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="alerts" class="tab-content">
+            <div class="dashboard">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <div class="card-header">
+                        <span class="card-icon">🚨</span>
+                        <h2 class="card-title">Sistema de Alertas Inteligente</h2>
+                        <div style="margin-left: auto;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="alertToggle" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="alert-list scrollbar-custom" id="alertList">
+                        <!-- Las alertas se generarán dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📊</span>
+                        <h2 class="card-title">Estadísticas de Alertas</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Críticas (Hoy)</span>
+                            <span class="metric-value critical" id="criticalToday">2</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Advertencias (Hoy)</span>
+                            <span class="metric-value warning" id="warningsToday">5</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Resueltas (Hoy)</span>
+                            <span class="metric-value" id="resolvedToday">12</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tiempo Promedio</span>
+                            <span class="metric-value" id="avgTime">4.2 min</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🎯</span>
+                        <h2 class="card-title">Acciones Rápidas</h2>
+                    </div>
+                    <div class="action-buttons" style="flex-direction: column;">
+                        <button class="btn btn-primary" onclick="testAlert()">
+                            🧪 Probar Alerta de Test
+                        </button>
+                        <button class="btn btn-secondary" onclick="silenceAlerts()">
+                            🔇 Silenciar Alertas (1h)
+                        </button>
+                        <button class="btn btn-danger" onclick="clearAlerts()">
+                            🗑️ Limpiar Alertas Resueltas
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="automation" class="tab-content">
+            <div class="dashboard">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">⚙️</span>
+                        <h2 class="card-title">Automatizaciones Activas</h2>
+                        <span class="badge active">3 Activas</span>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Auto-Scaling</span>
+                            <span class="metric-value">✅ Habilitado</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Backup Automático</span>
+                            <span class="metric-value">✅ Habilitado</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Rollback Emergencia</span>
+                            <span class="metric-value">✅ Habilitado</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Última Ejecución</span>
+                            <span class="metric-value" id="lastExecution">--:--</span>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="triggerAutomation()">
+                            ▶️ Ejecutar Manualmente
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewLogs()">
+                            📋 Ver Registros
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📝</span>
+                        <h2 class="card-title">Registro de Automatización</h2>
+                    </div>
+                    <div class="automation-log scrollbar-custom" id="automationLog">
+                        <!-- Los logs se generarán dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🎛️</span>
+                        <h2 class="card-title">Configuración</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Umbral CPU</span>
+                            <span class="metric-value">80%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Umbral Memoria</span>
+                            <span class="metric-value">85%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Intervalo Chequeo</span>
+                            <span class="metric-value">30s</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Reintentos Máximos</span>
+                            <span class="metric-value">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="analytics" class="tab-content">
+            <div class="dashboard">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <div class="card-header">
+                        <span class="card-icon">📈</span>
+                        <h2 class="card-title">Análisis de Rendimiento (Últimas 24h)</h2>
+                    </div>
+                    <div class="chart-container" id="performanceChart">
+                        <canvas id="chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🎯</span>
+                        <h2 class="card-title">KPIs del Sistema</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Uptime</span>
+                            <span class="metric-value">99.97%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tiempo Respuesta</span>
+                            <span class="metric-value">142ms</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tasa Éxito</span>
+                            <span class="metric-value">99.2%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Requests/min</span>
+                            <span class="metric-value">1,247</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">💡</span>
+                        <h2 class="card-title">Insights IA</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric" style="flex-direction: column; align-items: flex-start;">
+                            <span class="metric-label">Recomendación Principal</span>
+                            <span class="metric-value" style="font-size: 1em; margin-top: 10px;">
+                                Aumentar cache Redis para reducir latencia en 23%
+                            </span>
+                        </div>
+                        <div class="metric" style="flex-direction: column; align-items: flex-start;">
+                            <span class="metric-label">Predicción</span>
+                            <span class="metric-value warning" style="font-size: 1em; margin-top: 10px;">
+                                Posible cuello de botella en DB en 6 horas
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🔥</span>
+                        <h2 class="card-title">Incidentes Recientes</h2>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric">
+                            <span class="metric-label">Última Semana</span>
+                            <span class="metric-value">7</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Resueltos Auto</span>
+                            <span class="metric-value">5</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tiempo Medio</span>
+                            <span class="metric-value">8.3 min</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Tasa Automática</span>
+                            <span class="metric-value">71.4%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos de ejemplo
+        const alerts = [
+            {
+                id: 1,
+                type: 'critical',
+                title: 'CPU Sobrecargado',
+                message: 'El uso de CPU ha alcanzado el 92% en servidor prod-web-01',
+                time: '2 min',
+                icon: '🔴'
+            },
+            {
+                id: 2,
+                type: 'warning',
+                title: 'Memoria Alta',
+                message: 'Uso de memoria en 78% y en aumento constante',
+                time: '5 min',
+                icon: '⚠️'
+            },
+            {
+                id: 3,
+                type: 'info',
+                title: 'Backup Completado',
+                message: 'Backup automático finalizado exitosamente',
+                time: '15 min',
+                icon: 'ℹ️'
+            },
+            {
+                id: 4,
+                type: 'warning',
+                title: 'Tráfico Anormal',
+                message: 'Detectado aumento del 45% en tráfico en última hora',
+                time: '22 min',
+                icon: '⚠️'
+            },
+            {
+                id: 5,
+                type: 'critical',
+                title: 'Base de Datos Lenta',
+                message: 'Tiempo de consulta promedio aumentó a 2.3s (normal: 0.5s)',
+                time: '35 min',
+                icon: '🔴'
+            }
+        ];
+
+        const automationLogs = [
+            { time: '18:45:23', message: 'Iniciando verificación de recursos...', type: 'info' },
+            { time: '18:45:25', message: 'CPU: 92% - Umbral excedido', type: 'error' },
+            { time: '18:45:26', message: 'Activando auto-scaling...', type: 'info' },
+            { time: '18:45:30', message: 'Nueva instancia iniciada: prod-web-04', type: 'success' },
+            { time: '18:45:35', message: 'Load balancer actualizado', type: 'success' },
+            { time: '18:45:40', message: 'CPU normalizado: 67%', type: 'success' },
+            { time: '18:46:00', message: 'Verificación completada exitosamente', type: 'success' }
+        ];
+
+        // Funciones de inicialización
+        function initAlerts() {
+            const alertList = document.getElementById('alertList');
+            alertList.innerHTML = alerts.map(alert => `
+                <div class="alert-item ${alert.type}">
+                    <div class="alert-header">
+                        <span class="alert-title">${alert.icon} ${alert.title}</span>
+                        <span class="alert-time">${alert.time}</span>
+                    </div>
+                    <div class="alert-message">${alert.message}</div>
+                </div>
+            `).join('');
+        }
+
+        function initAutomationLogs() {
+            const logContainer = document.getElementById('automationLog');
+            logContainer.innerHTML = automationLogs.map(log => `
+                <div class="log-entry">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-message ${log.type}">${log.message}</span>
+                </div>
+            `).join('');
+        }
+
+        // Funciones de navegación
+        function switchTab(tabName) {
+            // Ocultar todos los contenidos
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Desactivar todos los tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Activar el tab seleccionado
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Funciones de acción
+        function testAlert() {
+            showNotification('🧪 Alerta de Prueba', 'Esta es una alerta de prueba generada manualmente');
+        }
+
+        function silenceAlerts() {
+            showNotification('🔇 Alertas Silenciadas', 'Las alertas han sido silenciadas por 1 hora');
+        }
+
+        function clearAlerts() {
+            showNotification('🗑️ Alertas Limpiadas', 'Las alertas resueltas han sido eliminadas');
+        }
+
+        function triggerAutomation() {
+            showNotification('▶️ Automatización Iniciada', 'Ejecutando verificación manual del sistema...');
+            document.getElementById('lastExecution').textContent = new Date().toLocaleTimeString();
+        }
+
+        function viewLogs() {
+            switchTab('automation');
+            document.querySelectorAll('.tab').forEach(tab => {
+                if(tab.textContent.includes('Automatización')) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+
+        function showNotification(title, message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = `
+                <strong>${title}</strong>
+                <div style="margin-top: 5px; color: #c0c0c0;">${message}</div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.5s ease reverse';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // Simulación de actualización en tiempo real
+        function updateMetrics() {
+            const metrics = {
+                cpuUsage: Math.floor(Math.random() * 30 + 40),
+                memoryUsage: Math.floor(Math.random() * 20 + 55),
+                diskUsage: Math.floor(Math.random() * 15 + 30),
+                networkUsage: Math.floor(Math.random() * 25 + 15)
+            };
+
+            Object.keys(metrics).forEach(key => {
+                const element = document.getElementById(key);
+                if(element) {
+                    element.textContent = metrics[key] + '%';
+                    const progressBar = element.nextElementSibling?.querySelector('.progress-fill');
+                    if(progressBar) {
+                        progressBar.style.width = metrics[key] + '%';
+                    }
+                }
+            });
+
+            // Actualizar hora
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            initAlerts();
+            initAutomationLogs();
+            updateMetrics();
+            
+            // Actualizar métricas cada 5 segundos
+            setInterval(updateMetrics, 5000);
+        });
+
+        // Manejo del toggle de alertas
+        document.addEventListener('DOMContentLoaded', () => {
+            const alertToggle = document.getElementById('alertToggle');
+            if(alertToggle) {
+                alertToggle.addEventListener('change', (e) => {
+                    const status = e.target.checked ? 'habilitadas' : 'deshabilitadas';
+                    showNotification('🔔 Alertas', `Alertas ${status}`);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

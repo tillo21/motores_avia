@@ -1,0 +1,1 @@
+Soy tu asistente virtual especialista en tomates tradicionales, puedes preguntarme sobre técnicas de cultivo, variedades, protección de cultivos, aspectos nutritivos, mercados, etc. 

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Token Economy — Universal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 32px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .balance {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 16px 0;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-charge {
+            background: #10b981;
+            color: white;
+        }
+        .btn-charge:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        .btn-refund {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-refund:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        .transactions {
+            margin-top: 24px;
+        }
+        .tx-card {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .tx-card.refunded {
+            opacity: 0.6;
+            border-left-color: #9ca3af;
+        }
+        .tx-info {
+            flex: 1;
+            min-width: 200px;
+        }
+        .tx-type {
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        .tx-time {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .tx-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 0 16px;
+        }
+        .tx-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .status-active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .status-refunded {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💎 AVIA Token Economy</h1>
+            <div class="balance" id="balance">1000</div>
+            <div style="color: #6b7280;">Tokens disponibles</div>
+        </div>
+
+        <div class="actions">
+            <button class="btn-charge" onclick="charge(10)">⚡ Cobrar 10 Tokens</button>
+            <button class="btn-charge" onclick="charge(50)">⚡ Cobrar 50 Tokens</button>
+            <button class="btn-refund" onclick="refundLast()">↩️ Reembolsar Último</button>
+        </div>
+
+        <div class="transactions">
+            <h3>Transacciones Recientes</h3>
+            <div id="txPanel"></div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        var state = {
+            balance: 1000,
+            transactions: []
+        };
+
+        // Compatibilidad localStorage (fallback a memoria si falla)
+        function saveState() {
+            try {
+                localStorage.setItem('aviaState', JSON.stringify(state));
+            } catch (e) {
+                console.warn('LocalStorage no disponible, usando memoria');
+            }
+        }
+
+        function loadState() {
+            try {
+                var saved = localStorage.getItem('aviaState');
+                if (saved) {
+                    state = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.warn('No se pudo cargar estado previo');
+            }
+        }
+
+        // Funciones principales
+        function charge(amount) {
+            var tx = {
+                id: Date.now(),
+                type: 'CHARGE',
+                amount: amount,
+                timestamp: new Date().toISOString(),
+                status: 'ACTIVE'
+            };
+            
+            state.balance -= amount;
+            state.transactions.unshift(tx);
+            
+            saveState();
+            render();
+            
+            console.log('✅ Cargo exitoso:', amount, 'tokens');
+        }
+
+        function refund(txId) {
+            var tx = state.transactions.find(function(t) { return t.id === txId; });
+            
+            if (!tx || tx.status === 'REFUNDED') {
+                console.warn('⚠️ Transacción no válida para reembolso');
+                return;
+            }
+            
+            state.balance += tx.amount;
+            tx.status = 'REFUNDED';
+            tx.refundedAt = new Date().toISOString();
+            
+            saveState();
+            render();
+            
+            console.log('↩️ Reembolso exitoso:', tx.amount, 'tokens');
+        }
+
+        function refundLast() {
+            var lastActive = state.transactions.find(function(t) { return t.status === 'ACTIVE'; });
+            if (lastActive) {
+                refund(lastActive.id);
+            } else {
+                alert('No hay transacciones activas para reembolsar');
+            }
+        }
+
+        function formatTime(iso) {
+            var date = new Date(iso);
+            return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function render() {
+            // Actualizar balance
+            document.getElementById('balance').textContent = state.balance;
+            
+            // Actualizar panel de transacciones
+            var panel = document.getElementById('txPanel');
+            
+            if (state.transactions.length === 0) {
+                panel.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 32px;">No hay transacciones aún</p>';
+                return;
+            }
+            
+            var html = '';
+            for (var i = 0; i < state.transactions.length; i++) {
+                var tx = state.transactions[i];
+                var isRefunded = tx.status === 'REFUNDED';
+                
+                html += '<div class="tx-card' + (isRefunded ? ' refunded' : '') + '">';
+                html += '  <div class="tx-info">';
+                html += '    <div class="tx-type">';
+                html += '      ' + (tx.type === 'CHARGE' ? '⚡' : '↩️') + ' ' + tx.type;
+                html += '      <span class="status-badge status-' + (isRefunded ? 'refunded' : 'active') + '">';
+                html += '        ' + tx.status;
+                html += '      </span>';
+                html += '    </div>';
+                html += '    <div class="tx-time">' + formatTime(tx.timestamp) + '</div>';
+                html += '  </div>';
+                html += '  <div class="tx-amount">-' + tx.amount + '</div>';
+                html += '  <div class="tx-actions">';
+                
+                if (!isRefunded) {
+                    html += '    <button class="btn-refund" onclick="refund(' + tx.id + ')">Reembolsar</button>';
+                }
+                
+                html += '  </div>';
+                html += '</div>';
+            }
+            
+            panel.innerHTML = html;
+        }
+
+        // Inicialización
+        loadState();
+        render();
+        
+        console.log('🚀 AVIA Token Economy cargado');
+        console.log('📊 Balance inicial:', state.balance);
+    </script>
+</body>
+</html>

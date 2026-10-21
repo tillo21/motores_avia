@@ -1,0 +1,1 @@
+Hola Luis, soy tu preparador para las oposiciones de Oficial Electricista del ayto de Córdoba

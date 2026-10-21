@@ -1,0 +1,2447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SITI — Sistema Integrado de Turismo Inteligente</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+:root {
+  --bg-deep: #0B1220;
+  --bg-card: #111D2E;
+  --bg-card-hover: #162640;
+  --bg-surface: #0E1826;
+  --border: rgba(255,255,255,0.06);
+  --border-active: rgba(218,165,32,0.4);
+  --text-primary: #E8E4DC;
+  --text-secondary: #8A9BB5;
+  --text-muted: #556680;
+  --accent-gold: #DAA520;
+  --accent-gold-dim: rgba(218,165,32,0.15);
+  --accent-teal: #2ECDC1;
+  --accent-teal-dim: rgba(46,205,193,0.12);
+  --accent-coral: #E8735A;
+  --accent-coral-dim: rgba(232,115,90,0.12);
+  --accent-blue: #4A90D9;
+  --accent-blue-dim: rgba(74,144,217,0.12);
+  --accent-violet: #9B72CF;
+  --accent-violet-dim: rgba(155,114,207,0.12);
+  --success: #4ADE80;
+  --warning: #FACC15;
+  --danger: #F87171;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --sidebar-w: 260px;
+  --header-h: 64px;
+  --graph-text: #E8E4DC;
+  --graph-edge: rgba(255,255,255,0.08);
+  --graph-legend-bg: rgba(17,29,46,0.88);
+  --scrollbar-thumb: rgba(255,255,255,0.1);
+  --scrollbar-hover: rgba(255,255,255,0.2);
+  --chart-grid: rgba(255,255,255,0.04);
+  --chart-label: #556680;
+  --chart-legend: #8A9BB5;
+  --chart-backdrop: transparent;
+}
+
+html.dark {
+  /* same as :root defaults — dark is the base */
+}
+
+html:not(.dark) {
+  --bg-deep: #F4F1EB;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F9F7F3;
+  --bg-surface: #EDE9E1;
+  --border: rgba(0,0,0,0.08);
+  --border-active: rgba(180,130,20,0.5);
+  --text-primary: #1A1A1A;
+  --text-secondary: #5A6270;
+  --text-muted: #9AA0A8;
+  --accent-gold-dim: rgba(218,165,32,0.1);
+  --accent-teal-dim: rgba(46,205,193,0.08);
+  --accent-coral-dim: rgba(232,115,90,0.08);
+  --accent-blue-dim: rgba(74,144,217,0.08);
+  --accent-violet-dim: rgba(155,114,207,0.08);
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --graph-text: #1A1A1A;
+  --graph-edge: rgba(0,0,0,0.1);
+  --graph-legend-bg: rgba(255,255,255,0.92);
+  --scrollbar-thumb: rgba(0,0,0,0.12);
+  --scrollbar-hover: rgba(0,0,0,0.22);
+  --chart-grid: rgba(0,0,0,0.06);
+  --chart-label: #9AA0A8;
+  --chart-legend: #5A6270;
+  --chart-backdrop: #F4F1EB;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow: hidden;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: var(--sidebar-w);
+  height: 100%;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-brand h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 2px;
+}
+
+.sidebar-brand p {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 10px;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  padding: 16px 12px 6px;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-bottom: 2px;
+  user-select: none;
+}
+
+.nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+
+.nav-item.active {
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  font-weight: 600;
+}
+
+.nav-item i { width: 20px; text-align: center; font-size: 14px; }
+
+.sidebar-footer {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Mobile Hamburger ── */
+.mobile-toggle {
+  display: none;
+  position: fixed;
+  top: 14px; left: 14px;
+  z-index: 200;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 18px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+}
+
+/* ── Main Content ── */
+.main {
+  margin-left: var(--sidebar-w);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-header {
+  height: var(--header-h);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.main-header h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.badge-poc {
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  border: 1px solid rgba(218,165,32,0.25);
+}
+
+.main-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px 40px;
+  scroll-behavior: smooth;
+}
+
+/* ── View Containers ── */
+.view { display: none; animation: viewFade 0.4s ease; }
+.view.active { display: block; }
+
+@keyframes viewFade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  margin-bottom: 18px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border-active); }
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.card-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* ── Grid Layouts ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ── KPI Cards ── */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: all 0.25s;
+}
+
+.kpi-card:hover {
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.kpi-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.kpi-icon.gold { background: var(--accent-gold-dim); color: var(--accent-gold); }
+.kpi-icon.teal { background: var(--accent-teal-dim); color: var(--accent-teal); }
+.kpi-icon.coral { background: var(--accent-coral-dim); color: var(--accent-coral); }
+.kpi-icon.blue { background: var(--accent-blue-dim); color: var(--accent-blue); }
+.kpi-icon.violet { background: var(--accent-violet-dim); color: var(--accent-violet); }
+
+.kpi-content { flex: 1; min-width: 0; }
+.kpi-value { font-size: 26px; font-weight: 700; line-height: 1.1; }
+.kpi-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.kpi-trend { font-size: 11px; margin-top: 6px; font-weight: 600; }
+.kpi-trend.up { color: var(--success); }
+.kpi-trend.down { color: var(--danger); }
+
+/* ── Architecture Layers ── */
+.arch-stack { display: flex; flex-direction: column; gap: 0; }
+
+.arch-layer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  cursor: default;
+  position: relative;
+}
+
+.arch-layer:hover { background: var(--bg-card-hover); }
+
+.arch-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  position: relative;
+}
+
+.arch-connector::before {
+  content: '';
+  width: 2px;
+  height: 100%;
+  background: var(--border);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.arch-connector i {
+  color: var(--text-muted);
+  font-size: 10px;
+  background: var(--bg-card);
+  padding: 4px;
+  z-index: 1;
+  position: relative;
+}
+
+.arch-num {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.arch-layer-info { flex: 1; }
+.arch-layer-name { font-weight: 600; font-size: 14px; }
+.arch-layer-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.arch-layer-output { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ── Timeline / WP ── */
+.wp-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.wp-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.wp-info { flex: 1; min-width: 0; }
+.wp-title { font-weight: 600; font-size: 13px; }
+.wp-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.wp-cycle {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+/* ── Hypothesis Cards ── */
+.hyp-card {
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.hyp-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+}
+
+.hyp-card.h1::before { background: var(--accent-gold); }
+.hyp-card.h2::before { background: var(--accent-teal); }
+.hyp-card.h3::before { background: var(--accent-coral); }
+.hyp-card.h4::before { background: var(--accent-blue); }
+
+.hyp-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.hyp-text { font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+
+/* ── Knowledge Graph (Canvas) ── */
+.graph-container {
+  width: 100%;
+  height: 500px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-deep);
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.graph-container:active { cursor: grabbing; }
+
+.graph-container canvas { width: 100%; height: 100%; display: block; }
+
+.graph-legend {
+  position: absolute;
+  bottom: 14px; left: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  background: var(--graph-legend-bg);
+  padding: 8px 14px;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.graph-legend-item { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
+.graph-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.graph-tooltip {
+  position: absolute;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: 8px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+  max-width: 200px;
+}
+
+.graph-tooltip.visible { opacity: 1; }
+.graph-tooltip-title { font-weight: 600; margin-bottom: 2px; }
+.graph-tooltip-type { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Prediction Charts ── */
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 280px;
+}
+
+.chart-wrapper canvas { width: 100% !important; height: 100% !important; }
+
+/* ── Digital Twin Scenario ── */
+.scenario-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: var(--bg-card);
+  position: relative;
+  min-height: 180px;
+}
+
+.scenario-label {
+  position: absolute;
+  top: -10px; left: 16px;
+  background: var(--bg-card);
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.scenario-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.scenario-metric:last-child { border-bottom: none; }
+
+.scenario-metric-val { font-weight: 700; font-family: var(--font-mono); }
+
+.scenario-metric-val.better { color: var(--success); }
+.scenario-metric-val.worse { color: var(--danger); }
+
+/* Sim loading overlay */
+.sim-loading {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.sim-loading.active { opacity: 1; pointer-events: auto; }
+
+.sim-loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.sim-loading-text {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Decision Circuit ── */
+.circuit-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  position: relative;
+  transition: opacity 0.3s;
+}
+
+.circuit-step.dimmed { opacity: 0.3; }
+.circuit-step.highlighted { opacity: 1; }
+
+.circuit-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 52px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--border);
+  transition: background 0.4s;
+}
+
+.circuit-step.active-step:not(:last-child)::after {
+  background: var(--accent-gold);
+}
+
+.circuit-dot {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  z-index: 1;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.circuit-step.active-step .circuit-dot {
+  transform: scale(1.15);
+  box-shadow: 0 0 16px rgba(218,165,32,0.4);
+}
+
+.circuit-info { flex: 1; padding-top: 4px; }
+.circuit-title { font-weight: 600; font-size: 14px; }
+.circuit-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
+
+.circuit-demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.circuit-demo-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-gold);
+  background: var(--accent-gold);
+  color: #0B1220;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.circuit-demo-btn:hover { filter: brightness(1.1); }
+.circuit-demo-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.circuit-demo-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Chat Agent ── */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+}
+
+.chat-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--accent-gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-gold);
+  font-size: 14px;
+}
+
+.chat-name { font-weight: 600; font-size: 14px; }
+.chat-status { font-size: 11px; color: var(--text-muted); }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-msg {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  animation: msgFade 0.3s ease;
+}
+
+@keyframes msgFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-msg.bot {
+  align-self: flex-start;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-msg.user {
+  align-self: flex-end;
+  background: var(--accent-gold-dim);
+  color: var(--text-primary);
+  border: 1px solid rgba(218,165,32,0.2);
+  border-bottom-right-radius: 4px;
+}
+
+.chat-msg.bot .msg-md h1,.chat-msg.bot .msg-md h2,.chat-msg.bot .msg-md h3 {
+  font-size: 15px; font-weight: 600; margin: 8px 0 4px;
+}
+.chat-msg.bot .msg-md p { margin: 4px 0; }
+.chat-msg.bot .msg-md ul,.chat-msg.bot .msg-md ol { padding-left: 18px; margin: 4px 0; }
+.chat-msg.bot .msg-md li { margin: 2px 0; }
+.chat-msg.bot .msg-md code {
+  font-family: var(--font-mono);
+  background: rgba(128,128,128,0.15);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.chat-msg.bot .msg-md strong { color: var(--accent-gold); }
+
+.chat-input-area {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  background: var(--bg-surface);
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 16px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+
+.chat-input:focus { border-color: var(--accent-gold); }
+.chat-input::placeholder { color: var(--text-muted); }
+
+.chat-send {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--accent-gold);
+  border: none;
+  color: #0B1220;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.chat-send:hover { filter: brightness(1.15); transform: scale(1.05); }
+.chat-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ── Typing Indicator ── */
+.typing-indicator {
+  display: flex; gap: 4px; padding: 8px 0;
+}
+.typing-indicator span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: typeBounce 1.4s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typeBounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+/* ── Risk Table ── */
+.risk-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+
+.risk-severity {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.risk-severity.high { background: var(--danger); }
+.risk-severity.medium { background: var(--warning); }
+.risk-severity.low { background: var(--success); }
+
+.risk-info { flex: 1; }
+.risk-name { font-weight: 600; font-size: 13px; }
+.risk-mit { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ── Status Pulse ── */
+.pulse {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.pulse.green { background: var(--success); box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 currentColor; }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ── Quick Prompts ── */
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quick-prompt {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+
+.quick-prompt:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  background: var(--accent-gold-dim);
+}
+
+/* ── Gauge ── */
+.gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.gauge-label { font-size: 12px; color: var(--text-secondary); width: 120px; flex-shrink: 0; }
+
+.gauge-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1.5s ease;
+}
+
+.gauge-val { font-size: 12px; font-weight: 600; font-family: var(--font-mono); width: 40px; text-align: right; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  .sidebar { transform: translateX(-260px); width: 260px; }
+  .sidebar.open { transform: translateX(0); }
+  .mobile-toggle { display: flex; }
+  .mobile-overlay.active { display: block; }
+  .main-body { padding: 18px 14px 32px; }
+  .main-header { padding: 0 14px 0 60px; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .graph-container { height: 360px; }
+  .chat-container { height: 440px; }
+}
+
+/* ── Stagger Animation ── */
+.stagger > * {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: staggerIn 0.5s forwards;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger > *:nth-child(10) { animation-delay: 0.5s; }
+
+@keyframes staggerIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Tab Switcher ── */
+.tab-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
+
+/* ── Subsystem Tag ── */
+.subsys-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Simulation Controls ── */
+.sim-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.sim-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sim-btn:hover { border-color: var(--accent-teal); color: var(--accent-teal); }
+.sim-btn.active { background: var(--accent-teal-dim); border-color: var(--accent-teal); color: var(--accent-teal); }
+
+.sim-btn.run {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #0B1220;
+  font-weight: 600;
+}
+
+.sim-btn.run:hover { filter: brightness(1.1); }
+.sim-btn.run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Gov Indicator ── */
+.gov-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.gov-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.gov-text { flex: 1; min-width: 0; }
+.gov-label { font-size: 13px; font-weight: 500; }
+.gov-desc { font-size: 11px; color: var(--text-muted); }
+.gov-status { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+
+/* ── KPI Live ── */
+.kpi-live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-right: 4px;
+  animation: kpiPulse 3s ease-in-out infinite;
+}
+
+@keyframes kpiPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile Toggle -->
+<button class="mobile-toggle" id="mobileToggle" aria-label="Abrir menú"><i class="fas fa-bars"></i></button>
+<div class="mobile-overlay" id="mobileOverlay"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <h1>SITI</h1>
+    <p>Turismo Inteligente · POC</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Principal</div>
+    <div class="nav-item active" data-view="overview">
+      <i class="fas fa-compass"></i> Visión General
+    </div>
+    <div class="nav-item" data-view="architecture">
+      <i class="fas fa-layer-group"></i> Arquitectura
+    </div>
+    <div class="nav-item" data-view="graph">
+      <i class="fas fa-project-diagram"></i> Grafo Semántico
+    </div>
+    <div class="nav-section-label">Analítica</div>
+    <div class="nav-item" data-view="predictions">
+      <i class="fas fa-chart-line"></i> Predicciones
+    </div>
+    <div class="nav-item" data-view="twin">
+      <i class="fas fa-clone"></i> Gemelo Digital
+    </div>
+    <div class="nav-item" data-view="circuit">
+      <i class="fas fa-route"></i> Circuito de Decisión
+    </div>
+    <div class="nav-section-label">Servicios</div>
+    <div class="nav-item" data-view="agent">
+      <i class="fas fa-robot"></i> Agente Conversacional
+    </div>
+    <div class="nav-item" data-view="governance">
+      <i class="fas fa-shield-alt"></i> Gobernanza
+    </div>
+  </nav>
+  <div class="sidebar-footer">v1.0 · septiembre 2026</div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <header class="main-header">
+    <h2 id="viewTitle">Visión General</h2>
+    <span class="header-badge badge-poc"><span class="pulse green"></span> POC Activo</span>
+  </header>
+  <div class="main-body" id="mainBody">
+
+    <!-- ════════════════ OVERVIEW ════════════════ -->
+    <div class="view active" id="view-overview">
+      <div class="grid-4 stagger" id="kpiGrid">
+        <div class="kpi-card">
+          <div class="kpi-icon gold"><i class="fas fa-database"></i></div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpi-sources">4</div>
+            <div class="kpi-label">Fuentes alineadas</div>
+            <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> Objetivo Ciclo 1</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon teal"><i class="fas fa-brain"></i></div>
+          <div class="kpi-content">
+            <div class="kpi-value">3</div>
+            <div class="kpi-label">Modelos predictivos</div>
+            <div class="kpi-trend up"><i class="fas fa-check"></i> Inmediata · Corto · Percepción</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon coral"><i class="fas fa-sitemap"></i></div>
+          <div class="kpi-content">
+            <div class="kpi-value"><span class="kpi-live-dot"></span><span id="kpi-entities">1,247</span></div>
+            <div class="kpi-label">Entidades en el grafo</div>
+            <div class="kpi-trend up" id="kpi-entities-trend"><i class="fas fa-arrow-up"></i> +12% esta semana</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon blue"><i class="fas fa-shield-alt"></i></div>
+          <div class="kpi-content">
+            <div class="kpi-value">100%</div>
+            <div class="kpi-label">Agregación en origen</div>
+            <div class="kpi-trend up"><i class="fas fa-lock"></i> Privacidad activa</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Hipótesis de Trabajo</div>
+          <div class="card-subtitle">Formuladas como tales — no como resultados</div>
+          <div style="display:flex;flex-direction:column;gap:12px;" class="stagger">
+            <div class="hyp-card h1">
+              <div class="hyp-id" style="color:var(--accent-gold)">H1 — Interoperabilidad</div>
+              <div class="hyp-text">Una capa semántica compartida reduce de forma medible el coste de incorporar una nueva fuente de datos al sistema.</div>
+            </div>
+            <div class="hyp-card h2">
+              <div class="hyp-id" style="color:var(--accent-teal)">H2 — Calidad decisional</div>
+              <div class="hyp-text">Un pronóstico acompañado de su cobertura e incertidumbre produce decisiones de gestión mejores que el mismo pronóstico como valor puntual.</div>
+            </div>
+            <div class="hyp-card h3">
+              <div class="hyp-id" style="color:var(--accent-coral)">H3 — Anclaje del agente</div>
+              <div class="hyp-text">Un agente anclado en el grafo comete menos afirmaciones no sustentadas que el mismo modelo sin anclaje, medible con protocolo reproducible.</div>
+            </div>
+            <div class="hyp-card h4">
+              <div class="hyp-id" style="color:var(--accent-blue)">H4 — Distribución territorial</div>
+              <div class="hyp-text">La adaptación al contexto ambiental y de aforo modifica la distribución de la actividad turística sin reducir la satisfacción del visitante.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Cronograma Conceptual</div>
+          <div class="card-subtitle">3 ciclos anuales · 36 meses</div>
+          <div class="stagger">
+            <div class="wp-item">
+              <div class="wp-badge" style="background:var(--accent-gold-dim);color:var(--accent-gold);">C1</div>
+              <div class="wp-info">
+                <div class="wp-title">Ontología, grafo, captación y gobernanza</div>
+                <div class="wp-desc">Meses 1–12 · Grafo operativo ≥4 fuentes + EIP aprobada</div>
+              </div>
+              <div class="wp-cycle" style="background:var(--accent-gold-dim);color:var(--accent-gold);">Activo</div>
+            </div>
+            <div class="wp-item">
+              <div class="wp-badge" style="background:var(--accent-teal-dim);color:var(--accent-teal);">C2</div>
+              <div class="wp-info">
+                <div class="wp-title">Analítica, reglas de acción y servicios</div>
+                <div class="wp-desc">Meses 13–24 · ≥1 señal → decisión registrada y verificable</div>
+              </div>
+              <div class="wp-cycle" style="background:var(--accent-teal-dim);color:var(--accent-teal);">Siguiente</div>
+            </div>
+            <div class="wp-item">
+              <div class="wp-badge" style="background:var(--accent-blue-dim);color:var(--accent-blue);">C3</div>
+              <div class="wp-info">
+                <div class="wp-title">Gemelo digital, evaluación y transferencia</div>
+                <div class="wp-desc">Meses 25–36 · Efecto sostenido + reutilización semántica</div>
+              </div>
+              <div class="wp-cycle" style="background:var(--accent-blue-dim);color:var(--accent-blue);">Futuro</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Paquetes de Trabajo</div>
+        <div class="card-subtitle">Secuencia deliberada — WP2 precede a todo</div>
+        <div class="stagger" id="wpList"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════ ARCHITECTURE ════════════════ -->
+    <div class="view" id="view-architecture">
+      <div class="card">
+        <div class="card-title">Arquitectura de Referencia</div>
+        <div class="card-subtitle">5 capas con responsabilidades separadas · toda comunicación pasa por el grafo</div>
+        <div class="arch-stack stagger" id="archLayers"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Decisión de Diseño Crítica</div>
+          <div class="card-subtitle">Geometría propia de eventos</div>
+          <p style="font-size:13px;line-height:1.65;color:var(--text-secondary);">
+            Los eventos —meteorológicos, de aforo, de riesgo— se modelan con <strong style="color:var(--accent-gold)">geometría propia</strong> y no como atributos de una unidad administrativa. Un aviso asociado a un municipio entero no permite decidir sobre una ruta concreta; uno asociado a una geometría sí.
+          </p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:12px;font-style:italic;">
+            Esta decisión es lo que hace posible que el pronóstico se convierta en acción.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Subsistemas Transversales</div>
+          <div class="card-subtitle">6 capacidades que atraviesan varias capas</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+            <span class="subsys-tag" style="background:var(--accent-gold-dim);color:var(--accent-gold);"><i class="fas fa-cloud-sun-rain"></i> Meteo Inmediata</span>
+            <span class="subsys-tag" style="background:var(--accent-teal-dim);color:var(--accent-teal);"><i class="fas fa-city"></i> Gestión Destino</span>
+            <span class="subsys-tag" style="background:var(--accent-coral-dim);color:var(--accent-coral);"><i class="fas fa-comments"></i> Agentes</span>
+            <span class="subsys-tag" style="background:var(--accent-blue-dim);color:var(--accent-blue);"><i class="fas fa-landmark"></i> Patrimonio</span>
+            <span class="subsys-tag" style="background:var(--accent-violet-dim);color:var(--accent-violet);"><i class="fas fa-map-marker-alt"></i> Geolocalización</span>
+            <span class="subsys-tag" style="background:rgba(250,204,21,0.12);color:var(--warning);"><i class="fas fa-image"></i> Selección Visual</span>
+          </div>
+          <p style="font-size:12px;color:var(--text-secondary);margin-top:14px;line-height:1.6;">
+            Se desarrollan de forma compartida porque su ausencia degrada más de un servicio. La geolocalización es la columna vertebral: sin geometría común ninguna capa puede relacionarse.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ KNOWLEDGE GRAPH ════════════════ -->
+    <div class="view" id="view-graph">
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 8px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="card-title" style="margin-bottom:0;">Grafo de Conocimiento del Destino</div>
+            <div class="card-subtitle" style="margin-bottom:0;">Ontología semántica · arrastra los nodos para explorar</div>
+          </div>
+          <button class="sim-btn" id="graphResetBtn" style="font-size:12px;padding:6px 14px;">
+            <i class="fas fa-redo"></i> Resetear
+          </button>
+        </div>
+        <div class="graph-container" id="graphCanvas">
+          <canvas id="knowledgeGraph"></canvas>
+          <div class="graph-tooltip" id="graphTooltip">
+            <div class="graph-tooltip-title" id="tooltipTitle"></div>
+            <div class="graph-tooltip-type" id="tooltipType"></div>
+          </div>
+          <div class="graph-legend">
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--accent-gold)"></div> Recurso</div>
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--accent-teal)"></div> Patrimonio</div>
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--accent-coral)"></div> Alojamiento</div>
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--accent-blue)"></div> Movilidad</div>
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--accent-violet)"></div> Evento</div>
+            <div class="graph-legend-item"><div class="graph-legend-dot" style="background:var(--warning)"></div> Contexto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PREDICTIONS ════════════════ -->
+    <div class="view" id="view-predictions">
+      <div class="tab-row">
+        <button class="tab-btn active" data-pred="nowcast">Inmediata (0–6h)</button>
+        <button class="tab-btn" data-pred="shortterm">Corto plazo (7d)</button>
+        <button class="tab-btn" data-pred="perception">Percepción</button>
+      </div>
+
+      <div id="pred-nowcast">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Predicción Meteorológica</div>
+            <div class="card-subtitle">Ventana 0–6h · reflectividad + acumulados</div>
+            <div class="chart-wrapper"><canvas id="chartNowcast"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Flujo de Visitantes</div>
+            <div class="card-subtitle">Estimación en tiempo cuasi-real</div>
+            <div class="chart-wrapper"><canvas id="chartVisitors"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="pred-shortterm" style="display:none;">
+        <div class="card">
+          <div class="card-title">Pronóstico de Demanda · 7 días</div>
+          <div class="card-subtitle">Modelo híbrido econométrico-profundo con interpretabilidad</div>
+          <div class="chart-wrapper" style="height:320px;"><canvas id="chartDemand"></canvas></div>
+        </div>
+      </div>
+
+      <div id="pred-perception" style="display:none;">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Sentimiento del Destino</div>
+            <div class="card-subtitle">Análisis multimodal · texto + imagen</div>
+            <div class="chart-wrapper"><canvas id="chartSentiment"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Temas Emergentes</div>
+            <div class="card-subtitle">Imagen percibida por visitantes</div>
+            <div id="topicsList" style="margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ DIGITAL TWIN ════════════════ -->
+    <div class="view" id="view-twin">
+      <div class="card">
+        <div class="card-title">Gemelo Digital del Destino</div>
+        <div class="card-subtitle">Ensayar decisiones de gobernanza antes de aplicarlas</div>
+        <div class="sim-controls" id="simControls">
+          <button class="sim-btn active" data-scenario="base">Escenario Base</button>
+          <button class="sim-btn" data-scenario="reroute">Desvío de ruta</button>
+          <button class="sim-btn" data-scenario="limit">Límite de aforo</button>
+          <button class="sim-btn run" id="runSimBtn"><i class="fas fa-play"></i> Simular</button>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="scenario-box" id="scenarioA">
+          <div class="scenario-label" style="color:var(--accent-gold);">Escenario A — Actual</div>
+          <div class="sim-loading" id="simLoadA">
+            <div class="sim-loading-spinner"></div>
+            <div class="sim-loading-text">Simulando escenario A…</div>
+          </div>
+          <div id="scenarioAMetrics"></div>
+        </div>
+        <div class="scenario-box" id="scenarioB">
+          <div class="scenario-label" style="color:var(--accent-teal);">Escenario B — Alternativa</div>
+          <div class="sim-loading" id="simLoadB">
+            <div class="sim-loading-spinner"></div>
+            <div class="sim-loading-text">Simulando escenario B…</div>
+          </div>
+          <div id="scenarioBMetrics"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <div class="card-title">Comparativa de Impacto</div>
+        <div class="card-subtitle">Radar multidimensional de ambos escenarios</div>
+        <div class="chart-wrapper" style="height:280px;"><canvas id="chartTwin"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ════════════════ DECISION CIRCUIT ════════════════ -->
+    <div class="view" id="view-circuit">
+      <div class="card">
+        <div class="card-title">Circuito de Decisión Trazable</div>
+        <div class="card-subtitle">6 pasos · la trazabilidad es el resultado principal del proyecto</div>
+        <div id="circuitSteps" class="stagger"></div>
+        <div class="circuit-demo-bar">
+          <button class="circuit-demo-btn" id="circuitDemoBtn"><i class="fas fa-play"></i> Ejecutar demo del circuito</button>
+          <span class="circuit-demo-status" id="circuitDemoStatus"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Indicadores del Circuito</div>
+        <div class="card-subtitle">Cada indicador con definición estable y responsable</div>
+        <div id="circuitGauges"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════ CONVERSATIONAL AGENT ════════════════ -->
+    <div class="view" id="view-agent">
+      <div class="grid-2" style="margin-bottom:18px;">
+        <div class="card">
+          <div class="card-title">Agente del Destino</div>
+          <div class="card-subtitle">RAG anclado en el grafo · verificación explícita</div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+            Recuperación híbrida sobre corpus curado. Cada elemento lleva un <strong style="color:var(--accent-gold)">estado de verificación visible</strong>. La derivación a atención humana forma parte del diseño.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-title">Protocolo de Evaluación</div>
+          <div class="card-subtitle">Mixto · automático + expertos</div>
+          <div class="gauge-row">
+            <div class="gauge-label">Cobertura consulta</div>
+            <div class="gauge-track"><div class="gauge-fill" style="width:87%;background:var(--accent-teal);"></div></div>
+            <div class="gauge-val" style="color:var(--accent-teal);">87%</div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-label">Corrección factual</div>
+            <div class="gauge-track"><div class="gauge-fill" style="width:94%;background:var(--success);"></div></div>
+            <div class="gauge-val" style="color:var(--success);">94%</div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-label">Afirm. no sustentadas</div>
+            <div class="gauge-track"><div class="gauge-fill" style="width:6%;background:var(--danger);"></div></div>
+            <div class="gauge-val" style="color:var(--danger);">6%</div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-label">Derivación humana</div>
+            <div class="gauge-track"><div class="gauge-fill" style="width:12%;background:var(--warning);"></div></div>
+            <div class="gauge-val" style="color:var(--warning);">12%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-prompts">
+        <button class="quick-prompt" data-prompt="¿Qué monumentos puedo visitar hoy con buen tiempo?">Monumentos hoy</button>
+        <button class="quick-prompt" data-prompt="¿Cuál es el aforo actual del casco histórico?">Aforo casco histórico</button>
+        <button class="quick-prompt" data-prompt="Recomiéndame una ruta alternativa menos masificada">Ruta alternativa</button>
+        <button class="quick-prompt" data-prompt="¿Qué previsión meteorológica hay para las próximas 6 horas?">Previsión meteo</button>
+        <button class="quick-prompt" data-prompt="¿Cuáles son los eventos culturales de esta semana?">Eventos culturales</button>
+      </div>
+
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="chat-avatar"><i class="fas fa-robot"></i></div>
+          <div>
+            <div class="chat-name">Asistente SITI</div>
+            <div class="chat-status"><span class="pulse green" style="margin-right:4px;"></span> Conectado al grafo del destino</div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg bot">
+            <div class="msg-md">Bienvenido al asistente del destino. Estoy anclado al grafo de conocimiento de SITI y puedo ayudarte con información sobre <strong>recursos turísticos</strong>, <strong>previsiones</strong>, <strong>aforos</strong> y <strong>recomendaciones contextuales</strong>. ¿En qué puedo ayudarte?</div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu consulta sobre el destino…">
+          <button class="chat-send" id="chatSend"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ GOVERNANCE ════════════════ -->
+    <div class="view" id="view-governance">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Principios de Gobernanza</div>
+          <div class="card-subtitle">Condición de viabilidad — no un anexo</div>
+          <div id="govPrinciples"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Estado de Cumplimiento</div>
+          <div class="card-subtitle">Evaluación previa al despliegue</div>
+          <div id="govGauges"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Matriz de Riesgos</div>
+        <div class="card-subtitle">7 riesgos identificados con mitigación definida</div>
+        <div id="riskMatrix"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══════════════ DARK/LIGHT MODE ═══════════════ */
+(function initTheme() {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+    if (event.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  });
+})();
+
+function isDark() {
+  return document.documentElement.classList.contains('dark');
+}
+
+/* ═══════════════ CHART THEME HELPER ═══════════════ */
+function getChartColors() {
+  var style = getComputedStyle(document.documentElement);
+  return {
+    grid: style.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,0.04)',
+    label: style.getPropertyValue('--chart-label').trim() || '#556680',
+    legend: style.getPropertyValue('--chart-legend').trim() || '#8A9BB5',
+    backdrop: style.getPropertyValue('--chart-backdrop').trim() || 'transparent'
+  };
+}
+
+/* ═══════════════ NAVIGATION ═══════════════ */
+var viewTitles = {
+  overview: 'Visión General',
+  architecture: 'Arquitectura de Referencia',
+  graph: 'Grafo de Conocimiento',
+  predictions: 'Capa Predictiva',
+  twin: 'Gemelo Digital',
+  circuit: 'Circuito de Decisión',
+  agent: 'Agente Conversacional',
+  governance: 'Gobernanza y Privacidad'
+};
+
+var navItems = document.querySelectorAll('.nav-item');
+var views = document.querySelectorAll('.view');
+var viewTitle = document.getElementById('viewTitle');
+var mainBody = document.getElementById('mainBody');
+var sidebar = document.getElementById('sidebar');
+var mobileToggle = document.getElementById('mobileToggle');
+var mobileOverlay = document.getElementById('mobileOverlay');
+
+function switchView(viewId) {
+  navItems.forEach(function(n) { n.classList.toggle('active', n.dataset.view === viewId); });
+  views.forEach(function(v) { v.classList.toggle('active', v.id === 'view-' + viewId); });
+  viewTitle.textContent = viewTitles[viewId] || viewId;
+  mainBody.scrollTop = 0;
+  closeMobile();
+}
+
+navItems.forEach(function(n) { n.addEventListener('click', function() { switchView(n.dataset.view); }); });
+
+function closeMobile() {
+  sidebar.classList.remove('open');
+  mobileOverlay.classList.remove('active');
+}
+mobileToggle.addEventListener('click', function() {
+  sidebar.classList.toggle('open');
+  mobileOverlay.classList.toggle('active');
+});
+mobileOverlay.addEventListener('click', closeMobile);
+
+/* ═══════════════ DATA ═══════════════ */
+var archLayers = [
+  { num: 1, name: 'Captación', func: 'Ingesta, normalización y fechado de fuentes heterogéneas', output: 'Flujos normalizados con procedencia declarada', color: 'var(--accent-gold)', icon: 'fa-download' },
+  { num: 2, name: 'Semántica', func: 'Alineación de entidades sobre ontología y grafo de conocimiento', output: 'Grafo consultable del destino', color: 'var(--accent-teal)', icon: 'fa-project-diagram' },
+  { num: 3, name: 'Analítica', func: 'Predicción inmediata, pronóstico a corto plazo y análisis de percepción', output: 'Señales con cobertura, antigüedad y lagunas', color: 'var(--accent-coral)', icon: 'fa-chart-line' },
+  { num: 4, name: 'Simulación', func: 'Gemelo digital para comparar alternativas de actuación', output: 'Escenarios contrastados', color: 'var(--accent-blue)', icon: 'fa-clone' },
+  { num: 5, name: 'Servicios', func: 'Agente conversacional y panel de decisión', output: 'Recomendaciones y decisiones registradas', color: 'var(--accent-violet)', icon: 'fa-desktop' }
+];
+
+var workPackages = [
+  { id: 'WP1', name: 'Coordinación, gestión y difusión', result: 'Plan de gestión y explotación', cycle: '1-3', color: 'var(--text-muted)' },
+  { id: 'WP2', name: 'Ontología y grafo de conocimiento', result: 'Modelo semántico publicado', cycle: '1', color: 'var(--accent-gold)' },
+  { id: 'WP3', name: 'Capa de captación multifuente', result: 'Ingesta normalizada con procedencia', cycle: '1-2', color: 'var(--accent-teal)' },
+  { id: 'WP4', name: 'Analítica, pronóstico y reglas de acción', result: 'Modelos multihorizonte y circuito', cycle: '2', color: 'var(--accent-coral)' },
+  { id: 'WP5', name: 'Agente conversacional y panel', result: 'Prototipos evaluables en destino', cycle: '2-3', color: 'var(--accent-blue)' },
+  { id: 'WP6', name: 'Gemelo digital y evaluación longitudinal', result: 'Escenarios y evidencia de efecto', cycle: '2-3', color: 'var(--accent-violet)' },
+  { id: 'WP7', name: 'Gobernanza, ética y privacidad', result: 'Marco de gobernanza y EIP', cycle: '1-3', color: 'var(--warning)' }
+];
+
+var circuitStepsData = [
+  { icon: 'fa-bell', title: 'Señal supera umbral', desc: 'La capa analítica genera una señal que supera un umbral definido — por ejemplo, previsión de precipitación intensa en zona de alta densidad turística.', color: 'var(--accent-coral)', demoText: 'Señal detectada: precipitación >15mm/h en zona Catedral en +2h' },
+  { icon: 'fa-clone', title: 'Gemelo contrasta alternativas', desc: 'El gemelo digital simula al menos dos alternativas de respuesta con sus efectos estimados sobre distribución, satisfacción y riesgo.', color: 'var(--accent-blue)', demoText: 'Simulando: A) Mantener rutas B) Desviar a Ruta Natural' },
+  { icon: 'fa-desktop', title: 'Panel presenta comparación', desc: 'El panel de decisión muestra al gestor la comparación entre escenarios, incluyendo la incertidumbre asociada a cada uno.', color: 'var(--accent-violet)', demoText: 'Escenario B reduce exposición un 62% con -3% satisfacción' },
+  { icon: 'fa-user-check', title: 'Gestor decide y registra', desc: 'El gestor toma la decisión. Esta queda registrada en el grafo con fecha, contexto, alternativa elegida y justificación.', color: 'var(--accent-gold)', demoText: 'Decisión: Escenario B · Registrada en grafo · ID: DEC-2026-0142' },
+  { icon: 'fa-cogs', title: 'Servicios aplican decisión', desc: 'El agente conversacional y el motor de recomendación incorporan la decisión: desvían rutas, actualizan horarios o lanzan avisos.', color: 'var(--accent-teal)', demoText: 'Agente actualizado · Recomendaciones desviadas a Ruta Natural' },
+  { icon: 'fa-chart-bar', title: 'Evaluación mide efecto', desc: 'En el ciclo siguiente, se mide si la decisión produjo el efecto previsto. Si no, se recalibra el modelo y se documenta la desviación.', color: 'var(--success)', demoText: 'Efecto verificado: exposición real -58% · Satisfacción -1.2%' }
+];
+
+var risks = [
+  { name: 'Sesgo de fuente', mit: 'Declarar cobertura y contrastar con estadística oficial', sev: 'medium' },
+  { name: 'Cobertura desigual de medición', mit: 'Fusión de fuentes; no depender de una sola', sev: 'medium' },
+  { name: 'Sobreajuste de modelos', mit: 'Evaluación en ciclos anuales sucesivos con datos no vistos', sev: 'high' },
+  { name: 'Brecha de capacidad de gestión', mit: 'Formación e incorporación del gestor desde WP2', sev: 'high' },
+  { name: 'Fallo de servicio del asistente', mit: 'Derivación humana como requisito, no como opción', sev: 'medium' },
+  { name: 'Riesgo de privacidad en movilidad', mit: 'Agregación en origen y evaluación de impacto previa', sev: 'high' },
+  { name: 'Presión sobre zonas saturadas', mit: 'Umbrales de aforo como restricción dura del motor', sev: 'low' }
+];
+
+var govPrinciples = [
+  { icon: 'fa-compress-arrows-alt', label: 'Agregación desde el origen', desc: 'Toda fuente de movilidad o comportamiento individual', status: 'Implementado', statusColor: 'var(--success)' },
+  { icon: 'fa-minus-circle', label: 'Minimización', desc: 'Solo lo necesario para la finalidad declarada', status: 'Implementado', statusColor: 'var(--success)' },
+  { icon: 'fa-bullseye', label: 'Finalidad limitada', desc: 'Nueva autorización para cualquier uso distinto', status: 'Definido', statusColor: 'var(--accent-teal)' },
+  { icon: 'fa-search', label: 'Trazabilidad completa', desc: 'De accesos al conjunto de datos del proyecto', status: 'En desarrollo', statusColor: 'var(--warning)' },
+  { icon: 'fa-ban', label: 'Prohibición de reidentificación', desc: 'Condición expresa de acceso', status: 'Definido', statusColor: 'var(--accent-teal)' },
+  { icon: 'fa-key', label: 'Separación de permisos', desc: 'Gestión limitada a información agregada', status: 'Implementado', statusColor: 'var(--success)' },
+  { icon: 'fa-file-contract', label: 'Evaluación de impacto (EIP)', desc: 'Previa al primer despliegue con datos reales', status: 'Pendiente', statusColor: 'var(--accent-coral)' }
+];
+
+/* ═══════════════ RENDER STATIC ═══════════════ */
+function renderArch() {
+  var el = document.getElementById('archLayers');
+  var html = '';
+  archLayers.forEach(function(l, i) {
+    html += '<div class="arch-layer">' +
+      '<div class="arch-num" style="background:' + l.color + '20;color:' + l.color + ';border:2px solid ' + l.color + '40;">' + l.num + '</div>' +
+      '<div class="arch-layer-info">' +
+        '<div class="arch-layer-name"><i class="fas ' + l.icon + '" style="margin-right:6px;opacity:0.6;font-size:12px;"></i>' + l.name + '</div>' +
+        '<div class="arch-layer-desc">' + l.func + '</div>' +
+        '<div class="arch-layer-output">' + l.output + '</div>' +
+      '</div>' +
+    '</div>';
+    if (i < archLayers.length - 1) {
+      html += '<div class="arch-connector"><i class="fas fa-arrow-down"></i></div>';
+    }
+  });
+  el.innerHTML = html;
+}
+
+function renderWP() {
+  var el = document.getElementById('wpList');
+  el.innerHTML = workPackages.map(function(wp) {
+    return '<div class="wp-item">' +
+      '<div class="wp-badge" style="background:' + wp.color + '20;color:' + wp.color + ';">' + wp.id + '</div>' +
+      '<div class="wp-info">' +
+        '<div class="wp-title">' + wp.name + '</div>' +
+        '<div class="wp-desc">' + wp.result + '</div>' +
+      '</div>' +
+      '<div class="wp-cycle" style="background:' + wp.color + '20;color:' + wp.color + ';">Ciclo ' + wp.cycle + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderCircuit() {
+  var el = document.getElementById('circuitSteps');
+  el.innerHTML = circuitStepsData.map(function(s, i) {
+    return '<div class="circuit-step" id="circuit-step-' + i + '">' +
+      '<div class="circuit-dot" style="background:' + s.color + '20;color:' + s.color + ';border:2px solid ' + s.color + '50;">' +
+        '<i class="fas ' + s.icon + '"></i>' +
+      '</div>' +
+      '<div class="circuit-info">' +
+        '<div class="circuit-title">' + (i + 1) + '. ' + s.title + '</div>' +
+        '<div class="circuit-desc">' + s.desc + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderCircuitGauges() {
+  var gauges = [
+    { label: 'Señales → decisión', val: 73, color: 'var(--accent-gold)' },
+    { label: 'Decisiones verificadas', val: 58, color: 'var(--accent-teal)' },
+    { label: 'Efecto previsto cumplido', val: 41, color: 'var(--accent-blue)' },
+    { label: 'Interpretabilidad', val: 82, color: 'var(--success)' },
+    { label: 'Estabilidad entre ciclos', val: 67, color: 'var(--accent-violet)' }
+  ];
+  document.getElementById('circuitGauges').innerHTML = gauges.map(function(g) {
+    return '<div class="gauge-row">' +
+      '<div class="gauge-label">' + g.label + '</div>' +
+      '<div class="gauge-track"><div class="gauge-fill" style="width:' + g.val + '%;background:' + g.color + ';"></div></div>' +
+      '<div class="gauge-val" style="color:' + g.color + ';">' + g.val + '%</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderRisks() {
+  document.getElementById('riskMatrix').innerHTML = risks.map(function(r) {
+    return '<div class="risk-row">' +
+      '<div class="risk-severity ' + r.sev + '"></div>' +
+      '<div class="risk-info">' +
+        '<div class="risk-name">' + r.name + '</div>' +
+        '<div class="risk-mit">' + r.mit + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderGov() {
+  document.getElementById('govPrinciples').innerHTML = govPrinciples.map(function(g) {
+    return '<div class="gov-row">' +
+      '<div class="gov-icon" style="background:' + g.statusColor + '15;color:' + g.statusColor + ';"><i class="fas ' + g.icon + '"></i></div>' +
+      '<div class="gov-text">' +
+        '<div class="gov-label">' + g.label + '</div>' +
+        '<div class="gov-desc">' + g.desc + '</div>' +
+      '</div>' +
+      '<div class="gov-status" style="background:' + g.statusColor + '15;color:' + g.statusColor + ';">' + g.status + '</div>' +
+    '</div>';
+  }).join('');
+
+  var govGauges = [
+    { label: 'Accesos registrados', val: 100, color: 'var(--success)' },
+    { label: 'Finalidades revisadas', val: 85, color: 'var(--accent-teal)' },
+    { label: 'Incidencias privacidad', val: 0, color: 'var(--success)' },
+    { label: 'Datos abiertos pub.', val: 62, color: 'var(--accent-gold)' }
+  ];
+  document.getElementById('govGauges').innerHTML = govGauges.map(function(g) {
+    return '<div class="gauge-row">' +
+      '<div class="gauge-label">' + g.label + '</div>' +
+      '<div class="gauge-track"><div class="gauge-fill" style="width:' + g.val + '%;background:' + g.color + ';"></div></div>' +
+      '<div class="gauge-val" style="color:' + g.color + ';">' + g.val + (g.label === 'Incidencias privacidad' ? '' : '%') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+renderArch();
+renderWP();
+renderCircuit();
+renderCircuitGauges();
+renderRisks();
+renderGov();
+
+/* ═══════════════ LIVE KPI SIMULATION ═══════════════ */
+var entityCount = 1247;
+setInterval(function() {
+  var delta = Math.floor(Math.random() * 5) - 1;
+  entityCount = Math.max(1200, entityCount + delta);
+  var el = document.getElementById('kpi-entities');
+  if (el) el.textContent = entityCount.toLocaleString('es-ES');
+}, 8000);
+
+/* ═══════════════ PREDICTION TABS ═══════════════ */
+document.querySelectorAll('.tab-btn[data-pred]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn[data-pred]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    ['nowcast', 'shortterm', 'perception'].forEach(function(t) {
+      var el = document.getElementById('pred-' + t);
+      if (el) el.style.display = (t === btn.dataset.pred) ? '' : 'none';
+    });
+  });
+});
+
+/* ═══════════════ CHARTS ═══════════════ */
+var cc = getChartColors();
+
+var chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: cc.legend, font: { family: "'IBM Plex Sans'", size: 11 }, boxWidth: 12, padding: 14 } }
+  },
+  scales: {
+    x: { ticks: { color: cc.label, font: { size: 10 } }, grid: { color: cc.grid } },
+    y: { ticks: { color: cc.label, font: { size: 10 } }, grid: { color: cc.grid } }
+  }
+};
+
+function makeGradient(ctx, c1, c2) {
+  var g = ctx.createLinearGradient(0, 0, 0, 280);
+  g.addColorStop(0, c1);
+  g.addColorStop(1, c2);
+  return g;
+}
+
+// Nowcast chart
+var ctxNow = document.getElementById('chartNowcast').getContext('2d');
+new Chart(ctxNow, {
+  type: 'line',
+  data: {
+    labels: ['Ahora', '+1h', '+2h', '+3h', '+4h', '+5h', '+6h'],
+    datasets: [{
+      label: 'Precipitación (mm)',
+      data: [0.2, 1.8, 4.5, 7.2, 5.1, 2.3, 0.8],
+      borderColor: '#4A90D9',
+      backgroundColor: makeGradient(ctxNow, 'rgba(74,144,217,0.3)', 'rgba(74,144,217,0)'),
+      fill: true, tension: 0.4, pointRadius: 4, borderWidth: 2
+    }, {
+      label: 'Reflectividad (dBZ)',
+      data: [12, 28, 42, 51, 38, 22, 15],
+      borderColor: '#DAA520',
+      backgroundColor: 'transparent',
+      borderDash: [4, 4], tension: 0.4, pointRadius: 3, borderWidth: 2,
+      yAxisID: 'y1'
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: chartDefaults.plugins,
+    scales: {
+      x: chartDefaults.scales.x,
+      y: chartDefaults.scales.y,
+      y1: { position: 'right', ticks: { color: cc.label, font: { size: 10 } }, grid: { display: false } }
+    }
+  }
+});
+
+// Visitors chart
+var ctxVis = document.getElementById('chartVisitors').getContext('2d');
+new Chart(ctxVis, {
+  type: 'bar',
+  data: {
+    labels: ['Ahora', '+1h', '+2h', '+3h', '+4h', '+5h', '+6h'],
+    datasets: [{
+      label: 'Visitantes estimados',
+      data: [3200, 2800, 2100, 1650, 1800, 2400, 3100],
+      backgroundColor: makeGradient(ctxVis, 'rgba(46,205,193,0.6)', 'rgba(46,205,193,0.15)'),
+      borderColor: '#2ECDC1',
+      borderWidth: 1, borderRadius: 6
+    }, {
+      label: 'Capacidad zona',
+      data: [4000, 4000, 4000, 4000, 4000, 4000, 4000],
+      type: 'line', borderColor: '#E8735A', borderDash: [6, 3], pointRadius: 0, borderWidth: 2, fill: false
+    }]
+  },
+  options: chartDefaults
+});
+
+// Demand chart
+var ctxDemand = document.getElementById('chartDemand').getContext('2d');
+new Chart(ctxDemand, {
+  type: 'line',
+  data: {
+    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    datasets: [{
+      label: 'Demanda prevista',
+      data: [4200, 3800, 4500, 5100, 7800, 9200, 8500],
+      borderColor: '#DAA520',
+      backgroundColor: makeGradient(ctxDemand, 'rgba(218,165,32,0.2)', 'rgba(218,165,32,0)'),
+      fill: true, tension: 0.3, borderWidth: 2.5, pointRadius: 5
+    }, {
+      label: 'Banda superior (IC 90%)',
+      data: [4800, 4400, 5200, 5900, 8900, 10500, 9800],
+      borderColor: 'rgba(218,165,32,0.3)',
+      borderDash: [3, 3], fill: false, pointRadius: 0, borderWidth: 1
+    }, {
+      label: 'Banda inferior (IC 90%)',
+      data: [3600, 3200, 3800, 4300, 6700, 7900, 7200],
+      borderColor: 'rgba(218,165,32,0.3)',
+      backgroundColor: 'rgba(218,165,32,0.06)',
+      borderDash: [3, 3], fill: '-1', pointRadius: 0, borderWidth: 1
+    }]
+  },
+  options: chartDefaults
+});
+
+// Sentiment chart
+new Chart(document.getElementById('chartSentiment').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Positivo', 'Neutro', 'Negativo'],
+    datasets: [{
+      data: [62, 26, 12],
+      backgroundColor: ['#4ADE80', '#DAA520', '#F87171'],
+      borderWidth: 0, spacing: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '68%',
+    plugins: {
+      legend: { position: 'bottom', labels: { color: cc.legend, font: { family: "'IBM Plex Sans'", size: 11 }, padding: 16, boxWidth: 12 } }
+    }
+  }
+});
+
+// Topics
+var topics = [
+  { name: 'Gastronomía local', val: 89, color: 'var(--accent-gold)' },
+  { name: 'Patrimonio histórico', val: 76, color: 'var(--accent-teal)' },
+  { name: 'Naturaleza y rutas', val: 68, color: 'var(--success)' },
+  { name: 'Masificación', val: 42, color: 'var(--danger)' },
+  { name: 'Accesibilidad', val: 35, color: 'var(--warning)' },
+  { name: 'Eventos nocturnos', val: 28, color: 'var(--accent-violet)' }
+];
+document.getElementById('topicsList').innerHTML = topics.map(function(t) {
+  return '<div class="gauge-row">' +
+    '<div class="gauge-label">' + t.name + '</div>' +
+    '<div class="gauge-track"><div class="gauge-fill" style="width:' + t.val + '%;background:' + t.color + ';"></div></div>' +
+    '<div class="gauge-val" style="color:' + t.color + ';">' + t.val + '%</div>' +
+  '</div>';
+}).join('');
+
+/* ═══════════════ DIGITAL TWIN ═══════════════ */
+var scenarios = {
+  base: {
+    a: { 'Visitantes zona A': 3200, 'Visitantes zona B': 980, 'Satisfacción media': '7.2/10', 'Presión patrimonio': '82%', 'Gasto distribuido': '35%' },
+    b: { 'Visitantes zona A': 3200, 'Visitantes zona B': 980, 'Satisfacción media': '7.2/10', 'Presión patrimonio': '82%', 'Gasto distribuido': '35%' }
+  },
+  reroute: {
+    a: { 'Visitantes zona A': 3200, 'Visitantes zona B': 980, 'Satisfacción media': '7.2/10', 'Presión patrimonio': '82%', 'Gasto distribuido': '35%' },
+    b: { 'Visitantes zona A': 2400, 'Visitantes zona B': 1780, 'Satisfacción media': '7.8/10', 'Presión patrimonio': '64%', 'Gasto distribuido': '52%' }
+  },
+  limit: {
+    a: { 'Visitantes zona A': 3200, 'Visitantes zona B': 980, 'Satisfacción media': '7.2/10', 'Presión patrimonio': '82%', 'Gasto distribuido': '35%' },
+    b: { 'Visitantes zona A': 2000, 'Visitantes zona B': 1100, 'Satisfacción media': '8.1/10', 'Presión patrimonio': '51%', 'Gasto distribuido': '44%' }
+  }
+};
+
+var currentScenario = 'base';
+var twinChart = null;
+var isSimulating = false;
+
+function parseMetricNum(v) {
+  return parseFloat(String(v).replace(/[^0-9.]/g, ''));
+}
+
+function renderScenarios(animate) {
+  var sc = scenarios[currentScenario];
+  var baseA = scenarios.base.a;
+
+  ['A', 'B'].forEach(function(side) {
+    var data = sc[side.toLowerCase()];
+    var el = document.getElementById('scenario' + side + 'Metrics');
+    el.innerHTML = Object.entries(data).map(function(entry) {
+      var k = entry[0];
+      var v = entry[1];
+      var baseVal = parseMetricNum(baseA[k]);
+      var curVal = parseMetricNum(v);
+      var cls = '';
+      if (side === 'B' && currentScenario !== 'base') {
+        // For satisfaction and distributed spend, higher is better; for pressure, lower is better
+        if (k.indexOf('Satisfacción') !== -1 || k.indexOf('Gasto') !== -1) {
+          cls = curVal > baseVal ? 'better' : (curVal < baseVal ? 'worse' : '');
+        } else if (k.indexOf('Presión') !== -1) {
+          cls = curVal < baseVal ? 'better' : (curVal > baseVal ? 'worse' : '');
+        }
+      }
+      return '<div class="scenario-metric">' +
+        '<span style="color:var(--text-secondary);">' + k + '</span>' +
+        '<span class="scenario-metric-val ' + cls + '">' + v + '</span>' +
+      '</div>';
+    }).join('');
+  });
+
+  // Update chart
+  var labels = Object.keys(sc.a);
+  var dataA = Object.values(sc.a).map(parseMetricNum);
+  var dataB = Object.values(sc.b).map(parseMetricNum);
+
+  if (twinChart) twinChart.destroy();
+  var ctxTwin = document.getElementById('chartTwin').getContext('2d');
+  twinChart = new Chart(ctxTwin, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Escenario A', data: dataA, borderColor: '#DAA520', backgroundColor: 'rgba(218,165,32,0.1)', borderWidth: 2, pointRadius: 4 },
+        { label: 'Escenario B', data: dataB, borderColor: '#2ECDC1', backgroundColor: 'rgba(46,205,193,0.1)', borderWidth: 2, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: animate ? 1200 : 0 },
+      scales: {
+        r: {
+          ticks: { color: cc.label, font: { size: 9 }, backdropColor: cc.backdrop },
+          grid: { color: cc.grid },
+          angleLines: { color: cc.grid },
+          pointLabels: { color: cc.legend, font: { size: 10, family: "'IBM Plex Sans'" } }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: cc.legend, font: { family: "'IBM Plex Sans'", size: 11 }, boxWidth: 12 } }
+      }
+    }
+  });
+}
+
+document.querySelectorAll('#simControls .sim-btn:not(.run)').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#simControls .sim-btn:not(.run)').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentScenario = btn.dataset.scenario;
+  });
+});
+
+document.getElementById('runSimBtn').addEventListener('click', function() {
+  if (isSimulating) return;
+  isSimulating = true;
+  var btn = document.getElementById('runSimBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulando…';
+
+  document.getElementById('simLoadA').classList.add('active');
+  document.getElementById('simLoadB').classList.add('active');
+
+  setTimeout(function() {
+    document.getElementById('simLoadA').classList.remove('active');
+    setTimeout(function() {
+      document.getElementById('simLoadB').classList.remove('active');
+      renderScenarios(true);
+      isSimulating = false;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-play"></i> Simular';
+    }, 600);
+  }, 1200);
+});
+
+renderScenarios(false);
+
+/* ═══════════════ CIRCUIT DEMO ═══════════════ */
+var circuitDemoRunning = false;
+
+document.getElementById('circuitDemoBtn').addEventListener('click', function() {
+  if (circuitDemoRunning) return;
+  circuitDemoRunning = true;
+  var btn = document.getElementById('circuitDemoBtn');
+  var status = document.getElementById('circuitDemoStatus');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ejecutando…';
+
+  var steps = document.querySelectorAll('.circuit-step');
+  steps.forEach(function(s) { s.classList.add('dimmed'); s.classList.remove('active-step', 'highlighted'); });
+
+  var i = 0;
+  function activateStep() {
+    if (i >= circuitStepsData.length) {
+      setTimeout(function() {
+        steps.forEach(function(s) { s.classList.remove('dimmed', 'active-step', 'highlighted'); });
+        status.textContent = 'Circuito completado con trazabilidad completa';
+        status.style.color = 'var(--success)';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar demo del circuito';
+        circuitDemoRunning = false;
+        setTimeout(function() { status.textContent = ''; }, 4000);
+      }, 600);
+      return;
+    }
+
+    steps.forEach(function(s, idx) {
+      s.classList.toggle('active-step', idx === i);
+      s.classList.toggle('highlighted', idx === i);
+      s.classList.toggle('dimmed', idx !== i);
+    });
+
+    status.textContent = circuitStepsData[i].demoText;
+    status.style.color = 'var(--text-secondary)';
+    i++;
+    setTimeout(activateStep, 1800);
+  }
+
+  activateStep();
+});
+
+/* ═══════════════ KNOWLEDGE GRAPH ═══════════════ */
+var graphEl = document.getElementById('knowledgeGraph');
+var graphCtx = graphEl.getContext('2d');
+var graphNodes = [];
+var graphEdges = [];
+var graphAnimId = null;
+var graphDrag = null;
+var graphOffset = { x: 0, y: 0 };
+var graphHover = null;
+
+var nodeTypesMeta = {
+  recurso: { color: '#DAA520', radius: 20, label: 'Recurso turístico' },
+  patrimonio: { color: '#2ECDC1', radius: 17, label: 'Patrimonio cultural' },
+  alojamiento: { color: '#E8735A', radius: 15, label: 'Alojamiento' },
+  movilidad: { color: '#4A90D9', radius: 15, label: 'Movilidad' },
+  evento: { color: '#9B72CF', radius: 14, label: 'Evento' },
+  contexto: { color: '#FACC15', radius: 13, label: 'Contexto ambiental' }
+};
+
+var nodeData = [
+  { id: 'dest', label: 'Destino Piloto', type: 'recurso' },
+  { id: 'catedral', label: 'Catedral', type: 'patrimonio' },
+  { id: 'museo', label: 'Museo', type: 'patrimonio' },
+  { id: 'alcazar', label: 'Alcázar', type: 'patrimonio' },
+  { id: 'muralla', label: 'Muralla', type: 'patrimonio' },
+  { id: 'hotel_a', label: 'Hotel Sol', type: 'alojamiento' },
+  { id: 'hotel_b', label: 'Hostal Centro', type: 'alojamiento' },
+  { id: 'hotel_c', label: 'Parador', type: 'alojamiento' },
+  { id: 'ruta1', label: 'Ruta Histórica', type: 'movilidad' },
+  { id: 'ruta2', label: 'Ruta Natural', type: 'movilidad' },
+  { id: 'bus', label: 'Bus Turístico', type: 'movilidad' },
+  { id: 'parking', label: 'Aparcamiento', type: 'movilidad' },
+  { id: 'fest', label: 'Festival', type: 'evento' },
+  { id: 'feria', label: 'Feria Gastron.', type: 'evento' },
+  { id: 'concierto', label: 'Concierto', type: 'evento' },
+  { id: 'meteo', label: 'Meteorología', type: 'contexto' },
+  { id: 'aforo', label: 'Aforo', type: 'contexto' },
+  { id: 'calidad', label: 'Calidad Aire', type: 'contexto' },
+  { id: 'plaza', label: 'Plaza Mayor', type: 'recurso' },
+  { id: 'gastr', label: 'Gastronomía', type: 'recurso' },
+  { id: 'mirador', label: 'Mirador', type: 'recurso' }
+];
+
+var edgeData = [
+  ['dest', 'catedral'], ['dest', 'museo'], ['dest', 'alcazar'], ['dest', 'plaza'],
+  ['dest', 'gastr'], ['dest', 'mirador'], ['dest', 'muralla'],
+  ['catedral', 'ruta1'], ['museo', 'ruta1'], ['alcazar', 'ruta2'], ['muralla', 'ruta1'],
+  ['ruta1', 'fest'], ['ruta1', 'feria'], ['ruta2', 'bus'], ['ruta2', 'mirador'],
+  ['meteo', 'dest'], ['aforo', 'plaza'], ['aforo', 'catedral'], ['aforo', 'alcazar'],
+  ['hotel_a', 'fest'], ['hotel_b', 'bus'], ['hotel_c', 'alcazar'],
+  ['gastr', 'plaza'], ['gastr', 'feria'], ['meteo', 'ruta2'],
+  ['parking', 'ruta1'], ['parking', 'ruta2'], ['concierto', 'plaza'],
+  ['calidad', 'ruta2'], ['calidad', 'mirador'], ['fest', 'concierto']
+];
+
+function initGraph() {
+  var container = document.getElementById('graphCanvas');
+  var w = container.clientWidth;
+  var h = container.clientHeight;
+  graphEl.width = w * 2;
+  graphEl.height = h * 2;
+  graphEl.style.width = w + 'px';
+  graphEl.style.height = h + 'px';
+  graphCtx.setTransform(2, 0, 0, 2, 0, 0);
+
+  var cx = w / 2;
+  var cy = h / 2;
+
+  graphNodes = nodeData.map(function(n, i) {
+    var angle = (i / nodeData.length) * Math.PI * 2;
+    var radiusSpread = 120 + Math.random() * 80;
+    var meta = nodeTypesMeta[n.type];
+    return {
+      id: n.id,
+      label: n.label,
+      type: n.type,
+      typeLabel: meta.label,
+      color: meta.color,
+      radius: meta.radius,
+      x: cx + Math.cos(angle) * radiusSpread,
+      y: cy + Math.sin(angle) * radiusSpread,
+      vx: 0, vy: 0
+    };
+  });
+  // Center the dest node
+  var destNode = graphNodes.find(function(n) { return n.id === 'dest'; });
+  if (destNode) { destNode.x = cx; destNode.y = cy; }
+
+  graphEdges = edgeData;
+  graphHover = null;
+  animateGraph();
+}
+
+function animateGraph() {
+  var container = document.getElementById('graphCanvas');
+  var w = container.clientWidth;
+  var h = container.clientHeight;
+
+  var k = 0.004;
+  var repulsion = 3200;
+  var damping = 0.82;
+
+  for (var i = 0; i < graphNodes.length; i++) {
+    var ni = graphNodes[i];
+    if (ni === graphDrag) continue;
+    var fx = 0;
+    var fy = 0;
+    for (var j = 0; j < graphNodes.length; j++) {
+      if (i === j) continue;
+      var nj = graphNodes[j];
+      var ddx = ni.x - nj.x;
+      var ddy = ni.y - nj.y;
+      var dist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+      var force = repulsion / (dist * dist);
+      fx += (ddx / dist) * force;
+      fy += (ddy / dist) * force;
+    }
+    for (var e = 0; e < graphEdges.length; e++) {
+      var edge = graphEdges[e];
+      var other = null;
+      if (edge[0] === ni.id) other = graphNodes.find(function(nn) { return nn.id === edge[1]; });
+      else if (edge[1] === ni.id) other = graphNodes.find(function(nn) { return nn.id === edge[0]; });
+      if (other) {
+        fx += (other.x - ni.x) * k;
+        fy += (other.y - ni.y) * k;
+      }
+    }
+    fx += (w / 2 - ni.x) * 0.0008;
+    fy += (h / 2 - ni.y) * 0.0008;
+    ni.vx = (ni.vx + fx) * damping;
+    ni.vy = (ni.vy + fy) * damping;
+    ni.x += ni.vx;
+    ni.y += ni.vy;
+    ni.x = Math.max(40, Math.min(w - 40, ni.x));
+    ni.y = Math.max(40, Math.min(h - 40, ni.y));
+  }
+
+  graphCtx.clearRect(0, 0, w, h);
+
+  // Edges
+  var edgeColor = getComputedStyle(document.documentElement).getPropertyValue('--graph-edge').trim();
+  graphCtx.lineWidth = 1;
+  graphCtx.strokeStyle = edgeColor;
+  for (var ei = 0; ei < graphEdges.length; ei++) {
+    var na = graphNodes.find(function(nn) { return nn.id === graphEdges[ei][0]; });
+    var nb = graphNodes.find(function(nn) { return nn.id === graphEdges[ei][1]; });
+    if (na && nb) {
+      var isHighlight = graphHover && (graphHover.id === na.id || graphHover.id === nb.id);
+      graphCtx.beginPath();
+      graphCtx.moveTo(na.x, na.y);
+      graphCtx.lineTo(nb.x, nb.y);
+      graphCtx.strokeStyle = isHighlight ? (na.color || nb.color) + '60' : edgeColor;
+      graphCtx.lineWidth = isHighlight ? 2 : 1;
+      graphCtx.stroke();
+    }
+  }
+
+  // Nodes
+  var textColor = getComputedStyle(document.documentElement).getPropertyValue('--graph-text').trim();
+  for (var ni2 = 0; ni2 < graphNodes.length; ni2++) {
+    var node = graphNodes[ni2];
+    var isHov = graphHover && graphHover.id === node.id;
+    var r = isHov ? node.radius + 3 : node.radius;
+
+    // Glow
+    graphCtx.beginPath();
+    graphCtx.arc(node.x, node.y, r + 5, 0, Math.PI * 2);
+    graphCtx.fillStyle = node.color + (isHov ? '25' : '10');
+    graphCtx.fill();
+    // Circle
+    graphCtx.beginPath();
+    graphCtx.arc(node.x, node.y, r, 0, Math.PI * 2);
+    graphCtx.fillStyle = node.color + (isHov ? '50' : '25');
+    graphCtx.strokeStyle = node.color;
+    graphCtx.lineWidth = isHov ? 2.5 : 1.5;
+    graphCtx.fill();
+    graphCtx.stroke();
+    // Label
+    graphCtx.font = (isHov ? '600' : '500') + ' 10px "IBM Plex Sans"';
+    graphCtx.fillStyle = textColor;
+    graphCtx.textAlign = 'center';
+    graphCtx.fillText(node.label, node.x, node.y + r + 14);
+  }
+
+  graphAnimId = requestAnimationFrame(animateGraph);
+}
+
+function getNodeAtPos(mx, my) {
+  for (var i = graphNodes.length - 1; i >= 0; i--) {
+    var n = graphNodes[i];
+    var dx = mx - n.x;
+    var dy = my - n.y;
+    if (Math.sqrt(dx * dx + dy * dy) < n.radius + 8) return n;
+  }
+  return null;
+}
+
+graphEl.addEventListener('pointerdown', function(e) {
+  var rect = graphEl.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+  var node = getNodeAtPos(mx, my);
+  if (node) {
+    graphDrag = node;
+    graphOffset = { x: mx - node.x, y: my - node.y };
+    graphEl.style.cursor = 'grabbing';
+  }
+});
+
+graphEl.addEventListener('pointermove', function(e) {
+  var rect = graphEl.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+
+  if (graphDrag) {
+    graphDrag.x = mx - graphOffset.x;
+    graphDrag.y = my - graphOffset.y;
+    graphDrag.vx = 0;
+    graphDrag.vy = 0;
+    return;
+  }
+
+  var node = getNodeAtPos(mx, my);
+  graphHover = node;
+  graphEl.style.cursor = node ? 'pointer' : 'grab';
+
+  var tooltip = document.getElementById('graphTooltip');
+  if (node) {
+    document.getElementById('tooltipTitle').textContent = node.label;
+    document.getElementById('tooltipType').textContent = node.typeLabel;
+    tooltip.style.left = Math.min(mx + 14, rect.width - 160) + 'px';
+    tooltip.style.top = (my - 50) + 'px';
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+});
+
+graphEl.addEventListener('pointerup', function() {
+  graphDrag = null;
+  graphEl.style.cursor = 'grab';
+});
+
+graphEl.addEventListener('pointerleave', function() {
+  graphHover = null;
+  document.getElementById('graphTooltip').classList.remove('visible');
+});
+
+document.getElementById('graphResetBtn').addEventListener('click', function() {
+  if (graphAnimId) cancelAnimationFrame(graphAnimId);
+  initGraph();
+});
+
+// Init graph when visible
+var graphObserver = new MutationObserver(function() {
+  if (document.getElementById('view-graph').classList.contains('active')) {
+    if (graphAnimId) cancelAnimationFrame(graphAnimId);
+    initGraph();
+  }
+});
+graphObserver.observe(document.getElementById('view-graph'), { attributes: true, attributeFilter: ['class'] });
+
+/* ═══════════════ CONVERSATIONAL AGENT ═══════════════ */
+var chatMessages = document.getElementById('chatMessages');
+var chatInput = document.getElementById('chatInput');
+var chatSendBtn = document.getElementById('chatSend');
+var isChatBusy = false;
+
+var SITI_SYSTEM_PROMPT = 'Eres el asistente de SITI (Sistema Integrado de Turismo Inteligente). Respondes consultas sobre un destino turístico inteligente piloto. Tu conocimiento está anclado en un grafo semántico del destino que incluye:\n' +
+'- Recursos turísticos: monumentos, plazas, rutas, gastronomía, mirador\n' +
+'- Patrimonio cultural: catedral, museo, alcázar, muralla, colecciones\n' +
+'- Movilidad: rutas históricas, naturales, bus turístico, aparcamiento\n' +
+'- Alojamiento: Hotel Sol, Hostal Centro, Parador\n' +
+'- Contexto: meteorología actual, aforos en tiempo real, calidad del aire, eventos\n' +
+'- Gobernanza: reglas de aforo, restricciones patrimoniales\n\n' +
+'Principios clave:\n' +
+'1. Siempre que presentes un dato, indica su estado de verificación: ✅ verificado en grafo, ⚠️ estimación, ❓ sin confirmar\n' +
+'2. Si no tienes información suficiente, dilo claramente y ofrece derivar a atención humana\n' +
+'3. Las recomendaciones deben adaptarse al contexto ambiental y de aforo actual\n' +
+'4. Nunca recomiendes zonas que excedan el 80% de su capacidad\n' +
+'5. Responde en español, de forma concisa pero útil\n' +
+'6. Usa formato Markdown para estructurar tus respuestas\n\n' +
+'Datos simulados del destino piloto para esta demo:\n' +
+'- Temperatura actual: 24°C, parcialmente nublado, probabilidad lluvia 35% en 3h\n' +
+'- Catedral: aforo 68% (✅), Museo: aforo 42% (✅), Alcázar: aforo 85% (⚠️ cerca del límite)\n' +
+'- Muralla: aforo 30% (✅), Mirador: aforo 55% (✅)\n' +
+'- Ruta Histórica: accesible, 2.5km, 1.5h estimadas\n' +
+'- Ruta Natural: accesible, 5km, 3h estimadas\n' +
+'- Festival cultural activo esta semana en Plaza Mayor\n' +
+'- Concierto el sábado 20:00 en Plaza Mayor\n' +
+'- Feria Gastronómica viernes a domingo en zona Alcázar\n' +
+'- Bus turístico: frecuencia cada 20 min, operativo hasta las 21:00\n' +
+'- Calidad del aire: buena (ICA 42)';
+
+function addChatMsg(text, isUser) {
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + (isUser ? 'user' : 'bot');
+  if (isUser) {
+    div.textContent = text;
+  } else {
+    var md = document.createElement('div');
+    md.className = 'msg-md';
+    md.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
+    div.appendChild(md);
+  }
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return div;
+}
+
+function addTypingIndicator() {
+  var div = document.createElement('div');
+  div.className = 'chat-msg bot';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  var el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+var currentBotMsg = null;
+
+window.Poe.registerHandler('siti-agent-handler', function(result) {
+  var msg = result.responses[0];
+  removeTypingIndicator();
+
+  if (msg.status === 'error') {
+    if (currentBotMsg) currentBotMsg.remove();
+    currentBotMsg = null;
+    addChatMsg('Error al generar respuesta: ' + (msg.statusText || 'Error desconocido'), false);
+    isChatBusy = false;
+    chatSendBtn.disabled = false;
+    return;
+  }
+
+  if (msg.status === 'incomplete') {
+    if (!currentBotMsg) {
+      currentBotMsg = document.createElement('div');
+      currentBotMsg.className = 'chat-msg bot';
+      var md = document.createElement('div');
+      md.className = 'msg-md';
+      currentBotMsg.appendChild(md);
+      chatMessages.appendChild(currentBotMsg);
+    }
+    currentBotMsg.querySelector('.msg-md').innerHTML = typeof marked !== 'undefined' ? marked.parse(msg.content) : msg.content;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  if (msg.status === 'complete') {
+    if (!currentBotMsg) {
+      currentBotMsg = addChatMsg(msg.content, false);
+    } else {
+      currentBotMsg.querySelector('.msg-md').innerHTML = typeof marked !== 'undefined' ? marked.parse(msg.content) : msg.content;
+    }
+    currentBotMsg = null;
+    isChatBusy = false;
+    chatSendBtn.disabled = false;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+});
+
+async function sendChat(text) {
+  if (!text.trim() || isChatBusy) return;
+  isChatBusy = true;
+  chatSendBtn.disabled = true;
+  currentBotMsg = null;
+
+  addChatMsg(text, true);
+  chatInput.value = '';
+  addTypingIndicator();
+
+  var fullPrompt = '@Claude-Sonnet-4.6 <system>' + SITI_SYSTEM_PROMPT + '</system>\n\n' + text;
+
+  try {
+    await window.Poe.sendUserMessage(fullPrompt, {
+      handler: 'siti-agent-handler',
+      stream: true,
+      openChat: false,
+      parameters: {}
+    });
+  } catch (err) {
+    removeTypingIndicator();
+    addChatMsg('No se pudo enviar el mensaje. ' + (err.message || ''), false);
+    isChatBusy = false;
+    chatSendBtn.disabled = false;
+  }
+}
+
+chatSendBtn.addEventListener('click', function() { sendChat(chatInput.value); });
+chatInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat(chatInput.value);
+  }
+});
+
+document.querySelectorAll('.quick-prompt').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    sendChat(btn.dataset.prompt);
+  });
+});
+
+/* ═══════════════ INIT ═══════════════ */
+setTimeout(function() {
+  if (document.getElementById('view-graph').classList.contains('active')) initGraph();
+}, 200);
+</script>
+</body>
+</html>
+

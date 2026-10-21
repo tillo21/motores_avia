@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior v8.0.0-DEMO - Sistema de Orquestación</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .version {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 15px;
+        }
+
+        .icon-orquestador { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .icon-decision { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .icon-coordinacion { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .icon-priorizacion { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .icon-delegacion { background: linear-gradient(135deg, #fa709a, #fee140); }
+
+        .card-title {
+            font-size: 1.4em;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .card-content {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-standby {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .control-panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn-success { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .btn-danger { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .btn-info { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+
+        .console {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .console-line {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .console-line.success { border-left-color: #43e97b; }
+        .console-line.error { border-left-color: #f5576c; color: #ff6b6b; }
+        .console-line.warning { border-left-color: #fee140; color: #ffd93d; }
+        .console-line.info { border-left-color: #4facfe; color: #4facfe; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        .timestamp {
+            color: #999;
+            font-size: 0.8em;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 AVIA Senior</h1>
+            <div class="version">v8.0.0-DEMO</div>
+            <div class="subtitle">Sistema de Orquestación Inteligente - AVIA-Clon-Carlos</div>
+        </div>
+
+        <!-- Capacidades Cards -->
+        <div class="main-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-orquestador">🎯</div>
+                    <div class="card-title">Orquestación</div>
+                </div>
+                <div class="card-content">
+                    Coordinación de flujos y procesos complejos mediante análisis multidimensional y optimización de recursos.
+                </div>
+                <span class="status-badge status-active">ACTIVO</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 95%;">95%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-decision">🧠</div>
+                    <div class="card-title">Decisión</div>
+                </div>
+                <div class="card-content">
+                    Toma de decisiones estratégicas basada en análisis de datos, contexto y prioridades del sistema.
+                </div>
+                <span class="status-badge status-active">ACTIVO</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 88%;">88%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-coordinacion">🔄</div>
+                    <div class="card-title">Coordinación</div>
+                </div>
+                <div class="card-content">
+                    Sincronización de agentes y recursos distribuidos para maximizar eficiencia operativa.
+                </div>
+                <span class="status-badge status-processing">PROCESANDO</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 92%;">92%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-priorizacion">⚡</div>
+                    <div class="card-title">Priorización</div>
+                </div>
+                <div class="card-content">
+                    Análisis y clasificación de tareas según urgencia, impacto y recursos disponibles.
+                </div>
+                <span class="status-badge status-active">ACTIVO</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 97%;">97%</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-delegacion">📤</div>
+                    <div class="card-title">Delegación</div>
+                </div>
+                <div class="card-content">
+                    Asignación inteligente de tareas a agentes especializados según capacidades y carga.
+                </div>
+                <span class="status-badge status-standby">STANDBY</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 85%;">85%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2>🎛️ Panel de Control</h2>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="iniciarOrquestacion()">🚀 Iniciar Orquestación</button>
+                <button class="btn btn-success" onclick="analizarSistema()">📊 Analizar Sistema</button>
+                <button class="btn btn-info" onclick="sincronizarAgentes()">🔄 Sincronizar Agentes</button>
+                <button class="btn btn-danger" onclick="detenerProcesos()">⏹️ Detener Procesos</button>
+            </div>
+
+            <!-- Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="tasksCompleted">1,247</div>
+                    <div class="metric-label">Tareas Completadas</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="activeAgents">12</div>
+                    <div class="metric-label">Agentes Activos</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="efficiency">94%</div>
+                    <div class="metric-label">Eficiencia Global</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="uptime">99.8%</div>
+                    <div class="metric-label">Uptime</div>
+                </div>
+            </div>
+
+            <!-- Console -->
+            <div class="console" id="console">
+                <div class="console-line success">
+                    <span class="timestamp">[14:23:45]</span> Sistema inicializado correctamente
+                </div>
+                <div class="console-line info">
+                    <span class="timestamp">[14:23:46]</span> Cargando módulos de orquestación...
+                </div>
+                <div class="console-line success">
+                    <span class="timestamp">[14:23:47]</span> Todos los agentes conectados y operativos
+                </div>
+                <div class="console-line warning">
+                    <span class="timestamp">[14:23:50]</span> Advertencia: Carga del sistema al 78%
+                </div>
+                <div class="console-line info">
+                    <span class="timestamp">[14:23:52]</span> Esperando instrucciones del usuario...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let consoleElement = document.getElementById('console');
+        let logCounter = 0;
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('es-ES');
+            const logLine = document.createElement('div');
+            logLine.className = `console-line ${type}`;
+            logLine.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            consoleElement.appendChild(logLine);
+            consoleElement.scrollTop = consoleElement.scrollHeight;
+
+            if (consoleElement.children.length > 50) {
+                consoleElement.removeChild(consoleElement.firstChild);
+            }
+        }
+
+        function iniciarOrquestacion() {
+            addLog('🚀 Iniciando proceso de orquestación...', 'info');
+            setTimeout(() => {
+                addLog('✓ Analizando contexto y prioridades', 'success');
+            }, 500);
+            setTimeout(() => {
+                addLog('✓ Distribuyendo tareas a agentes especializados', 'success');
+            }, 1000);
+            setTimeout(() => {
+                addLog('✓ Orquestación completada exitosamente', 'success');
+                updateMetric('tasksCompleted', 5);
+            }, 1500);
+        }
+
+        function analizarSistema() {
+            addLog('📊 Ejecutando análisis integral del sistema...', 'info');
+            setTimeout(() => {
+                addLog('✓ Rendimiento: ÓPTIMO', 'success');
+            }, 600);
+            setTimeout(() => {
+                addLog('✓ Recursos: 65% disponibles', 'success');
+            }, 1200);
+            setTimeout(() => {
+                addLog('⚠ Recomendación: Optimizar cache de agentes', 'warning');
+            }, 1800);
+        }
+
+        function sincronizarAgentes() {
+            addLog('🔄 Sincronizando agentes distribuidos...', 'info');
+            const agents = ['Agente-Alpha', 'Agente-Beta', 'Agente-Gamma', 'Agente-Delta'];
+            agents.forEach((agent, index) => {
+                setTimeout(() => {
+                    addLog(`✓ ${agent} sincronizado correctamente`, 'success');
+                }, (index + 1) * 400);
+            });
+            setTimeout(() => {
+                addLog('✓ Sincronización completada', 'success');
+                updateMetric('activeAgents', 2);
+            }, 2000);
+        }
+
+        function detenerProcesos() {
+            addLog('⏹️ Deteniendo procesos activos...', 'warning');
+            setTimeout(() => {
+                addLog('✓ Procesos detenidos de forma segura', 'success');
+            }, 800);
+            setTimeout(() => {
+                addLog('ℹ️ Sistema en modo STANDBY', 'info');
+            }, 1200);
+        }
+
+        function updateMetric(metricId, increment) {
+            const element = document.getElementById(metricId);
+            const currentValue = parseInt(element.textContent.replace(/[^0-9]/g, ''));
+            element.textContent = (currentValue + increment).toLocaleString();
+        }
+
+        // Simulación de actividad del sistema
+        setInterval(() => {
+            const messages = [
+                { text: 'Tarea #' + Math.floor(Math.random() * 10000) + ' procesada', type: 'success' },
+                { text: 'Agente optimizando recursos', type: 'info' },
+                { text: 'Checkeo de salud del sistema: OK', type: 'success' },
+                { text: 'Carga CPU: ' + Math.floor(Math.random() * 30 + 50) + '%', type: 'info' }
+            ];
+            
+            if (Math.random() > 0.8) {
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                addLog(randomMessage.text, randomMessage.type);
+            }
+        }, 5000);
+
+        // Actualizar métricas periódicamente
+        setInterval(() => {
+            if (Math.random() > 0.5) {
+                updateMetric('tasksCompleted', Math.floor(Math.random() * 3));
+            }
+        }, 8000);
+
+        // Log inicial
+        addLog('✨ AVIA Senior v8.0.0-DEMO listo para operar', 'success');
+    </script>
+</body>
+</html>

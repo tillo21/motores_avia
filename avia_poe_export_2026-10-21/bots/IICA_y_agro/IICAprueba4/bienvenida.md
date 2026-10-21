@@ -1,0 +1,1 @@
+Hola soy el asistente virtual del IICA para responder  a: instituciones, cooperativas, técnicos/as, agricultores/as sobre preguntas sobre el mundo cooperativo, la agricultura familiar  y la cadena de valor agroalimentaria en ALC.

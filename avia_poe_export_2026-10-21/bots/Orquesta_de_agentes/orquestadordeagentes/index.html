@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA·Studio v5.2 | Orquestador de Agentes</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700;9..144,900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg-primary:#f6f1e7;--bg-surface:#fff;--bg-card:#faf7f0;--bg-elevated:#eee9dd;
+  --border:#d8d0c0;--border-subtle:#e8e2d5;--border-focus:rgba(162,122,40,0.35);
+  --gold:#9c7a28;--gold-bright:#b8922d;--gold-glow:rgba(162,122,40,0.25);
+  --teal:#1a7a5a;--teal-glow:rgba(26,122,90,0.18);
+  --text-primary:#1a1a24;--text-secondary:#5a5650;--text-muted:#908a82;
+  --accent-red:#b83a3a;--accent-blue:#3a6ca5;
+  --font-display:'Fraunces',Georgia,serif;--font-body:'Outfit',system-ui,sans-serif;
+  --radius:14px;--radius-sm:8px;--radius-pill:100px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06);--shadow-md:0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.1);
+  --dot-color:rgba(160,150,130,0.18);
+}
+.dark{
+  --bg-primary:#0c0c14;--bg-surface:#151520;--bg-card:#1a1a28;--bg-elevated:#222232;
+  --border:#2c2c3c;--border-subtle:#202030;--border-focus:rgba(212,168,67,0.35);
+  --gold:#d4a843;--gold-bright:#f0c45a;--gold-glow:rgba(240,196,90,0.2);
+  --teal:#3ecf9e;--teal-glow:rgba(62,207,158,0.15);
+  --text-primary:#e4e0d8;--text-secondary:#a09a90;--text-muted:#605c56;
+  --accent-red:#e05252;--accent-blue:#6d9dc5;
+  --dot-color:rgba(100,100,140,0.12);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.2);--shadow-md:0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.4);
+}
+
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);background:var(--bg-primary);color:var(--text-primary);
+  min-height:100vh;overflow-x:hidden;line-height:1.6;position:relative;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse at 15% 0%,var(--gold-glow) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 100%,var(--teal-glow) 0%,transparent 50%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(circle,var(--dot-color) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+
+/* ── Header ─────────────────────────────────── */
+.app-header{
+  position:sticky;top:0;z-index:100;padding:1rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  background:color-mix(in srgb,var(--bg-primary) 85%,transparent);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border-subtle);
+}
+.brand{display:flex;align-items:center;gap:0.85rem}
+.logo-mark{
+  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--gold),var(--gold-bright));
+  font-family:var(--font-display);font-weight:900;font-size:1.5rem;color:#0c0c14;
+  transform:rotate(-3deg);flex-shrink:0;
+  box-shadow:0 2px 12px var(--gold-glow);
+}
+.brand-text h1{font-family:var(--font-display);font-size:1.35rem;font-weight:700;letter-spacing:-0.02em;line-height:1.15}
+.brand-text span{font-size:0.72rem;color:var(--text-muted);font-weight:500;letter-spacing:0.04em;text-transform:uppercase}
+.header-actions{display:flex;gap:0.5rem}
+.icon-btn{
+  width:40px;height:40px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+  transition:all 0.2s ease;
+}
+.icon-btn:hover{border-color:var(--gold);color:var(--gold);box-shadow:var(--shadow-sm)}
+
+/* ── Main Layout ────────────────────────────── */
+.app-main{
+  position:relative;z-index:1;max-width:860px;margin:0 auto;
+  padding:2rem 1.5rem 4rem;display:flex;flex-direction:column;gap:2rem;
+}
+
+/* ── Input Section ──────────────────────────── */
+.input-section{display:flex;flex-direction:column;gap:1rem}
+.input-label{
+  font-family:var(--font-display);font-size:1.6rem;font-weight:700;
+  line-height:1.25;letter-spacing:-0.02em;
+}
+.input-label em{font-style:normal;color:var(--gold)}
+.input-card{
+  background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow-md);transition:border-color 0.3s,box-shadow 0.3s;
+}
+.input-card:focus-within{border-color:var(--gold);box-shadow:0 0 0 3px var(--border-focus),var(--shadow-md)}
+.input-textarea{
+  width:100%;min-height:140px;max-height:420px;padding:1.25rem 1.25rem 0.75rem;
+  border:none;background:transparent;color:var(--text-primary);
+  font-family:var(--font-body);font-size:1rem;line-height:1.75;resize:vertical;outline:none;
+}
+.input-textarea::placeholder{color:var(--text-muted)}
+.input-footer{
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:0.75rem 1.25rem;border-top:1px solid var(--border-subtle);flex-wrap:wrap;
+}
+.mode-chips{display:flex;gap:0.4rem;flex-wrap:wrap;flex:1}
+.mode-chip{
+  padding:0.4rem 0.85rem;border-radius:var(--radius-pill);border:1px solid var(--border);
+  background:transparent;color:var(--text-secondary);font-family:var(--font-body);
+  font-size:0.82rem;font-weight:500;cursor:pointer;white-space:nowrap;
+  transition:all 0.2s ease;
+}
+.mode-chip:hover{border-color:var(--gold);color:var(--gold)}
+.mode-chip.active{background:var(--gold);border-color:var(--gold);color:#0c0c14;font-weight:600}
+.process-btn{
+  padding:0.7rem 1.75rem;border:none;border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,var(--gold),var(--gold-bright));color:#0c0c14;
+  font-family:var(--font-body);font-size:0.95rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:0.5rem;transition:all 0.25s ease;flex-shrink:0;
+}
+.process-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--gold-glow)}
+.process-btn:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none}
+.process-btn .spinner{display:none;width:16px;height:16px;border:2px solid rgba(12,12,20,0.3);border-top-color:#0c0c14;border-radius:50%;animation:spin 0.7s linear infinite}
+.process-btn.loading .spinner{display:block}
+.process-btn.loading .btn-icon{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Agent Pipeline ─────────────────────────── */
+.pipeline-section{overflow:hidden}
+.pipeline-track{
+  display:flex;align-items:center;gap:0;overflow-x:auto;
+  padding:0.5rem 0;scrollbar-width:none;-ms-overflow-style:none;
+}
+.pipeline-track::-webkit-scrollbar{display:none}
+.agent-node{
+  display:flex;flex-direction:column;align-items:center;gap:0.35rem;
+  flex-shrink:0;padding:0.4rem 0.5rem;cursor:default;transition:all 0.4s ease;
+}
+.agent-dot{
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:0.85rem;transition:all 0.4s ease;
+  background:var(--bg-elevated);color:var(--text-muted);border:1.5px solid var(--border-subtle);
+}
+.agent-node.activating .agent-dot{
+  border-color:var(--agent-color);color:var(--agent-color);
+  box-shadow:0 0 14px color-mix(in srgb,var(--agent-color) 40%,transparent);
+  animation:agent-pulse 0.8s ease-in-out infinite;
+}
+.agent-node.active .agent-dot{
+  background:var(--agent-color);color:#fff;border-color:var(--agent-color);
+  box-shadow:0 0 10px color-mix(in srgb,var(--agent-color) 30%,transparent);
+}
+.agent-node.complete .agent-dot{
+  background:var(--teal);color:#fff;border-color:var(--teal);
+  box-shadow:0 0 8px var(--teal-glow);
+}
+@keyframes agent-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.agent-name{
+  font-size:0.62rem;font-weight:600;color:var(--text-muted);text-align:center;
+  max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  transition:color 0.3s;
+}
+.agent-node.active .agent-name,.agent-node.activating .agent-name{color:var(--text-primary)}
+.agent-node.complete .agent-name{color:var(--teal)}
+.agent-connector{
+  width:20px;height:2px;flex-shrink:0;background:var(--border-subtle);
+  transition:background 0.4s;align-self:center;margin-bottom:1.2rem;
+}
+.agent-connector.lit{background:var(--teal)}
+
+/* ── Empty State ────────────────────────────── */
+.empty-state{
+  text-align:center;padding:2rem 1rem;
+  animation:fade-up 0.5s ease both;
+}
+.empty-icon{
+  font-size:2.5rem;color:var(--gold);margin-bottom:1rem;opacity:0.7;
+}
+.empty-state h2{
+  font-family:var(--font-display);font-size:1.3rem;font-weight:600;margin-bottom:0.75rem;
+}
+.empty-state > p{color:var(--text-secondary);font-size:0.95rem;max-width:520px;margin:0 auto 1.5rem;line-height:1.7}
+.deliverables{
+  display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-bottom:2rem;
+}
+.deliverable-tag{
+  padding:0.35rem 0.75rem;border-radius:var(--radius-pill);
+  background:color-mix(in srgb,var(--gold) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--gold) 25%,transparent);
+  font-size:0.8rem;font-weight:500;color:var(--gold);
+}
+.example-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;margin-top:1rem}
+.example-card{
+  text-align:left;padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-surface);cursor:pointer;transition:all 0.2s;font-family:var(--font-body);
+}
+.example-card:hover{border-color:var(--gold);box-shadow:var(--shadow-sm);transform:translateY(-2px)}
+.example-card strong{display:block;font-size:0.85rem;color:var(--text-primary);margin-bottom:0.35rem}
+.example-card span{font-size:0.8rem;color:var(--text-muted);line-height:1.5}
+
+/* ── Output Section ─────────────────────────── */
+.output-section{animation:fade-up 0.4s ease both}
+@keyframes fade-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.output-card{
+  background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-md);overflow:hidden;
+}
+.output-header{
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:1rem 1.25rem;border-bottom:1px solid var(--border-subtle);
+}
+.output-header h2{font-family:var(--font-display);font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:0.5rem}
+.output-header h2 i{color:var(--gold);font-size:0.9rem}
+.output-actions{display:flex;gap:0.4rem}
+.action-btn{
+  padding:0.45rem 0.85rem;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--bg-surface);color:var(--text-secondary);font-family:var(--font-body);
+  font-size:0.8rem;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:0.4rem;
+  transition:all 0.2s;
+}
+.action-btn:hover{border-color:var(--gold);color:var(--gold)}
+.action-btn.copied{border-color:var(--teal);color:var(--teal)}
+
+.output-content{
+  padding:1.5rem 1.5rem 2rem;font-size:0.95rem;line-height:1.8;min-height:80px;
+  overflow-wrap:break-word;word-break:break-word;
+}
+.output-content.streaming::after{
+  content:'';display:inline-block;width:8px;height:18px;background:var(--gold);
+  border-radius:2px;vertical-align:text-bottom;margin-left:2px;
+  animation:cursor-blink 0.7s step-end infinite;
+}
+@keyframes cursor-blink{50%{opacity:0}}
+
+/* Markdown styles inside output */
+.output-content h1{font-family:var(--font-display);font-size:1.4rem;font-weight:700;margin:1.5rem 0 0.75rem;color:var(--text-primary);border-bottom:1px solid var(--border-subtle);padding-bottom:0.5rem}
+.output-content h2{font-family:var(--font-display);font-size:1.15rem;font-weight:600;margin:1.25rem 0 0.6rem;color:var(--gold)}
+.output-content h3{font-family:var(--font-display);font-size:1rem;font-weight:600;margin:1rem 0 0.5rem;color:var(--text-primary)}
+.output-content h4{font-size:0.9rem;font-weight:700;margin:0.85rem 0 0.4rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em}
+.output-content p{margin:0.5rem 0}
+.output-content ul,.output-content ol{margin:0.5rem 0;padding-left:1.5rem}
+.output-content li{margin:0.25rem 0;color:var(--text-secondary)}
+.output-content li::marker{color:var(--gold)}
+.output-content strong{color:var(--text-primary);font-weight:600}
+.output-content em{color:var(--gold);font-style:italic}
+.output-content code{
+  background:var(--bg-elevated);padding:0.15rem 0.45rem;border-radius:4px;
+  font-size:0.85em;font-family:'JetBrains Mono','Fira Code',monospace;color:var(--accent-blue);
+}
+.output-content pre{
+  background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);
+  padding:1rem 1.25rem;overflow-x:auto;margin:0.75rem 0;
+}
+.output-content pre code{background:none;padding:0;font-size:0.82rem;color:var(--text-primary)}
+.output-content blockquote{
+  border-left:3px solid var(--gold);padding:0.5rem 1rem;margin:0.75rem 0;
+  background:color-mix(in srgb,var(--gold) 5%,transparent);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  color:var(--text-secondary);
+}
+.output-content hr{border:none;height:1px;background:var(--border-subtle);margin:1.5rem 0}
+.output-content a{color:var(--accent-blue);text-decoration:underline;text-underline-offset:2px}
+.output-content table{border-collapse:collapse;width:100%;margin:0.75rem 0;font-size:0.88rem}
+.output-content th,.output-content td{padding:0.5rem 0.75rem;border:1px solid var(--border-subtle);text-align:left}
+.output-content th{background:var(--bg-elevated);font-weight:600;color:var(--text-primary)}
+
+.output-loading{
+  display:flex;align-items:center;gap:0.75rem;color:var(--text-muted);font-size:0.9rem;padding:0.5rem 0;
+}
+.output-loading .dot-loader{display:flex;gap:4px}
+.output-loading .dot-loader span{
+  width:6px;height:6px;background:var(--gold);border-radius:50%;
+  animation:dot-bounce 1.2s ease-in-out infinite;
+}
+.output-loading .dot-loader span:nth-child(2){animation-delay:0.15s}
+.output-loading .dot-loader span:nth-child(3){animation-delay:0.3s}
+@keyframes dot-bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+
+/* ── Agents Panel Overlay ───────────────────── */
+.agents-overlay{
+  position:fixed;inset:0;z-index:500;display:none;
+  background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.agents-overlay.active{display:block}
+.agents-panel{
+  position:fixed;top:0;right:0;bottom:0;width:380px;max-width:92vw;z-index:501;
+  background:var(--bg-surface);border-left:1px solid var(--border);
+  box-shadow:-8px 0 32px rgba(0,0,0,0.15);
+  transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.agents-overlay.active .agents-panel{transform:translateX(0)}
+.agents-panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.25rem 1.5rem;border-bottom:1px solid var(--border-subtle);
+  position:sticky;top:0;background:var(--bg-surface);z-index:1;
+}
+.agents-panel-header h3{font-family:var(--font-display);font-size:1.15rem;font-weight:600}
+.agents-panel-desc{padding:1rem 1.5rem 0.5rem;font-size:0.85rem;color:var(--text-muted);line-height:1.6}
+.agents-list{padding:0.5rem 1rem 2rem;display:flex;flex-direction:column;gap:0.5rem}
+.agent-item{
+  display:flex;align-items:flex-start;gap:0.85rem;padding:0.85rem;border-radius:var(--radius-sm);
+  border:1px solid transparent;transition:all 0.2s;
+}
+.agent-item:hover{background:var(--bg-card);border-color:var(--border-subtle)}
+.agent-item-icon{
+  width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:0.9rem;flex-shrink:0;color:#fff;
+}
+.agent-item-info{flex:1;min-width:0}
+.agent-item-name{font-weight:600;font-size:0.88rem;margin-bottom:0.15rem}
+.agent-item-desc{font-size:0.8rem;color:var(--text-muted);line-height:1.5}
+
+/* ── Toast ──────────────────────────────────── */
+.toast-container{
+  position:fixed;bottom:1.5rem;right:1.5rem;z-index:600;display:flex;
+  flex-direction:column-reverse;gap:0.5rem;pointer-events:none;
+}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:0.65rem;
+  padding:0.75rem 1.1rem;border-radius:var(--radius-sm);
+  background:var(--bg-surface);border:1px solid var(--border);box-shadow:var(--shadow-lg);
+  font-size:0.85rem;color:var(--text-primary);min-width:240px;max-width:380px;
+  animation:toast-in 0.35s ease;
+}
+.toast.out{animation:toast-out 0.3s ease forwards}
+@keyframes toast-in{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toast-out{to{opacity:0;transform:translateX(30px)}}
+.toast i{font-size:1rem;flex-shrink:0}
+.toast.ok{border-left:3px solid var(--teal)}.toast.ok i{color:var(--teal)}
+.toast.err{border-left:3px solid var(--accent-red)}.toast.err i{color:var(--accent-red)}
+.toast.warn{border-left:3px solid var(--gold)}.toast.warn i{color:var(--gold)}
+
+/* ── Custom Modal ───────────────────────────── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:700;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.modal-overlay.active{display:flex}
+.modal-box{
+  background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:2rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);text-align:center;
+}
+.modal-icon{font-size:2.2rem;margin-bottom:0.75rem}
+.modal-title{font-family:var(--font-display);font-size:1.1rem;font-weight:600;margin-bottom:0.5rem}
+.modal-body{font-size:0.9rem;color:var(--text-secondary);line-height:1.65;margin-bottom:1.5rem;white-space:pre-line}
+.modal-btns{display:flex;gap:0.5rem;justify-content:center}
+.modal-btn{
+  padding:0.6rem 1.3rem;border:none;border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-weight:600;font-size:0.9rem;cursor:pointer;transition:all 0.2s;
+}
+.modal-btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold-bright));color:#0c0c14}
+.modal-btn.ghost{background:var(--bg-elevated);color:var(--text-secondary);border:1px solid var(--border)}
+.modal-btn:hover{transform:translateY(-1px)}
+
+/* ── Footer ─────────────────────────────────── */
+.app-footer{
+  position:relative;z-index:1;text-align:center;padding:2rem 1.5rem;
+  border-top:1px solid var(--border-subtle);color:var(--text-muted);font-size:0.78rem;
+}
+.app-footer span{color:var(--gold);font-weight:600}
+
+/* ── Responsive ─────────────────────────────── */
+@media(max-width:640px){
+  .app-header{padding:0.75rem 1rem}
+  .brand-text h1{font-size:1.1rem}
+  .app-main{padding:1.25rem 1rem 3rem;gap:1.5rem}
+  .input-label{font-size:1.25rem}
+  .input-footer{flex-direction:column;align-items:stretch}
+  .mode-chips{justify-content:center}
+  .process-btn{width:100%;justify-content:center}
+  .output-content{padding:1rem 1rem 1.5rem}
+  .example-cards{grid-template-columns:1fr}
+  .pipeline-track{padding:0.5rem 0.25rem}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div class="logo-mark">A</div>
+    <div class="brand-text">
+      <h1>AVIA·Studio</h1>
+      <span>v5.2 — Orquestador de Agentes</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="agentsBtn" title="Ver Agentes AVIA"><i class="fas fa-cubes"></i></button>
+  </div>
+</header>
+
+<main class="app-main">
+  <!-- Input Section -->
+  <section class="input-section">
+    <label class="input-label">Convierte tu <em>idea</em> en estructura ejecutable</label>
+    <div class="input-card">
+      <textarea class="input-textarea" id="userInput" placeholder="Escribe tu idea, prompt, claim, proyecto o texto aqui..."></textarea>
+      <div class="input-footer">
+        <div class="mode-chips" id="modeChips">
+          <button class="mode-chip active" data-mode="general">General</button>
+          <button class="mode-chip" data-mode="prompt">Mejorar Prompt</button>
+          <button class="mode-chip" data-mode="audit">Auditar Claim</button>
+          <button class="mode-chip" data-mode="pipeline">Crear Pipeline</button>
+          <button class="mode-chip" data-mode="master">Prompt Maestro</button>
+        </div>
+        <button class="process-btn" id="processBtn">
+          <div class="spinner"></div>
+          <i class="fas fa-bolt btn-icon"></i>
+          <span class="btn-text">Procesar</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Agent Pipeline -->
+  <section class="pipeline-section" id="pipelineSection">
+    <div class="pipeline-track" id="pipelineTrack"></div>
+  </section>
+
+  <!-- Empty State (shown initially) -->
+  <section class="empty-state" id="emptyState">
+    <div class="empty-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+    <h2>Tu estudio de ingenieria de prompts</h2>
+    <p>Escribe tu idea, prompt, claim o proyecto arriba. AVIA-Studio activara 10 agentes especializados para producir un resultado estructurado, auditable y listo para usar.</p>
+    <div class="deliverables">
+      <span class="deliverable-tag">Diagnostico</span>
+      <span class="deliverable-tag">Version Mejorada</span>
+      <span class="deliverable-tag">Prompt Maestro</span>
+      <span class="deliverable-tag">Version Compacta</span>
+      <span class="deliverable-tag">Flujo Perfecto</span>
+      <span class="deliverable-tag">Siguiente Paso</span>
+    </div>
+    <div class="example-cards" id="exampleCards">
+      <button class="example-card" data-mode="prompt" data-text="Quiero un prompt para generar imagenes de producto para un e-commerce de moda sostenible, que transmitan calidad y estilo minimalista.">
+        <strong>Mejorar prompt</strong>
+        <span>"Quiero un prompt para generar imagenes de producto para e-commerce..."</span>
+      </button>
+      <button class="example-card" data-mode="audit" data-text="El 80% de las startups fracasan en los primeros 3 anhos segun un estudio de Harvard Business Review.">
+        <strong>Auditar claim</strong>
+        <span>"El 80% de las startups fracasan en los primeros 3 anhos..."</span>
+      </button>
+      <button class="example-card" data-mode="master" data-text="Un asistente de nutricion personalizada con IA que adapte planes alimenticios segun objetivos, restricciones y preferencias del usuario.">
+        <strong>Prompt maestro</strong>
+        <span>"Un asistente de nutricion personalizada con IA..."</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Output Section (hidden initially) -->
+  <section class="output-section" id="outputSection" style="display:none;">
+    <div class="output-card">
+      <div class="output-header">
+        <h2><i class="fas fa-scroll"></i> Resultado AVIA</h2>
+        <div class="output-actions">
+          <button class="action-btn" id="copyBtn" title="Copiar todo"><i class="fas fa-copy"></i> Copiar</button>
+          <button class="action-btn" id="newBtn" title="Nueva consulta"><i class="fas fa-plus"></i> Nueva</button>
+        </div>
+      </div>
+      <div class="output-content" id="outputContent"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Agents Side Panel -->
+<div class="agents-overlay" id="agentsOverlay">
+  <div class="agents-panel">
+    <div class="agents-panel-header">
+      <h3><i class="fas fa-cubes"></i> Agentes AVIA</h3>
+      <button class="icon-btn" id="closeAgentsBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <p class="agents-panel-desc">10 agentes especializados trabajan en secuencia para analizar, estructurar, auditar y entregar resultados listos para usar.</p>
+    <div class="agents-list" id="agentsList"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" id="modalIcon"></div>
+    <h3 class="modal-title" id="modalTitle"></h3>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-btns" id="modalBtns"></div>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <p><span>AVIA·Studio v5.2</span> — Orquestador de Agentes AVIA</p>
+  <p style="margin-top:0.3rem">10 agentes | Español | Trazabilidad Pukkart</p>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Theme Detection
+   ═══════════════════════════════════════════════ */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+  if (event.matches) { document.documentElement.classList.add('dark'); }
+  else { document.documentElement.classList.remove('dark'); }
+});
+
+/* ═══════════════════════════════════════════════
+   Marked.js Config
+   ═══════════════════════════════════════════════ */
+if (typeof marked !== 'undefined' && marked.setOptions) {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+function renderMd(text) {
+  if (typeof marked !== 'undefined' && marked.parse) {
+    try { return marked.parse(text); } catch (e) { /* fallback */ }
+  }
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+}
+
+/* ═══════════════════════════════════════════════
+   Agent Data
+   ═══════════════════════════════════════════════ */
+var AGENTS = [
+  { id: 'router', short: 'Router', name: 'AVIA-Router', desc: 'Clasifica intencion, dominio y riesgo.', icon: 'fa-route', color: '#c49730' },
+  { id: 'ontologia', short: 'Ontolog.', name: 'AVIA-Ontologia', desc: 'Ordena conceptos, roles y relaciones.', icon: 'fa-diagram-project', color: '#7c6dcf' },
+  { id: 'auditor', short: 'Auditor', name: 'AVIA-Auditor', desc: 'Verifica claims, cifras, supuestos y fuentes.', icon: 'fa-shield-halved', color: '#2daa7e' },
+  { id: 'evidence', short: 'Evidence', name: 'AVIA-Evidence', desc: 'Indica evidencia encontrada y faltante.', icon: 'fa-microscope', color: '#5a8fbf' },
+  { id: 'pukkart', short: 'Pukkart', name: 'AVIA-Pukkart', desc: 'Genera trazabilidad y log auditable.', icon: 'fa-fingerprint', color: '#c47d52' },
+  { id: 'synapse', short: 'Synapse', name: 'AVIA-Synapse', desc: 'Conecta ideas y memoria.', icon: 'fa-brain', color: '#9b72cf' },
+  { id: 'harmonia', short: 'Harmon.', name: 'AVIA+Harmonia', desc: 'Detecta coherencia, contradicciones y cruces.', icon: 'fa-scale-balanced', color: '#cf7272' },
+  { id: 'vigilance', short: 'Vigilance', name: 'AVIA-Vigilance', desc: 'Detecta fraude, abuso, suplantacion y riesgos.', icon: 'fa-eye', color: '#d64545' },
+  { id: 'transmedia', short: 'Transm.', name: 'AVIA-Transmedia', desc: 'Convierte conocimiento en relato responsable.', icon: 'fa-feather-pointed', color: '#4aadbe' },
+  { id: 'studio', short: 'Studio', name: 'AVIA-Studio', desc: 'Entrega la salida final lista para copiar o ejecutar.', icon: 'fa-gem', color: '#d4a843' }
+];
+
+/* ═══════════════════════════════════════════════
+   System Prompt
+   ═══════════════════════════════════════════════ */
+var SYSTEM_PROMPT = [
+  'Eres AVIA-Studio v5.2, un orquestador de agentes AVIA especializado en convertir ideas, textos, prompts, proyectos y claims en estructuras claras, auditables y ejecutables.',
+  'Trabajas siempre en espanol. Tu tono es profesional, humano, preciso y no sensacionalista.',
+  '',
+  'Tu mision: 1) entender la intencion del usuario, 2) corregir y mejorar su prompt o idea, 3) ordenarla ontologicamente, 4) activar internamente los agentes AVIA necesarios, 5) producir un prompt maestro, flujo, pipeline, plantilla o salida lista para usar, 6) auditar riesgos, evidencias y limites, 7) proponer el siguiente paso.',
+  '',
+  'Agentes internos que debes activar segun corresponda:',
+  '- AVIA-Router: clasifica intencion, dominio y riesgo.',
+  '- AVIA-Ontologia: ordena conceptos, roles y relaciones.',
+  '- AVIA-Auditor: verifica claims, cifras, supuestos y fuentes.',
+  '- AVIA-Evidence: indica evidencia encontrada y evidencia faltante.',
+  '- AVIA-Pukkart: genera trazabilidad y log auditable.',
+  '- AVIA-Synapse: conecta ideas y memoria.',
+  '- AVIA+Harmonia: detecta coherencia, contradicciones y cruces de dominio.',
+  '- AVIA-Vigilance: detecta fraude, abuso, suplantacion, manipulacion y riesgos.',
+  '- AVIA-Transmedia: convierte conocimiento en relato responsable.',
+  '- AVIA-Studio: entrega la salida final lista para copiar o ejecutar.',
+  '',
+  'Reglas obligatorias:',
+  '- No inventes datos, fuentes, fechas, importes, leyes, convocatorias ni certificaciones.',
+  '- Distingue HECHO, INTERPRETACION, HIPOTESIS, PREDICCION y OPINION.',
+  '- Si falta evidencia, marca "requiere verificacion" o "no verificable todavia".',
+  '- No des instrucciones para fraude, corrupcion, suplantacion, trampas o elusion de controles.',
+  '- En acusaciones graves, salud, elecciones, justicia o reputacion, usa lenguaje prudente y exige fuentes primarias.',
+  '- Si el usuario esta cansado, reduce carga cognitiva, resume y toma decisiones razonables explicando supuestos.',
+  '',
+  'Cuando el usuario pida un prompt maestro o procesamiento, entrega:',
+  '1. **Diagnostico breve** de la entrada',
+  '2. **Version mejorada** de la idea/prompt',
+  '3. **Prompt maestro completo** listo para usar',
+  '4. **Version compacta** del prompt',
+  '5. **Flujo perfecto** (pasos de ejecucion)',
+  '6. **JSON/YAML base** si procede',
+  '7. **Siguiente paso recomendado**',
+  '',
+  'Criterio de excelencia: La respuesta debe ser clara, estructurada, aplicable, trazable, segura, humana y lista para copiar/pegar.',
+  'Usa formato Markdown con encabezados ## para cada seccion.'
+].join('\n');
+
+var MODE_INSTRUCTIONS = {
+  general: '',
+  prompt: 'El usuario quiere mejorar y perfeccionar el siguiente prompt. Aplica todo tu flujo AVIA-Studio para entregar: diagnostico, version mejorada, prompt maestro, version compacta, flujo y siguiente paso.\n\n',
+  audit: 'El usuario quiere auditar el siguiente claim o afirmacion. Verifica claims, cifras, supuestos, evidencia y riesgos. Marca claramente que es HECHO, INTERPRETACION, HIPOTESIS o OPINION.\n\n',
+  pipeline: 'El usuario quiere crear un pipeline o flujo de trabajo estructurado. Disena el flujo, define pasos, roles, validaciones y entregables.\n\n',
+  master: 'El usuario quiere generar un prompt maestro completo a partir de la siguiente idea o concepto. Entrega el prompt maestro completo listo para copiar/pegar.\n\n'
+};
+
+/* ═══════════════════════════════════════════════
+   State
+   ═══════════════════════════════════════════════ */
+var state = {
+  mode: 'general',
+  isProcessing: false,
+  rawResponse: '',
+  pipelineInterval: null,
+  pipelineIdx: 0
+};
+
+/* ═══════════════════════════════════════════════
+   Toast
+   ═══════════════════════════════════════════════ */
+function showToast(msg, type) {
+  var icons = { ok: 'fa-check-circle', err: 'fa-exclamation-circle', warn: 'fa-exclamation-triangle' };
+  var t = document.createElement('div');
+  t.className = 'toast ' + (type || 'ok');
+  t.innerHTML = '<i class="fas ' + (icons[type] || icons.ok) + '"></i><span>' + msg + '</span>';
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(function() { t.classList.add('out'); t.addEventListener('animationend', function() { t.remove(); }); }, 3500);
+}
+
+/* ═══════════════════════════════════════════════
+   Modal
+   ═══════════════════════════════════════════════ */
+var modalResolver = null;
+function showModal(opts) {
+  document.getElementById('modalIcon').textContent = opts.icon || '';
+  document.getElementById('modalTitle').textContent = opts.title || '';
+  document.getElementById('modalBody').textContent = opts.body || '';
+  var btns = document.getElementById('modalBtns');
+  btns.innerHTML = '';
+  (opts.buttons || []).forEach(function(b) {
+    var el = document.createElement('button');
+    el.className = 'modal-btn ' + (b.cls || 'primary');
+    el.textContent = b.text;
+    el.onclick = function() { closeModal(b.value); };
+    btns.appendChild(el);
+  });
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal(val) {
+  document.getElementById('modalOverlay').classList.remove('active');
+  if (modalResolver) { modalResolver(val); modalResolver = null; }
+}
+function showConfirmModal(msg) {
+  return new Promise(function(resolve) {
+    modalResolver = resolve;
+    showModal({
+      icon: '\uD83D\uDE80',
+      title: 'Confirmar',
+      body: msg,
+      buttons: [
+        { text: 'Cancelar', cls: 'ghost', value: false },
+        { text: 'Confirmar', cls: 'primary', value: true }
+      ]
+    });
+  });
+}
+function showAlertModal(msg, type) {
+  var icons = { warning: '\u26A0\uFE0F', success: '\u2705', error: '\u274C' };
+  var titles = { warning: 'Aviso', success: 'Exito', error: 'Error' };
+  return new Promise(function(resolve) {
+    modalResolver = resolve;
+    showModal({
+      icon: icons[type] || '\u2139\uFE0F',
+      title: titles[type] || 'Info',
+      body: msg,
+      buttons: [{ text: 'Aceptar', cls: 'primary', value: true }]
+    });
+  });
+}
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target.id === 'modalOverlay') closeModal(false);
+});
+
+/* ═══════════════════════════════════════════════
+   Pipeline Rendering
+   ═══════════════════════════════════════════════ */
+function buildPipeline() {
+  var track = document.getElementById('pipelineTrack');
+  track.innerHTML = '';
+  AGENTS.forEach(function(agent, i) {
+    if (i > 0) {
+      var conn = document.createElement('div');
+      conn.className = 'agent-connector';
+      conn.id = 'conn-' + i;
+      track.appendChild(conn);
+    }
+    var node = document.createElement('div');
+    node.className = 'agent-node';
+    node.id = 'node-' + agent.id;
+    node.style.setProperty('--agent-color', agent.color);
+    node.innerHTML =
+      '<div class="agent-dot"><i class="fas ' + agent.icon + '"></i></div>' +
+      '<div class="agent-name">' + agent.short + '</div>';
+    track.appendChild(node);
+  });
+}
+
+function startPipelineAnim() {
+  resetPipelineAnim();
+  state.pipelineIdx = 0;
+  state.pipelineInterval = setInterval(function() {
+    var nodes = document.querySelectorAll('.agent-node');
+    var connectors = document.querySelectorAll('.agent-connector');
+    if (state.pipelineIdx > 0 && state.pipelineIdx - 1 < nodes.length) {
+      nodes[state.pipelineIdx - 1].className = 'agent-node active';
+      if (state.pipelineIdx - 1 < connectors.length) connectors[state.pipelineIdx - 1].classList.add('lit');
+    }
+    if (state.pipelineIdx < nodes.length) {
+      nodes[state.pipelineIdx].className = 'agent-node activating';
+      nodes[state.pipelineIdx].style.setProperty('--agent-color', AGENTS[state.pipelineIdx].color);
+      state.pipelineIdx++;
+    } else {
+      clearInterval(state.pipelineInterval);
+      state.pipelineInterval = null;
+    }
+  }, 900);
+}
+
+function completePipelineAnim() {
+  if (state.pipelineInterval) { clearInterval(state.pipelineInterval); state.pipelineInterval = null; }
+  document.querySelectorAll('.agent-node').forEach(function(n) { n.className = 'agent-node complete'; });
+  document.querySelectorAll('.agent-connector').forEach(function(c) { c.classList.add('lit'); });
+}
+
+function resetPipelineAnim() {
+  if (state.pipelineInterval) { clearInterval(state.pipelineInterval); state.pipelineInterval = null; }
+  document.querySelectorAll('.agent-node').forEach(function(n) { n.className = 'agent-node'; });
+  document.querySelectorAll('.agent-connector').forEach(function(c) { c.classList.remove('lit'); });
+}
+
+/* ═══════════════════════════════════════════════
+   Agents Panel
+   ═══════════════════════════════════════════════ */
+function buildAgentsList() {
+  var list = document.getElementById('agentsList');
+  list.innerHTML = AGENTS.map(function(a) {
+    return '<div class="agent-item"><div class="agent-item-icon" style="background:' + a.color + '"><i class="fas ' + a.icon + '"></i></div><div class="agent-item-info"><div class="agent-item-name">' + a.name + '</div><div class="agent-item-desc">' + a.desc + '</div></div></div>';
+  }).join('');
+}
+
+function openAgentsPanel() { document.getElementById('agentsOverlay').classList.add('active'); }
+function closeAgentsPanel() { document.getElementById('agentsOverlay').classList.remove('active'); }
+
+document.getElementById('agentsBtn').addEventListener('click', openAgentsPanel);
+document.getElementById('closeAgentsBtn').addEventListener('click', closeAgentsPanel);
+document.getElementById('agentsOverlay').addEventListener('click', function(e) {
+  if (e.target.id === 'agentsOverlay') closeAgentsPanel();
+});
+
+/* ═══════════════════════════════════════════════
+   Mode Chips
+   ═══════════════════════════════════════════════ */
+document.getElementById('modeChips').addEventListener('click', function(e) {
+  var chip = e.target.closest('.mode-chip');
+  if (!chip) return;
+  document.querySelectorAll('.mode-chip').forEach(function(c) { c.classList.remove('active'); });
+  chip.classList.add('active');
+  state.mode = chip.dataset.mode;
+});
+
+/* ═══════════════════════════════════════════════
+   Example Cards
+   ═══════════════════════════════════════════════ */
+document.getElementById('exampleCards').addEventListener('click', function(e) {
+  var card = e.target.closest('.example-card');
+  if (!card) return;
+  document.getElementById('userInput').value = card.dataset.text;
+  var mode = card.dataset.mode;
+  document.querySelectorAll('.mode-chip').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.mode === mode);
+  });
+  state.mode = mode;
+  document.getElementById('userInput').focus();
+});
+
+/* ═══════════════════════════════════════════════
+   Poe API Handler
+   ═══════════════════════════════════════════════ */
+if (typeof window.Poe !== 'undefined' && window.Poe.registerHandler) {
+  window.Poe.registerHandler('avia-handler', function(result) {
+    var msg = result.responses[0];
+    if (!msg) return;
+
+    if (msg.status === 'error') {
+      state.rawResponse = msg.statusText || 'Error desconocido';
+      document.getElementById('outputContent').innerHTML =
+        '<div style="color:var(--accent-red);"><strong>Error:</strong> ' + (msg.statusText || 'Error desconocido') + '</div>';
+      document.getElementById('outputContent').classList.remove('streaming');
+      setProcessing(false);
+      completePipelineAnim();
+      showToast('Error al procesar', 'err');
+    } else if (msg.status === 'incomplete') {
+      state.rawResponse = msg.content;
+      document.getElementById('outputContent').innerHTML = renderMd(msg.content);
+      document.getElementById('outputContent').classList.add('streaming');
+    } else if (msg.status === 'complete') {
+      state.rawResponse = msg.content;
+      document.getElementById('outputContent').innerHTML = renderMd(msg.content);
+      document.getElementById('outputContent').classList.remove('streaming');
+      setProcessing(false);
+      completePipelineAnim();
+      showToast('Proceso completado', 'ok');
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Process Logic
+   ═══════════════════════════════════════════════ */
+function setProcessing(val) {
+  state.isProcessing = val;
+  var btn = document.getElementById('processBtn');
+  btn.disabled = val;
+  btn.classList.toggle('loading', val);
+  btn.querySelector('.btn-text').textContent = val ? 'Procesando...' : 'Procesar';
+}
+
+async function processInput() {
+  var text = document.getElementById('userInput').value.trim();
+  if (!text) { showToast('Escribe algo para procesar', 'warn'); return; }
+  if (state.isProcessing) return;
+
+  // Show output section, hide empty state
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('outputSection').style.display = 'block';
+
+  // Reset output
+  state.rawResponse = '';
+  var oc = document.getElementById('outputContent');
+  oc.innerHTML = '<div class="output-loading"><div class="dot-loader"><span></span><span></span><span></span></div><span>Activando agentes AVIA...</span></div>';
+  oc.classList.remove('streaming');
+
+  setProcessing(true);
+  startPipelineAnim();
+
+  // Build message
+  var modeInstr = MODE_INSTRUCTIONS[state.mode] || '';
+  var fullMessage = SYSTEM_PROMPT + '\n\n---\n\n' + modeInstr + 'Entrada del usuario:\n' + text;
+
+  if (typeof window.Poe !== 'undefined' && window.Poe.sendUserMessage) {
+    try {
+      await window.Poe.sendUserMessage('@Claude-Sonnet-4.6 ' + fullMessage, {
+        handler: 'avia-handler',
+        stream: true,
+        openChat: false,
+        parameters: {}
+      });
+    } catch (err) {
+      oc.innerHTML = '<div style="color:var(--accent-red);"><strong>Error:</strong> ' + (err.message || err.errorType || String(err)) + '</div>';
+      oc.classList.remove('streaming');
+      setProcessing(false);
+      completePipelineAnim();
+      showToast('Error: ' + (err.errorType || 'desconocido'), 'err');
+    }
+  } else {
+    // Offline / no Poe API
+    oc.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-muted);"><p style="font-size:1.1rem;margin-bottom:0.5rem;"><i class="fas fa-wifi" style="color:var(--gold);margin-right:0.5rem;"></i><strong>API de Poe no disponible</strong></p><p>Para procesar tu solicitud, abre esta aplicacion desde <strong>Poe</strong>.</p><p style="margin-top:1rem;font-size:0.85rem;">La aplicacion necesita conectarse a Claude-Sonnet-4.6 a traves de la plataforma Poe para activar los agentes AVIA.</p></div>';
+    oc.classList.remove('streaming');
+    setProcessing(false);
+    resetPipelineAnim();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Buttons & Events
+   ═══════════════════════════════════════════════ */
+document.getElementById('processBtn').addEventListener('click', processInput);
+
+document.getElementById('userInput').addEventListener('keydown', function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); processInput(); }
+});
+
+document.getElementById('copyBtn').addEventListener('click', function() {
+  if (!state.rawResponse) { showToast('Nada que copiar', 'warn'); return; }
+  try {
+    navigator.clipboard.writeText(state.rawResponse);
+    var btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+    showToast('Copiado al portapapeles', 'ok');
+    setTimeout(function() {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+    }, 2000);
+  } catch (err) {
+    showToast('No se pudo copiar', 'err');
+  }
+});
+
+document.getElementById('newBtn').addEventListener('click', function() {
+  document.getElementById('userInput').value = '';
+  document.getElementById('outputSection').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+  state.rawResponse = '';
+  resetPipelineAnim();
+  document.getElementById('userInput').focus();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('agentsOverlay').classList.contains('active')) closeAgentsPanel();
+    if (document.getElementById('modalOverlay').classList.contains('active')) closeModal(false);
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   Init
+   ═══════════════════════════════════════════════ */
+buildPipeline();
+buildAgentsList();
+</script>
+</body>
+</html>
+

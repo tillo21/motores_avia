@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Sistema de Validación de Sintaxis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .validator-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .title-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .title-section h1 {
+            font-size: 2.5rem;
+            color: #00d9ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .title-section p {
+            color: #94a3b8;
+        }
+
+        .editor-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+        }
+
+        .editor-label {
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        #codeInput {
+            width: 100%;
+            min-height: 200px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #fff;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-validate {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+        }
+
+        .btn-validate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-clear {
+            background: #334155;
+            color: #fff;
+        }
+
+        .btn-clear:hover {
+            background: #475569;
+        }
+
+        .results-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid #334155;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .result-success {
+            border-left: 4px solid #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .result-error {
+            border-left: 4px solid #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .result-warning {
+            border-left: 4px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-size: 1.125rem;
+        }
+
+        .error-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        .error-list li {
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+        }
+
+        .corrected-code {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #0f172a;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="validator-container">
+        <div class="title-section">
+            <h1>🛡️ Validador de Sintaxis AVIA</h1>
+            <p>Sistema de auto-corrección automática de código JavaScript</p>
+        </div>
+
+        <div class="editor-section">
+            <div class="editor-label">Ingresa tu código JavaScript:</div>
+            <textarea id="codeInput" placeholder="function ejemplo() {
+    console.log('Hola mundo');
+// Prueba con código incompleto..."></textarea>
+            
+            <div class="button-group">
+                <button class="btn-validate" onclick="validarCodigo()">🔍 Validar y Auto-Corregir</button>
+                <button class="btn-clear" onclick="limpiar()">🗑️ Limpiar</button>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultSection"></div>
+    </div>
+
+    <script>
+        // Sistema de validación de sintaxis
+        const ValidadorSintaxis = {
+            contarCaracteres: (codigo, char) => {
+                return (codigo.match(new RegExp('\\' + char, 'g')) || []).length;
+            },
+
+            validar: (codigo) => {
+                const errores = [];
+
+                // Validar llaves
+                const abreLlaves = this.contarCaracteres(codigo, '{');
+                const cierraLlaves = this.contarCaracteres(codigo, '}');
+                if (abreLlaves !== cierraLlaves) {
+                    errores.push({
+                        tipo: 'llaves',
+                        mensaje: `Faltan ${Math.abs(abreLlaves - cierraLlaves)} llave(s) de ${abreLlaves > cierraLlaves ? 'cierre' : 'apertura'}`,
+                        faltantes: abreLlaves - cierraLlaves
+                    });
+                }
+
+                // Validar paréntesis
+                const abreParentesis = this.contarCaracteres(codigo, '(');
+                const cierraParentesis = this.contarCaracteres(codigo, ')');
+                if (abreParentesis !== cierraParentesis) {
+                    errores.push({
+                        tipo: 'parentesis',
+                        mensaje: `Faltan ${Math.abs(abreParentesis - cierraParentesis)} paréntesis de ${abreParentesis > cierraParentesis ? 'cierre' : 'apertura'}`,
+                        faltantes: abreParentesis - cierraParentesis
+                    });
+                }
+
+                // Validar corchetes
+                const abreCorchetes = this.contarCaracteres(codigo, '[');
+                const cierraCorchetes = this.contarCaracteres(codigo, ']');
+                if (abreCorchetes !== cierraCorchetes) {
+                    errores.push({
+                        tipo: 'corchetes',
+                        mensaje: `Faltan ${Math.abs(abreCorchetes - cierraCorchetes)} corchete(s) de ${abreCorchetes > cierraCorchetes ? 'cierre' : 'apertura'}`,
+                        faltantes: abreCorchetes - cierraCorchetes
+                    });
+                }
+
+                return errores;
+            },
+
+            autoCorregir: (codigo, errores) => {
+                let codigoCorregido = codigo;
+
+                errores.forEach(error => {
+                    if (error.faltantes > 0) {
+                        const caracteres = {
+                            'llaves': '}',
+                            'parentesis': ')',
+                            'corchetes': ']'
+                        };
+                        codigoCorregido += '\n' + caracteres[error.tipo].repeat(error.faltantes);
+                    }
+                });
+
+                return codigoCorregido;
+            }
+        };
+
+        function validarCodigo() {
+            const codigo = document.getElementById('codeInput').value;
+            const resultSection = document.getElementById('resultSection');
+
+            if (!codigo.trim()) {
+                resultSection.innerHTML = `
+                    <div class="result-warning">
+                        <div class="result-title">⚠️ Advertencia</div>
+                        <p>Por favor, ingresa código para validar.</p>
+                    </div>
+                `;
+                resultSection.classList.add('show');
+                return;
+            }
+
+            const errores = ValidadorSintaxis.validar(codigo);
+
+            if (errores.length === 0) {
+                resultSection.innerHTML = `
+                    <div class="result-success">
+                        <div class="result-title">✅ Código Válido</div>
+                        <p>No se encontraron errores de sintaxis. El código está correctamente estructurado.</p>
+                    </div>
+                `;
+            } else {
+                const codigoCorregido = ValidadorSintaxis.autoCorregir(codigo, errores);
+                
+                resultSection.innerHTML = `
+                    <div class="result-error">
+                        <div class="result-title">🔧 Errores Detectados y Auto-Corregidos</div>
+                        <p>Se encontraron ${errores.length} error(es) de sintaxis:</p>
+                        <ul class="error-list">
+                            ${errores.map(e => `<li>❌ ${e.mensaje}</li>`).join('')}
+                        </ul>
+                        <div style="margin-top: 1.5rem;">
+                            <strong>✨ Código Auto-Corregido:</strong>
+                            <pre class="corrected-code">${codigoCorregido}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+
+            resultSection.classList.add('show');
+        }
+
+        function limpiar() {
+            document.getElementById('codeInput').value = '';
+            document.getElementById('resultSection').classList.remove('show');
+        }
+    </script>
+</body>
+</html>

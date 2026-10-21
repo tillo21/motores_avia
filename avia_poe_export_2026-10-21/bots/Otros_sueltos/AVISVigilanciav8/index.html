@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Nav - Sistema de Vigilancia NAVM</title>
+
+    <!-- Polyfill: prevent localStorage/sessionStorage SecurityError in sandboxed iframes -->
+    <script>
+        (function() {
+            function createMemoryStorage() {
+                var store = {};
+                return {
+                    getItem: function(key) { return store.hasOwnProperty(key) ? store[key] : null; },
+                    setItem: function(key, value) { store[key] = String(value); },
+                    removeItem: function(key) { delete store[key]; },
+                    clear: function() { store = {}; },
+                    get length() { return Object.keys(store).length; },
+                    key: function(i) { return Object.keys(store)[i] || null; }
+                };
+            }
+            try {
+                window.localStorage.setItem('__test__', '1');
+                window.localStorage.removeItem('__test__');
+            } catch (e) {
+                Object.defineProperty(window, 'localStorage', { value: createMemoryStorage(), writable: true });
+            }
+            try {
+                window.sessionStorage.setItem('__test__', '1');
+                window.sessionStorage.removeItem('__test__');
+            } catch (e) {
+                Object.defineProperty(window, 'sessionStorage', { value: createMemoryStorage(), writable: true });
+            }
+        })();
+    </script>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React 18 + ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- htm - lightweight JSX alternative (no Babel needed) -->
+    <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81'
+                        },
+                        success: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46'
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b'
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            800: '#92400e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+        }
+        .shadow-card {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+        .shadow-card-hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+        }
+        .dark .shadow-card {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+        }
+        .dark .shadow-card-hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-slide-in { animation: slideIn 0.2s ease-out; }
+        input, select, textarea {
+            font-size: 16px;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        /* Toast animation */
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        .toast-in { animation: toastIn 0.3s ease-out; }
+        .toast-out { animation: toastOut 0.3s ease-in forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors">
+    <div id="root"></div>
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Setup htm with React
+        var html = htm.bind(React.createElement);
+
+        var useState = React.useState;
+        var useEffect = React.useEffect;
+        var useCallback = React.useCallback;
+        var createContext = React.createContext;
+        var useContext = React.useContext;
+        var useRef = React.useRef;
+
+        // ============================================
+        // IN-MEMORY STORAGE (replaces localStorage)
+        // ============================================
+
+        var memoryStore = {};
+
+        var StorageService = {
+            get: function(key) {
+                return memoryStore[key] || null;
+            },
+            set: function(key, value) {
+                memoryStore[key] = value;
+            },
+            remove: function(key) {
+                delete memoryStore[key];
+            },
+            clear: function() {
+                memoryStore = {};
+            }
+        };
+
+        // ============================================
+        // TOAST NOTIFICATION (replaces alert)
+        // ============================================
+
+        function showToast(message, type) {
+            type = type || 'info';
+            var container = document.getElementById('toast-container');
+            var toast = document.createElement('div');
+            var colors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-red-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-indigo-600 text-white'
+            };
+            var icons = { success: '\u2713', error: '\u2717', warning: '\u26A0', info: '\u2139' };
+            toast.className = 'toast-in flex items-center gap-3 px-5 py-3 rounded-lg shadow-lg min-w-[280px] ' + (colors[type] || colors.info);
+            toast.innerHTML = '<span class="text-lg font-bold">' + (icons[type] || icons.info) + '</span><span class="flex-1 text-sm font-medium">' + message + '</span>';
+            container.appendChild(toast);
+            setTimeout(function() {
+                toast.classList.remove('toast-in');
+                toast.classList.add('toast-out');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        // ============================================
+        // INITIALIZE DATA
+        // ============================================
+
+        function initializeData() {
+            if (!StorageService.get('users')) {
+                StorageService.set('users', [
+                    { id: 1, email: 'admin@hospital.com', password: 'admin123', name: 'Dr. Admin', role: 'admin' },
+                    { id: 2, email: 'medico@hospital.com', password: 'medico123', name: 'Dr. Garc\u00EDa', role: 'medico' }
+                ]);
+            }
+            if (!StorageService.get('patients')) {
+                StorageService.set('patients', [
+                    { id: 1, identification: '12345678', full_name: 'Juan P\u00E9rez L\u00F3pez', age: 65, gender: 'M', admission_date: '2024-01-15', status: 'active' },
+                    { id: 2, identification: '87654321', full_name: 'Mar\u00EDa Gonz\u00E1lez', age: 58, gender: 'F', admission_date: '2024-01-20', status: 'active' },
+                    { id: 3, identification: '11223344', full_name: 'Carlos Ram\u00EDrez', age: 72, gender: 'M', admission_date: '2024-01-10', discharge_date: '2024-01-25', status: 'discharged' }
+                ]);
+            }
+            if (!StorageService.get('evaluations')) {
+                StorageService.set('evaluations', [
+                    { id: 1, patient_id: 1, evaluated_by: 1, temperature: 1, leukocytes: 1, secretions: 2, oxygenation: 2, radiography: 1, culture: 0, cpis_score: 7, evaluation_date: '2024-01-16T10:00:00Z', notes: 'Fiebre persistente' },
+                    { id: 2, patient_id: 1, evaluated_by: 2, temperature: 0, leukocytes: 0, secretions: 1, oxygenation: 0, radiography: 0, culture: 0, cpis_score: 1, evaluation_date: '2024-01-17T10:00:00Z', notes: 'Mejora cl\u00EDnica' },
+                    { id: 3, patient_id: 2, evaluated_by: 1, temperature: 1, leukocytes: 1, secretions: 2, oxygenation: 2, radiography: 2, culture: 1, cpis_score: 9, evaluation_date: '2024-01-21T14:00:00Z', notes: 'Alto riesgo NAVM' }
+                ]);
+            }
+            if (!StorageService.get('alerts')) {
+                StorageService.set('alerts', [
+                    { id: 1, patient_id: 1, cpis_score: 7, message: 'Paciente con puntuaci\u00F3n CPIS de alto riesgo', status: 'resolved', created_at: '2024-01-16T10:00:00Z', resolved_at: '2024-01-17T15:00:00Z' },
+                    { id: 2, patient_id: 2, cpis_score: 9, message: 'Paciente con puntuaci\u00F3n CPIS de alto riesgo', status: 'active', created_at: '2024-01-21T14:00:00Z' }
+                ]);
+            }
+        }
+
+        // ============================================
+        // API MOCK
+        // ============================================
+
+        var API = {
+            auth: {
+                login: function(email, password) {
+                    var users = StorageService.get('users') || [];
+                    var user = users.find(function(u) { return u.email === email && u.password === password; });
+                    if (user) {
+                        var userCopy = Object.assign({}, user);
+                        delete userCopy.password;
+                        var token = btoa(JSON.stringify({ userId: user.id, timestamp: Date.now() }));
+                        return { user: userCopy, token: token };
+                    }
+                    throw new Error('Credenciales inv\u00E1lidas');
+                },
+                register: function(userData) {
+                    var users = StorageService.get('users') || [];
+                    var newId = Math.max.apply(null, users.map(function(u) { return u.id; }).concat([0])) + 1;
+                    var newUser = Object.assign({ id: newId }, userData);
+                    users.push(newUser);
+                    StorageService.set('users', users);
+                    var userCopy = Object.assign({}, newUser);
+                    delete userCopy.password;
+                    var token = btoa(JSON.stringify({ userId: newUser.id, timestamp: Date.now() }));
+                    return { user: userCopy, token: token };
+                }
+            },
+            patients: {
+                getAll: function() { return StorageService.get('patients') || []; },
+                getById: function(id) {
+                    var patients = StorageService.get('patients') || [];
+                    return patients.find(function(p) { return p.id === parseInt(id); });
+                },
+                create: function(patient) {
+                    var patients = StorageService.get('patients') || [];
+                    var newId = Math.max.apply(null, patients.map(function(p) { return p.id; }).concat([0])) + 1;
+                    var newPatient = Object.assign({ id: newId }, patient, { status: 'active' });
+                    patients.push(newPatient);
+                    StorageService.set('patients', patients);
+                    return newPatient;
+                },
+                update: function(id, data) {
+                    var patients = StorageService.get('patients') || [];
+                    var index = patients.findIndex(function(p) { return p.id === parseInt(id); });
+                    if (index !== -1) {
+                        patients[index] = Object.assign({}, patients[index], data);
+                        StorageService.set('patients', patients);
+                        return patients[index];
+                    }
+                    throw new Error('Paciente no encontrado');
+                }
+            },
+            evaluations: {
+                getAll: function() { return StorageService.get('evaluations') || []; },
+                getByPatient: function(patientId) {
+                    var evaluations = StorageService.get('evaluations') || [];
+                    return evaluations.filter(function(e) { return e.patient_id === parseInt(patientId); });
+                },
+                create: function(evaluation) {
+                    var evaluations = StorageService.get('evaluations') || [];
+                    var newId = Math.max.apply(null, evaluations.map(function(e) { return e.id; }).concat([0])) + 1;
+                    var cpis_score = evaluation.temperature + evaluation.leukocytes + evaluation.secretions +
+                                    evaluation.oxygenation + evaluation.radiography + evaluation.culture;
+                    var newEvaluation = Object.assign({ id: newId }, evaluation, {
+                        cpis_score: cpis_score,
+                        evaluation_date: new Date().toISOString()
+                    });
+                    evaluations.push(newEvaluation);
+                    StorageService.set('evaluations', evaluations);
+
+                    if (cpis_score >= 7) {
+                        var alerts = StorageService.get('alerts') || [];
+                        var newAlertId = Math.max.apply(null, alerts.map(function(a) { return a.id; }).concat([0])) + 1;
+                        alerts.push({
+                            id: newAlertId,
+                            patient_id: evaluation.patient_id,
+                            cpis_score: cpis_score,
+                            message: 'Paciente con puntuaci\u00F3n CPIS de alto riesgo',
+                            status: 'active',
+                            created_at: new Date().toISOString()
+                        });
+                        StorageService.set('alerts', alerts);
+                    }
+
+                    return newEvaluation;
+                }
+            },
+            alerts: {
+                getAll: function() { return StorageService.get('alerts') || []; },
+                resolve: function(id) {
+                    var alerts = StorageService.get('alerts') || [];
+                    var index = alerts.findIndex(function(a) { return a.id === parseInt(id); });
+                    if (index !== -1) {
+                        alerts[index].status = 'resolved';
+                        alerts[index].resolved_at = new Date().toISOString();
+                        StorageService.set('alerts', alerts);
+                        return alerts[index];
+                    }
+                    throw new Error('Alerta no encontrada');
+                }
+            }
+        };
+
+        // ============================================
+        // CONTEXT
+        // ============================================
+
+        var AuthContext = createContext();
+
+        function AuthProvider(props) {
+            var state = useState(null);
+            var user = state[0], setUser = state[1];
+            var tokenState = useState(null);
+            var token = tokenState[0], setToken = tokenState[1];
+            var loadingState = useState(false);
+            var loading = loadingState[0], setLoading = loadingState[1];
+
+            var login = function(email, password) {
+                setLoading(true);
+                try {
+                    var response = API.auth.login(email, password);
+                    setUser(response.user);
+                    setToken(response.token);
+                    return true;
+                } catch (error) {
+                    showToast(error.message, 'error');
+                    return false;
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            var logout = function() {
+                setUser(null);
+                setToken(null);
+            };
+
+            return html`<${AuthContext.Provider} value=${{ user: user, token: token, login: login, logout: logout, loading: loading, isAuthenticated: !!token }}>${props.children}</${AuthContext.Provider}>`;
+        }
+
+        function useAuth() { return useContext(AuthContext); }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            var date = new Date(dateStr);
+            return date.toLocaleDateString('es-ES');
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            var date = new Date(dateStr);
+            return date.toLocaleString('es-ES');
+        }
+
+        function formatRelativeTime(dateStr) {
+            if (!dateStr) return '-';
+            var date = new Date(dateStr);
+            var now = new Date();
+            var diffMs = now - date;
+            var diffMins = Math.floor(diffMs / 60000);
+            var diffHours = Math.floor(diffMs / 3600000);
+            var diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 60) return 'Hace ' + diffMins + ' minutos';
+            if (diffHours < 24) return 'Hace ' + diffHours + ' horas';
+            return 'Hace ' + diffDays + ' d\u00EDas';
+        }
+
+        function getCPISLevel(score) {
+            if (score >= 7) return { text: 'Alto Riesgo', color: 'danger' };
+            if (score <= 6) return { text: 'Bajo Riesgo', color: 'success' };
+            return { text: 'Sin evaluar', color: 'gray' };
+        }
+
+        // ============================================
+        // UI COMPONENTS
+        // ============================================
+
+        function Button(props) {
+            var variant = props.variant || 'primary';
+            var size = props.size || 'md';
+            var isLoading = props.loading;
+            var className = props.className || '';
+            var children = props.children;
+
+            var baseClass = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+
+            var variants = {
+                primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-600',
+                secondary: 'bg-slate-200 text-slate-800 hover:bg-slate-300 focus:ring-slate-400 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
+                danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+                success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500',
+                outline: 'border-2 border-slate-300 text-slate-700 hover:bg-slate-50 focus:ring-slate-400 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800'
+            };
+
+            var sizes = {
+                sm: 'px-3 py-1.5 text-sm',
+                md: 'px-5 py-2.5 text-base',
+                lg: 'px-6 py-3 text-lg'
+            };
+
+            var restProps = Object.assign({}, props);
+            delete restProps.variant; delete restProps.size; delete restProps.loading; delete restProps.className; delete restProps.children;
+
+            return html`<button class=${baseClass + ' ' + (variants[variant] || variants.primary) + ' ' + (sizes[size] || sizes.md) + ' ' + className} disabled=${isLoading} ...${restProps}>${isLoading && html`<svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>`}${children}</button>`;
+        }
+
+        function Card(props) {
+            var className = props.className || '';
+            var hover = props.hover;
+            var children = props.children;
+            var restProps = Object.assign({}, props);
+            delete restProps.className; delete restProps.hover; delete restProps.children;
+
+            return html`<div class=${'bg-white dark:bg-slate-800 rounded-2xl shadow-card p-6 ' + (hover ? 'transition-all hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer' : '') + ' ' + className} ...${restProps}>${children}</div>`;
+        }
+
+        function Badge(props) {
+            var variant = props.variant || 'info';
+            var className = props.className || '';
+            var children = props.children;
+
+            var variants = {
+                success: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+                warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+                danger: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                info: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
+                gray: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+            };
+
+            return html`<span class=${'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ' + (variants[variant] || variants.info) + ' ' + className}>${children}</span>`;
+        }
+
+        function Input(props) {
+            var label = props.label;
+            var error = props.error;
+            var className = props.className || '';
+            var required = props.required;
+            var restProps = Object.assign({}, props);
+            delete restProps.label; delete restProps.error; delete restProps.className; delete restProps.required;
+
+            return html`<div class="w-full">
+                ${label && html`<label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">${label}${required && html`<span class="text-red-500 ml-1">*</span>`}</label>`}
+                <input class=${'w-full px-4 py-2.5 border rounded-xl transition-all focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-slate-700 dark:text-slate-100 ' + (error ? 'border-red-500' : 'border-slate-300 dark:border-slate-600') + ' ' + className} required=${required} ...${restProps} />
+                ${error && html`<p class="mt-1 text-sm text-red-600">${error}</p>`}
+            </div>`;
+        }
+
+        function Modal(props) {
+            var isOpen = props.isOpen;
+            var onClose = props.onClose;
+            var title = props.title;
+            var children = props.children;
+            var size = props.size || 'md';
+
+            if (!isOpen) return null;
+
+            var sizes = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl' };
+
+            return html`<div class="fixed inset-0 z-50 overflow-y-auto">
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick=${onClose} />
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class=${'relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full animate-slide-in ' + (sizes[size] || sizes.md)}>
+                        <div class="flex items-center justify-between p-6 border-b dark:border-slate-700">
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">${title}</h3>
+                            <button onClick=${onClose} class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="p-6">${children}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function ConfirmDialog(props) {
+            var isOpen = props.isOpen;
+            var onClose = props.onClose;
+            var onConfirm = props.onConfirm;
+            var message = props.message;
+            var title = props.title || 'Confirmar';
+
+            if (!isOpen) return null;
+
+            return html`<div class="fixed inset-0 z-[60] overflow-y-auto">
+                <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick=${onClose} />
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm animate-slide-in p-6">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 mb-3">${title}</h3>
+                        <p class="text-slate-600 dark:text-slate-400 mb-6">${message}</p>
+                        <div class="flex justify-end gap-3">
+                            <${Button} variant="outline" size="sm" onClick=${onClose}>Cancelar</${Button}>
+                            <${Button} variant="primary" size="sm" onClick=${onConfirm}>Confirmar</${Button}>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function AlertBanner(props) {
+            var type = props.type || 'info';
+            var message = props.message;
+            var className = props.className || '';
+
+            var icons = { success: '\u2713', error: '\u2717', warning: '\u26A0\uFE0F', info: '\u2139\uFE0F' };
+            var styles = {
+                success: 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300',
+                error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300',
+                warning: 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300',
+                info: 'bg-indigo-50 border-indigo-200 text-indigo-800 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+            };
+
+            return html`<div class=${'flex items-center gap-3 p-4 border rounded-xl ' + (styles[type] || styles.info) + ' ' + className}>
+                <span class="text-lg font-bold">${icons[type] || icons.info}</span>
+                <p class="flex-1 text-sm font-medium">${message}</p>
+            </div>`;
+        }
+
+        // ============================================
+        // PAGES
+        // ============================================
+
+        function LoginPage() {
+            var auth = useAuth();
+            var formState = useState({ email: '', password: '' });
+            var formData = formState[0], setFormData = formState[1];
+
+            var handleSubmit = function(e) {
+                e.preventDefault();
+                auth.login(formData.email, formData.password);
+            };
+
+            return html`<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 flex items-center justify-center p-4">
+                <div class="w-full max-w-md animate-fade-in">
+                    <div class="text-center mb-8">
+                        <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-3xl mb-4 shadow-lg">
+                            <span class="text-white font-bold text-3xl">AN</span>
+                        </div>
+                        <h1 class="text-4xl font-bold text-slate-900 dark:text-white mb-2">AVIA Nav</h1>
+                        <p class="text-slate-600 dark:text-slate-400 text-lg">Sistema de Vigilancia NAVM</p>
+                    </div>
+
+                    <${Card}>
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6">Iniciar Sesi\u00F3n</h2>
+
+                        <div class="mb-5 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm">
+                            <p class="font-semibold text-indigo-800 dark:text-indigo-300 mb-1">Credenciales de prueba:</p>
+                            <p class="text-indigo-700 dark:text-indigo-400 font-mono">admin@hospital.com</p>
+                            <p class="text-indigo-700 dark:text-indigo-400 font-mono">admin123</p>
+                        </div>
+
+                        <form onSubmit=${handleSubmit} class="space-y-4">
+                            <${Input} label="Email" type="email" value=${formData.email} onChange=${function(e) { setFormData(Object.assign({}, formData, { email: e.target.value })); }} placeholder="usuario@hospital.com" required=${true} />
+                            <${Input} label="Contrase\u00F1a" type="password" value=${formData.password} onChange=${function(e) { setFormData(Object.assign({}, formData, { password: e.target.value })); }} placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" required=${true} />
+                            <${Button} type="submit" className="w-full" loading=${auth.loading}>Iniciar Sesi\u00F3n</${Button}>
+                        </form>
+                    </${Card}>
+                </div>
+            </div>`;
+        }
+
+        function DashboardPage(props) {
+            var onNavigate = props.onNavigate;
+            var patientsState = useState([]);
+            var patients = patientsState[0], setPatients = patientsState[1];
+            var evalsState = useState([]);
+            var evaluations = evalsState[0], setEvaluations = evalsState[1];
+
+            useEffect(function() {
+                setPatients(API.patients.getAll());
+                setEvaluations(API.evaluations.getAll());
+            }, []);
+
+            var activePatients = patients.filter(function(p) { return p.status === 'active'; }).length;
+            var highRisk = evaluations.filter(function(e) { return e.cpis_score >= 7; }).length;
+            var recent = evaluations.slice(-5).reverse();
+
+            var stats = [
+                { label: 'Pacientes Activos', value: activePatients, icon: '\uD83D\uDC65', color: 'from-indigo-500 to-indigo-600' },
+                { label: 'Evaluaciones Totales', value: evaluations.length, icon: '\uD83D\uDCCB', color: 'from-emerald-500 to-emerald-600' },
+                { label: 'Alto Riesgo', value: highRisk, icon: '\u26A0\uFE0F', color: 'from-red-500 to-red-600' },
+                { label: 'Tasa de Riesgo', value: evaluations.length > 0 ? ((highRisk/evaluations.length)*100).toFixed(1) + '%' : '0%', icon: '\uD83D\uDCC8', color: 'from-amber-500 to-amber-600' }
+            ];
+
+            return html`<div class="space-y-8 animate-fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+                        <p class="text-slate-600 dark:text-slate-400 mt-1">Resumen general del sistema AVIA Nav</p>
+                    </div>
+                    <${Button} onClick=${function() { onNavigate('new-evaluation'); }}>\u2795 Nueva Evaluaci\u00F3n</${Button}>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    ${stats.map(function(stat, i) {
+                        return html`<div key=${i} class="relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl shadow-card p-5">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">${stat.label}</p>
+                                    <p class="text-3xl font-bold text-slate-900 dark:text-white">${stat.value}</p>
+                                </div>
+                                <div class="text-3xl">${stat.icon}</div>
+                            </div>
+                            <div class=${'absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ' + stat.color}></div>
+                        </div>`;
+                    })}
+                </div>
+
+                <${Card}>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-5">Evaluaciones Recientes</h2>
+                    ${recent.length === 0 ? html`<p class="text-center text-slate-500 dark:text-slate-400 py-8">No hay evaluaciones recientes</p>` : html`<div class="space-y-3">
+                        ${recent.map(function(ev) {
+                            return html`<div key=${ev.id} class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer" onClick=${function() { onNavigate('patients', ev.patient_id); }}>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-1">
+                                        <p class="font-semibold text-slate-900 dark:text-white">Paciente ID: ${ev.patient_id}</p>
+                                        <${Badge} variant=${getCPISLevel(ev.cpis_score).color}>CPIS: ${ev.cpis_score}</${Badge}>
+                                    </div>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">${formatRelativeTime(ev.evaluation_date)}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </div>`;
+                        })}
+                    </div>`}
+                </${Card}>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <${Card} hover=${true} onClick=${function() { onNavigate('patients'); }}>
+                        <div class="text-4xl mb-3">\uD83D\uDC65</div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Ver Pacientes</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Gestionar lista completa de pacientes en UCI</p>
+                    </${Card}>
+                    <${Card} hover=${true} onClick=${function() { onNavigate('new-evaluation'); }}>
+                        <div class="text-4xl mb-3">\uD83D\uDCCB</div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Nueva Evaluaci\u00F3n</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Registrar evaluaci\u00F3n CPIS para un paciente</p>
+                    </${Card}>
+                    <${Card} hover=${true} onClick=${function() { onNavigate('alerts'); }}>
+                        <div class="text-4xl mb-3">\uD83D\uDEA8</div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Ver Alertas</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Revisar alertas de alto riesgo activas</p>
+                    </${Card}>
+                </div>
+            </div>`;
+        }
+
+        function PatientsPage(props) {
+            var onNavigate = props.onNavigate;
+            var patientsState = useState([]);
+            var patients = patientsState[0], setPatients = patientsState[1];
+            var searchState = useState('');
+            var search = searchState[0], setSearch = searchState[1];
+            var filterState = useState('all');
+            var filter = filterState[0], setFilter = filterState[1];
+            var modalState = useState(false);
+            var showModal = modalState[0], setShowModal = modalState[1];
+            var formState = useState({ identification: '', full_name: '', age: '', gender: 'M', admission_date: '' });
+            var formData = formState[0], setFormData = formState[1];
+
+            useEffect(function() { loadPatients(); }, []);
+
+            function loadPatients() { setPatients(API.patients.getAll()); }
+
+            function handleCreate(e) {
+                e.preventDefault();
+                API.patients.create(formData);
+                setShowModal(false);
+                setFormData({ identification: '', full_name: '', age: '', gender: 'M', admission_date: '' });
+                loadPatients();
+                showToast('Paciente creado exitosamente', 'success');
+            }
+
+            var filtered = patients.filter(function(p) {
+                var matchSearch = p.full_name.toLowerCase().includes(search.toLowerCase()) || p.identification.includes(search);
+                var matchFilter = filter === 'all' || p.status === filter;
+                return matchSearch && matchFilter;
+            });
+
+            return html`<div class="space-y-6 animate-fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Pacientes</h1>
+                        <p class="text-slate-600 dark:text-slate-400 mt-1">Gesti\u00F3n de pacientes en UCI</p>
+                    </div>
+                    <${Button} onClick=${function() { setShowModal(true); }}>\u2795 Nuevo Paciente</${Button}>
+                </div>
+
+                <${Card}>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <input type="text" placeholder="Buscar por nombre o identificaci\u00F3n..." value=${search} onInput=${function(e) { setSearch(e.target.value); }} class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white" />
+                        </div>
+                        <select value=${filter} onChange=${function(e) { setFilter(e.target.value); }} class="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white">
+                            <option value="all">Todos los estados</option>
+                            <option value="active">Activos</option>
+                            <option value="discharged">Alta m\u00E9dica</option>
+                        </select>
+                    </div>
+                </${Card}>
+
+                ${filtered.length === 0 ? html`<${Card}><p class="text-center text-slate-500 dark:text-slate-400 py-12">No se encontraron pacientes</p></${Card}>` : html`<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${filtered.map(function(patient) {
+                        return html`<${Card} key=${patient.id} hover=${true} onClick=${function() { onNavigate('patients', patient.id); }}>
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">${patient.full_name}</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 font-mono">ID: ${patient.identification}</p>
+                                </div>
+                                <${Badge} variant=${patient.status === 'active' ? 'success' : 'gray'}>${patient.status === 'active' ? 'Activo' : 'Alta'}</${Badge}>
+                            </div>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Edad:</span><span class="font-semibold dark:text-slate-200">${patient.age} a\u00F1os</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">G\u00E9nero:</span><span class="font-semibold dark:text-slate-200">${patient.gender === 'M' ? 'Masculino' : 'Femenino'}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Ingreso:</span><span class="font-semibold dark:text-slate-200">${formatDate(patient.admission_date)}</span></div>
+                            </div>
+                        </${Card}>`;
+                    })}
+                </div>`}
+
+                <${Modal} isOpen=${showModal} onClose=${function() { setShowModal(false); }} title="Nuevo Paciente">
+                    <form onSubmit=${handleCreate} class="space-y-4">
+                        <${Input} label="Identificaci\u00F3n" value=${formData.identification} onInput=${function(e) { setFormData(Object.assign({}, formData, { identification: e.target.value })); }} required=${true} />
+                        <${Input} label="Nombre Completo" value=${formData.full_name} onInput=${function(e) { setFormData(Object.assign({}, formData, { full_name: e.target.value })); }} required=${true} />
+                        <${Input} label="Edad" type="number" value=${formData.age} onInput=${function(e) { setFormData(Object.assign({}, formData, { age: e.target.value })); }} required=${true} />
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">G\u00E9nero <span class="text-red-500">*</span></label>
+                            <select value=${formData.gender} onChange=${function(e) { setFormData(Object.assign({}, formData, { gender: e.target.value })); }} class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white" required>
+                                <option value="M">Masculino</option>
+                                <option value="F">Femenino</option>
+                            </select>
+                        </div>
+                        <${Input} label="Fecha de Ingreso" type="date" value=${formData.admission_date} onInput=${function(e) { setFormData(Object.assign({}, formData, { admission_date: e.target.value })); }} required=${true} />
+                        <div class="flex gap-3 pt-4">
+                            <${Button} type="button" variant="outline" onClick=${function() { setShowModal(false); }} className="flex-1">Cancelar</${Button}>
+                            <${Button} type="submit" className="flex-1">Crear Paciente</${Button}>
+                        </div>
+                    </form>
+                </${Modal}>
+            </div>`;
+        }
+
+        function PatientDetailPage(props) {
+            var patientId = props.patientId;
+            var onNavigate = props.onNavigate;
+            var patientState = useState(null);
+            var patient = patientState[0], setPatient = patientState[1];
+            var evalsState = useState([]);
+            var evaluations = evalsState[0], setEvaluations = evalsState[1];
+
+            useEffect(function() {
+                setPatient(API.patients.getById(patientId));
+                setEvaluations(API.evaluations.getByPatient(patientId));
+            }, [patientId]);
+
+            if (!patient) return html`<div class="text-center py-12 text-slate-500">Cargando...</div>`;
+
+            return html`<div class="space-y-6 animate-fade-in">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <${Button} variant="outline" size="sm" onClick=${function() { onNavigate('patients'); }}>\u2190 Volver</${Button}>
+                    <div class="flex-1">
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">${patient.full_name}</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1 font-mono">ID: ${patient.identification}</p>
+                    </div>
+                    <${Badge} variant=${patient.status === 'active' ? 'success' : 'gray'}>${patient.status === 'active' ? 'Activo' : 'Alta'}</${Badge}>
+                </div>
+
+                <${Card}>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Informaci\u00F3n del Paciente</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div><p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Edad</p><p class="text-lg font-bold dark:text-white">${patient.age} a\u00F1os</p></div>
+                        <div><p class="text-sm text-slate-500 dark:text-slate-400 mb-1">G\u00E9nero</p><p class="text-lg font-bold dark:text-white">${patient.gender === 'M' ? 'Masculino' : 'Femenino'}</p></div>
+                        <div><p class="text-sm text-slate-500 dark:text-slate-400 mb-1">Ingreso</p><p class="text-lg font-bold dark:text-white">${formatDate(patient.admission_date)}</p></div>
+                        <div><p class="text-sm text-slate-500 dark:text-slate-400 mb-1">D\u00EDas en UCI</p><p class="text-lg font-bold dark:text-white">${Math.floor((new Date() - new Date(patient.admission_date)) / 86400000)} d\u00EDas</p></div>
+                    </div>
+                </${Card}>
+
+                <${Card}>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Historial de Evaluaciones</h2>
+                        <${Button} size="sm" onClick=${function() { onNavigate('new-evaluation', patientId); }}>\u2795 Nueva Evaluaci\u00F3n</${Button}>
+                    </div>
+                    ${evaluations.length === 0 ? html`<div class="text-center py-12">
+                        <p class="text-slate-500 dark:text-slate-400 mb-4">No hay evaluaciones registradas</p>
+                        <${Button} onClick=${function() { onNavigate('new-evaluation', patientId); }}>Crear Primera Evaluaci\u00F3n</${Button}>
+                    </div>` : html`<div class="space-y-4">
+                        ${evaluations.map(function(ev) {
+                            return html`<div key=${ev.id} class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                                <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
+                                    <div class="flex items-center gap-3">
+                                        <${Badge} variant=${getCPISLevel(ev.cpis_score).color}>CPIS: ${ev.cpis_score}</${Badge}>
+                                        <span class="text-sm font-semibold text-slate-900 dark:text-white">${getCPISLevel(ev.cpis_score).text}</span>
+                                    </div>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(ev.evaluation_date)}</p>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                    <div><span class="text-slate-500 dark:text-slate-400">Temperatura: </span><span class="font-semibold dark:text-white">${ev.temperature}</span></div>
+                                    <div><span class="text-slate-500 dark:text-slate-400">Leucocitos: </span><span class="font-semibold dark:text-white">${ev.leukocytes}</span></div>
+                                    <div><span class="text-slate-500 dark:text-slate-400">Secreciones: </span><span class="font-semibold dark:text-white">${ev.secretions}</span></div>
+                                    <div><span class="text-slate-500 dark:text-slate-400">Oxigenaci\u00F3n: </span><span class="font-semibold dark:text-white">${ev.oxygenation}</span></div>
+                                    <div><span class="text-slate-500 dark:text-slate-400">Radiograf\u00EDa: </span><span class="font-semibold dark:text-white">${ev.radiography}</span></div>
+                                    <div><span class="text-slate-500 dark:text-slate-400">Cultivo: </span><span class="font-semibold dark:text-white">${ev.culture}</span></div>
+                                </div>
+                                ${ev.notes && html`<div class="mt-3 pt-3 border-t dark:border-slate-600"><p class="text-sm text-slate-600 dark:text-slate-300"><span class="font-semibold">Notas: </span>${ev.notes}</p></div>`}
+                            </div>`;
+                        })}
+                    </div>`}
+                </${Card}>
+            </div>`;
+        }
+
+        function NewEvaluationPage(props) {
+            var onNavigate = props.onNavigate;
+            var preselectedPatientId = props.preselectedPatientId;
+            var patientsState = useState([]);
+            var patients = patientsState[0], setPatients = patientsState[1];
+            var formState = useState({
+                patient_id: preselectedPatientId || '',
+                temperature: 0, leukocytes: 0, secretions: 0,
+                oxygenation: 0, radiography: 0, culture: 0, notes: ''
+            });
+            var formData = formState[0], setFormData = formState[1];
+
+            useEffect(function() {
+                setPatients(API.patients.getAll().filter(function(p) { return p.status === 'active'; }));
+            }, []);
+
+            var cpis = formData.temperature + formData.leukocytes + formData.secretions + formData.oxygenation + formData.radiography + formData.culture;
+            var level = getCPISLevel(cpis);
+
+            function handleSubmit(e) {
+                e.preventDefault();
+                if (!formData.patient_id) { showToast('Seleccione un paciente', 'warning'); return; }
+                API.evaluations.create(Object.assign({}, formData, { evaluated_by: 1 }));
+                showToast('Evaluaci\u00F3n creada exitosamente', 'success');
+                onNavigate('patients', formData.patient_id);
+            }
+
+            function RadioOption(rProps) {
+                var name = rProps.name, value = rProps.value, label = rProps.label, points = rProps.points, checked = rProps.checked, onChange = rProps.onChange;
+                return html`<label class=${'flex items-center p-4 border rounded-xl cursor-pointer transition-all ' + (checked ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-400' : 'border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50')}>
+                    <input type="radio" name=${name} value=${value} checked=${checked} onChange=${onChange} class="w-4 h-4 text-indigo-600" />
+                    <span class="ml-3 flex-1 text-slate-700 dark:text-slate-300">${label}</span>
+                    <${Badge} variant=${points === 0 ? 'gray' : 'danger'}>${points} ${points === 1 ? 'punto' : 'puntos'}</${Badge}>
+                </label>`;
+            }
+
+            return html`<div class="space-y-6 max-w-4xl mx-auto animate-fade-in">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <${Button} variant="outline" size="sm" onClick=${function() { onNavigate('dashboard'); }}>\u2190 Volver</${Button}>
+                    <div class="flex-1">
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Nueva Evaluaci\u00F3n CPIS</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1">Clinical Pulmonary Infection Score</p>
+                    </div>
+                </div>
+
+                <${Card}>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Seleccionar Paciente</h2>
+                    <select value=${formData.patient_id} onChange=${function(e) { setFormData(Object.assign({}, formData, { patient_id: e.target.value })); }} class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white" required>
+                        <option value="">Seleccione un paciente...</option>
+                        ${patients.map(function(p) { return html`<option key=${p.id} value=${p.id}>${p.full_name} - ID: ${p.identification}</option>`; })}
+                    </select>
+                </${Card}>
+
+                <${Card}>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Puntuaci\u00F3n CPIS Calculada</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Suma autom\u00E1tica de los par\u00E1metros evaluados</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-5xl font-bold text-indigo-600 dark:text-indigo-400 mb-2">${cpis}</div>
+                            <${Badge} variant=${level.color} className="text-base px-4 py-1">${level.text}</${Badge}>
+                        </div>
+                    </div>
+                    ${cpis >= 7 && html`<${AlertBanner} type="warning" message="Puntuaci\u00F3n de alto riesgo. Se recomienda evaluaci\u00F3n m\u00E9dica inmediata." className="mt-4" />`}
+                </${Card}>
+
+                <form onSubmit=${handleSubmit} class="space-y-5">
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">1. Temperatura Corporal</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="temp" value=${0} label="36.5-38.4\u00B0C" points=${0} checked=${formData.temperature === 0} onChange=${function() { setFormData(Object.assign({}, formData, { temperature: 0 })); }} />
+                            <${RadioOption} name="temp" value=${1} label="<36 o >38.5\u00B0C + >39\u00B0C" points=${1} checked=${formData.temperature === 1} onChange=${function() { setFormData(Object.assign({}, formData, { temperature: 1 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">2. Leucocitos</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="leuk" value=${0} label="4000-11000/mm\u00B3" points=${0} checked=${formData.leukocytes === 0} onChange=${function() { setFormData(Object.assign({}, formData, { leukocytes: 0 })); }} />
+                            <${RadioOption} name="leuk" value=${1} label="<4000 o >11000/mm\u00B3" points=${1} checked=${formData.leukocytes === 1} onChange=${function() { setFormData(Object.assign({}, formData, { leukocytes: 1 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">3. Secreciones Traqueales</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="sec" value=${0} label="Ausentes" points=${0} checked=${formData.secretions === 0} onChange=${function() { setFormData(Object.assign({}, formData, { secretions: 0 })); }} />
+                            <${RadioOption} name="sec" value=${1} label="No purulentas" points=${1} checked=${formData.secretions === 1} onChange=${function() { setFormData(Object.assign({}, formData, { secretions: 1 })); }} />
+                            <${RadioOption} name="sec" value=${2} label="Purulentas" points=${2} checked=${formData.secretions === 2} onChange=${function() { setFormData(Object.assign({}, formData, { secretions: 2 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">4. Oxigenaci\u00F3n (PaO2/FiO2)</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="oxy" value=${0} label="PaO2/FiO2 >240 o SDRA" points=${0} checked=${formData.oxygenation === 0} onChange=${function() { setFormData(Object.assign({}, formData, { oxygenation: 0 })); }} />
+                            <${RadioOption} name="oxy" value=${2} label="PaO2/FiO2 \u2264240 sin SDRA" points=${2} checked=${formData.oxygenation === 2} onChange=${function() { setFormData(Object.assign({}, formData, { oxygenation: 2 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">5. Radiograf\u00EDa de T\u00F3rax</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="radio" value=${0} label="Sin infiltrado" points=${0} checked=${formData.radiography === 0} onChange=${function() { setFormData(Object.assign({}, formData, { radiography: 0 })); }} />
+                            <${RadioOption} name="radio" value=${1} label="Infiltrado difuso" points=${1} checked=${formData.radiography === 1} onChange=${function() { setFormData(Object.assign({}, formData, { radiography: 1 })); }} />
+                            <${RadioOption} name="radio" value=${2} label="Infiltrado localizado" points=${2} checked=${formData.radiography === 2} onChange=${function() { setFormData(Object.assign({}, formData, { radiography: 2 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">6. Cultivo Traqueal</h3>
+                        <div class="space-y-3">
+                            <${RadioOption} name="cult" value=${0} label="Negativo o sin cultivo" points=${0} checked=${formData.culture === 0} onChange=${function() { setFormData(Object.assign({}, formData, { culture: 0 })); }} />
+                            <${RadioOption} name="cult" value=${1} label="Positivo" points=${1} checked=${formData.culture === 1} onChange=${function() { setFormData(Object.assign({}, formData, { culture: 1 })); }} />
+                        </div>
+                    </${Card}>
+
+                    <${Card}>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Notas Adicionales (Opcional)</h3>
+                        <textarea value=${formData.notes} onInput=${function(e) { setFormData(Object.assign({}, formData, { notes: e.target.value })); }} rows="4" class="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-700 dark:text-white" placeholder="Observaciones cl\u00EDnicas..." />
+                    </${Card}>
+
+                    <div class="flex gap-4">
+                        <${Button} type="button" variant="outline" onClick=${function() { onNavigate('dashboard'); }} className="flex-1">Cancelar</${Button}>
+                        <${Button} type="submit" className="flex-1">Guardar Evaluaci\u00F3n</${Button}>
+                    </div>
+                </form>
+            </div>`;
+        }
+
+        function AlertsPage(props) {
+            var onNavigate = props.onNavigate;
+            var alertsState = useState([]);
+            var alerts = alertsState[0], setAlerts = alertsState[1];
+            var confirmState = useState({ open: false, id: null });
+            var confirmDialog = confirmState[0], setConfirmDialog = confirmState[1];
+
+            useEffect(function() { setAlerts(API.alerts.getAll()); }, []);
+
+            function handleResolve(id) {
+                setConfirmDialog({ open: true, id: id });
+            }
+
+            function confirmResolve() {
+                API.alerts.resolve(confirmDialog.id);
+                setAlerts(API.alerts.getAll());
+                setConfirmDialog({ open: false, id: null });
+                showToast('Alerta marcada como resuelta', 'success');
+            }
+
+            var active = alerts.filter(function(a) { return a.status === 'active'; });
+            var resolved = alerts.filter(function(a) { return a.status === 'resolved'; });
+
+            return html`<div class="space-y-6 animate-fade-in">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Alertas</h1>
+                    <p class="text-slate-600 dark:text-slate-400 mt-1">Notificaciones de alto riesgo NAVM</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <${Card}><div class="flex items-center gap-4"><div class="text-3xl">\u26A0\uFE0F</div><div><p class="text-sm text-slate-500 dark:text-slate-400">Activas</p><p class="text-2xl font-bold dark:text-white">${active.length}</p></div></div></${Card}>
+                    <${Card}><div class="flex items-center gap-4"><div class="text-3xl">\u2705</div><div><p class="text-sm text-slate-500 dark:text-slate-400">Resueltas</p><p class="text-2xl font-bold dark:text-white">${resolved.length}</p></div></div></${Card}>
+                    <${Card}><div class="flex items-center gap-4"><div class="text-3xl">\uD83D\uDCCA</div><div><p class="text-sm text-slate-500 dark:text-slate-400">Total</p><p class="text-2xl font-bold dark:text-white">${alerts.length}</p></div></div></${Card}>
+                </div>
+
+                <${Card}>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Alertas Activas</h2>
+                    ${active.length === 0 ? html`<div class="text-center py-12"><p class="text-4xl mb-4">\u2705</p><p class="text-slate-500 dark:text-slate-400">No hay alertas activas</p></div>` : html`<div class="space-y-4">
+                        ${active.map(function(al) {
+                            return html`<div key=${al.id} class="p-5 border-l-4 border-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl">
+                                <div class="flex flex-wrap items-start justify-between mb-3 gap-2">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-2xl">\u26A0\uFE0F</span>
+                                        <div>
+                                            <h3 class="font-bold text-slate-900 dark:text-white">Alto Riesgo NAVM - CPIS \u2265 7</h3>
+                                            <p class="text-sm text-slate-600 dark:text-slate-400">Paciente ID: ${al.patient_id}</p>
+                                        </div>
+                                    </div>
+                                    <${Badge} variant="danger">Activa</${Badge}>
+                                </div>
+                                <p class="text-sm mb-3 text-slate-700 dark:text-slate-300">CPIS: <strong>${al.cpis_score}</strong> | ${formatRelativeTime(al.created_at)}</p>
+                                <div class="flex flex-wrap gap-3">
+                                    <${Button} size="sm" onClick=${function() { onNavigate('patients', al.patient_id); }}>Ver Paciente</${Button}>
+                                    <${Button} size="sm" variant="success" onClick=${function() { handleResolve(al.id); }}>\u2713 Resolver</${Button}>
+                                </div>
+                            </div>`;
+                        })}
+                    </div>`}
+                </${Card}>
+
+                ${resolved.length > 0 && html`<${Card}>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Alertas Resueltas (\u00FAltimas 5)</h2>
+                    <div class="space-y-3">
+                        ${resolved.slice(-5).reverse().map(function(al) {
+                            return html`<div key=${al.id} class="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl opacity-75">
+                                <div class="flex justify-between mb-1">
+                                    <p class="font-semibold dark:text-slate-300">Paciente ID: ${al.patient_id} | CPIS: ${al.cpis_score}</p>
+                                    <${Badge} variant="gray">Resuelta</${Badge}>
+                                </div>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">${formatDateTime(al.resolved_at)}</p>
+                            </div>`;
+                        })}
+                    </div>
+                </${Card}>`}
+
+                <${ConfirmDialog} isOpen=${confirmDialog.open} onClose=${function() { setConfirmDialog({ open: false, id: null }); }} onConfirm=${confirmResolve} title="Resolver Alerta" message="\u00BFMarcar esta alerta como resuelta?" />
+            </div>`;
+        }
+
+        // ============================================
+        // MAIN APP
+        // ============================================
+
+        function App() {
+            var auth = useAuth();
+            var pageState = useState('dashboard');
+            var currentPage = pageState[0], setCurrentPage = pageState[1];
+            var dataState = useState(null);
+            var pageData = dataState[0], setPageData = dataState[1];
+            var menuState = useState(false);
+            var menuOpen = menuState[0], setMenuOpen = menuState[1];
+
+            function navigate(page, data) {
+                setCurrentPage(page);
+                setPageData(data || null);
+                setMenuOpen(false);
+            }
+
+            if (!auth.isAuthenticated) {
+                return html`<${LoginPage} />`;
+            }
+
+            function renderPage() {
+                switch(currentPage) {
+                    case 'dashboard': return html`<${DashboardPage} onNavigate=${navigate} />`;
+                    case 'patients': return pageData ? html`<${PatientDetailPage} patientId=${pageData} onNavigate=${navigate} />` : html`<${PatientsPage} onNavigate=${navigate} />`;
+                    case 'new-evaluation': return html`<${NewEvaluationPage} onNavigate=${navigate} preselectedPatientId=${pageData} />`;
+                    case 'alerts': return html`<${AlertsPage} onNavigate=${navigate} />`;
+                    default: return html`<${DashboardPage} onNavigate=${navigate} />`;
+                }
+            }
+
+            var menuItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: '\uD83D\uDCCA' },
+                { id: 'patients', label: 'Pacientes', icon: '\uD83D\uDC65' },
+                { id: 'new-evaluation', label: 'Nueva Evaluaci\u00F3n', icon: '\uD83D\uDCCB' },
+                { id: 'alerts', label: 'Alertas', icon: '\uD83D\uDEA8' }
+            ];
+
+            return html`<div class="min-h-screen bg-slate-50 dark:bg-slate-900">
+                <!-- Navbar -->
+                <nav class="bg-white dark:bg-slate-800 shadow-sm border-b dark:border-slate-700 sticky top-0 z-40">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between items-center h-16">
+                            <div class="flex items-center gap-3 cursor-pointer" onClick=${function() { navigate('dashboard'); }}>
+                                <div class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                                    <span class="text-white font-bold text-lg">AN</span>
+                                </div>
+                                <span class="text-xl font-bold text-slate-900 dark:text-white hidden sm:block">AVIA Nav</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="text-right hidden sm:block">
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">${auth.user && auth.user.name}</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 capitalize">${auth.user && auth.user.role}</p>
+                                </div>
+                                <${Button} variant="outline" size="sm" onClick=${auth.logout}>Salir</${Button}>
+                                <button class="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700" onClick=${function() { setMenuOpen(!menuOpen); }}>
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d=${menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+
+                <div class="flex">
+                    <!-- Sidebar Desktop -->
+                    <aside class=${'bg-white dark:bg-slate-800 border-r dark:border-slate-700 min-h-[calc(100vh-4rem)] w-64 hidden md:block'}>
+                        <nav class="p-4 space-y-1">
+                            ${menuItems.map(function(item) {
+                                return html`<button key=${item.id} onClick=${function() { navigate(item.id); }} class=${'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ' + (currentPage === item.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700')}>
+                                    <span class="text-xl">${item.icon}</span>
+                                    <span>${item.label}</span>
+                                </button>`;
+                            })}
+                        </nav>
+                    </aside>
+
+                    <!-- Mobile Menu -->
+                    ${menuOpen && html`<div class="fixed inset-0 z-30 md:hidden">
+                        <div class="fixed inset-0 bg-black/30" onClick=${function() { setMenuOpen(false); }} />
+                        <aside class="fixed left-0 top-16 bottom-0 w-64 bg-white dark:bg-slate-800 border-r dark:border-slate-700 z-40 animate-fade-in">
+                            <nav class="p-4 space-y-1">
+                                ${menuItems.map(function(item) {
+                                    return html`<button key=${item.id} onClick=${function() { navigate(item.id); }} class=${'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ' + (currentPage === item.id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700')}>
+                                        <span class="text-xl">${item.icon}</span>
+                                        <span>${item.label}</span>
+                                    </button>`;
+                                })}
+                            </nav>
+                        </aside>
+                    </div>`}
+
+                    <!-- Main Content -->
+                    <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+                        ${renderPage()}
+                    </main>
+                </div>
+            </div>`;
+        }
+
+        // ============================================
+        // RENDER
+        // ============================================
+
+        initializeData();
+
+        var root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(html`<${AuthProvider}><${App} /></${AuthProvider}>`);
+    </script>
+</body>
+</html>
+

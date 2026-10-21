@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIACreatorHub + VideoLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/marked@9.0.0/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #e50914;
+            --primary-glow: rgba(229, 9, 20, 0.4);
+            --secondary: #831010;
+            --accent: #ff4444;
+            --bg-deep: #0a0a0a;
+            --bg-surface: #141414;
+            --bg-elevated: #1f1f1f;
+            --bg-card: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #666666;
+            --border: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --purple: #8b5cf6;
+            --gradient-hero: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a0a 100%);
+            --gradient-card: linear-gradient(145deg, #1f1f1f 0%, #141414 100%);
+            --gradient-accent: linear-gradient(135deg, #e50914 0%, #831010 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-nav { flex: 1; padding: 1rem; overflow-y: auto; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: var(--gradient-accent); color: white; }
+        .nav-item i { width: 1.25rem; text-align: center; }
+
+        .nav-section {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 1rem 1rem 0.5rem;
+        }
+
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+        @media (max-width: 1024px) { .main-content { margin-left: 0; } }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title { font-size: 1.125rem; font-weight: 600; }
+        .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary { background: var(--gradient-accent); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--primary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { color: var(--primary); background: rgba(255,255,255,0.05); }
+        .btn-icon { width: 2.25rem; height: 2.25rem; padding: 0; }
+
+        .content-area { padding: 1.5rem; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover { border-color: rgba(255,255,255,0.1); }
+
+        /* Engine Cards */
+        .engine-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .engine-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+
+        .engine-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .engine-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .engine-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+        }
+
+        .stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 0.813rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 600;
+        }
+
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+        @media (max-width: 1280px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hero-subtitle { font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.open .modal-content { transform: scale(1); }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23666' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Production Queue */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-elevated);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .queue-thumb {
+            width: 80px;
+            height: 45px;
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .queue-info { flex: 1; }
+        .queue-title { font-weight: 600; font-size: 0.875rem; }
+        .queue-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .progress-bar {
+            height: 0.375rem;
+            background: var(--bg-card);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: 9999px;
+            transition: width 0.5s ease;
+        }
+
+        .badge-success { background: var(--success); color: white; }
+        .badge-warning { background: var(--warning); color: black; }
+        .badge-info { background: var(--info); color: white; }
+        .badge-purple { background: var(--purple); color: white; }
+        .badge-error { background: var(--error); color: white; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: var(--success); color: white; }
+        .notification.error { background: var(--error); color: white; }
+        .notification.info { background: var(--info); color: white; }
+        .notification.warning { background: var(--warning); color: black; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .menu-toggle { display: none; }
+        @media (max-width: 1024px) { .menu-toggle { display: flex; } }
+
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+        .sidebar-overlay.show { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeIn 0.3s ease forwards; }
+
+        .version-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            z-index: 50;
+        }
+
+        /* Prose output for Markdown content */
+        .prose-output { text-align: left; line-height: 1.7; font-size: 0.875rem; color: var(--text-secondary); }
+        .prose-output h1, .prose-output h2, .prose-output h3 { color: var(--text-primary); font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+        .prose-output h2 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+        .prose-output h3 { font-size: 0.95rem; }
+        .prose-output p { margin-bottom: 0.75rem; }
+        .prose-output ul, .prose-output ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .prose-output li { margin-bottom: 0.25rem; }
+        .prose-output strong { color: var(--text-primary); }
+        .prose-output code { background: var(--bg-elevated); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.8rem; }
+        .prose-output pre { background: var(--bg-elevated); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; }
+        .prose-output blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .prose-output hr { border-color: var(--border); margin: 1rem 0; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        /* Light mode overrides */
+        html:not(.dark) :root {
+            --bg-deep: #f5f5f5;
+            --bg-surface: #ffffff;
+            --bg-elevated: #f0f0f0;
+            --bg-card: #e8e8e8;
+            --text-primary: #111111;
+            --text-secondary: #444444;
+            --text-muted: #888888;
+            --border: #d4d4d4;
+            --gradient-hero: linear-gradient(135deg, #f5f5f5 0%, #fff0f0 50%, #f5f5f5 100%);
+            --gradient-card: linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%);
+        }
+
+        /* AVIA Protocol Status Badge */
+        .avia-protocol-badge {
+            position: fixed;
+            bottom: 3.5rem;
+            right: 1rem;
+            z-index: 300;
+            animation: fadeIn 0.4s ease;
+        }
+        .avia-protocol-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #0f3460;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #e94560;
+            box-shadow: 0 4px 20px rgba(233,69,96,0.2);
+        }
+        .avia-pulse {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: protocolPulse 2s ease-in-out infinite;
+        }
+        .avia-pulse.error { background: #ef4444; }
+        .avia-pulse.warning { background: #f59e0b; }
+        .avia-pulse.correcting { background: #3b82f6; animation: protocolPulse 0.5s ease-in-out infinite; }
+
+        @keyframes protocolPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* ========================================
+           ATOMIC DESIGN TOKENS (Libro Blanco)
+           Atoms → Molecules → Organisms
+           ======================================== */
+        .atom-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .atom-dot--live { background: var(--success); animation: protocolPulse 1.5s ease-in-out infinite; }
+        .atom-dot--idle { background: var(--text-muted); }
+        .atom-dot--warn { background: var(--warning); animation: protocolPulse 0.8s ease-in-out infinite; }
+        .atom-dot--error { background: var(--error); }
+
+        .atom-tag {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.2rem 0.6rem; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; white-space: nowrap;
+        }
+        .atom-tag--success { background: rgba(34,197,94,0.15); color: var(--success); }
+        .atom-tag--warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .atom-tag--error { background: rgba(239,68,68,0.15); color: var(--error); }
+        .atom-tag--info { background: rgba(59,130,246,0.15); color: var(--info); }
+        .atom-tag--purple { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+        .mol-agent-card {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.25rem; position: relative;
+            transition: all 0.3s ease; overflow: hidden;
+        }
+        .mol-agent-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--gradient-accent); opacity: 0; transition: opacity 0.3s;
+        }
+        .mol-agent-card:hover::before { opacity: 1; }
+        .mol-agent-card.mol-agent-card--active { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+        .mol-agent-card.mol-agent-card--active::before { opacity: 1; }
+
+        .mol-consensus-meter { display: flex; gap: 2px; height: 2rem; border-radius: 0.5rem; overflow: hidden; }
+        .mol-consensus-meter__bar {
+            flex: 1; transition: all 0.5s ease; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700; color: white;
+        }
+
+        .org-consensus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+
+        .org-roadmap { position: relative; padding-left: 2rem; }
+        .org-roadmap::before {
+            content: ''; position: absolute; left: 0.75rem; top: 0; bottom: 0;
+            width: 2px; background: linear-gradient(to bottom, var(--primary), var(--purple), var(--info));
+        }
+        .org-roadmap__phase {
+            position: relative; margin-bottom: 1.5rem; padding-left: 1.5rem;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        .org-roadmap__phase::before {
+            content: ''; position: absolute; left: -1.35rem; top: 0.4rem;
+            width: 12px; height: 12px; border-radius: 50%;
+            border: 2px solid var(--primary); background: var(--bg-surface);
+        }
+        .org-roadmap__phase--done::before { background: var(--success); border-color: var(--success); }
+        .org-roadmap__phase--active::before { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
+        .org-roadmap__phase--pending::before { background: var(--bg-elevated); border-color: var(--text-muted); }
+
+        .org-snapshot-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem; background: var(--bg-elevated);
+            border-radius: 0.75rem; border: 1px solid var(--border); transition: all 0.2s;
+        }
+        .org-snapshot-item:hover { border-color: var(--primary); }
+
+        .filter-bar {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+            padding: 0.75rem; background: var(--bg-elevated);
+            border-radius: 0.75rem; margin-bottom: 1rem;
+        }
+        .filter-btn {
+            padding: 0.4rem 0.9rem; border-radius: 9999px;
+            font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; border: 1px solid var(--border);
+            background: transparent; color: var(--text-secondary); transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--primary); color: var(--text-primary); }
+        .filter-btn.active { background: var(--gradient-accent); color: white; border-color: transparent; }
+
+        .consensus-response {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 1rem; transition: all 0.2s;
+        }
+        .consensus-response.consensus-winner { border-color: var(--success); box-shadow: 0 0 12px rgba(34,197,94,0.2); }
+
+        .error-log-entry {
+            display: flex; align-items: flex-start; gap: 0.5rem;
+            padding: 0.5rem 0.75rem; border-left: 3px solid var(--error);
+            background: rgba(239,68,68,0.05); border-radius: 0 0.5rem 0.5rem 0;
+            margin-bottom: 0.5rem; font-size: 0.75rem;
+        }
+        .error-log-entry.log-warning { border-left-color: var(--warning); background: rgba(245,158,11,0.05); }
+        .error-log-entry.log-info { border-left-color: var(--info); background: rgba(59,130,246,0.05); }
+        .error-log-entry.log-success { border-left-color: var(--success); background: rgba(34,197,94,0.05); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.4s ease forwards; }
+
+        .search-input-wrap { position: relative; flex: 1; min-width: 200px; }
+        .search-input-wrap i { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; }
+        .search-input-wrap input {
+            width: 100%; padding: 0.6rem 0.75rem 0.6rem 2.25rem;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 9999px; color: var(--text-primary);
+            font-size: 1rem; font-family: inherit;
+        }
+        .search-input-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+
+        /* Custom modal dialog (no alert/confirm) */
+        .custom-dialog-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px); display: flex;
+            align-items: center; justify-content: center; z-index: 500;
+            animation: fadeIn 0.2s ease;
+        }
+        .custom-dialog {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.5rem; max-width: 400px; width: 90%;
+        }
+        /* ========================================
+           AVIA-NÓMADA MODE
+           Accessible interface for marginalized communities
+           Project Jaima / Solidarity Projects
+           ======================================== */
+        [dir="rtl"] .sidebar { right:0;left:auto;border-right:none;border-left:1px solid var(--border);transform:translateX(100%); }
+        [dir="rtl"] .sidebar.open { transform:translateX(0); }
+        [dir="rtl"] .main-content { margin-left:0;margin-right:260px; }
+        @media(max-width:1024px){[dir="rtl"] .main-content{margin-right:0;} [dir="rtl"] .sidebar{transform:translateX(100%);}}
+        [dir="rtl"] .nav-item { flex-direction: row-reverse; }
+        [dir="rtl"] .flex { /* keep default */ }
+
+        .nomada-container{max-width:600px;margin:0 auto;}
+        .nomada-lang-bar{display:flex;gap:0.5rem;justify-content:center;padding:0.75rem;background:var(--bg-elevated);border-radius:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+        .nomada-lang-btn{padding:0.5rem 1rem;border-radius:0.75rem;font-size:1rem;font-weight:600;cursor:pointer;border:2px solid var(--border);background:transparent;color:var(--text-secondary);transition:all 0.2s;min-width:54px;text-align:center;font-family:inherit;}
+        .nomada-lang-btn:hover{border-color:var(--primary);}
+        .nomada-lang-btn.active{background:var(--gradient-accent);color:white;border-color:transparent;transform:scale(1.05);}
+        .nomada-tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;}
+        @media(max-width:400px){.nomada-tpl-grid{grid-template-columns:1fr;}}
+        .nomada-tpl{background:var(--bg-elevated);border:2px solid var(--border);border-radius:1.25rem;padding:1.5rem;text-align:center;cursor:pointer;transition:all 0.3s ease;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;}
+        .nomada-tpl:hover{border-color:var(--primary);transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,0.3);}
+        .nomada-tpl:active{transform:scale(0.97);}
+        .nomada-tpl .tpl-icon{font-size:2.5rem;line-height:1;}
+        .nomada-tpl .tpl-name{font-size:1rem;font-weight:600;color:var(--text-primary);}
+        .nomada-tpl .tpl-desc{font-size:0.75rem;color:var(--text-muted);}
+        .nomada-step-bar{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:1.5rem;}
+        .nomada-dot{width:14px;height:14px;border-radius:50%;background:var(--border);transition:all 0.3s;}
+        .nomada-dot.on{background:var(--primary);transform:scale(1.3);box-shadow:0 0 12px var(--primary-glow);}
+        .nomada-dot.ok{background:var(--success);}
+        .nomada-ln{width:36px;height:3px;background:var(--border);border-radius:2px;}
+        .nomada-ln.ok{background:var(--success);}
+        .nomada-panel{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;animation:fadeIn 0.4s ease;}
+        .nomada-input{width:100%;padding:1rem 1.25rem;background:var(--bg-card);border:2px solid var(--border);border-radius:1rem;color:var(--text-primary);font-size:1.125rem;font-family:inherit;transition:all 0.2s;}
+        .nomada-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow);}
+        .nomada-input::placeholder{color:var(--text-muted);}
+        .nomada-btn{display:flex;align-items:center;justify-content:center;gap:0.75rem;width:100%;padding:1rem;border-radius:1rem;font-size:1.125rem;font-weight:700;cursor:pointer;border:none;transition:all 0.2s;font-family:inherit;min-height:56px;}
+        .nomada-btn--go{background:var(--gradient-accent);color:white;}
+        .nomada-btn--go:hover{transform:translateY(-2px);box-shadow:0 8px 25px var(--primary-glow);}
+        .nomada-btn--alt{background:var(--bg-card);color:var(--text-primary);border:2px solid var(--border);}
+        .nomada-btn--alt:hover{border-color:var(--primary);}
+        .nomada-btn--ok{background:var(--success);color:white;}
+        .nomada-spinner-lg{width:64px;height:64px;border:5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1.5rem;}
+        .nomada-result{background:var(--bg-elevated);border:2px solid var(--success);border-radius:1.25rem;padding:1.5rem;text-align:center;animation:fadeIn 0.5s ease;}
+        .nomada-header-icon{font-size:3rem;margin-bottom:0.5rem;display:block;text-align:center;}
+        .nomada-section-title{font-size:1.5rem;font-weight:700;text-align:center;margin-bottom:0.25rem;}
+        .nomada-section-sub{font-size:0.9rem;color:var(--text-muted);text-align:center;margin-bottom:1.5rem;}
+
+        .senior-card{background:var(--bg-elevated);border:2px solid var(--border);border-radius:1.25rem;padding:1.25rem;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:1rem;}
+        .senior-card:hover{border-color:var(--purple);}
+        .senior-card.active{border-color:var(--purple);box-shadow:0 0 20px rgba(139,92,246,0.3);}
+        .senior-chat-box{background:var(--bg-card);border-radius:1rem;padding:1rem;max-height:350px;overflow-y:auto;margin-bottom:1rem;min-height:120px;}
+        .senior-msg{padding:0.75rem 1rem;border-radius:0.75rem;margin-bottom:0.5rem;font-size:0.9rem;max-width:85%;animation:fadeIn 0.3s ease;word-wrap:break-word;}
+        .senior-msg--user{background:var(--primary);color:white;margin-left:auto;}
+        .senior-msg--bot{background:var(--bg-elevated);color:var(--text-primary);margin-right:auto;}
+        .senior-input-row{display:flex;gap:0.5rem;}
+        .senior-input-row input{flex:1;}
+
+        /* ========================================
+           MULTI-AGENT COMMAND CENTER
+           ======================================== */
+        .ma-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;}
+        @media(max-width:900px){.ma-grid{grid-template-columns:1fr;}}
+        .ma-mission{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;overflow:hidden;transition:all 0.3s;}
+        .ma-mission.running{border-color:var(--warning);animation:maPulse 2s ease-in-out infinite;}
+        .ma-mission.done{border-color:var(--success);}
+        .ma-mission.error{border-color:var(--error);}
+        @keyframes maPulse{0%,100%{box-shadow:0 0 0 rgba(245,158,11,0);}50%{box-shadow:0 0 20px rgba(245,158,11,0.15);}}
+        .ma-mission-header{padding:1rem 1.25rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--border);}
+        .ma-mission-icon{width:40px;height:40px;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+        .ma-mission-info{flex:1;min-width:0;}
+        .ma-mission-info h4{font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .ma-mission-info .ma-bot{font-size:0.7rem;color:var(--text-muted);display:flex;align-items:center;gap:0.35rem;margin-top:0.15rem;}
+        .ma-mission-status{font-size:0.65rem;font-weight:700;padding:0.2rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0;}
+        .ma-mission-status.idle{background:var(--bg-card);color:var(--text-muted);}
+        .ma-mission-status.running{background:rgba(245,158,11,0.15);color:var(--warning);}
+        .ma-mission-status.done{background:rgba(34,197,94,0.15);color:var(--success);}
+        .ma-mission-status.error{background:rgba(239,68,68,0.15);color:var(--error);}
+        .ma-mission-body{padding:1rem 1.25rem;max-height:280px;overflow-y:auto;font-size:0.8rem;color:var(--text-secondary);line-height:1.6;}
+        .ma-mission-body .prose-output{font-size:0.8rem;}
+        .ma-mission-body .prose-output h2{font-size:0.95rem;}
+        .ma-mission-body .prose-output h3{font-size:0.85rem;}
+        .ma-ctrl-bar{display:flex;align-items:center;gap:0.75rem;padding:1rem 1.5rem;background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;margin-bottom:1.5rem;}
+        .ma-ctrl-bar .ma-live-dot{width:10px;height:10px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+        .ma-ctrl-bar .ma-live-dot.live{background:var(--success);box-shadow:0 0 8px rgba(34,197,94,0.5);animation:protocolPulse 1.5s infinite;}
+        .ma-custom-prompt{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;padding:1.25rem;margin-top:1.5rem;}
+
+        /* ═══════════════════════════════════════════
+           VIDEOLAB LARGO — Long-Form Video Composer
+           ═══════════════════════════════════════════ */
+        .largo-hero{background:linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);border-radius:1.25rem;padding:2rem;margin-bottom:1.5rem;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
+        .largo-hero::before{content:'';position:absolute;top:-50%;right:-30%;width:60%;height:200%;background:radial-gradient(ellipse,rgba(139,92,246,0.15) 0%,transparent 70%);pointer-events:none;}
+        .largo-hero-title{font-size:1.5rem;font-weight:800;background:linear-gradient(90deg,#c084fc,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.25rem;}
+        .largo-hero-sub{color:rgba(255,255,255,0.6);font-size:0.85rem;}
+        .largo-stats-row{display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;}
+        .largo-stat{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 1rem;text-align:center;flex:1;min-width:80px;}
+        .largo-stat-val{font-size:1.1rem;font-weight:700;color:#c084fc;font-family:'Space Mono',monospace;}
+        .largo-stat-lbl{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em;margin-top:0.15rem;}
+        .largo-phase{display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+        .largo-phase-btn{padding:0.5rem 1rem;border-radius:2rem;font-size:0.75rem;font-weight:600;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-muted);cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:0.4rem;}
+        .largo-phase-btn.active{background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(124,58,237,0.3);}
+        .largo-phase-btn.done{background:rgba(34,197,94,0.15);color:var(--success);border-color:rgba(34,197,94,0.3);}
+        .largo-phase-btn i{font-size:0.7rem;}
+        .largo-scene{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;overflow:hidden;transition:all 0.3s;position:relative;}
+        .largo-scene:hover{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple);}
+        .largo-scene-header{display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:rgba(124,58,237,0.08);border-bottom:1px solid var(--border);cursor:grab;}
+        .largo-scene-num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0;}
+        .largo-scene-title{flex:1;font-size:0.8rem;font-weight:600;color:var(--text-primary);}
+        .largo-scene-dur{font-size:0.7rem;color:var(--purple);font-family:'Space Mono',monospace;background:rgba(124,58,237,0.12);padding:0.2rem 0.5rem;border-radius:0.5rem;}
+        .largo-scene-actions{display:flex;gap:0.25rem;}
+        .largo-scene-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0.25rem;font-size:0.75rem;border-radius:0.25rem;transition:color 0.2s;}
+        .largo-scene-actions button:hover{color:var(--primary);}
+        .largo-scene-body{padding:1rem;}
+        .largo-scene-prompt{font-size:0.75rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0.5rem;}
+        .largo-scene-status{display:inline-flex;align-items:center;gap:0.3rem;font-size:0.65rem;padding:0.2rem 0.6rem;border-radius:1rem;font-weight:600;}
+        .largo-scene-status.pending{background:rgba(255,255,255,0.05);color:var(--text-muted);}
+        .largo-scene-status.generating{background:rgba(124,58,237,0.15);color:#a78bfa;animation:protocolPulse 1.5s infinite;}
+        .largo-scene-status.done{background:rgba(34,197,94,0.12);color:var(--success);}
+        .largo-scene-status.error{background:rgba(239,68,68,0.12);color:var(--error);}
+        .largo-scene-thumb{width:100%;height:80px;border-radius:0.5rem;background:var(--bg-card);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-top:0.5rem;}
+        .largo-scene-thumb video{width:100%;height:100%;object-fit:cover;border-radius:0.5rem;}
+        .largo-scene-thumb i{font-size:1.5rem;color:var(--text-muted);}
+        .largo-progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:1rem 0;}
+        .largo-progress-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#38bdf8);border-radius:3px;transition:width 0.5s ease;}
+        .largo-final-preview{background:linear-gradient(135deg,#0f0c29,#302b63);border-radius:1rem;padding:1.5rem;border:1px solid rgba(139,92,246,0.3);text-align:center;}
+        .largo-final-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.5rem;margin:1rem 0;}
+        .largo-final-clip{border-radius:0.5rem;overflow:hidden;position:relative;aspect-ratio:16/9;background:#000;cursor:pointer;}
+        .largo-final-clip video{width:100%;height:100%;object-fit:cover;}
+        .largo-final-clip .clip-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:0.3rem 0.5rem;font-size:0.6rem;color:#fff;}
+        .largo-input-script{width:100%;min-height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem;font-family:'Outfit',sans-serif;font-size:0.85rem;color:var(--text-primary);resize:vertical;transition:border-color 0.2s;}
+        .largo-input-script:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px rgba(124,58,237,0.15);}
+        .largo-config-row{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0;}
+        .largo-config-item{flex:1;min-width:120px;}
+        .largo-config-item label{display:block;font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;}
+        .largo-config-item select,.largo-config-item input{width:100%;padding:0.5rem 0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:0.5rem;color:var(--text-primary);font-size:0.8rem;}
+        @media(max-width:768px){
+            .largo-hero-title{font-size:1.2rem;}
+            .largo-stats-row{gap:0.5rem;}
+            .largo-config-row{flex-direction:column;}
+            .largo-final-grid{grid-template-columns:repeat(2,1fr);}
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+                        <i class="fas fa-film text-white"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm">AVIA VideoLab</div>
+                        <div class="text-xs text-[var(--text-muted)]">v5.0 Pro</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="produccion">
+                    <i class="fas fa-video"></i>
+                    <span>Producción</span>
+                </div>
+                <div class="nav-item" data-section="biblioteca">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Biblioteca</span>
+                </div>
+
+                <div class="nav-item" data-section="largo">
+                    <i class="fas fa-photo-video" style="color:#a78bfa;"></i>
+                    <span>VideoLab Largo</span>
+                </div>
+
+                <div class="nav-section">Herramientas</div>
+
+                <div class="nav-item" data-section="editor">
+                    <i class="fas fa-pen-fancy"></i>
+                    <span>Editor Guion</span>
+                </div>
+                <div class="nav-item" data-section="validador">
+                    <i class="fas fa-check-double"></i>
+                    <span>Validador</span>
+                </div>
+                <div class="nav-item" data-section="timeline">
+                    <i class="fas fa-film"></i>
+                    <span>Timeline</span>
+                </div>
+
+                <div class="nav-section">Inteligencia</div>
+
+                <div class="nav-item" data-section="multiagent">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Multi-Agente</span>
+                </div>
+                <div class="nav-item" data-section="consenso">
+                    <i class="fas fa-brain"></i>
+                    <span>Consenso IA</span>
+                </div>
+                <div class="nav-item" data-section="libroblanco">
+                    <i class="fas fa-book"></i>
+                    <span>Libro Blanco</span>
+                </div>
+
+                <div class="nav-section">Configuración</div>
+
+                <div class="nav-item" data-section="carlos">
+                    <i class="fas fa-user-tie"></i>
+                    <span>AVIA-Clon-Carlos</span>
+                </div>
+                <div class="nav-item" data-section="protocol">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>AVIA Protocol</span>
+                </div>
+
+                <div class="nav-section">Solidario</div>
+
+                <div class="nav-item" data-section="nomada">
+                    <i class="fas fa-globe-africa"></i>
+                    <span>AVIA-Nómada</span>
+                </div>
+                <div class="nav-item" data-section="senior">
+                    <i class="fas fa-hands-helping"></i>
+                    <span>AVIA-Senior v3.2</span>
+                </div>
+
+                <div class="nav-section">Sistema</div>
+
+                <div class="nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Ajustes</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-[var(--border)]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-sm font-bold">C</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">Carlos Creator</div>
+                        <div class="text-xs text-[var(--text-muted)]">Plan Pro</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="flex items-center gap-4">
+                    <button class="btn btn-ghost btn-icon menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="header-title" id="headerTitle">Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost btn-icon" onclick="exportProject()">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('newProduction')">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Producción</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- DASHBOARD -->
+                <section class="section active" id="section-dashboard">
+                    <div class="mb-8">
+                        <h1 class="hero-title">
+                            AVIACreatorHub + VideoLab
+                            <span class="text-3xl">🎬</span>
+                        </h1>
+                        <p class="hero-subtitle">Sistema Multi-Motor: Veo-v3.1 • Sora-2 (Integración Real)</p>
+                    </div>
+
+                    <!-- Engine Cards -->
+                    <div class="grid-3 mb-6">
+                        <div class="engine-card selected" onclick="selectEngine('veo')">
+                            <div class="engine-icon" style="background: rgba(139, 92, 246, 0.2);">🎬</div>
+                            <h3 class="font-semibold mb-1">Veo-v3.1</h3>
+                            <span class="engine-badge badge-purple">AUDIO NATIVO</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Audio integrado • Alta calidad • Google AI</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('sora')">
+                            <div class="engine-icon" style="background: rgba(239, 68, 68, 0.2);">🎥</div>
+                            <h3 class="font-semibold mb-1">Sora-2</h3>
+                            <span class="engine-badge badge-error">MAYOR DURACIÓN</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Hasta 12s • OpenAI • Narrativa compleja</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('pro')">
+                            <div class="engine-icon" style="background: rgba(245, 158, 11, 0.2);">⚡</div>
+                            <h3 class="font-semibold mb-1">Modo PRO</h3>
+                            <span class="engine-badge badge-warning">2 MOTORES</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Genera con Veo + Sora • Compara resultados</p>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid-4 mb-6">
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">En Cola</span>
+                                <span class="stat-badge badge-info" id="queueBadge">0</span>
+                            </div>
+                            <div class="stat-value" id="queueCount">0</div>
+                            <div class="stat-label">vídeos pendientes</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Completados Hoy</span>
+                                <span class="stat-badge badge-success">+12%</span>
+                            </div>
+                            <div class="stat-value" id="completedToday">2</div>
+                            <div class="stat-label">vídeos generados</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Versiones</span>
+                                <span class="stat-badge badge-info" id="versionBadge">1</span>
+                            </div>
+                            <div class="stat-value" id="versionCount">1</div>
+                            <div class="stat-label">exportadas</div>
+                        </div>
+
+                        <div class="stat-card" style="border-top:2px solid var(--error);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium"><i class="fas fa-shield-alt text-[var(--error)] mr-1"></i>ErrorGuard</span>
+                                <span class="stat-badge badge-success" id="errorGuardDashBadge">OK</span>
+                            </div>
+                            <div class="stat-value" id="errorGuardDashCount">0</div>
+                            <div class="stat-label">errores interceptados</div>
+                            <div class="text-xs mt-2" style="color:var(--text-muted);">
+                                <span id="errorGuardDashRules">8</span> reglas activas
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold">Actividad Reciente</h3>
+                            <button class="btn btn-ghost btn-icon text-sm"><i class="fas fa-ellipsis-h"></i></button>
+                        </div>
+                        <div id="recentActivity">
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Video TOOC Promo</div>
+                                    <div class="queue-meta">Veo-v3.1 • 8s • Completado hace 2h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(1)"><i class="fas fa-play"></i></button>
+                            </div>
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Demo Feature X</div>
+                                    <div class="queue-meta">RunwayML • 5s • Completado hace 4h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(2)"><i class="fas fa-play"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PRODUCCIÓN -->
+                <section class="section" id="section-produccion">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Cola de Producción</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Gestiona tus vídeos en proceso</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('newProduction')">
+                            <i class="fas fa-plus"></i> Nuevo Vídeo
+                        </button>
+                    </div>
+
+                    <!-- Modos de Creación (Opción A) -->
+                    <div class="grid-4 mb-6">
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('newProduction')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-700/20 flex items-center justify-center">
+                                    <i class="fas fa-magic text-xl text-purple-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Cero</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Escribe un prompt y genera</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromScript')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-700/20 flex items-center justify-center">
+                                    <i class="fas fa-file-alt text-xl text-blue-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Guion</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Sube guion o enlace Drive</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromImage')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-green-500/20 to-green-700/20 flex items-center justify-center">
+                                    <i class="fas fa-image text-xl text-green-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Imagen</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Anima una foto/fotograma</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('improveVideo')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-700/20 flex items-center justify-center">
+                                    <i class="fas fa-wand-magic-sparkles text-xl text-orange-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Mejorar Video</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Edita video existente</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="productionQueue">
+                        <div class="card text-center py-12">
+                            <i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i>
+                            <p class="text-[var(--text-muted)]">No hay vídeos en cola</p>
+                            <button class="btn btn-primary mt-4" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Crear primero
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BIBLIOTECA -->
+                <section class="section" id="section-biblioteca">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Biblioteca</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Todos tus vídeos generados</p>
+                        </div>
+                    </div>
+                    <div class="grid-3" id="libraryGrid">
+                        <div class="card text-center py-8">
+                            <i class="fas fa-photo-video text-3xl text-[var(--text-muted)] mb-3"></i>
+                            <p class="text-sm text-[var(--text-muted)]">Tus vídeos aparecerán aquí</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EDITOR -->
+                <section class="section" id="section-editor">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Editor de Guion</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Escribe y valida tu guion</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Guion</h3>
+                            <textarea class="form-input form-textarea" style="min-height: 300px;" placeholder="Escribe tu guion aquí..." id="scriptContent"></textarea>
+                            <div class="flex justify-between items-center mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="wordCount">0</span> palabras</span>
+                                <button class="btn btn-primary" onclick="validateScript()">
+                                    <i class="fas fa-check-double"></i> Validar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Análisis</h3>
+                            <div id="scriptAnalysis" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-magic text-3xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Validar"</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VALIDADOR -->
+                <section class="section" id="section-validador">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Validador Visual</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Analiza coherencia visual, viabilidad técnica y calidad del guion con IA</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-pen text-[var(--info)]"></i> Guion / Prompt a Validar
+                            </h3>
+                            <textarea class="form-input form-textarea" style="min-height: 220px;" placeholder="Pega tu guion o prompt de video aquí para analizar su coherencia visual, viabilidad técnica y calidad narrativa..." id="validatorInput"></textarea>
+                            <div class="flex items-center justify-between mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="validatorWordCount">0</span> palabras</span>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary" onclick="loadScriptToValidator()">
+                                        <i class="fas fa-file-import"></i> Desde Editor
+                                    </button>
+                                    <button class="btn btn-primary" onclick="validateScriptAI()">
+                                        <i class="fas fa-brain"></i> Analizar con IA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-chart-bar text-[var(--success)]"></i> Análisis
+                            </h3>
+                            <div id="validatorLoading" class="hidden text-center py-8">
+                                <div class="inline-block w-8 h-8 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3"></div>
+                                <p class="text-sm text-[var(--text-muted)]">Claude está analizando tu guion...</p>
+                            </div>
+                            <div id="validatorOutput" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-eye text-4xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Analizar con IA"</p>
+                                <p class="text-xs mt-2">Se evaluará: coherencia visual, viabilidad técnica, pacing, y sugerencias de mejora</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TIMELINE -->
+                <section class="section" id="section-timeline">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Timeline de Proyecto</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Visualiza y reproduce tus clips en secuencia</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-secondary" onclick="refreshTimeline()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                            <button class="btn btn-primary" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Añadir Clip
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preview Player -->
+                    <div class="card mb-4">
+                        <div class="aspect-video bg-[var(--bg-elevated)] rounded-lg flex items-center justify-center mb-4 overflow-hidden relative" id="timelinePreview">
+                            <div class="text-center text-[var(--text-muted)]" id="timelinePreviewEmpty">
+                                <i class="fas fa-play-circle text-5xl mb-3"></i>
+                                <p class="text-sm">Selecciona un clip del timeline para reproducir</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 mb-3 text-sm">
+                            <span class="text-[var(--text-muted)]">Clips totales: <strong class="text-white" id="timelineClipCount">0</strong></span>
+                            <span class="text-[var(--text-muted)]">|</span>
+                            <span class="text-[var(--text-muted)]">Duración total: <strong class="text-white" id="timelineTotalDuration">0s</strong></span>
+                            <span class="text-[var(--text-muted)]">|</span>
+                            <span class="text-[var(--text-muted)]">En cola: <strong class="text-white" id="timelineQueueCount">0</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Track -->
+                    <div class="card">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-film text-[var(--primary)]"></i> Timeline
+                        </h3>
+                        <div class="flex gap-2 p-3 bg-[var(--bg-elevated)] rounded-lg overflow-x-auto" id="dynamicTimelineTrack">
+                            <div class="min-w-[120px] h-16 bg-[var(--bg-card)] rounded-lg border border-dashed border-[var(--border)] flex flex-col items-center justify-center cursor-pointer" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus text-sm text-[var(--text-muted)]"></i>
+                                <span class="text-xs mt-1 text-[var(--text-muted)]">Añadir clip</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CARLOS -->
+                <section class="section" id="section-carlos">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">AVIA-Clon-Carlos</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configura la personalidad y genera contenido con el estilo de Carlos</p>
+                    </div>
+                    <div class="grid-2 mb-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-user-cog text-[var(--purple)]"></i> Perfil de Voz
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label">Tono</label>
+                                    <select class="form-input form-select" id="carlosTone">
+                                        <option value="entusiasta">Entusiasta</option>
+                                        <option value="profesional">Profesional</option>
+                                        <option value="casual">Casual</option>
+                                        <option value="inspirador">Inspirador</option>
+                                        <option value="educativo">Educativo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Muletillas</label>
+                                    <input type="text" class="form-input" id="carlosCatchphrases" value="¡Vamos!, Increíble, Mira esto, ¡Esto es brutal!">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Estilo de presentación</label>
+                                    <select class="form-input form-select" id="carlosStyle">
+                                        <option value="youtuber">YouTuber / Creador</option>
+                                        <option value="presentador">Presentador TV</option>
+                                        <option value="profesor">Profesor / Tutorial</option>
+                                        <option value="narrador">Narrador Documental</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contexto / Marca</label>
+                                    <input type="text" class="form-input" id="carlosBrand" value="AVIA Creator Hub" placeholder="Ej: TOOC, AVIA, Mi marca...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-eye text-[var(--success)]"></i> Vista Previa Persona
+                            </h3>
+                            <div class="bg-[var(--bg-elevated)] rounded-lg p-4 text-sm mb-4" style="line-height: 1.8;" id="carlosPreview">
+                                <p class="mb-3">¡Vamos! Hoy te voy a mostrar algo <strong>increíble</strong> que va a cambiar tu forma de trabajar...</p>
+                                <p class="text-[var(--success)] text-xs mt-2">[TONO: Entusiasta | ESTILO: YouTuber | MARCA: AVIA Creator Hub]</p>
+                            </div>
+                            <button class="btn btn-secondary w-full mb-3" onclick="updateCarlosPreview()">
+                                <i class="fas fa-sync-alt"></i> Actualizar Vista Previa
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Generador con Persona Carlos -->
+                    <div class="card">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-magic text-[var(--warning)]"></i> Generador con Estilo Carlos
+                        </h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4">Escribe un tema o idea y Carlos generará un guion/prompt con su personalidad única</p>
+                        <div class="form-group">
+                            <textarea class="form-input form-textarea" id="carlosInputText" placeholder="Ej: Presenta las nuevas funciones de AVIA VideoLab para la audiencia de YouTube..."></textarea>
+                        </div>
+                        <div class="flex gap-3">
+                            <button class="btn btn-primary flex-1" onclick="generateWithCarlos('script')">
+                                <i class="fas fa-pen"></i> Generar Guion
+                            </button>
+                            <button class="btn btn-secondary flex-1" onclick="generateWithCarlos('prompt')">
+                                <i class="fas fa-video"></i> Generar Prompt Video
+                            </button>
+                            <button class="btn btn-secondary flex-1" onclick="generateWithCarlos('narration')">
+                                <i class="fas fa-microphone"></i> Generar Narración
+                            </button>
+                        </div>
+                        <div id="carlosLoading" class="hidden text-center py-4 mt-4">
+                            <div class="inline-block w-6 h-6 border-3 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <p class="text-sm text-[var(--text-muted)]">Carlos está creando contenido...</p>
+                        </div>
+                        <div id="carlosOutput" class="mt-4"></div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <!-- 🛡️ AVIA PROTOCOL SECTION -->
+                <section class="section" id="section-protocol">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-shield-alt" style="color: var(--primary)"></i>
+                            AVIA Protocol System
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Siesta + Persist + AutoCorrector — Regla Universal Anti-Token-Limit</p>
+                    </div>
+
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="stat-badge badge-success mb-2"><i class="fas fa-sync-alt mr-1"></i> Siesta</div>
+                            <div class="stat-value" id="protocolRetries">0</div>
+                            <div class="stat-label">Reintentos auto</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-badge badge-info mb-2"><i class="fas fa-magic mr-1"></i> AutoCorrector</div>
+                            <div class="stat-value" id="protocolCorrections">0</div>
+                            <div class="stat-label">Correcciones</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-badge badge-purple mb-2"><i class="fas fa-database mr-1"></i> Persist</div>
+                            <div class="stat-value" id="protocolSnapshots">0</div>
+                            <div class="stat-label">Snapshots</div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-scroll text-[var(--warning)]"></i>
+                            Regla Universal AVIA
+                        </h3>
+                        <div class="space-y-3 text-sm text-[var(--text-secondary)]">
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">1️⃣</span>
+                                <div><strong class="text-white">AutoCorrector (Pre-envío):</strong> Antes de cada llamada, valida el prompt. Si excede ~450 chars o contiene patrones que provocan respuestas largas, lo reduce automáticamente cortando por oración completa.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">2️⃣</span>
+                                <div><strong class="text-white">Persist (Snapshot):</strong> Antes de cada envío, guarda un snapshot del estado completo. Si ocurre un error, puede restaurar al estado anterior sin perder datos.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">3️⃣</span>
+                                <div><strong class="text-white">Siesta (Retry inteligente):</strong> Si detecta "Output token limit reached", espera 2s/5s/10s (backoff exponencial), reduce el prompt un 30% adicional, y reintenta hasta 3 veces.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">4️⃣</span>
+                                <div><strong class="text-white">Consenso (Post-respuesta):</strong> Si la respuesta del bot llega con error de token limit, el handler detecta el patrón, reduce el prompt un 40%, y reintenta automáticamente con un delay de 3s.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated);border-left:3px solid var(--error);">
+                                <span class="text-lg">5️⃣</span>
+                                <div><strong class="text-white">ErrorGuard (Runtime):</strong> Intercepta errores de sintaxis en tiempo real (<code>SyntaxError</code>, <code>Unexpected token '...'</code>, <code>?.</code>, <code>=></code>). Clasifica por 8 reglas (spread, optional chaining, nullish coalescing, template literals, arrow functions, destructuring, const/let, async/await) y notifica con fix sugerido. Incluye utilidades <code>safe()</code> y <code>safeCall()</code> para acceso seguro a propiedades.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ErrorGuard Report -->
+                    <div class="card mb-4" style="border-color:var(--error);">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-bug text-[var(--error)]"></i>
+                            ErrorGuard — Reglas de Auto-Corrección
+                        </h3>
+                        <div class="grid-2 gap-3 mb-4">
+                            <div class="p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <div class="text-xs text-[var(--text-muted)] mb-1">Reglas activas</div>
+                                <div class="text-2xl font-bold" style="font-family:Space Mono;color:var(--success);" id="errorGuardRuleCount">8</div>
+                            </div>
+                            <div class="p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <div class="text-xs text-[var(--text-muted)] mb-1">Errores interceptados</div>
+                                <div class="text-2xl font-bold" style="font-family:Space Mono;" id="errorGuardCatchCount">0</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2" id="errorGuardRules">
+                            <!-- Populated by JS on section load -->
+                        </div>
+                        <button class="btn btn-secondary mt-3 w-full" onclick="refreshErrorGuard()">
+                            <i class="fas fa-sync-alt"></i> Actualizar Reporte
+                        </button>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-tools text-[var(--info)]"></i>
+                            Configuración del Protocolo
+                        </h3>
+                        <div class="grid-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">Max Chars por Prompt</label>
+                                <input type="number" class="form-input" id="cfgMaxChars" value="450" onchange="AVIAProtocol.config.maxPromptChars = parseInt(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Reintentos</label>
+                                <input type="number" class="form-input" id="cfgMaxRetries" value="3" onchange="AVIAProtocol.config.maxRetries = parseInt(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Factor de Reducción</label>
+                                <input type="number" class="form-input" id="cfgReduction" value="0.7" step="0.1" min="0.3" max="1" onchange="AVIAProtocol.config.reductionFactor = parseFloat(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Acciones</label>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary flex-1" onclick="refreshProtocolStats()">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-primary flex-1" onclick="AVIAProtocol.Persist.restoreLatest()">
+                                        <i class="fas fa-undo"></i> Restaurar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-terminal text-[var(--success)]"></i>
+                            Log de Errores
+                        </h3>
+                        <div id="protocolErrorLog" class="text-xs font-mono text-[var(--text-muted)]" style="max-height: 200px; overflow-y: auto;">
+                            Sin errores registrados. El protocolo está funcionando correctamente.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     MULTI-AGENT COMMAND CENTER
+                     Parallel bot orchestration
+                     ======================================== -->
+                <section class="section" id="section-multiagent">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-satellite-dish" style="color:var(--warning)"></i>
+                            Centro de Mando Multi-Agente
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Orquesta misiones paralelas con múltiples bots — Despacho simultáneo</p>
+                    </div>
+
+                    <!-- Control Bar -->
+                    <div class="ma-ctrl-bar">
+                        <div class="ma-live-dot" id="maLiveDot"></div>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold" id="maStatusText">En espera</span>
+                            <span class="text-xs text-[var(--text-muted)] ml-2" id="maCounter">0/7 misiones</span>
+                        </div>
+                        <button class="btn btn-primary" id="maLaunchBtn" onclick="maLaunchAll()">
+                            <i class="fas fa-rocket"></i> Lanzar Todas
+                        </button>
+                        <button class="btn btn-secondary" onclick="maResetAll()">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+
+                    <!-- Mission Grid -->
+                    <div class="ma-grid" id="maMissionGrid">
+                        <!-- Mission 1: Grok Multi-Agent -->
+                        <div class="ma-mission" id="maMission0">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(245,158,11,0.15);">
+                                    <i class="fas fa-network-wired" style="color:var(--warning);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Orquestación Multi-Agente</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Grok-4.20-Multi-Agent</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus0">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody0">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-network-wired text-2xl mb-2" style="display:block;"></i>
+                                    <p>Coordinación estratégica multi-agente</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 2: Strategic Objectives -->
+                        <div class="ma-mission" id="maMission1">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(139,92,246,0.15);">
+                                    <i class="fas fa-chess-king" style="color:var(--purple);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Objetivos Estratégicos — Semana 2</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus1">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody1">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-chess-king text-2xl mb-2" style="display:block;"></i>
+                                    <p>Hitos clave de la segunda semana de AVIA</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 3: PagerDuty Alert -->
+                        <div class="ma-mission" id="maMission2">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(59,130,246,0.15);">
+                                    <i class="fas fa-bell" style="color:var(--info);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Alerta PagerDuty — SRE</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus2">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody2">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-bell text-2xl mb-2" style="display:block;"></i>
+                                    <p>Configuración de alertas automáticas de rendimiento</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 4: Multi-Region Scaling -->
+                        <div class="ma-mission" id="maMission3">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(239,68,68,0.15);">
+                                    <i class="fas fa-globe" style="color:var(--error);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Cuellos de Botella — Multi-Región</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus3">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody3">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-globe text-2xl mb-2" style="display:block;"></i>
+                                    <p>Análisis de escalabilidad multi-región</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 5: Full HTML Integration Code -->
+                        <div class="ma-mission" id="maMission4">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(34,197,94,0.15);">
+                                    <i class="fas fa-code" style="color:var(--success);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Código HTML — Integraciones Completas</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus4">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody4">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-code text-2xl mb-2" style="display:block;"></i>
+                                    <p>Generación de código HTML con todas las integraciones</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 6: Async Validator Explanation -->
+                        <div class="ma-mission" id="maMission5">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(168,85,247,0.15);">
+                                    <i class="fas fa-sync-alt" style="color:#a855f7;"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Validador Async — Scripts Dinámicos</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus5">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody5">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-sync-alt text-2xl mb-2" style="display:block;"></i>
+                                    <p>Validación de scripts cargados dinámicamente en AVIA</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 7: Stat Card Integration -->
+                        <div class="ma-mission" id="maMission6">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(251,146,60,0.15);">
+                                    <i class="fas fa-chart-bar" style="color:#fb923c;"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Stat Card — Panel de Control</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus6">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody6">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-chart-bar text-2xl mb-2" style="display:block;"></i>
+                                    <p>Integración de stat card ErrorGuard en el dashboard</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Mission -->
+                    <div class="ma-custom-prompt">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-plus-circle text-[var(--info)]"></i> Misión Personalizada
+                        </h3>
+                        <div class="flex gap-3 mb-3">
+                            <select class="form-input form-select" style="width:220px;" id="maCustomBot">
+                                <option value="Claude-Sonnet-4.5">Claude-Sonnet-4.5</option>
+                                <option value="GPT-5.2">GPT-5.2</option>
+                                <option value="Gemini-3-Flash">Gemini-3-Flash</option>
+                                <option value="Grok-4.1-Fast-Reasoning">Grok-4.1 Reasoning</option>
+                                <option value="Grok-4.1-Fast-Non-Reasoning">Grok-4.1 Non-Reasoning</option>
+                            </select>
+                            <input type="text" class="form-input flex-1" id="maCustomName" placeholder="Nombre de la misión...">
+                        </div>
+                        <textarea class="form-input form-textarea" id="maCustomPrompt" placeholder="Escribe el prompt para esta misión..." style="min-height:80px;"></textarea>
+                        <button class="btn btn-primary mt-3" onclick="maLaunchCustom()">
+                            <i class="fas fa-paper-plane"></i> Lanzar Misión
+                        </button>
+                    </div>
+                </section>
+
+                <!-- CONSENSO IA -->
+                <section class="section" id="section-consenso">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-brain" style="color: var(--purple)"></i>
+                            Constelación de Agentes de Consenso
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Multi-agente económico profesional — Validación cruzada con IA</p>
+                    </div>
+
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--purple mb-2"><i class="fas fa-users mr-1"></i> Agentes</div>
+                            <div class="stat-value" id="consensusAgentCount">3</div>
+                            <div class="stat-label">modelos activos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--success mb-2"><i class="fas fa-check-double mr-1"></i> Consensos</div>
+                            <div class="stat-value" id="consensusCount">0</div>
+                            <div class="stat-label">validaciones completadas</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--info mb-2"><i class="fas fa-percentage mr-1"></i> Acuerdo</div>
+                            <div class="stat-value" id="consensusAgreement">—</div>
+                            <div class="stat-label">tasa de consenso</div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-satellite-dish text-[var(--purple)]"></i>
+                            Panel de Agentes
+                        </h3>
+                        <div class="org-consensus-grid mb-4" id="agentCardsGrid">
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fas fa-robot text-purple-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">Claude-Sonnet-4.5</div>
+                                        <span class="atom-tag atom-tag--purple">Anthropic</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Razonamiento profundo, código y análisis creativo</p>
+                            </div>
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"><i class="fas fa-brain text-blue-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">GPT-5.2</div>
+                                        <span class="atom-tag atom-tag--info">OpenAI</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Análisis extenso, visión y resolución avanzada</p>
+                            </div>
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center"><i class="fas fa-bolt text-red-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">Gemini-3-Flash</div>
+                                        <span class="atom-tag atom-tag--error">Google</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Velocidad excepcional, contexto largo, multimodal</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-gavel text-[var(--warning)]"></i>
+                            Validación por Consenso
+                        </h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4">Envía un prompt o guion a los 3 agentes simultáneamente. El sistema AVIA compara respuestas, detecta discrepancias y genera un veredicto de consenso.</p>
+                        <div class="form-group">
+                            <label class="form-label">Prompt / Guion a validar</label>
+                            <textarea class="form-input form-textarea" id="consensusInput" placeholder="Escribe un prompt de video, guion o pregunta para que los 3 agentes la evalúen..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de validación</label>
+                            <select class="form-input form-select" id="consensusType">
+                                <option value="prompt">Optimización de Prompt de Video</option>
+                                <option value="script">Análisis de Guion</option>
+                                <option value="strategy">Estrategia de Contenido</option>
+                                <option value="technical">Viabilidad Técnica</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-full" onclick="runConsensus()" id="consensusBtn">
+                            <i class="fas fa-play"></i> Lanzar Consenso Multi-Agente
+                        </button>
+                    </div>
+
+                    <div id="consensusLoading" class="hidden card mb-4 text-center py-8">
+                        <div class="inline-block w-8 h-8 border-4 border-[var(--purple)] border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <p class="text-sm text-[var(--text-muted)]" id="consensusLoadingText">Consultando agentes...</p>
+                        <div class="mol-consensus-meter mt-4 mx-auto" style="max-width:400px;" id="consensusMeter">
+                            <div class="mol-consensus-meter__bar" style="background:var(--purple);opacity:0.3;">Claude</div>
+                            <div class="mol-consensus-meter__bar" style="background:var(--info);opacity:0.3;">GPT</div>
+                            <div class="mol-consensus-meter__bar" style="background:var(--error);opacity:0.3;">Gemini</div>
+                        </div>
+                    </div>
+
+                    <div id="consensusResults" class="space-y-4"></div>
+                </section>
+
+                <!-- LIBRO BLANCO -->
+                <section class="section" id="section-libroblanco">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-book" style="color: var(--warning)"></i>
+                            Libro Blanco — Plan de Desarrollo
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Auditoría, roadmap y estado de implementación (Atomic Design + AVIA Protocol)</p>
+                    </div>
+
+                    <div class="grid-4 mb-6">
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--success mb-2">Completado</div>
+                            <div class="stat-value text-[var(--success)]">21</div>
+                            <div class="stat-label">módulos activos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--warning mb-2">En Progreso</div>
+                            <div class="stat-value text-[var(--warning)]">5</div>
+                            <div class="stat-label">en desarrollo</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--info mb-2">Planificado</div>
+                            <div class="stat-value text-[var(--info)]">3</div>
+                            <div class="stat-label">próximas fases</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--purple mb-2">Cobertura</div>
+                            <div class="stat-value text-[var(--purple)]">88%</div>
+                            <div class="stat-label">implementado</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-route text-[var(--primary)]"></i>
+                                Roadmap de Implementación
+                            </h3>
+                            <div class="org-roadmap" id="roadmapContainer">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-clipboard-check text-[var(--success)]"></i>
+                                Auditoría de Módulos
+                            </h3>
+                            <div class="space-y-2" id="auditModules">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-6">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-atom text-[var(--purple)]"></i>
+                            Arquitectura Atomic Design
+                        </h3>
+                        <div class="grid-3">
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--success)]"><i class="fas fa-circle text-xs mr-1"></i> Átomos</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Botones (btn-primary, btn-secondary, btn-ghost)</li>
+                                    <li>• Inputs (form-input, form-select)</li>
+                                    <li>• Tags (atom-tag variantes)</li>
+                                    <li>• Dots de estado (atom-dot)</li>
+                                    <li>• Badges (engine-badge, stat-badge)</li>
+                                    <li>• Tipografía (Outfit + Space Mono)</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--info)]"><i class="fas fa-puzzle-piece text-xs mr-1"></i> Moléculas</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Agent Card (mol-agent-card)</li>
+                                    <li>• Consensus Meter (mol-consensus-meter)</li>
+                                    <li>• Engine Card (engine-card)</li>
+                                    <li>• Queue Item (queue-item)</li>
+                                    <li>• Stat Card (stat-card)</li>
+                                    <li>• Form Group (form-group + label)</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--purple)]"><i class="fas fa-layer-group text-xs mr-1"></i> Organismos</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Dashboard (stats + engines + activity)</li>
+                                    <li>• Producción (queue + creation modes)</li>
+                                    <li>• Consenso (agents + validation + results)</li>
+                                    <li>• Pipeline (4 steps wizard)</li>
+                                    <li>• Roadmap (phases timeline)</li>
+                                    <li>• AVIA Protocol (siesta + persist + auto)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS ENHANCED -->
+                <section class="section" id="section-settings">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Ajustes</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configuración completa de la aplicación</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-download text-[var(--info)]"></i>
+                                Exportar / Importar
+                            </h3>
+                            <div class="flex gap-3">
+                                <button class="btn btn-secondary flex-1" onclick="exportProject()">
+                                    <i class="fas fa-download"></i> Exportar
+                                </button>
+                                <label class="btn btn-secondary flex-1 cursor-pointer">
+                                    <i class="fas fa-upload"></i> Importar
+                                    <input type="file" accept=".json" class="hidden" onchange="importProject(event)">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-[var(--purple)]"></i>
+                                Acerca de
+                            </h3>
+                            <div class="text-sm text-[var(--text-muted)] space-y-1">
+                                <p><strong class="text-[var(--text-primary)]">App:</strong> AVIACreatorHub + VideoLab</p>
+                                <p><strong class="text-[var(--text-primary)]">Versión:</strong> v11.0 VideoLab Largo</p>
+                                <p><strong class="text-[var(--text-primary)]">Protocolo:</strong> AVIA Full Stack (Siesta + Persist + AutoCorrector + Consenso)</p>
+                                <p><strong class="text-[var(--text-primary)]">Solidario:</strong> AVIA-Nómada (i18n: ES/FR/AR/ⵜⵎⵣⵖ) + Senior v3.2</p>
+                                <p><strong class="text-[var(--text-primary)]">Diseño:</strong> Atomic Design System</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-6">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-database text-[var(--success)]"></i>
+                            Snapshots Guardados (AVIA Persist)
+                        </h3>
+                        <div id="snapshotBrowser" class="space-y-2">
+                            <p class="text-sm text-[var(--text-muted)]">No hay snapshots guardados aún.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-[var(--warning)]"></i>
+                            Diagnóstico AVIA Protocol
+                        </h3>
+                        <div id="protocolDiagnostics" class="grid-3">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     AVIA-NÓMADA: Simplified Mode
+                     For marginalized communities & Project Jaima
+                     ======================================== -->
+                <section class="section" id="section-nomada">
+                    <div class="nomada-container">
+                        <!-- Language Bar -->
+                        <div class="nomada-lang-bar" id="nomadaLangBar">
+                            <button class="nomada-lang-btn active" onclick="nomadaSetLang('es')">🇪🇸 ES</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('fr')">🇫🇷 FR</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('ar')">🇲🇦 عربي</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('zgh')">ⵣ ⵜⵎⵣⵖ</button>
+                        </div>
+
+                        <!-- Header -->
+                        <div style="text-align:center;margin-bottom:1.5rem;">
+                            <span class="nomada-header-icon">🌍</span>
+                            <h1 class="nomada-section-title" id="nomadaTitle">Bienvenido a AVIA-Nómada</h1>
+                            <p class="nomada-section-sub" id="nomadaSub">Crea vídeos fácilmente</p>
+                        </div>
+
+                        <!-- Step Indicator -->
+                        <div class="nomada-step-bar" id="nomadaStepBar">
+                            <div class="nomada-dot on" id="nomadaDot1"></div>
+                            <div class="nomada-ln" id="nomadaLn1"></div>
+                            <div class="nomada-dot" id="nomadaDot2"></div>
+                            <div class="nomada-ln" id="nomadaLn2"></div>
+                            <div class="nomada-dot" id="nomadaDot3"></div>
+                        </div>
+
+                        <!-- STEP 1: Choose Template -->
+                        <div id="nomadaStep1">
+                            <h2 class="text-lg font-bold text-center mb-4" id="nomadaChooseLabel">¿Qué quieres crear?</h2>
+                            <div class="nomada-tpl-grid" id="nomadaTemplateGrid">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div style="margin-top:1.25rem;">
+                                <p class="text-sm text-center mb-3" style="color:var(--text-muted)" id="nomadaOrWrite">O escribe tu propia idea:</p>
+                                <textarea class="nomada-input" rows="3" id="nomadaFreeText" placeholder=""></textarea>
+                                <button class="nomada-btn nomada-btn--alt" style="margin-top:0.75rem;" onclick="nomadaFreeCreate()" id="nomadaFreeBtn">
+                                    <i class="fas fa-pen"></i> <span id="nomadaFreeLabel">Crear libremente</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2: Customize -->
+                        <div id="nomadaStep2" class="hidden">
+                            <div class="nomada-panel">
+                                <div style="text-align:center;margin-bottom:1rem;">
+                                    <span style="font-size:2rem;" id="nomadaSelectedIcon">🎂</span>
+                                    <h3 class="text-lg font-bold mt-2" id="nomadaSelectedName">Cumpleaños</h3>
+                                </div>
+                                <div style="margin-bottom:1rem;">
+                                    <label class="form-label" style="font-size:1rem;" id="nomadaPersonLabel">Nombre de la persona</label>
+                                    <input type="text" class="nomada-input" id="nomadaPersonName" placeholder="">
+                                </div>
+                                <div style="margin-bottom:1rem;">
+                                    <label class="form-label" style="font-size:1rem;" id="nomadaVideoLabel">Nombre del vídeo</label>
+                                    <input type="text" class="nomada-input" id="nomadaVideoName" placeholder="">
+                                </div>
+                                <div style="margin-bottom:1rem;">
+                                    <label class="form-label" style="font-size:1rem;" id="nomadaDescLabel">Describe tu vídeo...</label>
+                                    <textarea class="nomada-input" rows="3" id="nomadaDescription"></textarea>
+                                </div>
+                                <div style="margin-bottom:1.5rem;">
+                                    <label class="form-label" style="font-size:1rem;" id="nomadaDurLabel">Duración</label>
+                                    <select class="nomada-input" style="padding:0.75rem 1rem;" id="nomadaDuration">
+                                        <option value="4">4 ⏱️</option>
+                                        <option value="6">6 ⏱️</option>
+                                        <option value="8" selected>8 ⏱️</option>
+                                    </select>
+                                </div>
+                                <div style="display:flex;gap:0.75rem;">
+                                    <button class="nomada-btn nomada-btn--alt" style="flex:1;" onclick="nomadaGoStep(1)">
+                                        <i class="fas fa-arrow-left"></i> <span id="nomadaBackBtn1">Atrás</span>
+                                    </button>
+                                    <button class="nomada-btn nomada-btn--go" style="flex:2;" onclick="nomadaGenerate()">
+                                        <i class="fas fa-film"></i> <span id="nomadaGenBtn">Crear Vídeo</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: Generating / Result -->
+                        <div id="nomadaStep3" class="hidden">
+                            <!-- Loading State -->
+                            <div id="nomadaLoading" class="nomada-panel" style="text-align:center;padding:2.5rem 1.5rem;">
+                                <div class="nomada-spinner-lg"></div>
+                                <h3 class="text-lg font-bold mb-2" id="nomadaGenTitle">Creando tu vídeo...</h3>
+                                <p style="color:var(--text-muted);" id="nomadaGenWait">Esto puede tardar unos minutos</p>
+                                <div class="progress-bar mt-4" style="height:8px;max-width:300px;margin:1rem auto 0;">
+                                    <div class="progress-fill" id="nomadaProgressFill" style="width:10%;"></div>
+                                </div>
+                            </div>
+                            <!-- Result State -->
+                            <div id="nomadaResult" class="hidden nomada-result">
+                                <span style="font-size:4rem;display:block;margin-bottom:0.75rem;">🎉</span>
+                                <h3 class="text-xl font-bold mb-2" id="nomadaCompleteTitle">¡Vídeo creado!</h3>
+                                <div id="nomadaResultContent" class="mt-4"></div>
+                                <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+                                    <button class="nomada-btn nomada-btn--ok" style="flex:1;" id="nomadaDownloadBtn" onclick="nomadaDownload()">
+                                        <i class="fas fa-download"></i> <span id="nomadaDlLabel">Descargar</span>
+                                    </button>
+                                    <button class="nomada-btn nomada-btn--alt" style="flex:1;" onclick="nomadaReset()">
+                                        <i class="fas fa-plus"></i> <span id="nomadaNewLabel">Crear otro</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Jaima Branding -->
+                        <div style="text-align:center;margin-top:2rem;padding:1rem;opacity:0.7;">
+                            <p style="font-size:0.75rem;color:var(--text-muted);">
+                                🏕️ Proyecto Jaima · AVIA-Nómada v1.0 · Tecnología solidaria
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     AVIA-SENIOR v3.2: Claude-Sonnet Mode
+                     Alternative AI assistant via Claude-Sonnet
+                     ======================================== -->
+                <section class="section" id="section-senior">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-hands-helping" style="color:var(--purple)"></i>
+                            AVIA-Senior v3.2
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Asistente IA alternativo — Usa Claude-Sonnet directamente para guiarte</p>
+                    </div>
+
+                    <!-- AI Model Selector -->
+                    <div class="grid-2 mb-6">
+                        <div class="senior-card active" id="seniorCardClaude" onclick="seniorSelectModel('claude')">
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-robot text-2xl text-purple-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-bold">Claude-Sonnet-4.5</div>
+                                <div class="text-xs text-[var(--text-muted)]">Anthropic · Razonamiento profundo</div>
+                                <span class="atom-tag atom-tag--purple mt-1">Recomendado</span>
+                            </div>
+                            <div class="atom-dot atom-dot--live"></div>
+                        </div>
+                        <div class="senior-card" id="seniorCardGPT" onclick="seniorSelectModel('gpt')">
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-brain text-2xl text-blue-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="font-bold">GPT-5.2</div>
+                                <div class="text-xs text-[var(--text-muted)]">OpenAI · Versátil</div>
+                                <span class="atom-tag atom-tag--info mt-1">Alternativa</span>
+                            </div>
+                            <div class="atom-dot atom-dot--idle"></div>
+                        </div>
+                    </div>
+
+                    <!-- Info Banner -->
+                    <div class="card mb-6" style="border-color:var(--purple);">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle text-xl text-purple-400 mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold mb-1">¿Qué es AVIA-Senior v3.2?</h4>
+                                <p class="text-sm text-[var(--text-muted)]">
+                                    En lugar de usar las funciones integradas de App-Creator, AVIA-Senior te permite
+                                    conversar directamente con <strong>Claude-Sonnet</strong> para que te guíe paso a paso
+                                    en la creación de guiones, prompts de vídeo, estrategias de contenido y más.
+                                    Ideal para personas que prefieren una interacción más natural y guiada.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Action Templates -->
+                    <div class="grid-3 mb-6">
+                        <button class="card cursor-pointer hover:border-[var(--purple)] transition-all text-center" onclick="seniorQuickAction('guion')">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                                <i class="fas fa-pen-fancy text-lg text-purple-400"></i>
+                            </div>
+                            <div class="font-semibold text-sm">Crear Guion</div>
+                            <div class="text-xs text-[var(--text-muted)]">Claude escribe tu guion</div>
+                        </button>
+                        <button class="card cursor-pointer hover:border-[var(--purple)] transition-all text-center" onclick="seniorQuickAction('prompt')">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                                <i class="fas fa-video text-lg text-blue-400"></i>
+                            </div>
+                            <div class="font-semibold text-sm">Prompt Vídeo</div>
+                            <div class="text-xs text-[var(--text-muted)]">Optimizar para Veo/Sora</div>
+                        </button>
+                        <button class="card cursor-pointer hover:border-[var(--purple)] transition-all text-center" onclick="seniorQuickAction('estrategia')">
+                            <div class="w-10 h-10 mx-auto mb-2 rounded-xl bg-green-500/20 flex items-center justify-center">
+                                <i class="fas fa-lightbulb text-lg text-green-400"></i>
+                            </div>
+                            <div class="font-semibold text-sm">Estrategia</div>
+                            <div class="text-xs text-[var(--text-muted)]">Plan de contenido</div>
+                        </button>
+                    </div>
+
+                    <!-- Chat Interface -->
+                    <div class="card">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-comments text-purple-400"></i>
+                            Chat con <span id="seniorModelName">Claude-Sonnet-4.5</span>
+                        </h3>
+                        <div class="senior-chat-box" id="seniorChatBox">
+                            <div class="senior-msg senior-msg--bot">
+                                👋 ¡Hola! Soy tu asistente AVIA-Senior. Puedo ayudarte a crear guiones, prompts de vídeo, estrategias de contenido y mucho más. ¿En qué te puedo ayudar hoy?
+                            </div>
+                        </div>
+                        <div class="senior-input-row">
+                            <input type="text" class="nomada-input" id="seniorInput" placeholder="Escribe tu mensaje..." onkeydown="if(event.key==='Enter')seniorSend()">
+                            <button class="nomada-btn nomada-btn--go" style="width:auto;padding:0.75rem 1.25rem;" onclick="seniorSend()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════
+                     VIDEOLAB LARGO — Long-Form Video Composer
+                     Inspired by: Alejavi Rivera method
+                     Chain AI clips into 10+ min productions
+                     ═══════════════════════════════════════ -->
+                <section class="section" id="section-largo">
+                    <!-- Hero -->
+                    <div class="largo-hero">
+                        <div style="position:relative;z-index:1;">
+                            <div class="largo-hero-title">
+                                <i class="fas fa-photo-video"></i> VideoLab Largo
+                            </div>
+                            <div class="largo-hero-sub">Compositor de vídeos largos (+10 min) con IA — Encadena clips automáticamente</div>
+                            <div class="largo-stats-row">
+                                <div class="largo-stat">
+                                    <div class="largo-stat-val" id="largoSceneCount">0</div>
+                                    <div class="largo-stat-lbl">Escenas</div>
+                                </div>
+                                <div class="largo-stat">
+                                    <div class="largo-stat-val" id="largoTotalDur">0:00</div>
+                                    <div class="largo-stat-lbl">Duración</div>
+                                </div>
+                                <div class="largo-stat">
+                                    <div class="largo-stat-val" id="largoGenerated">0</div>
+                                    <div class="largo-stat-lbl">Generados</div>
+                                </div>
+                                <div class="largo-stat">
+                                    <div class="largo-stat-val" id="largoEngine">Veo</div>
+                                    <div class="largo-stat-lbl">Motor</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase Navigation -->
+                    <div class="largo-phase" id="largoPhaseBar">
+                        <button class="largo-phase-btn active" onclick="largoGoPhase(1)" id="largoPhase1">
+                            <i class="fas fa-pen-alt"></i> 1. Guion
+                        </button>
+                        <button class="largo-phase-btn" onclick="largoGoPhase(2)" id="largoPhase2">
+                            <i class="fas fa-th-list"></i> 2. Escenas
+                        </button>
+                        <button class="largo-phase-btn" onclick="largoGoPhase(3)" id="largoPhase3">
+                            <i class="fas fa-magic"></i> 3. Generar
+                        </button>
+                        <button class="largo-phase-btn" onclick="largoGoPhase(4)" id="largoPhase4">
+                            <i class="fas fa-film"></i> 4. Resultado
+                        </button>
+                    </div>
+
+                    <!-- PHASE 1: Script Input -->
+                    <div id="largoStep1">
+                        <div class="card mb-4">
+                            <h3 class="font-semibold mb-3 flex items-center gap-2">
+                                <i class="fas fa-scroll text-purple-400"></i>
+                                Guion o Narrativa Completa
+                            </h3>
+                            <p class="text-xs text-[var(--text-muted)] mb-3">
+                                Pega tu guion completo. La IA lo descompondrá automáticamente en escenas óptimas para generación de vídeo.
+                                Cada escena será un clip de 4-8 segundos que se encadenará para crear tu vídeo largo.
+                            </p>
+                            <textarea class="largo-input-script" id="largoScriptInput" placeholder="Escena 1: Un amanecer dorado sobre las dunas del Sáhara. La cámara avanza lentamente mientras la luz revela las texturas de la arena...
+
+Escena 2: Una caravana de camellos cruza el horizonte en silueta. El viento levanta suavemente la arena...
+
+Escena 3: Primer plano de las manos de una artesana amazigh tejiendo una alfombra con patrones geométricos tradicionales...
+
+(Continúa con tantas escenas como necesites para tu vídeo de 10+ minutos)"></textarea>
+                            <div class="flex items-center justify-between mt-3">
+                                <div class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <span id="largoWordCount">0</span> palabras · Estimado: <span id="largoEstScenes">0</span> escenas · <span id="largoEstDuration">0:00</span> duración
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary" onclick="largoLoadExample()">
+                                        <i class="fas fa-lightbulb"></i> Ejemplo
+                                    </button>
+                                    <button class="btn btn-primary" onclick="largoDecompose()">
+                                        <i class="fas fa-cut"></i> Descomponer en Escenas
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuration -->
+                        <div class="card">
+                            <h3 class="font-semibold mb-3 flex items-center gap-2">
+                                <i class="fas fa-sliders-h text-blue-400"></i>
+                                Configuración del Vídeo Largo
+                            </h3>
+                            <div class="largo-config-row">
+                                <div class="largo-config-item">
+                                    <label>Motor IA</label>
+                                    <select id="largoEngineSelect" onchange="largoUpdateConfig()">
+                                        <option value="veo">Veo-v3.1 (Alta calidad)</option>
+                                        <option value="sora">Sora-2 (Creativo)</option>
+                                    </select>
+                                </div>
+                                <div class="largo-config-item">
+                                    <label>Duración/Clip</label>
+                                    <select id="largoClipDuration">
+                                        <option value="4">4 segundos</option>
+                                        <option value="6">6 segundos</option>
+                                        <option value="8" selected>8 segundos</option>
+                                    </select>
+                                </div>
+                                <div class="largo-config-item">
+                                    <label>Aspecto</label>
+                                    <select id="largoAspect">
+                                        <option value="16:9" selected>16:9 Paisaje</option>
+                                        <option value="9:16">9:16 Vertical</option>
+                                    </select>
+                                </div>
+                                <div class="largo-config-item">
+                                    <label>Estilo Visual</label>
+                                    <select id="largoStyle">
+                                        <option value="">Sin estilo específico</option>
+                                        <option value="cinematic">Cinematográfico</option>
+                                        <option value="documentary">Documental</option>
+                                        <option value="anime">Anime / Animación</option>
+                                        <option value="realistic">Ultra-realista</option>
+                                        <option value="vintage">Vintage / Retro</option>
+                                        <option value="aerial">Aéreo / Drone</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="largo-config-row">
+                                <div class="largo-config-item">
+                                    <label>Consistencia de Estilo</label>
+                                    <select id="largoConsistency">
+                                        <option value="strict">Estricta (mismo look)</option>
+                                        <option value="moderate" selected>Moderada</option>
+                                        <option value="free">Libre (varía por escena)</option>
+                                    </select>
+                                </div>
+                                <div class="largo-config-item">
+                                    <label>Idioma Narración</label>
+                                    <select id="largoNarrationLang">
+                                        <option value="none" selected>Sin narración</option>
+                                        <option value="es">Español</option>
+                                        <option value="en">Inglés</option>
+                                        <option value="fr">Francés</option>
+                                        <option value="ar">Árabe</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PHASE 2: Scene Decomposition Results -->
+                    <div id="largoStep2" style="display:none;">
+                        <div class="card mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-semibold flex items-center gap-2">
+                                    <i class="fas fa-th-list text-purple-400"></i>
+                                    Escenas Descompuestas
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-ghost" onclick="largoAddScene()" title="Añadir escena">
+                                        <i class="fas fa-plus"></i> Añadir
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="largoGoPhase(1)">
+                                        <i class="fas fa-arrow-left"></i> Editar Guion
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] mb-3">
+                                Revisa y ajusta cada escena. Puedes editar prompts, reordenar, eliminar o añadir escenas antes de generar.
+                            </p>
+
+                            <!-- Decomposition loading -->
+                            <div id="largoDecomposeLoading" style="display:none;">
+                                <div style="text-align:center;padding:2rem;">
+                                    <i class="fas fa-brain fa-2x animate-spin" style="color:#a78bfa;display:block;margin-bottom:1rem;"></i>
+                                    <div class="font-semibold text-sm" style="color:var(--text-primary);">Analizando guion con Claude...</div>
+                                    <div class="text-xs text-[var(--text-muted)] mt-1">Descomponiendo en escenas óptimas para generación de vídeo</div>
+                                </div>
+                            </div>
+
+                            <!-- Scene list -->
+                            <div id="largoSceneList" class="space-y-3"></div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button class="btn btn-primary flex-1" onclick="largoGoPhase(3)" id="largoProceedGenBtn">
+                                <i class="fas fa-magic"></i> Proceder a Generar (<span id="largoSceneTotal2">0</span> escenas)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PHASE 3: Generation -->
+                    <div id="largoStep3" style="display:none;">
+                        <div class="card mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-semibold flex items-center gap-2">
+                                    <i class="fas fa-magic text-purple-400"></i>
+                                    Generando Vídeo Largo
+                                </h3>
+                                <button class="btn btn-ghost" onclick="largoGoPhase(2)">
+                                    <i class="fas fa-arrow-left"></i> Volver a Escenas
+                                </button>
+                            </div>
+
+                            <!-- Progress -->
+                            <div class="flex items-center justify-between text-xs mb-1">
+                                <span style="color:var(--text-muted);">Progreso</span>
+                                <span style="color:#a78bfa;font-family:'Space Mono',monospace;" id="largoProgressText">0 / 0 clips</span>
+                            </div>
+                            <div class="largo-progress-bar">
+                                <div class="largo-progress-fill" id="largoProgressFill" style="width:0%;"></div>
+                            </div>
+                            <div class="text-xs text-center mb-4" style="color:var(--text-muted);" id="largoProgressStatus">
+                                Preparando generación...
+                            </div>
+
+                            <!-- Scene generation grid -->
+                            <div id="largoGenGrid" class="space-y-3"></div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button class="btn btn-primary flex-1" onclick="largoStartGeneration()" id="largoStar...

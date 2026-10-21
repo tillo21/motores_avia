@@ -1,0 +1,2479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Caverna Digital – Navegación Intuitiva</title>
+<style>
+body{margin:0;font-family:"Poppins",sans-serif;background:linear-gradient(135deg,#3d5270,#4e678e);color:#fff;text-align:center;display:flex;flex-direction:column;min-height:100vh}
+
+/* ==== D-PAD NAVEGACIÓN ==== */
+.dpad-container{position:fixed;bottom:120px;right:20px;width:90px;height:90px;display:grid;grid-template-columns:30px 30px 30px;grid-template-rows:30px 30px 30px;gap:0;z-index:100;opacity:0;transition:opacity 0.4s ease}
+.dpad-container.visible{opacity:1}
+.dpad-btn{border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;transition:all .3s ease;position:relative;user-select:none}
+.dpad-btn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.dpad-btn:not(:disabled):hover{transform:scale(1.3)}
+.dpad-btn:not(:disabled):active{transform:scale(1.1)}
+.dpad-btn.scanning{transform:scale(1.5);animation:scanPulse 1s ease-in-out}
+
+/* Posiciones en el grid */
+.dpad-up{grid-column:2;grid-row:1}
+.dpad-left{grid-column:1;grid-row:2}
+.dpad-right{grid-column:3;grid-row:2}
+.dpad-down{grid-column:2;grid-row:3}
+
+/* Colores y efectos */
+.dpad-white{color:#fff;text-shadow:0 0 8px rgba(255,255,255,0.9),0 0 15px rgba(255,255,255,0.6)}
+.dpad-black{color:#000;text-shadow:0 0 10px rgba(255,255,255,1),0 0 20px rgba(255,255,255,0.8);animation:pulseGlow 2s infinite ease-in-out}
+@keyframes pulseGlow{0%,100%{text-shadow:0 0 10px rgba(255,255,255,1),0 0 18px rgba(255,255,255,0.7)}50%{text-shadow:0 0 15px rgba(255,255,255,1),0 0 28px rgba(255,255,255,0.95)}}
+@keyframes scanPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,229,255,0.7)}50%{box-shadow:0 0 0 15px rgba(0,229,255,0)}}
+
+/* Tooltip */
+.dpad-btn::after{content:attr(data-tooltip);position:absolute;background:rgba(0,0,0,0.85);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .3s ease;font-weight:normal;z-index:110}
+.dpad-up::after{bottom:calc(100% + 5px);left:50%;transform:translateX(-50%)}
+.dpad-down::after{top:calc(100% + 5px);left:50%;transform:translateX(-50%)}
+.dpad-left::after{right:calc(100% + 5px);top:50%;transform:translateY(-50%)}
+.dpad-right::after{left:calc(100% + 5px);top:50%;transform:translateY(-50%)}
+.dpad-btn:hover::after{opacity:1}
+
+/* Botón Home */
+.home-btn{position:fixed;top:1rem;left:1rem;width:55px;height:55px;border-radius:50%;border:none;background:#00e5ff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(0,229,255,0.6);transition:transform 0.3s ease, box-shadow 0.3s ease;z-index:60}
+.home-btn:hover{transform:scale(1.1);box-shadow:0 0 25px rgba(0,229,255,0.95)}
+.home-btn svg{width:28px;height:28px;fill:#002b36}
+
+main{flex:1;display:flex;justify-content:center;align-items:center;padding:2rem 1rem;text-align:center;min-height:calc(100vh - 150px);overflow-y:auto}
+.center-area{display:flex;flex-direction:column;justify-content:center;align-items:center;width:100%;max-width:1200px;margin:0 auto}
+.titulo{font-size:2.5rem;font-weight:700;margin-bottom:1rem;text-align:center}
+.instruccion{font-size:1.2rem;margin-bottom:2rem;opacity:0.9;text-align:center}
+
+/* ==== ASISTENTE FLOTANTE AVIA-CON ==== */
+.avia-assistant{position:fixed;bottom:20px;right:20px;z-index:200}
+.avia-btn{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#5d5cde,#00e5ff);border:3px solid rgba(255,255,255,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 25px rgba(0,229,255,0.4);transition:all 0.3s ease;position:relative;animation:float 3s ease-in-out infinite}
+.avia-btn:hover{transform:scale(1.1);box-shadow:0 10px 35px rgba(0,229,255,0.7)}
+.avia-btn.active{background:linear-gradient(135deg,#00e5ff,#5d5cde)}
+.avia-icon{font-size:2rem}
+.avia-notification{position:absolute;top:-5px;right:-5px;width:20px;height:20px;background:#ff4757;border-radius:50%;display:none;animation:pulse 2s infinite}
+.avia-notification.show{display:block}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.2);opacity:0.8}}
+.avia-chat-panel{position:fixed;bottom:100px;right:20px;width:380px;max-width:calc(100vw - 40px);height:500px;max-height:calc(100vh - 120px);background:rgba(30,35,50,0.98);border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);border:2px solid rgba(93,92,222,0.3);display:none;flex-direction:column;overflow:hidden;backdrop-filter:blur(20px)}
+.avia-chat-panel.open{display:flex;animation:slideUp 0.4s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.avia-chat-header{padding:1rem 1.5rem;background:linear-gradient(135deg,#5d5cde,#4e678e);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between}
+.avia-chat-title{font-weight:700;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem}
+.avia-header-actions{display:flex;align-items:center;gap:0.5rem}
+.avia-settings-btn{background:transparent;border:none;color:#fff;font-size:1.2rem;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.3s}
+.avia-settings-btn:hover{background:rgba(255,255,255,0.2)}
+.avia-close-btn{background:transparent;border:none;color:#fff;font-size:1.5rem;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.3s}
+.avia-close-btn:hover{background:rgba(255,255,255,0.2)}
+.avia-chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.8rem}
+.avia-message{padding:0.8rem 1rem;border-radius:12px;max-width:85%;animation:fadeIn 0.4s ease;font-size:0.95rem;line-height:1.5}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.avia-message.assistant{background:rgba(93,92,222,0.3);border:1px solid rgba(93,92,222,0.5);align-self:flex-start;margin-right:15%}
+.avia-message.user{background:rgba(46,213,115,0.3);border:1px solid rgba(46,213,115,0.5);align-self:flex-end;margin-left:15%;text-align:right}
+.avia-message-time{font-size:0.7rem;opacity:0.6;margin-top:0.3rem}
+.avia-typing{display:none;padding:0.8rem 1rem;border-radius:12px;background:rgba(93,92,222,0.2);align-self:flex-start;max-width:80px}
+.avia-typing.active{display:flex;gap:0.4rem;align-items:center}
+.avia-typing-dot{width:6px;height:6px;border-radius:50%;background:#5d5cde;animation:typingBounce 1.4s infinite}
+.avia-typing-dot:nth-child(2){animation-delay:0.2s}
+.avia-typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+.avia-suggestions{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.5rem}
+.avia-suggestion-btn{padding:0.5rem 0.9rem;border-radius:15px;border:1.5px solid rgba(255,255,255,0.3);background:rgba(93,92,222,0.2);color:#fff;cursor:pointer;transition:all 0.3s ease;font-size:0.85rem;backdrop-filter:blur(5px)}
+.avia-suggestion-btn:hover{background:rgba(93,92,222,0.5);border-color:rgba(255,255,255,0.7);transform:translateY(-2px)}
+.avia-chat-input{padding:1rem;background:rgba(20,25,40,0.8);border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:0.5rem}
+.avia-input-field{flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:0.6rem 1rem;color:#fff;font-size:0.9rem;outline:none}
+.avia-input-field::placeholder{color:rgba(255,255,255,0.5)}
+.avia-send-btn{background:linear-gradient(135deg,#5d5cde,#00e5ff);border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s ease}
+.avia-send-btn:hover{transform:scale(1.1);box-shadow:0 5px 15px rgba(0,229,255,0.5)}
+
+/* ==== PANEL DE CONFIGURACIÓN DE AVATAR ==== */
+.avia-settings-panel{position:absolute;top:100%;right:0;width:350px;max-width:calc(100vw - 40px);background:rgba(30,35,50,0.98);border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,0.6);border:2px solid rgba(93,92,222,0.4);margin-top:0.5rem;padding:1.5rem;display:none;flex-direction:column;gap:1.5rem;backdrop-filter:blur(20px);z-index:250}
+.avia-settings-panel.open{display:flex;animation:slideDown 0.3s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.settings-section{display:flex;flex-direction:column;gap:0.8rem}
+.settings-section h3{margin:0;font-size:1rem;color:#00e5ff;font-weight:600}
+.avatar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0.6rem}
+.avatar-option{width:50px;height:50px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.8rem;transition:all 0.3s ease;background:rgba(255,255,255,0.05)}
+.avatar-option:hover{transform:scale(1.15);border-color:rgba(0,229,255,0.8);box-shadow:0 0 15px rgba(0,229,255,0.5)}
+.avatar-option.selected{border-color:#00e5ff;border-width:3px;box-shadow:0 0 20px rgba(0,229,255,0.7);background:rgba(0,229,255,0.1)}
+.avatar-option img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.upload-avatar-btn{padding:0.8rem 1.2rem;background:linear-gradient(135deg,#5d5cde,#00e5ff);border:none;border-radius:10px;color:#fff;cursor:pointer;font-size:0.95rem;font-weight:600;transition:all 0.3s ease;display:flex;align-items:center;justify-content:center;gap:0.5rem}
+.upload-avatar-btn:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(0,229,255,0.5)}
+.avatar-preview{width:80px;height:80px;border-radius:50%;border:3px solid #00e5ff;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:rgba(255,255,255,0.05);box-shadow:0 5px 20px rgba(0,229,255,0.3)}
+.avatar-preview img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.settings-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)}
+#avatarFileInput{display:none}
+
+/* ==== LOGROS Y GAMIFICACIÓN ==== */
+.achievement-badge{display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;border-radius:12px;background:linear-gradient(135deg,#f093fb,#f5576c);margin:0.3rem;animation:badgeAppear 0.5s ease;font-size:0.9rem}
+@keyframes badgeAppear{from{transform:scale(0) rotate(180deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.progress-bar{width:100%;height:8px;background:rgba(255,255,255,0.2);border-radius:10px;overflow:hidden;margin:0.5rem 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#5d5cde,#00e5ff);transition:width 0.5s ease;border-radius:10px}
+.streak-counter{display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,165,0,0.2);padding:0.4rem 0.8rem;border-radius:8px;border:1px solid rgba(255,165,0,0.5)}
+.mood-indicator{position:fixed;top:6rem;left:1rem;font-size:2rem;animation:float 3s ease-in-out infinite;z-index:60}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.quiz{width:100%;max-width:900px;margin:0 auto}
+.question{font-size:1.6rem;font-weight:600;margin-bottom:2rem;text-align:center}
+.options{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:1rem}
+.options li{padding:1.3rem 1.5rem;border-radius:15px;cursor:pointer;width:100%;transition:transform .2s ease,box-shadow .3s ease;font-size:1.1rem;font-weight:500}
+.options li:hover{transform:scale(1.03);box-shadow:0 8px 25px rgba(0,0,0,0.4)}
+.redOpt{background:linear-gradient(145deg,#ef5350,#b71c1c)}
+.greenOpt{background:linear-gradient(145deg,#43a047,#1b5e20)}
+.yellowOpt{background:linear-gradient(145deg,#ffee58,#fbc02d);color:#000}
+.blueOpt{background:linear-gradient(145deg,#2196f3,#1565c0)}
+.correct{box-shadow:0 0 20px #00ff99 inset,0 0 40px rgba(0,255,153,0.5)}
+.incorrect{box-shadow:0 0 20px #ff0033 inset,0 0 40px rgba(255,0,51,0.5)}
+.feedback{margin-top:1.5rem;font-weight:500;font-size:1.1rem;line-height:1.6;text-align:center;padding:1rem;background:rgba(255,255,255,0.05);border-radius:12px}
+
+/* Navegación lateral del quiz */
+.quiz-container{position:relative;width:100%;display:flex;align-items:center;justify-content:center}
+.quiz-nav-left,.quiz-nav-right{position:absolute;top:50%;transform:translateY(-50%);font-size:4rem;cursor:pointer;transition:all 0.3s ease;user-select:none;z-index:10;font-weight:bold;padding:1rem}
+.quiz-nav-left{left:2rem;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.9),0 0 20px rgba(255,255,255,0.6)}
+.quiz-nav-right{right:2rem;color:#000;text-shadow:0 0 12px rgba(255,255,255,1),0 0 25px rgba(255,255,255,0.8)}
+.quiz-nav-left:hover,.quiz-nav-right:hover{transform:translateY(-50%) scale(1.2)}
+.quiz-nav-left.disabled,.quiz-nav-right.disabled{opacity:0.2;cursor:not-allowed;pointer-events:none}
+
+/* Fichas a pantalla completa */
+.card-fullscreen{display:flex;align-items:center;justify-content:center;width:100%;height:calc(100vh - 200px);min-height:400px;position:relative}
+.card-nav-left,.card-nav-right{position:absolute;top:50%;transform:translateY(-50%);font-size:4rem;cursor:pointer;transition:all 0.3s ease;user-select:none;z-index:10;font-weight:bold;padding:1rem}
+.card-nav-left{left:2rem;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.9),0 0 20px rgba(255,255,255,0.6)}
+.card-nav-right{right:2rem;color:#000;text-shadow:0 0 12px rgba(255,255,255,1),0 0 25px rgba(255,255,255,0.8)}
+.card-nav-left:hover,.card-nav-right:hover{transform:translateY(-50%) scale(1.2)}
+.card-nav-left.disabled,.card-nav-right.disabled{opacity:0.2;cursor:not-allowed;pointer-events:none}
+.card{width:500px;height:350px;perspective:1200px;margin:0 auto}
+.card-inner{width:100%;height:100%;transform-style:preserve-3d;transition:transform .8s ease;cursor:pointer}
+.card:hover .card-inner{transform:rotateY(180deg)}
+.card-front,.card-back{position:absolute;width:100%;height:100%;border-radius:20px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;backface-visibility:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.5);padding:2rem}
+.card-front h2{font-size:2.2rem;margin:0}
+.card-back{background:rgba(0,0,0,0.95);color:#fff;transform:rotateY(180deg)}
+.card-back p{font-size:1.2rem;line-height:1.6;margin:0}
+.rojo{background:linear-gradient(145deg,#ef5350,#b71c1c)}
+.verde{background:linear-gradient(145deg,#43a047,#1b5e20)}
+.amarillo{background:linear-gradient(145deg,#ffee58,#fbc02d);color:#000}
+.azul{background:linear-gradient(145deg,#2196f3,#1565c0)}
+.indicador{margin-top:1.5rem;font-size:0.9rem;opacity:0.8}
+.mando-container{display:flex;justify-content:center;align-items:center;background:rgba(60,80,110,0.75);padding:1.5rem 6rem 2rem;border-top:1px solid rgba(255,255,255,0.15)}
+.mando-button{width:30px;height:30px;border-radius:50%;margin:0.5rem .8rem;opacity:0.6;transition:all .4s ease;flex-shrink:0}
+.mando-button.active{transform:scale(1.2);opacity:1;box-shadow:0 0 15px rgba(255,255,255,0.9)}
+.rojo-btn{background:#e53935}.verde-btn{background:#43a047}.amarillo-btn{background:#ffeb3b}.azul-btn{background:#2196f3}.negro-btn{background:#000}.blanco-btn{background:#fafafa;border:1px solid #888}.turquesa-btn{background:#00e5ff}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .4s ease}
+.modal.active{opacity:1;pointer-events:all}
+.modal-content{background:#fff;color:#111;border-radius:12px;padding:2rem;max-width:400px;width:90%;text-align:center}
+.modal-content h2{margin-top:0}
+.modal-content button{margin-top:1.5rem;padding:.6rem 1.4rem;border:none;border-radius:8px;background:#4e678e;color:#fff;font-weight:600;cursor:pointer}
+
+/* ==== Control por voz ==== */
+.voice-control{position:fixed;top:1rem;right:1rem;display:flex;gap:0.5rem;z-index:60}
+.voice-btn{width:50px;height:50px;border-radius:50%;border:none;background:#ff4757;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(255,71,87,0.6);transition:all 0.3s ease}
+.voice-btn.listening{background:#2ed573;box-shadow:0 0 25px rgba(46,213,115,0.95);animation:voicePulse 1.5s infinite}
+.voice-btn:hover{transform:scale(1.1)}
+.voice-status{position:fixed;top:5rem;right:1rem;background:rgba(0,0,0,0.85);color:#fff;padding:0.5rem 1rem;border-radius:8px;font-size:0.9rem;opacity:0;transition:opacity 0.3s ease;max-width:200px;text-align:center;z-index:60}
+.voice-status.show{opacity:1}
+@keyframes voicePulse{0%,100%{box-shadow:0 0 15px rgba(46,213,115,0.6)}50%{box-shadow:0 0 35px rgba(46,213,115,1)}}
+
+/* ==== Barrido/Scanning ==== */
+.scan-btn{width:50px;height:50px;border-radius:50%;border:none;background:#ffa502;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 15px rgba(255,165,2,0.6);transition:all 0.3s ease}
+.scan-btn.active{background:#ff6348;box-shadow:0 0 25px rgba(255,99,72,0.95);animation:scanActive 1s infinite}
+.scan-btn:hover{transform:scale(1.1)}
+@keyframes scanActive{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+
+@media (max-width:600px){
+  .dpad-container{bottom:100px;right:15px;width:80px;height:80px;grid-template-columns:26px 26px 26px;grid-template-rows:26px 26px 26px}
+  .dpad-btn{font-size:18px}
+  .voice-control{top:auto;bottom:1rem;right:1rem;flex-direction:column}
+  .card{width:90%;max-width:400px;height:280px}
+  .card-nav-left,.card-nav-right{font-size:3rem;padding:0.5rem}
+  .card-nav-left{left:0.5rem}
+  .card-nav-right{right:0.5rem}
+  .quiz-nav-left,.quiz-nav-right{font-size:3rem;padding:0.5rem}
+  .quiz-nav-left{left:0.5rem}
+  .quiz-nav-right{right:0.5rem}
+  .titulo{font-size:1.8rem}
+  .instruccion{font-size:1rem}
+  .question{font-size:1.3rem}
+  .options li{font-size:1rem;padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<button class="home-btn" id="btnHome" title="Inicio">
+  <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+</button>
+
+<!-- CONTROLES DE VOZ Y BARRIDO -->
+<div class="voice-control">
+  <button class="voice-btn" id="voiceBtn" title="Control por voz - Haz clic para activar (requiere permisos de micrófono)">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+  </button>
+  <button class="scan-btn" id="scanBtn" title="Modo barrido - Navegación automática">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+  </button>
+</div>
+<div class="voice-status" id="voiceStatus"></div>
+
+<!-- INDICADOR DE ESTADO EMOCIONAL -->
+<div class="mood-indicator" id="moodIndicator">😊</div>
+
+<!-- D-PAD NAVEGACIÓN -->
+<div class="dpad-container" id="dpadContainer">
+  <button class="dpad-btn dpad-up dpad-white" id="btnUp" data-tooltip="Pantalla anterior">^</button>
+  <button class="dpad-btn dpad-left dpad-white" id="btnLeft" data-tooltip="Categoría anterior">&lt;</button>
+  <button class="dpad-btn dpad-right dpad-black" id="btnRight" data-tooltip="Siguiente categoría">&gt;</button>
+  <button class="dpad-btn dpad-down dpad-black" id="btnDown" data-tooltip="Siguiente pantalla">v</button>
+</div>
+
+<main id="content">
+  <div class="center-area" id="mainContent">
+    <!-- El contenido principal se carga aquí dinámicamente -->
+  </div>
+</main>
+
+<!-- ASISTENTE AVIA-CON FLOTANTE -->
+<div class="avia-assistant">
+  <button class="avia-btn" id="aviaBtn" title="AVIA-Con - Tu asistente pedagógico">
+    <span class="avia-icon" id="aviaIcon">🤖</span>
+    <img class="avia-avatar" id="aviaAvatar" style="display:none;width:100%;height:100%;border-radius:50%;object-fit:cover" alt="AVIA-Con">
+    <span class="avia-notification" id="aviaNotification"></span>
+  </button>
+
+  <div class="avia-chat-panel" id="aviaChatPanel">
+    <div class="avia-chat-header">
+      <div class="avia-chat-title">
+        <span id="aviaHeaderIcon">🤖</span>
+        <img id="aviaHeaderAvatar" style="display:none;width:32px;height:32px;border-radius:50%;object-fit:cover" alt="AVIA">
+        <span>AVIA-Con</span>
+      </div>
+      <div class="avia-header-actions">
+        <button class="avia-settings-btn" id="aviaSettingsBtn" title="Configurar avatar">⚙️</button>
+        <button class="avia-close-btn" id="aviaCloseBtn">×</button>
+      </div>
+    </div>
+
+    <!-- Panel de configuración de avatar -->
+    <div class="avia-settings-panel" id="aviaSettingsPanel">
+      <div class="settings-section">
+        <h3>🎭 Vista Previa</h3>
+        <div class="avatar-preview" id="avatarPreview">
+          <span id="previewIcon">🤖</span>
+          <img id="previewImage" style="display:none" alt="Preview">
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
+        <h3>🎓 Avatares Educativos</h3>
+        <div class="avatar-grid" id="emojiAvatarGrid">
+          <!-- Se llenarán dinámicamente -->
+        </div>
+      </div>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-section">
+        <h3>📸 Subir Foto Personalizada</h3>
+        <button class="upload-avatar-btn" id="uploadAvatarBtn">
+          <span>📤</span>
+          <span>Cargar imagen</span>
+        </button>
+        <input type="file" id="avatarFileInput" accept="image/*">
+      </div>
+    </div>
+
+    <div class="avia-chat-messages" id="aviaChatMessages">
+      <!-- Los mensajes del asistente aparecen aquí -->
+    </div>
+
+    <div class="avia-typing" id="aviaTyping">
+      <div class="avia-typing-dot"></div>
+      <div class="avia-typing-dot"></div>
+      <div class="avia-typing-dot"></div>
+    </div>
+
+    <div class="avia-chat-input">
+      <input type="text" class="avia-input-field" id="aviaInput" placeholder="Escribe o usa el micrófono...">
+      <button class="avia-send-btn" id="aviaSendBtn">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANDO INFERIOR -->
+<div class="mando-container">
+  <div class="mando-button rojo-btn"></div>
+  <div class="mando-button verde-btn"></div>
+  <div class="mando-button amarillo-btn"></div>
+  <div class="mando-button azul-btn"></div>
+  <div class="mando-button negro-btn"></div>
+  <div class="mando-button blanco-btn"></div>
+  <div class="mando-button turquesa-btn"></div>
+</div>
+
+<div class="modal" id="modal"><div class="modal-content" id="modalContent"></div></div>
+
+<script>
+const quizData=[
+  {q:"¿Qué representa la caverna de Platón?",
+   options:["La libertad del pensamiento","La ignorancia y las apariencias","El conocimiento verdadero","Un lugar físico real"],
+   ans:1,
+   explicacion:"La caverna simboliza la ignorancia y el mundo de las apariencias donde vive la mayoría; solo al salir se descubre la luz de la verdad."},
+  {q:"¿Qué simboliza la salida de la caverna?",
+   options:["El miedo a lo desconocido","El descubrimiento de la verdad","El regreso a la oscuridad","La muerte del prisionero"],
+   ans:1,
+   explicacion:"Salir de la caverna representa liberarse de los engaños sensoriales y comprender la verdad mediante la razón."},
+  {q:"¿Qué diferencia el mundo sensible del inteligible?",
+   options:["Lo aparente y lo real","La tecnología y la filosofía","La alegría y la tristeza","El cuerpo y el alma"],
+   ans:0,
+   explicacion:"El mundo sensible es el de las apariencias cambiantes; el inteligible es el de las ideas eternas y verdaderas."},
+  {q:"¿Qué son las Formas o Ideas en la filosofía de Platón?",
+   options:["Pensamientos temporales","Realidades perfectas y eternas","Sombras proyectadas","Ilusiones ópticas"],
+   ans:1,
+   explicacion:"Las Formas o Ideas son realidades perfectas, eternas e inmutables que existen en el mundo inteligible, y de las cuales las cosas del mundo sensible son meras copias imperfectas."},
+  {q:"¿Quiénes son los prisioneros en la alegoría?",
+   options:["Criminales condenados","Toda la humanidad en ignorancia","Solo los filósofos","Los enemigos de Platón"],
+   ans:1,
+   explicacion:"Los prisioneros representan a toda la humanidad que vive en la ignorancia, confundiendo las sombras (apariencias) con la realidad verdadera."},
+  {q:"¿Cuál es el rol del filósofo según Platón?",
+   options:["Permanecer en la caverna","Regresar para iluminar a otros","Olvidar lo aprendido","Vivir aislado"],
+   ans:1,
+   explicacion:"El filósofo, tras descubrir la verdad, tiene el deber moral de regresar a la caverna para educar y liberar a quienes aún viven en la ignorancia, aunque enfrente resistencia."},
+  {q:"¿Qué simboliza el sol en la alegoría?",
+   options:["El calor del verano","La Forma del Bien","El conocimiento científico","La libertad política"],
+   ans:1,
+   explicacion:"El sol representa la Forma del Bien, la idea suprema que ilumina todo conocimiento y permite comprender la verdad y las demás Formas."},
+  {q:"¿Por qué los prisioneros rechazarían al liberado que regresa?",
+   options:["Por envidia","Porque prefieren la oscuridad conocida","Por miedo a la luz","Todas las anteriores"],
+   ans:3,
+   explicacion:"Los prisioneros rechazarían al liberado porque están acostumbrados a su mundo de sombras, temen el cambio doloroso que implica la verdad, y pueden sentir envidia o incredulidad ante sus revelaciones."}
+];
+
+const cards=[
+  {cls:"rojo",title:"Caverna de Platón",text:"Representa la ignorancia y el mundo de las apariencias. Los prisioneros viven engañados por las sombras."},
+  {cls:"verde",title:"Mundo Inteligible",text:"El reino de las Ideas perfectas y eternas. Solo accesible mediante la razón y el conocimiento filosófico."},
+  {cls:"amarillo",title:"Salida de la Caverna",text:"El proceso de liberación y educación. Simboliza el camino hacia la verdad y la iluminación."},
+  {cls:"azul",title:"Mundo Sensible",text:"El mundo de las apariencias cambiantes que percibimos con los sentidos. Es solo un reflejo imperfecto de las Ideas."},
+  {cls:"rojo",title:"Las Cadenas",text:"Simbolizan los prejuicios, creencias falsas y limitaciones mentales que impiden ver la realidad tal como es."},
+  {cls:"verde",title:"El Filósofo-Rey",text:"Aquel que ha contemplado la verdad y debe gobernar con sabiduría, guiando a la sociedad hacia el bien común."},
+  {cls:"amarillo",title:"La Forma del Bien",text:"La idea suprema que ilumina todo conocimiento. Es el principio último de la realidad y fuente de toda verdad."},
+  {cls:"azul",title:"El Camino Ascendente",text:"Representa la educación y el proceso gradual de conocimiento: de las sombras a los objetos, de estos a las estrellas, y finalmente al sol."}
+];
+
+let currentScreen="home",currentQuestion=0,answered=false,correctAnswers=0,wrongAnswers=0,currentCard=0;
+let conversationHistory=[];
+let aviaChatOpen=false;
+let poeAvailable=false;
+let pendingPoeResponse=false;
+let userContext={
+  preferences:[],
+  lastInteraction:null,
+  completedTopics:[],
+  conversationMode:"casual",
+  learningLevel:"beginner",
+  streakDays:0,
+  totalScore:0,
+  achievements:[],
+  wrongAttempts:{},
+  timeSpent:0,
+  emotionalState:"neutral",
+  lastHelpRequest:null,
+  sessionStartTime:Date.now()
+};
+
+/* ==== SISTEMA DE SONIDOS CON WEB AUDIO API ==== */
+let audioContext=null;
+let soundEnabled=true;
+
+function initAudioContext(){
+  if(!audioContext){
+    try{
+      audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    }catch(e){
+      console.log("AudioContext no disponible:",e);
+    }
+  }
+  // Resume si está suspendido
+  if(audioContext&&audioContext.state==='suspended'){
+    audioContext.resume();
+  }
+}
+
+function playSound(type){
+  if(!soundEnabled)return;
+
+  // Inicializar AudioContext si no existe
+  initAudioContext();
+  if(!audioContext)return;
+
+  try{
+    const oscillator=audioContext.createOscillator();
+    const gainNode=audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    switch(type){
+      case "correct":
+        oscillator.frequency.setValueAtTime(523.25,audioContext.currentTime);// C5
+        oscillator.frequency.setValueAtTime(659.25,audioContext.currentTime+0.1);// E5
+        oscillator.frequency.setValueAtTime(783.99,audioContext.currentTime+0.2);// G5
+        gainNode.gain.setValueAtTime(0.3,audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.4);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime+0.4);
+        break;
+
+      case "wrong":
+        oscillator.frequency.setValueAtTime(200,audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(150,audioContext.currentTime+0.1);
+        gainNode.gain.setValueAtTime(0.2,audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.3);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime+0.3);
+        break;
+
+      case "click":
+        oscillator.type="sine";
+        oscillator.frequency.setValueAtTime(800,audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.15,audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.1);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime+0.1);
+        break;
+
+      case "achievement":
+        oscillator.frequency.setValueAtTime(523.25,audioContext.currentTime);// C5
+        oscillator.frequency.setValueAtTime(659.25,audioContext.currentTime+0.15);// E5
+        oscillator.frequency.setValueAtTime(783.99,audioContext.currentTime+0.3);// G5
+        oscillator.frequency.setValueAtTime(1046.50,audioContext.currentTime+0.45);// C6
+        gainNode.gain.setValueAtTime(0.3,audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.7);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime+0.7);
+        break;
+
+      case "complete":
+        // Fanfarria de completado
+        for(let i=0;i<4;i++){
+          const osc=audioContext.createOscillator();
+          const gain=audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+
+          const freqs=[523.25,659.25,783.99,1046.50];
+          osc.frequency.setValueAtTime(freqs[i],audioContext.currentTime+i*0.15);
+          gain.gain.setValueAtTime(0.2,audioContext.currentTime+i*0.15);
+          gain.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+i*0.15+0.3);
+          osc.start(audioContext.currentTime+i*0.15);
+          osc.stop(audioContext.currentTime+i*0.15+0.3);
+        }
+        break;
+
+      case "notification":
+        oscillator.frequency.setValueAtTime(600,audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(800,audioContext.currentTime+0.1);
+        gainNode.gain.setValueAtTime(0.15,audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+0.2);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime+0.2);
+        break;
+    }
+  }catch(e){
+    console.log("Error al reproducir sonido:",e);
+  }
+}
+
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  aviaAddMessage(soundEnabled?"🔊 Sonidos activados":"🔇 Sonidos desactivados","assistant");
+}
+
+/* ==== FUNCIONES DE PROGRESO Y ESTADÍSTICAS ==== */
+function getSessionDuration(){
+  const duration=Date.now()-userContext.sessionStartTime;
+  const minutes=Math.floor(duration/60000);
+  const seconds=Math.floor((duration%60000)/1000);
+  return {minutes,seconds,total:duration};
+}
+
+function getProgressSummary(){
+  const session=getSessionDuration();
+  const quizProgress=quizData.length>0?Math.round((correctAnswers/quizData.length)*100):0;
+
+  return {
+    score:userContext.totalScore,
+    correctAnswers:correctAnswers,
+    wrongAnswers:wrongAnswers,
+    quizProgress:quizProgress,
+    achievements:userContext.achievements.length,
+    sessionMinutes:session.minutes,
+    sessionSeconds:session.seconds,
+    cardsViewed:currentCard+1
+  };
+}
+
+function showProgressStats(){
+  const stats=getProgressSummary();
+  const content=document.getElementById("mainContent");
+
+  content.innerHTML=`
+    <div style="max-width:700px;width:100%">
+      <div class="titulo">📊 Tu Progreso</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1.5rem;margin:2rem 0">
+        <div style="background:rgba(93,92,222,0.3);border:2px solid rgba(93,92,222,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">⭐</div>
+          <div style="font-size:2rem;font-weight:bold;color:#ffd700">${stats.score}</div>
+          <div style="font-size:0.9rem;opacity:0.8">Puntos</div>
+        </div>
+
+        <div style="background:rgba(46,213,115,0.3);border:2px solid rgba(46,213,115,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">✅</div>
+          <div style="font-size:2rem;font-weight:bold;color:#2ed573">${stats.correctAnswers}</div>
+          <div style="font-size:0.9rem;opacity:0.8">Correctas</div>
+        </div>
+
+        <div style="background:rgba(255,71,87,0.3);border:2px solid rgba(255,71,87,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">❌</div>
+          <div style="font-size:2rem;font-weight:bold;color:#ff4757">${stats.wrongAnswers}</div>
+          <div style="font-size:0.9rem;opacity:0.8">Incorrectas</div>
+        </div>
+
+        <div style="background:rgba(0,229,255,0.3);border:2px solid rgba(0,229,255,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">🏆</div>
+          <div style="font-size:2rem;font-weight:bold;color:#00e5ff">${stats.achievements}</div>
+          <div style="font-size:0.9rem;opacity:0.8">Logros</div>
+        </div>
+
+        <div style="background:rgba(255,165,0,0.3);border:2px solid rgba(255,165,0,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">⏱️</div>
+          <div style="font-size:1.5rem;font-weight:bold;color:#ffa500">${stats.sessionMinutes}m ${stats.sessionSeconds}s</div>
+          <div style="font-size:0.9rem;opacity:0.8">Tiempo</div>
+        </div>
+
+        <div style="background:rgba(138,43,226,0.3);border:2px solid rgba(138,43,226,0.6);border-radius:15px;padding:1.5rem;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:0.5rem">📚</div>
+          <div style="font-size:2rem;font-weight:bold;color:#ba8bff">${stats.cardsViewed}/${cards.length}</div>
+          <div style="font-size:0.9rem;opacity:0.8">Fichas</div>
+        </div>
+      </div>
+
+      <div style="margin-top:2rem;padding:1.5rem;background:rgba(255,255,255,0.05);border-radius:15px;border:1px solid rgba(255,255,255,0.1)">
+        <h3 style="margin:0 0 1rem 0;font-size:1.3rem">🎯 Progreso del Test</h3>
+        <div class="progress-bar" style="height:20px;margin:1rem 0">
+          <div class="progress-fill" style="width:${stats.quizProgress}%"></div>
+        </div>
+        <div style="text-align:center;font-size:1.2rem;font-weight:bold">${stats.quizProgress}% Completado</div>
+      </div>
+
+      ${userContext.achievements.length>0?`
+        <div style="margin-top:2rem;padding:1.5rem;background:rgba(255,215,0,0.1);border-radius:15px;border:2px solid rgba(255,215,0,0.3)">
+          <h3 style="margin:0 0 1rem 0;font-size:1.3rem">🏆 Logros Desbloqueados</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center">
+            ${userContext.achievements.map(a=>`<div class="achievement-badge">${getAchievementEmoji(a)} ${getAchievementName(a)}</div>`).join('')}
+          </div>
+        </div>
+      `:''}
+
+      <div style="margin-top:2rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <button onclick="renderHome()" style="padding:1rem 2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          🏠 Volver al Inicio
+        </button>
+        <button onclick="shareProgress()" style="padding:1rem 2rem;background:linear-gradient(145deg,#43a047,#1b5e20);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          📤 Compartir Progreso
+        </button>
+      </div>
+    </div>
+  `;
+
+  currentScreen="stats";
+}
+
+function getAchievementEmoji(id){
+  const emojis={
+    first_correct:"🎯",
+    perfect:"💯",
+    persistent:"💪",
+    explorer:"🗺️",
+    vocal:"🎤"
+  };
+  return emojis[id]||"🏆";
+}
+
+function getAchievementName(id){
+  const names={
+    first_correct:"Primer Acierto",
+    perfect:"Perfecto",
+    persistent:"Persistente",
+    explorer:"Explorador",
+    vocal:"Vocal"
+  };
+  return names[id]||id;
+}
+
+function shareProgress(){
+  const stats=getProgressSummary();
+  const shareText=`🏛️ Mi progreso en Caverna Digital:\n\n⭐ ${stats.score} puntos\n✅ ${stats.correctAnswers} correctas\n🏆 ${stats.achievements} logros\n📊 ${stats.quizProgress}% completado\n\n¡Aprende filosofía de Platón de forma interactiva!`;
+
+  aviaAddUserMessage("Compartir mi progreso");
+  aviaAddMessage(`📤 Aquí está tu resumen para compartir:\n\n${shareText}`,"assistant");
+}
+
+/* ==== CONFIGURACIÓN AVATAR AVIA-CON ==== */
+// Opciones para el avatar de AVIA-Con
+const aviaAvatarConfig={
+  type:"emoji", // "emoji" o "image"
+  emoji:"🤖",
+  imageUrl:"", // Base64 o URL de la imagen
+  name:"AVIA-Con"
+};
+
+// Avatares educativos predefinidos
+const educationalAvatars=[
+  "🤖","🎓","🧠","📚","🏛️","🦉","👨‍🏫","👩‍🏫","🎭","📖",
+  "⚡","💡","🌟","🔬","🎨","🗿","👨‍🎓","👩‍🎓","🧙‍♂️","🧙‍♀️"
+];
+
+// Cargar configuración guardada desde userContext
+function loadAvatarConfig(){
+  try{
+    if(userContext.avatarConfig){
+      const config=userContext.avatarConfig;
+      Object.assign(aviaAvatarConfig,config);
+      setAviaAvatar(config.type,config.type==="emoji"?config.emoji:config.imageUrl);
+    }
+  }catch(e){
+    console.log("No se pudo cargar configuración de avatar:",e);
+  }
+}
+
+// Guardar configuración en userContext
+function saveAvatarConfig(){
+  try{
+    userContext.avatarConfig={
+      type:aviaAvatarConfig.type,
+      emoji:aviaAvatarConfig.emoji,
+      imageUrl:aviaAvatarConfig.imageUrl,
+      name:aviaAvatarConfig.name
+    };
+  }catch(e){
+    console.log("No se pudo guardar configuración de avatar:",e);
+  }
+}
+
+// Función para cambiar avatar de AVIA-Con
+function setAviaAvatar(type,value){
+  aviaAvatarConfig.type=type;
+
+  const btnIcon=document.getElementById("aviaIcon");
+  const btnAvatar=document.getElementById("aviaAvatar");
+  const headerIcon=document.getElementById("aviaHeaderIcon");
+  const headerAvatar=document.getElementById("aviaHeaderAvatar");
+  const previewIcon=document.getElementById("previewIcon");
+  const previewImage=document.getElementById("previewImage");
+
+  if(type==="emoji"){
+    aviaAvatarConfig.emoji=value;
+    // Botón principal
+    btnIcon.textContent=value;
+    btnIcon.style.display="inline";
+    btnAvatar.style.display="none";
+    // Header del chat
+    headerIcon.textContent=value;
+    headerIcon.style.display="inline";
+    headerAvatar.style.display="none";
+    // Preview
+    previewIcon.textContent=value;
+    previewIcon.style.display="inline";
+    previewImage.style.display="none";
+  }else if(type==="image"){
+    aviaAvatarConfig.imageUrl=value;
+    // Botón principal
+    btnAvatar.src=value;
+    btnIcon.style.display="none";
+    btnAvatar.style.display="block";
+    // Header del chat
+    headerAvatar.src=value;
+    headerIcon.style.display="none";
+    headerAvatar.style.display="inline";
+    // Preview
+    previewImage.src=value;
+    previewIcon.style.display="none";
+    previewImage.style.display="block";
+  }
+
+  saveAvatarConfig();
+  updateAvatarSelection();
+}
+
+// Actualizar selección visual en el grid
+function updateAvatarSelection(){
+  document.querySelectorAll(".avatar-option").forEach(opt=>{
+    opt.classList.remove("selected");
+    if(aviaAvatarConfig.type==="emoji" && opt.dataset.emoji===aviaAvatarConfig.emoji){
+      opt.classList.add("selected");
+    }
+  });
+}
+
+// Inicializar grid de avatares educativos
+function initAvatarGrid(){
+  const grid=document.getElementById("emojiAvatarGrid");
+  grid.innerHTML="";
+
+  educationalAvatars.forEach(emoji=>{
+    const opt=document.createElement("div");
+    opt.className="avatar-option";
+    opt.dataset.emoji=emoji;
+    opt.textContent=emoji;
+    opt.onclick=()=>{
+      setAviaAvatar("emoji",emoji);
+      aviaAddMessage(`Avatar cambiado a ${emoji}`,"assistant");
+    };
+    grid.appendChild(opt);
+  });
+
+  updateAvatarSelection();
+}
+
+// Manejar carga de archivo de imagen
+function handleAvatarUpload(file){
+  if(!file||!file.type.startsWith("image/")){
+    aviaAddMessage("❌ Por favor selecciona un archivo de imagen válido (JPG, PNG, etc.)","assistant");
+    return;
+  }
+
+  // Verificar tamaño (máximo 2MB)
+  if(file.size>2*1024*1024){
+    aviaAddMessage("❌ La imagen es demasiado grande. Por favor usa una imagen menor a 2MB.","assistant");
+    return;
+  }
+
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    const img=new Image();
+    img.onload=()=>{
+      // Redimensionar imagen a 200x200 para optimizar
+      const canvas=document.createElement("canvas");
+      const ctx=canvas.getContext("2d");
+      const maxSize=200;
+
+      let width=img.width;
+      let height=img.height;
+
+      if(width>height){
+        if(width>maxSize){
+          height*=maxSize/width;
+          width=maxSize;
+        }
+      }else{
+        if(height>maxSize){
+          width*=maxSize/height;
+          height=maxSize;
+        }
+      }
+
+      canvas.width=width;
+      canvas.height=height;
+      ctx.drawImage(img,0,0,width,height);
+
+      // Convertir a base64
+      const base64=canvas.toDataURL("image/jpeg",0.8);
+      setAviaAvatar("image",base64);
+      aviaAddMessage("✅ ¡Avatar personalizado cargado exitosamente!","assistant");
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Toggle del panel de configuración
+let settingsPanelOpen=false;
+function toggleSettingsPanel(){
+  settingsPanelOpen=!settingsPanelOpen;
+  const panel=document.getElementById("aviaSettingsPanel");
+
+  if(settingsPanelOpen){
+    panel.classList.add("open");
+  }else{
+    panel.classList.remove("open");
+  }
+}
+
+// Presets de avatares (compatibilidad con código anterior)
+function useCarlosAvatar(){
+  // El usuario puede subir su foto usando el botón de carga
+  aviaAddMessage("💡 Usa el botón 'Cargar imagen' en configuración para subir tu foto.","assistant");
+  toggleSettingsPanel();
+}
+
+function useAviaIconAvatar(){
+  setAviaAvatar("emoji","🤖");
+}
+
+function useEmojiAvatar(emoji="🤖"){
+  setAviaAvatar("emoji",emoji);
+}
+
+/* ==== INTEGRACIÓN POE EMBED API ==== */
+// Detectar si Poe está disponible
+if(typeof window.Poe !== 'undefined'){
+  poeAvailable=true;
+  console.log("✅ Poe Embed API disponible");
+}else{
+  console.log("⚠️ Poe Embed API no disponible - usando modo simulación");
+}
+
+// Registrar handler para recibir respuestas de bots
+if(poeAvailable){
+  window.Poe.registerHandler("avia-response",(result,context)=>{
+    const msg=result.responses[0];
+
+    if(msg.status==="error"){
+      aviaShowTyping(false);
+      aviaAddMessage(`❌ Error: ${msg.statusText||"No se pudo obtener respuesta"}`,  "assistant");
+      pendingPoeResponse=false;
+    }else if(msg.status==="incomplete"){
+      // Actualizar mensaje con contenido parcial (streaming)
+      updateAviaStreamingMessage(msg.content,context.messageId);
+    }else if(msg.status==="complete"){
+      // Mensaje completo
+      aviaShowTyping(false);
+      finalizeAviaStreamingMessage(msg.content,msg.attachments,context.messageId);
+      pendingPoeResponse=false;
+
+      // Si hay archivos adjuntos (imágenes, videos, audio)
+      if(msg.attachments && msg.attachments.length>0){
+        handlePoeAttachments(msg.attachments);
+      }
+    }
+  });
+}
+
+// Función para enviar mensaje a Poe
+async function aviaSendToPoe(prompt,botName="@Claude-Sonnet-4.5",options={}){
+  if(!poeAvailable){
+    return aviaSimulatedResponse(prompt);
+  }
+
+  try{
+    pendingPoeResponse=true;
+    const messageId="msg-"+Date.now();
+
+    // Crear mensaje placeholder para streaming
+    createAviaStreamingMessage(messageId);
+
+    const result=await window.Poe.sendUserMessage(
+      `${botName} ${prompt}`,
+      {
+        handler:"avia-response",
+        stream:options.stream!==false,
+        openChat:false,
+        handlerContext:{messageId:messageId,originalPrompt:prompt}
+      }
+    );
+
+    return result;
+  }catch(error){
+    aviaShowTyping(false);
+    pendingPoeResponse=false;
+
+    if(error.errorType==="USER_REJECTED_CONFIRMATION"){
+      aviaAddMessage("⚠️ Necesitas aceptar el permiso para acceder a bots externos.","assistant");
+    }else if(error.errorType==="INVALID_INPUT"){
+      aviaAddMessage("❌ Entrada inválida. Intenta reformular tu pregunta.","assistant");
+    }else{
+      aviaAddMessage("❌ Error al conectar con el bot. Intenta de nuevo.","assistant");
+    }
+
+    console.error("Error Poe API:",error);
+  }
+}
+
+// Crear mensaje placeholder para streaming
+let streamingMessages={};
+function createAviaStreamingMessage(messageId){
+  const container=document.getElementById("aviaChatMessages");
+  const msgDiv=document.createElement("div");
+  msgDiv.className="avia-message assistant";
+  msgDiv.id="stream-"+messageId;
+  msgDiv.innerHTML=`<div class="streaming-content"></div>`;
+  container.appendChild(msgDiv);
+  streamingMessages[messageId]=msgDiv;
+
+  setTimeout(()=>{
+    container.scrollTop=container.scrollHeight;
+  },100);
+}
+
+// Actualizar mensaje streaming
+function updateAviaStreamingMessage(content,messageId){
+  const msgDiv=streamingMessages[messageId];
+  if(msgDiv){
+    const contentDiv=msgDiv.querySelector(".streaming-content");
+    if(contentDiv){
+      // Convertir Markdown a HTML básico si es necesario
+      contentDiv.innerHTML=formatMarkdown(content);
+    }
+
+    const container=document.getElementById("aviaChatMessages");
+    container.scrollTop=container.scrollHeight;
+  }
+}
+
+// Finalizar mensaje streaming
+function finalizeAviaStreamingMessage(content,attachments,messageId){
+  const msgDiv=streamingMessages[messageId];
+  if(msgDiv){
+    const time=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    msgDiv.innerHTML=`
+      <div>${formatMarkdown(content)}</div>
+      <div class="avia-message-time">${time}</div>
+    `;
+    delete streamingMessages[messageId];
+  }
+}
+
+// Formatear Markdown básico
+function formatMarkdown(text){
+  return text
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+// Manejar archivos adjuntos (imágenes, videos, audio)
+function handlePoeAttachments(attachments){
+  attachments.forEach(att=>{
+    if(att.isInline && att.mimeType.startsWith('image/')){
+      // Mostrar imagen en pantalla completa
+      showMediaFullscreen(att.url,att.mimeType,'image');
+    }else if(att.mimeType.startsWith('video/')){
+      // Mostrar video en pantalla completa
+      showMediaFullscreen(att.url,att.mimeType,'video');
+    }else if(att.mimeType.startsWith('audio/')){
+      // Reproducir audio automáticamente
+      playAudio(att.url);
+    }else{
+      // Mostrar link de descarga en el chat
+      aviaAddMessage(`📎 <a href="${att.url}" download="${att.name}" target="_blank" style="color:#00e5ff">${att.name}</a>`,"assistant");
+    }
+  });
+}
+
+// Mostrar imagen/video a pantalla completa
+function showMediaFullscreen(url,mimeType,type){
+  const content=document.getElementById("mainContent");
+
+  if(type==='image'){
+    content.innerHTML=`
+      <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <img src="${url}" style="max-width:100%;max-height:80vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5)" alt="Imagen generada">
+        <div style="margin-top:2rem;display:flex;gap:1rem">
+          <button onclick="downloadMedia('${url}','imagen.png')" style="padding:1rem 2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+            💾 Descargar
+          </button>
+          <button onclick="renderHome()" style="padding:1rem 2rem;background:linear-gradient(145deg,#43a047,#1b5e20);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+            🏠 Volver
+          </button>
+        </div>
+      </div>
+    `;
+  }else if(type==='video'){
+    content.innerHTML=`
+      <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <video controls autoplay style="max-width:100%;max-height:80vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5)">
+          <source src="${url}" type="${mimeType}">
+        </video>
+        <div style="margin-top:2rem;display:flex;gap:1rem">
+          <button onclick="downloadMedia('${url}','video.mp4')" style="padding:1rem 2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+            💾 Descargar
+          </button>
+          <button onclick="renderHome()" style="padding:1rem 2rem;background:linear-gradient(145deg,#43a047,#1b5e20);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+            🏠 Volver
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  currentScreen="media";
+  aviaAddMessage(`✅ Mostrando ${type==='image'?'imagen':'video'} en pantalla completa`,"assistant");
+}
+
+// Reproducir audio
+let currentAudio=null;
+function playAudio(url){
+  if(currentAudio){
+    currentAudio.pause();
+  }
+
+  currentAudio=new Audio(url);
+  currentAudio.play();
+
+  aviaAddMessage(`🔊 Reproduciendo audio...`,"assistant");
+
+  currentAudio.onended=()=>{
+    aviaAddMessage(`✅ Audio finalizado`,"assistant");
+  };
+}
+
+// Descargar media
+function downloadMedia(url,filename){
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// Respuesta simulada cuando Poe no está disponible
+function aviaSimulatedResponse(prompt){
+  setTimeout(()=>{
+    aviaShowTyping(false);
+    aviaAddMessage(
+      "🤖 (Modo simulación - Poe API no disponible)<br><br>"+
+      "He recibido tu mensaje: \""+prompt+"\"<br><br>"+
+      "Para respuestas reales, esta app necesita estar corriendo en Poe.",
+      "assistant"
+    );
+  },1000);
+}
+
+/* ==== SISTEMA ASISTENTE AVIA-CON ==== */
+function aviaAddMessage(content,type="assistant",suggestions=[]){
+  const container=document.getElementById("aviaChatMessages");
+  const msgDiv=document.createElement("div");
+  msgDiv.className=`avia-message ${type}`;
+
+  const time=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+  let html=`<div>${content}</div>`;
+
+  if(suggestions.length>0){
+    html+=`<div class="avia-suggestions">`;
+    suggestions.forEach(sug=>{
+      html+=`<button class="avia-suggestion-btn" onclick="aviaHandleSuggestion('${sug.action}','${sug.label.replace(/'/g,"\\'")}')">${sug.icon||'💬'} ${sug.label}</button>`;
+    });
+    html+=`</div>`;
+  }
+
+  html+=`<div class="avia-message-time">${time}</div>`;
+  msgDiv.innerHTML=html;
+  container.appendChild(msgDiv);
+
+  conversationHistory.push({content,type,time,suggestions});
+
+  // Scroll al final
+  setTimeout(()=>{
+    container.scrollTop=container.scrollHeight;
+  },100);
+
+  // Mostrar notificación si el chat está cerrado
+  if(!aviaChatOpen){
+    aviaShowNotification();
+  }
+
+  return msgDiv;
+}
+
+function aviaShowTyping(show=true){
+  const indicator=document.getElementById("aviaTyping");
+  if(show){
+    indicator.classList.add("active");
+  }else{
+    indicator.classList.remove("active");
+  }
+}
+
+function aviaAddUserMessage(text){
+  aviaAddMessage(text,"user");
+  userContext.lastInteraction=new Date();
+}
+
+function aviaShowNotification(){
+  document.getElementById("aviaNotification").classList.add("show");
+  playSound("notification");
+}
+
+function aviaHideNotification(){
+  document.getElementById("aviaNotification").classList.remove("show");
+}
+
+function aviaToggleChat(){
+  aviaChatOpen=!aviaChatOpen;
+  const panel=document.getElementById("aviaChatPanel");
+  const btn=document.getElementById("aviaBtn");
+
+  if(aviaChatOpen){
+    panel.classList.add("open");
+    btn.classList.add("active");
+    aviaHideNotification();
+    // Scroll al final
+    setTimeout(()=>{
+      const container=document.getElementById("aviaChatMessages");
+      container.scrollTop=container.scrollHeight;
+    },100);
+  }else{
+    panel.classList.remove("open");
+    btn.classList.remove("active");
+  }
+}
+
+// Listeners para AVIA-Con
+document.getElementById("aviaBtn").addEventListener("click",aviaToggleChat);
+document.getElementById("aviaCloseBtn").addEventListener("click",aviaToggleChat);
+document.getElementById("aviaSendBtn").addEventListener("click",()=>{
+  const input=document.getElementById("aviaInput");
+  const text=input.value.trim();
+  if(text){
+    aviaAddUserMessage(text);
+    input.value="";
+    // Procesar respuesta del asistente
+    aviaProcessUserInput(text);
+  }
+});
+document.getElementById("aviaInput").addEventListener("keypress",(e)=>{
+  if(e.key==="Enter"){
+    document.getElementById("aviaSendBtn").click();
+  }
+});
+
+// Listener para botón de configuración de avatar
+document.getElementById("aviaSettingsBtn").addEventListener("click",(e)=>{
+  e.stopPropagation();
+  toggleSettingsPanel();
+});
+
+// Listener para botón de cargar avatar
+document.getElementById("uploadAvatarBtn").addEventListener("click",()=>{
+  document.getElementById("avatarFileInput").click();
+});
+
+// Listener para input de archivo
+document.getElementById("avatarFileInput").addEventListener("change",(e)=>{
+  const file=e.target.files[0];
+  if(file){
+    handleAvatarUpload(file);
+  }
+  // Resetear input para permitir subir la misma imagen de nuevo
+  e.target.value="";
+});
+
+// Cerrar panel de configuración al hacer click fuera
+document.addEventListener("click",(e)=>{
+  const settingsPanel=document.getElementById("aviaSettingsPanel");
+  const settingsBtn=document.getElementById("aviaSettingsBtn");
+
+  if(settingsPanelOpen &&
+     !settingsPanel.contains(e.target) &&
+     !settingsBtn.contains(e.target)){
+    toggleSettingsPanel();
+  }
+});
+
+/* ==== RENDERIZADO DE PANTALLAS PRINCIPALES ==== */
+function renderHome(){
+  currentScreen="home";
+  const content=document.getElementById("mainContent");
+  content.innerHTML=`
+    <div class="titulo">Caverna Digital</div>
+    <div class="instruccion">Explora la filosofía de Platón de forma interactiva</div>
+    <div style="margin-top:2rem;display:flex;flex-direction:column;gap:1rem;max-width:500px">
+      <button onclick="startQuiz()" style="padding:1.5rem;font-size:1.2rem;background:linear-gradient(145deg,#43a047,#1b5e20);border:none;border-radius:12px;color:#fff;cursor:pointer;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        📝 Comenzar el Test
+      </button>
+      <button onclick="startCards()" style="padding:1.5rem;font-size:1.2rem;background:linear-gradient(145deg,#2196f3,#1565c0);border:none;border-radius:12px;color:#fff;cursor:pointer;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        🃏 Ver Fichas Filosóficas
+      </button>
+      <button onclick="showProgressStats()" style="padding:1.5rem;font-size:1.2rem;background:linear-gradient(145deg,#ffa502,#ff6348);border:none;border-radius:12px;color:#fff;cursor:pointer;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        📊 Ver Mi Progreso
+      </button>
+      <button onclick="showAbout()" style="padding:1.5rem;font-size:1.2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:12px;color:#fff;cursor:pointer;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        ℹ️ Acerca de
+      </button>
+    </div>
+  `;
+  updateDpadButtons();
+}
+
+function renderQuiz(){
+  currentScreen="quiz";
+  const item=quizData[currentQuestion];
+  const content=document.getElementById("mainContent");
+  const optClasses=["redOpt","greenOpt","yellowOpt","blueOpt"];
+
+  const isFirstQuestion=currentQuestion===0;
+  const isLastQuestion=currentQuestion===quizData.length-1;
+  const leftDisabled=isFirstQuestion?"disabled":"";
+  const rightDisabled="disabled"; // Se habilita después de responder
+
+  content.innerHTML=`
+    <div class="quiz-container">
+      <div class="quiz-nav-left ${leftDisabled}" id="quizNavLeft" onclick="if(${currentQuestion}>0){prevQuestion()}">&lt;</div>
+      <div class="quiz">
+        <div class="indicador">Pregunta ${currentQuestion+1} de ${quizData.length}</div>
+        <div class="question">${item.q}</div>
+        <ul class="options">
+          ${item.options.map((opt,i)=>`<li class="${optClasses[i]}" data-index="${i}">${opt}</li>`).join('')}
+        </ul>
+        <div class="feedback" id="feedback"></div>
+      </div>
+      <div class="quiz-nav-right ${rightDisabled}" id="quizNavRight" onclick="handleQuizNext()">&gt;</div>
+    </div>
+  `;
+
+  // Añadir listeners a opciones
+  document.querySelectorAll(".options li").forEach(li=>{
+    li.addEventListener("click",function(){
+      if(!answered)selectAnswer(parseInt(this.dataset.index));
+    });
+  });
+
+  updateDpadButtons();
+}
+
+// Función para manejar el clic en el botón derecho del quiz
+function handleQuizNext(){
+  if(answered){
+    if(currentQuestion===quizData.length-1){
+      showQuizResults();
+    }else{
+      nextQuestion();
+    }
+  }
+}
+
+function selectAnswer(idx){
+  if(answered)return;
+  answered=true;
+
+  const item=quizData[currentQuestion];
+  const options=document.querySelectorAll(".options li");
+  const feedback=document.getElementById("feedback");
+
+  options[idx].classList.add(idx===item.ans?"correct":"incorrect");
+
+  if(idx===item.ans){
+    correctAnswers++;
+    userContext.totalScore+=10;
+    feedback.innerHTML=`✅ <strong>¡Correcto!</strong><br>${item.explicacion}`;
+    aviaAddMessage(`¡Excelente! Respondiste correctamente. ${item.explicacion}`,"assistant");
+    playSound("correct");
+  }else{
+    wrongAnswers++;
+    if(!userContext.wrongAttempts[currentQuestion])userContext.wrongAttempts[currentQuestion]=0;
+    userContext.wrongAttempts[currentQuestion]++;
+    options[item.ans].classList.add("correct");
+    feedback.innerHTML=`❌ <strong>Incorrecto.</strong> La respuesta correcta es: <strong>${item.options[item.ans]}</strong><br>${item.explicacion}`;
+    aviaAddMessage(`La respuesta correcta era: ${item.options[item.ans]}. ${item.explicacion}`,"assistant");
+    playSound("wrong");
+  }
+
+  // Habilitar navegación derecha después de responder
+  const quizNavRight=document.getElementById("quizNavRight");
+  if(quizNavRight){
+    quizNavRight.classList.remove("disabled");
+  }
+
+  detectUserMood();
+  checkAchievements();
+}
+
+function renderCard(){
+  currentScreen="cards";
+  const c=cards[currentCard];
+  const content=document.getElementById("mainContent");
+
+  const leftDisabled=currentCard===0?"disabled":"";
+  const rightDisabled=currentCard===cards.length-1?"disabled":"";
+
+  content.innerHTML=`
+    <div class="card-fullscreen">
+      <div class="card-nav-left ${leftDisabled}" onclick="if(${currentCard}>0){prevCard()}">&lt;</div>
+      <div style="text-align:center">
+        <div class="indicador">Ficha ${currentCard+1} de ${cards.length}</div>
+        <div class="card">
+          <div class="card-inner">
+            <div class="card-front ${c.cls}">
+              <h2>${c.title}</h2>
+            </div>
+            <div class="card-back">
+              <p>${c.text}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-nav-right ${rightDisabled}" onclick="if(${currentCard}<${cards.length-1}){nextCard()}">&gt;</div>
+    </div>
+  `;
+
+  updateDpadButtons();
+}
+
+function showAbout(){
+  const content=document.getElementById("mainContent");
+  content.innerHTML=`
+    <div class="titulo">Acerca de Caverna Digital</div>
+    <div style="max-width:700px;line-height:1.8;font-size:1.05rem;margin-top:1.5rem">
+      <p>Esta aplicación interactiva te ayuda a explorar la <strong>Alegoría de la Caverna</strong> de Platón de forma moderna y accesible.</p>
+
+      <p style="margin-top:1.5rem"><strong>✨ Características principales:</strong></p>
+      <ul style="margin-left:1.5rem;margin-top:0.5rem">
+        <li>📝 <strong>8 preguntas</strong> filosóficas interactivas</li>
+        <li>🃏 <strong>8 fichas</strong> educativas con conceptos clave</li>
+        <li>🎮 Control por <strong>gamepad y teclado</strong></li>
+        <li>🎤 <strong>Comandos de voz</strong> inteligentes</li>
+        <li>♿ <strong>Modo barrido</strong> para accesibilidad</li>
+        <li>🤖 <strong>Asistente AVIA-Con</strong> con IA (Poe API)</li>
+        <li>🏆 Sistema de <strong>logros y gamificación</strong></li>
+        <li>📊 <strong>Estadísticas de progreso</strong> en tiempo real</li>
+        <li>🎨 Generación de <strong>imágenes con GPT-Image</strong></li>
+        <li>🎬 Generación de <strong>videos con Runway</strong></li>
+        <li>🔊 <strong>Efectos de sonido</strong> dinámicos</li>
+        <li>🎭 <strong>Avatares personalizables</strong></li>
+      </ul>
+
+      <p style="margin-top:1.5rem"><strong>🎯 Objetivo educativo:</strong></p>
+      <p style="margin-left:1rem">Hacer accesible la filosofía de Platón mediante tecnología moderna, gamificación e inteligencia artificial, promoviendo un aprendizaje activo y personalizado.</p>
+
+      <div style="margin-top:2rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <button onclick="renderHome()" style="padding:1rem 2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          🏠 Volver al Inicio
+        </button>
+        <button onclick="toggleSound()" style="padding:1rem 2rem;background:linear-gradient(145deg,#ffa502,#ff6348);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          ${soundEnabled?'🔇 Silenciar':'🔊 Activar Sonido'}
+        </button>
+        <button onclick="testVoice()" style="padding:1rem 2rem;background:linear-gradient(145deg,#2ed573,#1b5e20);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          🎤 Probar Voz
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function testVoice(){
+  console.log("🧪 Test de voz iniciado");
+
+  if(!aviaChatOpen){
+    aviaToggleChat();
+  }
+
+  // Verificar soporte
+  const hasAPI='webkitSpeechRecognition' in window||'SpeechRecognition' in window;
+
+  aviaAddMessage(
+    "<strong>🧪 Diagnóstico de Control por Voz</strong><br><br>"+
+    "🌐 <strong>Navegador:</strong> "+navigator.userAgent.split('/').pop()+"<br>"+
+    "🎤 <strong>API disponible:</strong> "+(hasAPI?"✅ Sí":"❌ No")+"<br>"+
+    "🔊 <strong>Permisos micrófono:</strong> Haz clic en el botón 🎤 en la esquina superior derecha para verificar<br><br>"+
+    (hasAPI?
+      "✅ Tu navegador <strong>SÍ soporta</strong> reconocimiento de voz.<br><br>"+
+      "Para usarlo:<br>"+
+      "1. Haz clic en el botón 🎤 (esquina superior derecha)<br>"+
+      "2. Acepta los permisos cuando te lo pida<br>"+
+      "3. Di un comando como 'ayuda' o 'siguiente'<br><br>"+
+      "Revisa la consola del navegador (F12) para ver logs detallados."
+    :
+      "❌ Tu navegador <strong>NO soporta</strong> reconocimiento de voz.<br><br>"+
+      "Usa Chrome, Edge o Safari para esta función."
+    ),
+    "assistant"
+  );
+}
+
+function startQuiz(){
+  currentQuestion=0;
+  answered=false;
+  correctAnswers=0;
+  wrongAnswers=0;
+  userContext.wrongAttempts={};
+  renderQuiz();
+  aviaAddMessage("¡Empecemos con el test! Lee cada pregunta con atención.","assistant",[
+    {icon:"💡",label:"Dame un consejo",action:"give_tip"}
+  ]);
+}
+
+function startCards(){
+  currentCard=0;
+  renderCard();
+  aviaAddMessage("Aquí tienes las fichas filosóficas. Pasa el cursor sobre cada ficha para ver su contenido.","assistant");
+}
+
+/* ==== LÓGICA CONVERSACIONAL INTELIGENTE ==== */
+function aviaProcessUserInput(text){
+  const lower=text.toLowerCase();
+
+  // Comandos locales (no necesitan Poe)
+  if(lower.includes("test")||lower.includes("quiz")||lower.includes("pregunta")){
+    aviaAddMessage("¡Perfecto! Voy a iniciar el test para ti.","assistant");
+    startQuiz();
+    return;
+  }else if(lower.includes("ficha")||lower.includes("tarjeta")||lower.includes("card")){
+    aviaAddMessage("¡Vamos a ver las fichas filosóficas!","assistant");
+    startCards();
+    return;
+  }else if(lower.includes("progreso")||lower.includes("estadística")||lower.includes("mi rendimiento")||lower.includes("cómo voy")){
+    aviaAddMessage("📊 Aquí están tus estadísticas de progreso.","assistant");
+    showProgressStats();
+    return;
+  }else if(lower.includes("sonido")||lower.includes("audio")||lower.includes("silencio")||lower.includes("mute")){
+    toggleSound();
+    return;
+  }else if(lower.includes("inicio")||lower.includes("home")||lower.includes("menú")){
+    aviaAddMessage("Volviendo al menú principal.","assistant");
+    renderHome();
+    return;
+  }else if(lower.includes("avatar")||lower.includes("configurar")||lower.includes("cambiar foto")||lower.includes("personalizar")){
+    if(!settingsPanelOpen){
+      toggleSettingsPanel();
+    }
+    aviaAddMessage("⚙️ Panel de configuración abierto. Puedes elegir un avatar educativo o subir tu propia foto.","assistant");
+    return;
+  }else if(lower.includes("ayuda")||lower.includes("help")||lower.includes("qué puedo")){
+    aviaAddMessage(
+      "Puedo ayudarte con:<br>• Iniciar el test filosófico<br>• Ver las fichas de conceptos<br>• Ver tus estadísticas de progreso<br>• Personalizar tu avatar<br>• Explicarte cualquier concepto<br>• Generar imágenes y videos<br>• Buscar contenido educativo<br><br>¿Qué te gustaría hacer?",
+      "assistant",
+      [
+        {icon:"📝",label:"Hacer el test",action:"start_quiz"},
+        {icon:"🃏",label:"Ver fichas",action:"start_cards"},
+        {icon:"📊",label:"Ver progreso",action:"show_stats"},
+        {icon:"⚙️",label:"Personalizar avatar",action:"open_settings"},
+        {icon:"💡",label:"Explicación filosófica",action:"explain_philosophy"},
+        {icon:"🎨",label:"Generar imagen",action:"generate_image"}
+      ]
+    );
+    return;
+  }
+
+  // Detectar intención: generar imagen
+  if(lower.includes("genera")||lower.includes("crea")||lower.includes("dibuja")||lower.includes("imagen")||lower.includes("foto")){
+    aviaShowTyping(true);
+    aviaSendToPoe(text,"@GPT-Image-1",{stream:false});
+    return;
+  }
+
+  // Detectar intención: generar video
+  if(lower.includes("video")||lower.includes("animación")||lower.includes("película corta")){
+    aviaShowTyping(true);
+    aviaSendToPoe(text,"@Runway-Gen-4-Turbo",{stream:false});
+    return;
+  }
+
+  // Detectar intención: voz/audio
+  if(lower.includes("dime en voz")||lower.includes("léeme")||lower.includes("audio")||lower.includes("escuchar")){
+    aviaShowTyping(true);
+    aviaSendToPoe(text,"@ElevenLabs-v2.5-Turbo",{stream:false});
+    return;
+  }
+
+  // Detectar comandos AVIA de búsqueda
+  if(lower.includes("busca")||lower.includes("encuentra")||lower.includes("muestra")||lower.includes("película")||lower.includes("documental")){
+    processAVIASearchCommand(text);
+    return;
+  }
+
+  // Consultas generales filosóficas/educativas -> Claude
+  aviaShowTyping(true);
+  const philosophyContext="Eres AVIA-Con, un asistente pedagógico especializado en filosofía y la alegoría de la caverna de Platón. Responde de forma clara, educativa y amigable. ";
+  aviaSendToPoe(philosophyContext+text,"@Claude-Sonnet-4.5");
+}
+
+function aviaHandleSuggestion(action,label){
+  aviaAddUserMessage(label);
+
+  if(action==="start_quiz"){
+    startQuiz();
+  }else if(action==="start_cards"){
+    startCards();
+  }else if(action==="show_stats"){
+    showProgressStats();
+  }else if(action==="open_settings"){
+    if(!settingsPanelOpen){
+      toggleSettingsPanel();
+    }
+    aviaAddMessage("⚙️ Panel de configuración abierto. Puedes elegir un avatar educativo o subir tu propia foto.","assistant");
+  }else if(action==="give_tip"){
+    aviaAddMessage("💡 Consejo: Lee todas las opciones antes de responder. Recuerda que en Platón, la verdad está en el mundo de las ideas, no en las apariencias.","assistant");
+  }else if(action==="explain_philosophy"){
+    aviaShowTyping(true);
+    aviaSendToPoe("Explícame de forma clara y didáctica qué es la Alegoría de la Caverna de Platón y por qué es importante.","@Claude-Sonnet-4.5");
+  }else if(action==="generate_image"){
+    aviaAddMessage("¿Qué imagen te gustaría que genere? Descríbela con detalle.","assistant",[
+      {icon:"🏛️",label:"La caverna de Platón",action:"image_caverna"},
+      {icon:"💡",label:"El mundo de las ideas",action:"image_ideas"},
+      {icon:"🌅",label:"Salida de la caverna",action:"image_salida"}
+    ]);
+  }else if(action==="image_caverna"){
+    aviaShowTyping(true);
+    aviaSendToPoe("A philosophical illustration of Plato's cave allegory, showing prisoners chained watching shadows on a wall, dramatic lighting, digital art --aspect 16:9","@GPT-Image-1",{stream:false});
+  }else if(action==="image_ideas"){
+    aviaShowTyping(true);
+    aviaSendToPoe("Abstract representation of Plato's world of forms and ideas, ethereal perfect geometric shapes floating in a cosmic space, philosophical concept art --aspect 16:9","@GPT-Image-1",{stream:false});
+  }else if(action==="image_salida"){
+    aviaShowTyping(true);
+    aviaSendToPoe("A person emerging from a dark cave into brilliant sunlight, symbolic of enlightenment and discovering truth, cinematic lighting, inspirational --aspect 16:9","@GPT-Image-1",{stream:false});
+  }
+}
+
+// Procesar comandos AVIA de búsqueda
+function processAVIASearchCommand(text){
+  aviaShowTyping(true);
+
+  const lower=text.toLowerCase();
+
+  // Determinar el tipo de contenido y usar el bot apropiado
+  let searchPrompt="Busca y recomienda: "+text;
+
+  // Para búsquedas de contenido educativo, usar Claude
+  aviaSendToPoe(searchPrompt,"@Claude-Sonnet-4.5");
+}
+
+function startConversation(){
+  // Inicializar sistema de avatares
+  initAvatarGrid();
+  loadAvatarConfig();
+
+  // Renderizar pantalla de inicio
+  renderHome();
+
+  // Iniciar AVIA-Con con saludo
+  const hour=new Date().getHours();
+  let greeting="¡Hola!";
+  let energyMsg="";
+
+  if(hour<12){
+    greeting="¡Buenos días!";
+    energyMsg=" Empecemos el día con energía y curiosidad.";
+  }else if(hour<20){
+    greeting="¡Buenas tardes!";
+    energyMsg=" Perfecto momento para aprender algo nuevo.";
+  }else{
+    greeting="¡Buenas noches!";
+    energyMsg=" La noche es ideal para la reflexión filosófica.";
+  }
+
+  const isReturningUser=userContext.streakDays>0;
+
+  setTimeout(()=>{
+    if(isReturningUser){
+      aviaAddMessage(
+        `${greeting} ¡Qué alegría verte de nuevo! 🎉${energyMsg}<br><br>🔥 Racha: ${userContext.streakDays} días<br>⭐ Puntuación: ${userContext.totalScore} pts`,
+        "assistant",
+        [
+          {icon:"📝",label:"Continuar test",action:"start_quiz"},
+          {icon:"🃏",label:"Ver fichas",action:"start_cards"},
+          {icon:"📊",label:"Ver progreso",action:"show_stats"},
+          {icon:"⚙️",label:"Personalizar avatar",action:"open_settings"}
+        ]
+      );
+    }else{
+      aviaAddMessage(
+        `${greeting} 👋 Soy AVIA-Con, tu asistente pedagógico. Estoy aquí para ayudarte a explorar la filosofía de Platón.${energyMsg}`,
+        "assistant",
+        [
+          {icon:"📝",label:"Empezar test",action:"start_quiz"},
+          {icon:"🃏",label:"Ver fichas",action:"start_cards"},
+          {icon:"⚙️",label:"Personalizar avatar",action:"open_settings"}
+        ]
+      );
+    }
+  },1000);
+
+  detectUserMood();
+}
+
+/* ==== DETECCIÓN DE EMOCIONES Y TONO EMPÁTICO ==== */
+function detectUserMood(){
+  // Analiza patrones de interacción
+  const recentErrors=wrongAnswers;
+  const timeOfDay=new Date().getHours();
+
+  if(recentErrors>2){
+    userContext.emotionalState="frustrated";
+    updateMoodIndicator("😤");
+  }else if(correctAnswers>recentErrors){
+    userContext.emotionalState="happy";
+    updateMoodIndicator("😊");
+  }else if(timeOfDay>22||timeOfDay<6){
+    userContext.emotionalState="tired";
+    updateMoodIndicator("😴");
+  }else{
+    userContext.emotionalState="curious";
+    updateMoodIndicator("🤔");
+  }
+}
+
+function updateMoodIndicator(emoji){
+  document.getElementById("moodIndicator").textContent=emoji;
+}
+
+function getEmpatheticResponse(context){
+  const responses={
+    frustrated:{
+      encouragement:"No te preocupes, aprender requiere tiempo. 💪",
+      tip:"¿Quieres que te explique el concepto de otra manera?",
+      suggestion:"Tal vez deberíamos tomar un descanso breve."
+    },
+    happy:{
+      encouragement:"¡Excelente trabajo! 🌟",
+      tip:"Estás en racha, ¿quieres un desafío mayor?",
+      suggestion:"Tu progreso es impresionante."
+    },
+    tired:{
+      encouragement:"Parece que es tarde. 🌙",
+      tip:"El cerebro aprende mejor descansado.",
+      suggestion:"¿Prefieres algo más relajado?"
+    },
+    curious:{
+      encouragement:"Me encanta tu curiosidad. 🔍",
+      tip:"¿Te gustaría profundizar en este tema?",
+      suggestion:"Hay mucho más por descubrir."
+    }
+  };
+
+  return responses[userContext.emotionalState]||responses.curious;
+}
+
+/* ==== SISTEMA DE LOGROS Y GAMIFICACIÓN ==== */
+function checkAchievements(){
+  const newAchievements=[];
+
+  // Logro: Primera respuesta correcta
+  if(correctAnswers===1&&!userContext.achievements.includes("first_correct")){
+    newAchievements.push({id:"first_correct",icon:"🎯",name:"Primer Acierto",desc:"Respondiste correctamente por primera vez"});
+  }
+
+  // Logro: Perfecto
+  if(correctAnswers===3&&wrongAnswers===0&&!userContext.achievements.includes("perfect")){
+    newAchievements.push({id:"perfect",icon:"💯",name:"¡Perfecto!",desc:"Test completado sin errores"});
+  }
+
+  // Logro: Persistente
+  if(wrongAnswers>=2&&!userContext.achievements.includes("persistent")){
+    newAchievements.push({id:"persistent",icon:"💪",name:"Persistente",desc:"Seguiste intentando pese a los errores"});
+  }
+
+  // Logro: Explorador
+  if(currentCard>=2&&!userContext.achievements.includes("explorer")){
+    newAchievements.push({id:"explorer",icon:"🗺️",name:"Explorador",desc:"Exploraste múltiples fichas"});
+  }
+
+  // Logro: Vocal
+  if(conversationHistory.filter(m=>m.content && m.content.includes("🎤")).length>=3&&!userContext.achievements.includes("vocal")){
+    newAchievements.push({id:"vocal",icon:"🎤",name:"Vocal",desc:"Usaste control por voz 3 veces"});
+  }
+
+  // Mostrar nuevos logros via AVIA-Con
+  newAchievements.forEach(achievement=>{
+    userContext.achievements.push(achievement.id);
+    showAchievement(achievement);
+  });
+}
+
+function showAchievement(achievement){
+  setTimeout(()=>{
+    playSound("achievement");
+    aviaAddMessage(
+      `<div style="text-align:center;padding:1rem;">
+        <div style="font-size:3rem;margin-bottom:0.5rem">${achievement.icon}</div>
+        <div style="font-size:1.3rem;font-weight:bold;margin-bottom:0.3rem">¡Logro Desbloqueado!</div>
+        <div style="font-size:1.1rem;color:#ffd700">${achievement.name}</div>
+        <div style="font-size:0.9rem;opacity:0.8;margin-top:0.3rem">${achievement.desc}</div>
+      </div>`,
+      "assistant"
+    );
+  },500);
+}
+
+/* ==== Navegación test ==== */
+function nextQuestion(){
+  if(currentScreen==="quiz"){
+    if(answered && currentQuestion<quizData.length-1){
+      currentQuestion++;
+      answered=false;
+      renderQuiz();
+    }else if(answered && currentQuestion===quizData.length-1){
+      showQuizResults();
+    }
+  }
+  showDpad();
+}
+
+function prevQuestion(){
+  if(currentScreen==="quiz" && currentQuestion>0){
+    currentQuestion--;
+    answered=false;
+    renderQuiz();
+  }
+  showDpad();
+}
+
+function showQuizResults(){
+  const content=document.getElementById("mainContent");
+  const percentage=Math.round((correctAnswers/quizData.length)*100);
+
+  content.innerHTML=`
+    <div style="text-align:center;max-width:600px">
+      <h2 style="font-size:2rem;margin-bottom:1rem">📊 Resultados del Test</h2>
+      <div style="font-size:3rem;margin:2rem 0">${percentage===100?"🎉":"📈"}</div>
+      <div style="font-size:1.5rem;margin-bottom:1rem">
+        ${correctAnswers} correctas de ${quizData.length}
+      </div>
+      <div class="progress-bar" style="margin:2rem 0">
+        <div class="progress-fill" style="width:${percentage}%"></div>
+      </div>
+      <div style="margin:2rem 0;font-size:1.1rem">
+        ${percentage===100?"¡Perfecto! Dominas completamente el tema.":
+          percentage>=70?"¡Buen trabajo! Tienes un buen dominio del tema.":
+          percentage>=50?"No está mal, pero puedes mejorar.":
+          "Te recomiendo repasar los conceptos con las fichas."}
+      </div>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2rem">
+        <button onclick="startQuiz()" style="padding:1rem 2rem;background:linear-gradient(145deg,#43a047,#1b5e20);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          🔄 Repetir Test
+        </button>
+        <button onclick="startCards()" style="padding:1rem 2rem;background:linear-gradient(145deg,#2196f3,#1565c0);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          📚 Ver Fichas
+        </button>
+        <button onclick="renderHome()" style="padding:1rem 2rem;background:linear-gradient(145deg,#5d5cde,#4e678e);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:1rem">
+          🏠 Inicio
+        </button>
+      </div>
+    </div>
+  `;
+
+  // AVIA-Con comenta los resultados
+  if(percentage===100){
+    userContext.streakDays++;
+    playSound("complete");
+    aviaAddMessage(`🎉 ¡Perfecto! ${correctAnswers}/${quizData.length}. Tienes un dominio completo del tema. Racha: ${userContext.streakDays} días.`,"assistant");
+  }else if(percentage>=70){
+    playSound("achievement");
+    aviaAddMessage(`¡Buen trabajo! ${correctAnswers}/${quizData.length} correctas. Sigue así.`,"assistant");
+  }else{
+    aviaAddMessage(`Has acertado ${correctAnswers}/${quizData.length}. Te recomiendo revisar las fichas para reforzar los conceptos.`,"assistant",[
+      {icon:"📚",label:"Ver fichas",action:"start_cards"}
+    ]);
+  }
+
+  checkAchievements();
+}
+
+/* ==== Actualizar estado botones D-Pad ==== */
+function updateDpadButtons(){
+  const btnLeft=document.getElementById("btnLeft");
+  const btnRight=document.getElementById("btnRight");
+  const btnUp=document.getElementById("btnUp");
+  const btnDown=document.getElementById("btnDown");
+
+  // Habilitar/deshabilitar según contexto
+  if(currentScreen==="quiz"){
+    btnLeft.disabled=(currentQuestion===0);
+    btnRight.disabled=(!answered);
+    btnUp.disabled=true;
+    btnDown.disabled=true;
+  }else if(currentScreen==="cards"){
+    btnLeft.disabled=(currentCard===0);
+    btnRight.disabled=(currentCard===cards.length-1);
+    btnUp.disabled=true;
+    btnDown.disabled=true;
+  }else{
+    btnLeft.disabled=true;
+    btnRight.disabled=true;
+    btnUp.disabled=true;
+    btnDown.disabled=true;
+  }
+}
+
+/* ==== Fichas ==== */
+function nextCard(){
+  if(currentCard<cards.length-1){
+    currentCard++;
+    renderCard();
+  }
+  showDpad();
+}
+
+function prevCard(){
+  if(currentCard>0){
+    currentCard--;
+    renderCard();
+  }
+  showDpad();
+}
+
+function goHome(){
+  renderHome();
+  showDpad();
+}
+
+/* ==== Navegación vertical ==== */
+function navUp(){
+  if(currentScreen==="quiz")prevQuestion();
+  else if(currentScreen==="cards")prevCard();
+  showDpad();
+}
+
+function navDown(){
+  if(currentScreen==="quiz")nextQuestion();
+  else if(currentScreen==="cards")nextCard();
+  showDpad();
+}
+
+/* ==== Listeners ==== */
+document.getElementById("btnRight").addEventListener("click",()=>{
+  if(currentScreen==="quiz")nextQuestion();
+  else if(currentScreen==="cards")nextCard();
+});
+document.getElementById("btnLeft").addEventListener("click",()=>{
+  if(currentScreen==="quiz")prevQuestion();
+  else if(currentScreen==="cards")prevCard();
+});
+document.getElementById("btnUp").addEventListener("click",navUp);
+document.getElementById("btnDown").addEventListener("click",navDown);
+document.getElementById("btnHome").addEventListener("click",goHome);
+
+/* ==== Soporte de teclado ==== */
+document.addEventListener("keydown",(e)=>{
+  if(e.key==="ArrowRight"){
+    e.preventDefault();
+    if(!document.getElementById("btnRight").disabled){
+      if(currentScreen==="quiz")nextQuestion();
+      else if(currentScreen==="cards")nextCard();
+    }
+  }
+  if(e.key==="ArrowLeft"){
+    e.preventDefault();
+    if(!document.getElementById("btnLeft").disabled){
+      if(currentScreen==="quiz")prevQuestion();
+      else if(currentScreen==="cards")prevCard();
+    }
+  }
+  if(e.key==="ArrowUp"){e.preventDefault();if(!document.getElementById("btnUp").disabled)navUp();}
+  if(e.key==="ArrowDown"){e.preventDefault();if(!document.getElementById("btnDown").disabled)navDown();}
+  if(e.key===" "||e.key==="Enter"){
+    e.preventDefault();
+    if(!document.getElementById("btnRight").disabled){
+      if(currentScreen==="quiz")nextQuestion();
+      else if(currentScreen==="cards")nextCard();
+    }
+  }
+});
+
+/* ==== Mando animado ==== */
+const botones=document.querySelectorAll(".mando-button");
+let iB=0;
+setInterval(()=>{botones.forEach(b=>b.classList.remove("active"));botones[iB].classList.add("active");iB=(iB+1)%botones.length;},1400);
+
+/* ==== VISIBILIDAD DINÁMICA DEL D-PAD ==== */
+let dpadVisible=false;
+let hideTimeout;
+const dpadContainer=document.getElementById("dpadContainer");
+
+function showDpad(){
+  dpadVisible=true;
+  dpadContainer.classList.add("visible");
+  clearTimeout(hideTimeout);
+  hideTimeout=setTimeout(()=>{
+    dpadVisible=false;
+    dpadContainer.classList.remove("visible");
+  },3000);
+}
+
+/* ==== SOPORTE DE GAMEPAD/MANDO A DISTANCIA ==== */
+let gamepadIndex=null;
+let gamepadInterval=null;
+
+window.addEventListener("gamepadconnected",(e)=>{
+  gamepadIndex=e.gamepad.index;
+  showVoiceStatus("🎮 Mando conectado");
+  startGamepadPolling();
+});
+
+window.addEventListener("gamepaddisconnected",()=>{
+  gamepadIndex=null;
+  stopGamepadPolling();
+  showVoiceStatus("🎮 Mando desconectado");
+});
+
+function startGamepadPolling(){
+  if(gamepadInterval)return;
+  gamepadInterval=setInterval(()=>{
+    const gamepads=navigator.getGamepads();
+    if(gamepadIndex!==null && gamepads[gamepadIndex]){
+      const gp=gamepads[gamepadIndex];
+      // D-Pad o joystick izquierdo
+      if(gp.buttons[12]?.pressed||gp.axes[1]<-0.5){showDpad();navUp();}// Arriba
+      if(gp.buttons[13]?.pressed||gp.axes[1]>0.5){showDpad();navDown();}// Abajo
+      if(gp.buttons[14]?.pressed||gp.axes[0]<-0.5){
+        showDpad();
+        if(currentScreen==="quiz")prevQuestion();
+        else if(currentScreen==="cards")prevCard();
+      }// Izquierda
+      if(gp.buttons[15]?.pressed||gp.axes[0]>0.5){
+        showDpad();
+        if(currentScreen==="quiz")nextQuestion();
+        else if(currentScreen==="cards")nextCard();
+      }// Derecha
+      // Botón A/X para seleccionar
+      if(gp.buttons[0]?.pressed){
+        if(currentScreen==="quiz")nextQuestion();
+        else if(currentScreen==="cards")nextCard();
+      }
+    }
+  },100);
+}
+
+function stopGamepadPolling(){
+  if(gamepadInterval){
+    clearInterval(gamepadInterval);
+    gamepadInterval=null;
+  }
+}
+
+/* ==== CONTROL POR VOZ ==== */
+let recognition=null;
+let isListening=false;
+let voiceSupported=false;
+let firstVoiceUse=true;
+
+// Inicializar reconocimiento de voz
+function initSpeechRecognition(){
+  if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    try{
+      recognition=new SpeechRecognition();
+      recognition.lang='es-ES';
+      recognition.continuous=false;
+      recognition.interimResults=false;
+      recognition.maxAlternatives=1;
+
+      recognition.onstart=()=>{
+        console.log("🎤 Reconocimiento de voz iniciado");
+        showVoiceStatus("🎤 Escuchando...");
+      };
+
+      recognition.onresult=(event)=>{
+        const transcript=event.results[0][0].transcript.toLowerCase();
+        const confidence=event.results[0][0].confidence;
+        console.log(`🎤 Reconocido: "${transcript}" (confianza: ${confidence.toFixed(2)})`);
+        showVoiceStatus(`🎤 "${transcript}"`);
+        processVoiceCommand(transcript);
+      };
+
+      recognition.onerror=(event)=>{
+        console.error("❌ Error de reconocimiento de voz:",event.error);
+        let errorMsg="❌ Error de voz";
+
+        switch(event.error){
+          case 'no-speech':
+            errorMsg="❌ No se detectó voz";
+            break;
+          case 'audio-capture':
+            errorMsg="❌ Micrófono no disponible";
+            break;
+          case 'not-allowed':
+            errorMsg="❌ Permiso de micrófono denegado";
+            break;
+          case 'network':
+            errorMsg="❌ Error de conexión";
+            break;
+          case 'aborted':
+            errorMsg="🔇 Cancelado";
+            break;
+          default:
+            errorMsg=`❌ Error: ${event.error}`;
+        }
+
+        showVoiceStatus(errorMsg);
+        stopListening();
+      };
+
+      recognition.onend=()=>{
+        console.log("🔇 Reconocimiento de voz finalizado");
+        stopListening();
+      };
+
+      voiceSupported=true;
+      console.log("✅ Reconocimiento de voz inicializado");
+    }catch(e){
+      console.error("❌ Error al inicializar reconocimiento de voz:",e);
+      voiceSupported=false;
+    }
+  }else{
+    console.warn("⚠️ Reconocimiento de voz no soportado en este navegador");
+    voiceSupported=false;
+  }
+}
+
+function startListening(){
+  console.log("📍 startListening() llamado");
+  console.log("   - voiceSupported:",voiceSupported);
+  console.log("   - recognition:",recognition);
+  console.log("   - isListening:",isListening);
+
+  // Inicializar AudioContext con interacción del usuario
+  initAudioContext();
+
+  // Verificar soporte del navegador
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){
+    console.error("❌ API de reconocimiento de voz NO disponible en este navegador");
+    showVoiceStatus("❌ Reconocimiento de voz no soportado");
+
+    if(!aviaChatOpen){
+      aviaToggleChat();
+    }
+    aviaAddMessage(
+      "❌ <strong>Reconocimiento de voz no disponible</strong><br><br>"+
+      "Tu navegador no soporta la API de reconocimiento de voz.<br><br>"+
+      "Esta función funciona en:<br>"+
+      "• Chrome/Edge (recomendado)<br>"+
+      "• Safari<br><br>"+
+      "Por favor, usa uno de estos navegadores para usar el control por voz.",
+      "assistant"
+    );
+    return;
+  }
+
+  console.log("✅ API de reconocimiento de voz disponible");
+
+  if(!recognition){
+    console.log("🔧 Inicializando reconocimiento de voz...");
+    initSpeechRecognition();
+    if(!recognition){
+      console.error("❌ No se pudo inicializar el reconocimiento de voz");
+      showVoiceStatus("❌ Error al inicializar");
+      return;
+    }
+  }
+
+  if(isListening){
+    console.log("⚠️ Ya está escuchando, ignorando...");
+    return;
+  }
+
+  // Mostrar ayuda la primera vez
+  if(firstVoiceUse){
+    firstVoiceUse=false;
+    console.log("ℹ️ Primera vez usando voz, mostrando ayuda...");
+
+    if(!aviaChatOpen){
+      aviaToggleChat();
+    }
+    aviaAddMessage(
+      "🎤 <strong>Control por voz activado</strong><br><br>"+
+      "Tu navegador te pedirá permiso para usar el micrófono. <strong>Debes aceptarlo</strong>.<br><br>"+
+      "Luego podrás decir comandos como:<br>"+
+      "• \"Siguiente\" - Avanzar<br>"+
+      "• \"Atrás\" - Retroceder<br>"+
+      "• \"Inicio\" - Volver al menú<br>"+
+      "• \"Primera opción\" - Seleccionar respuesta 1<br>"+
+      "• \"Segunda opción\" - Seleccionar respuesta 2<br>"+
+      "• \"Ayuda\" - Ver todos los comandos<br><br>"+
+      "<strong>Importante:</strong> El micrófono se activa solo cuando haces clic en el botón 🎤",
+      "assistant"
+    );
+  }
+
+  try{
+    console.log("🎤 Intentando iniciar recognition.start()...");
+    isListening=true;
+    document.getElementById("voiceBtn").classList.add("listening");
+    recognition.start();
+    console.log("✅ recognition.start() ejecutado exitosamente");
+  }catch(e){
+    console.error("❌ Error al iniciar reconocimiento:",e);
+    console.error("   Tipo de error:",e.name);
+    console.error("   Mensaje:",e.message);
+    showVoiceStatus("❌ Error: "+e.message);
+
+    if(!aviaChatOpen){
+      aviaToggleChat();
+    }
+    aviaAddMessage(
+      "❌ <strong>Error al iniciar el micrófono</strong><br><br>"+
+      "Error: "+e.message+"<br><br>"+
+      "Posibles soluciones:<br>"+
+      "• Asegúrate de dar permisos al micrófono<br>"+
+      "• Verifica que tu micrófono funcione<br>"+
+      "• Intenta recargar la página<br>"+
+      "• Usa Chrome o Edge para mejor compatibilidad",
+      "assistant"
+    );
+
+    stopListening();
+  }
+}
+
+function stopListening(){
+  isListening=false;
+  const voiceBtn=document.getElementById("voiceBtn");
+  if(voiceBtn){
+    voiceBtn.classList.remove("listening");
+  }
+}
+
+function processVoiceCommand(cmd){
+  showDpad();
+
+  // Comandos de navegación básicos
+  if(cmd.includes("más")||cmd.includes("siguiente")||cmd.includes("adelante")||cmd.includes("continuar")){
+    nextQuestion();
+  }else if(cmd.includes("menos")||cmd.includes("atrás")||cmd.includes("anterior")||cmd.includes("retroceder")||cmd.includes("volver")){
+    prevQuestion();
+  }else if(cmd.includes("arriba")||cmd.includes("subir")){
+    navUp();
+  }else if(cmd.includes("abajo")||cmd.includes("bajar")){
+    navDown();
+  }else if(cmd.includes("inicio")||cmd.includes("home")||cmd.includes("principio")||cmd.includes("empezar")){
+    goHome();
+  }
+
+  // Comandos de selección de respuestas (cuando estamos en el quiz)
+  else if(currentScreen==="quiz" && !answered){
+    if(cmd.includes("primera")||cmd.includes("uno")||cmd.includes("roja")||cmd.includes("rojo")){
+      selectOption(0);showVoiceStatus("✅ Opción 1 seleccionada");
+    }else if(cmd.includes("segunda")||cmd.includes("dos")||cmd.includes("verde")){
+      selectOption(1);showVoiceStatus("✅ Opción 2 seleccionada");
+    }else if(cmd.includes("tercera")||cmd.includes("tres")||cmd.includes("amarilla")||cmd.includes("amarillo")){
+      selectOption(2);showVoiceStatus("✅ Opción 3 seleccionada");
+    }
+  }
+
+  // Comandos de navegación específica (en modo conversacional estos no aplican)
+  else if(cmd.includes("primera pregunta")||cmd.includes("pregunta uno")){
+    showVoiceStatus("💬 Usa el menú principal para navegar");
+  }else if(cmd.includes("última pregunta")||cmd.includes("pregunta final")){
+    showVoiceStatus("💬 Usa el menú principal para navegar");
+  }else if(cmd.includes("primera ficha")||cmd.includes("ficha uno")){
+    showVoiceStatus("💬 Usa el menú principal para ver fichas");
+  }else if(cmd.includes("última ficha")||cmd.includes("ficha final")){
+    showVoiceStatus("💬 Usa el menú principal para ver fichas");
+  }
+
+  // Comandos de información
+  else if(cmd.includes("dónde estoy")||cmd.includes("dónde me encuentro")||cmd.includes("ubicación")){
+    if(currentScreen==="quiz"){
+      showVoiceStatus(`📍 Pregunta ${currentQuestion+1} de ${quizData.length}`);
+    }else{
+      showVoiceStatus(`📍 Ficha ${currentCard+1} de ${cards.length}`);
+    }
+  }else if(cmd.includes("ayuda")||cmd.includes("qué puedo decir")||cmd.includes("comandos")){
+    showVoiceStatus("💡 Di: más, menos, arriba, abajo, primera/segunda/tercera, ayuda, ver película...");
+  }
+
+  // Comandos de control de aplicación
+  else if(cmd.includes("reiniciar")||cmd.includes("comenzar de nuevo")||cmd.includes("reset")){
+    goHome();showVoiceStatus("🔄 Volviendo al inicio");
+  }else if(cmd.includes("pausa")||cmd.includes("pausar")||cmd.includes("espera")){
+    if(scanningActive)stopScanning();
+    showVoiceStatus("⏸️ Pausado");
+  }else if(cmd.includes("reanudar")||cmd.includes("continúa")){
+    showVoiceStatus("▶️ Usa los botones para continuar");
+  }
+
+  // Comandos para fichas
+  else if(cmd.includes("ir a fichas")||cmd.includes("ver fichas")||cmd.includes("mostrar fichas")){
+    showVoiceStatus("🃏 Di 'explorar fichas' en el menú principal");
+  }else if(cmd.includes("ir al test")||cmd.includes("volver al test")||cmd.includes("ver preguntas")){
+    showVoiceStatus("📝 Di 'hacer test' en el menú principal");
+  }
+
+  // Comandos AVIA (intención semántica)
+  else if(cmd.includes("película")||cmd.includes("ver")||cmd.includes("quiero")||cmd.includes("buscar")||
+          cmd.includes("mostrar")||cmd.includes("encuentra")||cmd.includes("recomienda")){
+    processAVIACommand(cmd);
+  }
+
+  // Respuesta por defecto
+  else{
+    showVoiceStatus("❓ Comando no reconocido. Di 'ayuda' para ver comandos");
+  }
+}
+
+// Función auxiliar para seleccionar opciones por voz
+function selectOption(index){
+  const options=document.querySelectorAll(".options li");
+  if(options[index]){
+    options[index].click();
+  }
+}
+
+function processAVIACommand(cmd){
+  // Procesamiento avanzado de intenciones semánticas tipo AVIA
+
+  // GÉNEROS DE PELÍCULAS
+  if(cmd.includes("oeste")||cmd.includes("western")||cmd.includes("vaquero")){
+    showVoiceStatus("🤠 Buscando películas del Oeste...");
+    simulateAVIASearch("western");
+  }else if(cmd.includes("terror")||cmd.includes("miedo")||cmd.includes("horror")||cmd.includes("suspenso")){
+    showVoiceStatus("👻 Buscando películas de terror...");
+    simulateAVIASearch("horror");
+  }else if(cmd.includes("comedia")||cmd.includes("graciosa")||cmd.includes("cómica")||cmd.includes("divertida")){
+    showVoiceStatus("😂 Buscando comedias...");
+    simulateAVIASearch("comedy");
+  }else if(cmd.includes("acción")||cmd.includes("accion")||cmd.includes("explosiones")||cmd.includes("peleas")){
+    showVoiceStatus("💥 Buscando películas de acción...");
+    simulateAVIASearch("action");
+  }else if(cmd.includes("romance")||cmd.includes("romántica")||cmd.includes("amor")){
+    showVoiceStatus("❤️ Buscando películas románticas...");
+    simulateAVIASearch("romance");
+  }else if(cmd.includes("ciencia ficción")||cmd.includes("sci-fi")||cmd.includes("ciencia-ficción")||cmd.includes("futurista")){
+    showVoiceStatus("🚀 Buscando ciencia ficción...");
+    simulateAVIASearch("scifi");
+  }else if(cmd.includes("drama")||cmd.includes("dramática")){
+    showVoiceStatus("🎭 Buscando dramas...");
+    simulateAVIASearch("drama");
+  }else if(cmd.includes("animación")||cmd.includes("animada")||cmd.includes("dibujos")||cmd.includes("infantil")){
+    showVoiceStatus("🎨 Buscando películas animadas...");
+    simulateAVIASearch("animation");
+  }else if(cmd.includes("documental")||cmd.includes("documentales")){
+    showVoiceStatus("📚 Buscando documentales...");
+    simulateAVIASearch("documentary");
+  }else if(cmd.includes("musical")||cmd.includes("música")){
+    showVoiceStatus("🎵 Buscando musicales...");
+    simulateAVIASearch("musical");
+  }
+
+  // ÉPOCAS Y PERÍODOS
+  else if(cmd.includes("clásica")||cmd.includes("antiguas")||cmd.includes("viejas")){
+    showVoiceStatus("🎞️ Buscando clásicos del cine...");
+    simulateAVIASearch("classics");
+  }else if(cmd.includes("moderna")||cmd.includes("reciente")||cmd.includes("nueva")||cmd.includes("estreno")){
+    showVoiceStatus("🆕 Buscando estrenos recientes...");
+    simulateAVIASearch("new");
+  }else if(cmd.includes("años 80")||cmd.includes("ochenta")){
+    showVoiceStatus("📼 Buscando películas de los 80...");
+    simulateAVIASearch("80s");
+  }else if(cmd.includes("años 90")||cmd.includes("noventa")){
+    showVoiceStatus("💿 Buscando películas de los 90...");
+    simulateAVIASearch("90s");
+  }
+
+  // ACTORES Y DIRECTORES
+  else if(cmd.includes("actor")||cmd.includes("actriz")||cmd.includes("protagoniza")){
+    const actorMatch=cmd.match(/(?:con|de|protagoniza)\s+([a-záéíóúñ\s]+)/i);
+    if(actorMatch){
+      showVoiceStatus(`🎬 Buscando películas de ${actorMatch[1]}...`);
+      simulateAVIASearch("actor:"+actorMatch[1]);
+    }else{
+      showVoiceStatus("🎬 Especifica el nombre del actor");
+    }
+  }else if(cmd.includes("director")||cmd.includes("dirigida por")){
+    const directorMatch=cmd.match(/(?:director|dirigida por)\s+([a-záéíóúñ\s]+)/i);
+    if(directorMatch){
+      showVoiceStatus(`🎥 Buscando películas de ${directorMatch[1]}...`);
+      simulateAVIASearch("director:"+directorMatch[1]);
+    }else{
+      showVoiceStatus("🎥 Especifica el nombre del director");
+    }
+  }
+
+  // ESTADO DE ÁNIMO Y CONTEXTO
+  else if(cmd.includes("triste")||cmd.includes("llorar")||cmd.includes("emotiva")){
+    showVoiceStatus("😢 Buscando películas emotivas...");
+    simulateAVIASearch("emotional");
+  }else if(cmd.includes("inspiradora")||cmd.includes("motivadora")||cmd.includes("inspiración")){
+    showVoiceStatus("💪 Buscando películas inspiradoras...");
+    simulateAVIASearch("inspiring");
+  }else if(cmd.includes("relajante")||cmd.includes("tranquila")||cmd.includes("para dormir")){
+    showVoiceStatus("😌 Buscando películas relajantes...");
+    simulateAVIASearch("relaxing");
+  }else if(cmd.includes("familia")||cmd.includes("niños")||cmd.includes("familiar")){
+    showVoiceStatus("👨‍👩‍👧‍👦 Buscando películas familiares...");
+    simulateAVIASearch("family");
+  }else if(cmd.includes("noche")||cmd.includes("nocturna")||cmd.includes("para ver de noche")){
+    showVoiceStatus("🌙 Buscando películas para la noche...");
+    simulateAVIASearch("night");
+  }
+
+  // CONTENIDO EDUCATIVO
+  else if(cmd.includes("filosofía")||cmd.includes("filosófica")||cmd.includes("platón")||cmd.includes("sócrates")){
+    showVoiceStatus("🏛️ Buscando contenido de filosofía...");
+    simulateAVIASearch("philosophy");
+  }else if(cmd.includes("historia")||cmd.includes("histórica")||cmd.includes("época")){
+    showVoiceStatus("📜 Buscando contenido histórico...");
+    simulateAVIASearch("history");
+  }else if(cmd.includes("ciencia")||cmd.includes("científica")||cmd.includes("naturaleza")){
+    showVoiceStatus("🔬 Buscando contenido científico...");
+    simulateAVIASearch("science");
+  }else if(cmd.includes("arte")||cmd.includes("artística")||cmd.includes("pintura")){
+    showVoiceStatus("🎨 Buscando contenido de arte...");
+    simulateAVIASearch("art");
+  }
+
+  // LISTAS Y COLECCIONES
+  else if(cmd.includes("top")||cmd.includes("mejores")||cmd.includes("más populares")){
+    showVoiceStatus("🏆 Mostrando top películas...");
+    simulateAVIASearch("top");
+  }else if(cmd.includes("recomendadas")||cmd.includes("recomienda")||cmd.includes("sugerencias")){
+    showVoiceStatus("⭐ Buscando recomendaciones...");
+    simulateAVIASearch("recommended");
+  }else if(cmd.includes("favoritas")||cmd.includes("mis películas")||cmd.includes("mi lista")){
+    showVoiceStatus("💖 Mostrando favoritas...");
+    simulateAVIASearch("favorites");
+  }
+
+  // BÚSQUEDA POR TÍTULO
+  else if(cmd.includes("titulada")||cmd.includes("llamada")||cmd.includes("nombre")){
+    const titleMatch=cmd.match(/(?:titulada|llamada|nombre)\s+([a-záéíóúñ\s]+)/i);
+    if(titleMatch){
+      showVoiceStatus(`🔍 Buscando "${titleMatch[1]}"...`);
+      simulateAVIASearch("title:"+titleMatch[1]);
+    }
+  }
+
+  // Comando genérico
+  else{
+    showVoiceStatus("🔍 Procesando: "+cmd);
+    simulateAVIASearch("general:"+cmd);
+  }
+}
+
+// Búsqueda AVIA real conectada con Poe API
+function simulateAVIASearch(query){
+  showVoiceStatus("🔍 Buscando...");
+
+  // Abrir chat de AVIA si no está abierto
+  if(!aviaChatOpen){
+    aviaToggleChat();
+  }
+
+  // Procesar la búsqueda según el tipo
+  const queryType=query.split(":")[0];
+  const queryValue=query.split(":")[1]||query;
+
+  if(queryType==="western"||queryType==="horror"||queryType==="comedy"||queryType==="action"){
+    aviaShowTyping(true);
+    aviaSendToPoe(`Recomiéndame 3 películas de ${queryType} con una breve descripción de cada una.`,"@Claude-Sonnet-4.5");
+  }else if(queryType==="philosophy"||queryType==="history"||queryType==="science"||queryType==="art"){
+    aviaShowTyping(true);
+    aviaSendToPoe(`Dame información educativa sobre ${queryType}, enfocado en contenido didáctico.`,"@Claude-Sonnet-4.5");
+  }else{
+    // Búsqueda general
+    aviaShowTyping(true);
+    aviaSendToPoe(`Ayúdame con esta búsqueda: ${queryValue}`,"@Claude-Sonnet-4.5");
+  }
+
+  setTimeout(()=>{
+    showVoiceStatus("✅ Procesando respuesta...");
+  },1000);
+}
+
+function showVoiceStatus(msg){
+  const status=document.getElementById("voiceStatus");
+  status.textContent=msg;
+  status.classList.add("show");
+  setTimeout(()=>{
+    status.classList.remove("show");
+  },3000);
+}
+
+document.getElementById("voiceBtn").addEventListener("click",()=>{
+  console.log("🖱️ Click en botón de voz. isListening:",isListening);
+
+  if(isListening){
+    console.log("🛑 Deteniendo reconocimiento...");
+    try{
+      if(recognition){
+        recognition.stop();
+      }
+    }catch(e){
+      console.error("Error al detener reconocimiento:",e);
+      stopListening();
+    }
+  }else{
+    console.log("🎤 Iniciando reconocimiento...");
+    startListening();
+  }
+});
+
+/* ==== MODO BARRIDO/SCANNING ==== */
+let scanningActive=false;
+let scanInterval=null;
+let currentScanIndex=0;
+const scanButtons=[
+  document.getElementById("btnUp"),
+  document.getElementById("btnRight"),
+  document.getElementById("btnDown"),
+  document.getElementById("btnLeft")
+];
+
+function startScanning(){
+  scanningActive=true;
+  document.getElementById("scanBtn").classList.add("active");
+  showDpad();
+  currentScanIndex=0;
+
+  scanInterval=setInterval(()=>{
+    // Quitar highlight anterior
+    scanButtons.forEach(btn=>btn.classList.remove("scanning"));
+    // Highlight actual
+    if(!scanButtons[currentScanIndex].disabled){
+      scanButtons[currentScanIndex].classList.add("scanning");
+    }
+    currentScanIndex=(currentScanIndex+1)%scanButtons.length;
+  },1500);
+}
+
+function stopScanning(){
+  scanningActive=false;
+  document.getElementById("scanBtn").classList.remove("active");
+  if(scanInterval){
+    clearInterval(scanInterval);
+    scanInterval=null;
+  }
+  scanButtons.forEach(btn=>btn.classList.remove("scanning"));
+}
+
+function activateScannedButton(){
+  const btn=scanButtons[(currentScanIndex-1+scanButtons.length)%scanButtons.length];
+  if(!btn.disabled){
+    btn.click();
+  }
+}
+
+document.getElementById("scanBtn").addEventListener("click",()=>{
+  if(scanningActive){
+    stopScanning();
+  }else{
+    startScanning();
+  }
+});
+
+// Espacio/Enter para activar botón en barrido
+document.addEventListener("keydown",(e)=>{
+  if(scanningActive && (e.key===" "||e.key==="Enter")){
+    e.preventDefault();
+    activateScannedButton();
+  }
+});
+
+/* ==== Actualizar teclado para mostrar D-Pad ==== */
+document.addEventListener("keydown",(e)=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)){
+    showDpad();
+  }
+});
+
+/* ==== Integración de voz con AVIA-Con ==== */
+// Los comandos de voz ya están integrados en processVoiceCommand
+// y procesan adecuadamente comandos AVIA para búsqueda semántica
+
+/* ==== Inicio ==== */
+// Inicializar reconocimiento de voz
+initSpeechRecognition();
+
+// Iniciar aplicación
+startConversation();
+
+// Activar AudioContext con primera interacción del usuario
+document.addEventListener('click',initAudioContext,{once:true});
+document.addEventListener('keydown',initAudioContext,{once:true});
+</script>
+</body>
+</html>
+
+

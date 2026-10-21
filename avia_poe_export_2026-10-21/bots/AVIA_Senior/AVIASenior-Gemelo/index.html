@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Nav - Sistema de Vigilancia NAVM</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React 18 + ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel Standalone para JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a'
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534'
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b'
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            800: '#92400e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .shadow-card {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .shadow-card-hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, createContext, useContext } = React;
+
+        // ============================================
+        // BACKEND MOCK - LocalStorage
+        // ============================================
+        
+        const StorageService = {
+            get(key) {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            },
+            set(key, value) {
+                localStorage.setItem(key, JSON.stringify(value));
+            },
+            remove(key) {
+                localStorage.removeItem(key);
+            },
+            clear() {
+                localStorage.clear();
+            }
+        };
+
+        // Inicializar datos de prueba
+        const initializeData = () => {
+            if (!StorageService.get('users')) {
+                StorageService.set('users', [
+                    { id: 1, email: 'admin@hospital.com', password: 'admin123', name: 'Dr. Admin', role: 'admin' },
+                    { id: 2, email: 'medico@hospital.com', password: 'medico123', name: 'Dr. García', role: 'medico' }
+                ]);
+            }
+            if (!StorageService.get('patients')) {
+                StorageService.set('patients', [
+                    { id: 1, identification: '12345678', full_name: 'Juan Pérez López', age: 65, gender: 'M', admission_date: '2024-01-15', status: 'active' },
+                    { id: 2, identification: '87654321', full_name: 'María González', age: 58, gender: 'F', admission_date: '2024-01-20', status: 'active' },
+                    { id: 3, identification: '11223344', full_name: 'Carlos Ramírez', age: 72, gender: 'M', admission_date: '2024-01-10', discharge_date: '2024-01-25', status: 'discharged' }
+                ]);
+            }
+            if (!StorageService.get('evaluations')) {
+                StorageService.set('evaluations', [
+                    { id: 1, patient_id: 1, evaluated_by: 1, temperature: 1, leukocytes: 1, secretions: 2, oxygenation: 2, radiography: 1, culture: 0, cpis_score: 7, evaluation_date: '2024-01-16T10:00:00Z', notes: 'Fiebre persistente' },
+                    { id: 2, patient_id: 1, evaluated_by: 2, temperature: 0, leukocytes: 0, secretions: 1, oxygenation: 0, radiography: 0, culture: 0, cpis_score: 1, evaluation_date: '2024-01-17T10:00:00Z', notes: 'Mejora clínica' },
+                    { id: 3, patient_id: 2, evaluated_by: 1, temperature: 1, leukocytes: 1, secretions: 2, oxygenation: 2, radiography: 2, culture: 1, cpis_score: 9, evaluation_date: '2024-01-21T14:00:00Z', notes: 'Alto riesgo NAVM' }
+                ]);
+            }
+            if (!StorageService.get('alerts')) {
+                StorageService.set('alerts', [
+                    { id: 1, patient_id: 1, cpis_score: 7, message: 'Paciente con puntuación CPIS de alto riesgo', status: 'resolved', created_at: '2024-01-16T10:00:00Z', resolved_at: '2024-01-17T15:00:00Z' },
+                    { id: 2, patient_id: 2, cpis_score: 9, message: 'Paciente con puntuación CPIS de alto riesgo', status: 'active', created_at: '2024-01-21T14:00:00Z' }
+                ]);
+            }
+        };
+
+        // API Mock
+        const API = {
+            auth: {
+                login: (email, password) => {
+                    const users = StorageService.get('users') || [];
+                    const user = users.find(u => u.email === email && u.password === password);
+                    if (user) {
+                        const { password, ...userWithoutPassword } = user;
+                        const token = btoa(JSON.stringify({ userId: user.id, timestamp: Date.now() }));
+                        return { user: userWithoutPassword, token };
+                    }
+                    throw new Error('Credenciales inválidas');
+                },
+                register: (userData) => {
+                    const users = StorageService.get('users') || [];
+                    const newId = Math.max(...users.map(u => u.id), 0) + 1;
+                    const newUser = { id: newId, ...userData };
+                    users.push(newUser);
+                    StorageService.set('users', users);
+                    const { password, ...userWithoutPassword } = newUser;
+                    const token = btoa(JSON.stringify({ userId: newUser.id, timestamp: Date.now() }));
+                    return { user: userWithoutPassword, token };
+                }
+            },
+            patients: {
+                getAll: () => StorageService.get('patients') || [],
+                getById: (id) => {
+                    const patients = StorageService.get('patients') || [];
+                    return patients.find(p => p.id === parseInt(id));
+                },
+                create: (patient) => {
+                    const patients = StorageService.get('patients') || [];
+                    const newId = Math.max(...patients.map(p => p.id), 0) + 1;
+                    const newPatient = { id: newId, ...patient, status: 'active' };
+                    patients.push(newPatient);
+                    StorageService.set('patients', patients);
+                    return newPatient;
+                },
+                update: (id, data) => {
+                    const patients = StorageService.get('patients') || [];
+                    const index = patients.findIndex(p => p.id === parseInt(id));
+                    if (index !== -1) {
+                        patients[index] = { ...patients[index], ...data };
+                        StorageService.set('patients', patients);
+                        return patients[index];
+                    }
+                    throw new Error('Paciente no encontrado');
+                }
+            },
+            evaluations: {
+                getAll: () => StorageService.get('evaluations') || [],
+                getByPatient: (patientId) => {
+                    const evaluations = StorageService.get('evaluations') || [];
+                    return evaluations.filter(e => e.patient_id === parseInt(patientId));
+                },
+                create: (evaluation) => {
+                    const evaluations = StorageService.get('evaluations') || [];
+                    const newId = Math.max(...evaluations.map(e => e.id), 0) + 1;
+                    const cpis_score = evaluation.temperature + evaluation.leukocytes + evaluation.secretions + 
+                                      evaluation.oxygenation + evaluation.radiography + evaluation.culture;
+                    const newEvaluation = {
+                        id: newId,
+                        ...evaluation,
+                        cpis_score,
+                        evaluation_date: new Date().toISOString()
+                    };
+                    evaluations.push(newEvaluation);
+                    StorageService.set('evaluations', evaluations);
+                    
+                    // Crear alerta si CPIS >= 7
+                    if (cpis_score >= 7) {
+                        const alerts = StorageService.get('alerts') || [];
+                        const newAlertId = Math.max(...alerts.map(a => a.id), 0) + 1;
+                        alerts.push({
+                            id: newAlertId,
+                            patient_id: evaluation.patient_id,
+                            cpis_score,
+                            message: 'Paciente con puntuación CPIS de alto riesgo',
+                            status: 'active',
+                            created_at: new Date().toISOString()
+                        });
+                        StorageService.set('alerts', alerts);
+                    }
+                    
+                    return newEvaluation;
+                }
+            },
+            alerts: {
+                getAll: () => StorageService.get('alerts') || [],
+                resolve: (id) => {
+                    const alerts = StorageService.get('alerts') || [];
+                    const index = alerts.findIndex(a => a.id === parseInt(id));
+                    if (index !== -1) {
+                        alerts[index].status = 'resolved';
+                        alerts[index].resolved_at = new Date().toISOString();
+                        StorageService.set('alerts', alerts);
+                        return alerts[index];
+                    }
+                    throw new Error('Alerta no encontrada');
+                }
+            }
+        };
+
+        // ============================================
+        // CONTEXT & STATE MANAGEMENT
+        // ============================================
+        
+        const AuthContext = createContext();
+
+        const AuthProvider = ({ children }) => {
+            const [user, setUser] = useState(null);
+            const [token, setToken] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            useEffect(() => {
+                const savedToken = StorageService.get('token');
+                const savedUser = StorageService.get('user');
+                if (savedToken && savedUser) {
+                    setToken(savedToken);
+                    setUser(savedUser);
+                }
+            }, []);
+
+            const login = async (email, password) => {
+                setLoading(true);
+                try {
+                    const response = API.auth.login(email, password);
+                    setUser(response.user);
+                    setToken(response.token);
+                    StorageService.set('user', response.user);
+                    StorageService.set('token', response.token);
+                    return true;
+                } catch (error) {
+                    alert(error.message);
+                    return false;
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const register = async (userData) => {
+                setLoading(true);
+                try {
+                    const response = API.auth.register(userData);
+                    setUser(response.user);
+                    setToken(response.token);
+                    StorageService.set('user', response.user);
+                    StorageService.set('token', response.token);
+                    return true;
+                } catch (error) {
+                    alert(error.message);
+                    return false;
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const logout = () => {
+                setUser(null);
+                setToken(null);
+                StorageService.remove('user');
+                StorageService.remove('token');
+            };
+
+            return (
+                <AuthContext.Provider value={{ user, token, login, register, logout, loading, isAuthenticated: !!token }}>
+                    {children}
+                </AuthContext.Provider>
+            );
+        };
+
+        const useAuth = () => useContext(AuthContext);
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-ES');
+        };
+
+        const formatDateTime = (dateStr) => {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('es-ES');
+        };
+
+        const formatRelativeTime = (dateStr) => {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 60) return `Hace ${diffMins} minutos`;
+            if (diffHours < 24) return `Hace ${diffHours} horas`;
+            return `Hace ${diffDays} días`;
+        };
+
+        const getCPISLevel = (score) => {
+            if (score >= 7) return { text: 'Alto Riesgo', color: 'danger' };
+            if (score <= 6) return { text: 'Bajo Riesgo', color: 'success' };
+            return { text: 'Sin evaluar', color: 'gray' };
+        };
+
+        // ============================================
+        // UI COMPONENTS
+        // ============================================
+        
+        const Button = ({ children, variant = 'primary', size = 'md', loading, className = '', ...props }) => {
+            const baseClass = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+            
+            const variants = {
+                primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
+                secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400',
+                danger: 'bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500',
+                success: 'bg-success-600 text-white hover:bg-success-700 focus:ring-success-500',
+                outline: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-400'
+            };
+
+            const sizes = {
+                sm: 'px-3 py-1.5 text-sm',
+                md: 'px-4 py-2 text-base',
+                lg: 'px-6 py-3 text-lg'
+            };
+
+            return (
+                <button
+                    className={`${baseClass} ${variants[variant]} ${sizes[size]} ${className}`}
+                    disabled={loading}
+                    {...props}
+                >
+                    {loading && (
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                    )}
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, className = '', hover = false, ...props }) => {
+            return (
+                <div
+                    className={`bg-white rounded-lg shadow-card p-6 ${hover ? 'transition-shadow hover:shadow-card-hover cursor-pointer' : ''} ${className}`}
+                    {...props}
+                >
+                    {children}
+                </div>
+            );
+        };
+
+        const Badge = ({ children, variant = 'info', className = '' }) => {
+            const variants = {
+                success: 'bg-success-100 text-success-800',
+                warning: 'bg-warning-100 text-warning-800',
+                danger: 'bg-danger-100 text-danger-800',
+                info: 'bg-primary-100 text-primary-800',
+                gray: 'bg-gray-100 text-gray-800'
+            };
+
+            return (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
+                    {children}
+                </span>
+            );
+        };
+
+        const Input = ({ label, error, className = '', required, ...props }) => {
+            return (
+                <div className="w-full">
+                    {label && (
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {label}
+                            {required && <span className="text-danger-500 ml-1">*</span>}
+                        </label>
+                    )}
+                    <input
+                        className={`w-full px-4 py-2 border rounded-lg transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent ${error ? 'border-danger-500' : 'border-gray-300'} ${className}`}
+                        {...props}
+                    />
+                    {error && <p className="mt-1 text-sm text-danger-600">{error}</p>}
+                </div>
+            );
+        };
+
+        const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+            if (!isOpen) return null;
+
+            const sizes = {
+                sm: 'max-w-md',
+                md: 'max-w-2xl',
+                lg: 'max-w-4xl'
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <div className={`relative bg-white rounded-lg shadow-xl w-full ${sizes[size]}`}>
+                            <div className="flex items-center justify-between p-6 border-b">
+                                <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+                                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div className="p-6">{children}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Alert = ({ type = 'info', message, className = '' }) => {
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+
+            const styles = {
+                success: 'bg-success-50 border-success-200 text-success-800',
+                error: 'bg-danger-50 border-danger-200 text-danger-800',
+                warning: 'bg-warning-50 border-warning-200 text-warning-800',
+                info: 'bg-primary-50 border-primary-200 text-primary-800'
+            };
+
+            return (
+                <div className={`flex items-center gap-3 p-4 border rounded-lg ${styles[type]} ${className}`}>
+                    <span className="text-lg font-bold">{icons[type]}</span>
+                    <p className="flex-1 text-sm font-medium">{message}</p>
+                </div>
+            );
+        };
+
+        // ============================================
+        // PAGES
+        // ============================================
+        
+        const LoginPage = () => {
+            const { login, loading } = useAuth();
+            const [formData, setFormData] = useState({ email: '', password: '' });
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                await login(formData.email, formData.password);
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
+                                <span className="text-white font-bold text-2xl">AN</span>
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">AVIA Nav</h1>
+                            <p className="text-gray-600">Sistema de Vigilancia NAVM</p>
+                        </div>
+
+                        <Card>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Iniciar Sesión</h2>
+                            
+                            <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded text-sm">
+                                <p className="font-medium text-primary-800 mb-1">Credenciales de prueba:</p>
+                                <p className="text-primary-700">Email: <code>admin@hospital.com</code></p>
+                                <p className="text-primary-700">Password: <code>admin123</code></p>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                    placeholder="usuario@hospital.com"
+                                    required
+                                />
+                                <Input
+                                    label="Contraseña"
+                                    type="password"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                    placeholder="••••••••"
+                                    required
+                                />
+                                <Button type="submit" className="w-full" loading={loading}>
+                                    Iniciar Sesión
+                                </Button>
+                            </form>
+                        </Card>
+                    </div>
+                </div>
+            );
+        };
+
+        const DashboardPage = ({ onNavigate }) => {
+            const [patients, setPatients] = useState([]);
+            const [evaluations, setEvaluations] = useState([]);
+
+            useEffect(() => {
+                setPatients(API.patients.getAll());
+                setEvaluations(API.evaluations.getAll());
+            }, []);
+
+            const activePatients = patients.filter(p => p.status === 'active').length;
+            const highRisk = evaluations.filter(e => e.cpis_score >= 7).length;
+            const recent = evaluations.slice(-5).reverse();
+
+            const stats = [
+                { label: 'Pacientes Activos', value: activePatients, icon: '👥', color: 'primary' },
+                { label: 'Evaluaciones Totales', value: evaluations.length, icon: '📋', color: 'success' },
+                { label: 'Alto Riesgo', value: highRisk, icon: '⚠️', color: 'danger' },
+                { label: 'Tasa de Riesgo', value: evaluations.length > 0 ? `${((highRisk/evaluations.length)*100).toFixed(1)}%` : '0%', icon: '📈', color: 'warning' }
+            ];
+
+            return (
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+                            <p className="text-gray-600 mt-2">Resumen general del sistema AVIA Nav</p>
+                        </div>
+                        <Button onClick={() => onNavigate('new-evaluation')}>
+                            ➕ Nueva Evaluación
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {stats.map((stat, i) => (
+                            <Card key={i}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                                        <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                                    </div>
+                                    <div className={`text-4xl`}>{stat.icon}</div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <Card>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6">Evaluaciones Recientes</h2>
+                        {recent.length === 0 ? (
+                            <p className="text-center text-gray-600 py-8">No hay evaluaciones recientes</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {recent.map(eval => (
+                                    <div key={eval.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer" onClick={() => onNavigate('patients', eval.patient_id)}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center space-x-3 mb-2">
+                                                <p className="font-medium text-gray-900">Paciente ID: {eval.patient_id}</p>
+                                                <Badge variant={getCPISLevel(eval.cpis_score).color}>
+                                                    CPIS: {eval.cpis_score}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-gray-600">{formatRelativeTime(eval.evaluation_date)}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card hover onClick={() => onNavigate('patients')}>
+                            <div className="text-4xl mb-4">👥</div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Ver Pacientes</h3>
+                            <p className="text-gray-600 text-sm">Gestionar lista completa de pacientes en UCI</p>
+                        </Card>
+                        <Card hover onClick={() => onNavigate('new-evaluation')}>
+                            <div className="text-4xl mb-4">📋</div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nueva Evaluación</h3>
+                            <p className="text-gray-600 text-sm">Registrar evaluación CPIS para un paciente</p>
+                        </Card>
+                        <Card hover onClick={() => onNavigate('alerts')}>
+                            <div className="text-4xl mb-4">🚨</div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Ver Alertas</h3>
+                            <p className="text-gray-600 text-sm">Revisar alertas de alto riesgo activas</p>
+                        </Card>
+                    </div>
+                </div>
+            );
+        };
+
+        const PatientsPage = ({ onNavigate }) => {
+            const [patients, setPatients] = useState([]);
+            const [search, setSearch] = useState('');
+            const [filter, setFilter] = useState('all');
+            const [showModal, setShowModal] = useState(false);
+            const [formData, setFormData] = useState({
+                identification: '', full_name: '', age: '', gender: 'M', admission_date: ''
+            });
+
+            useEffect(() => {
+                loadPatients();
+            }, []);
+
+            const loadPatients = () => {
+                setPatients(API.patients.getAll());
+            };
+
+            const handleCreate = (e) => {
+                e.preventDefault();
+                API.patients.create(formData);
+                setShowModal(false);
+                setFormData({ identification: '', full_name: '', age: '', gender: 'M', admission_date: '' });
+                loadPatients();
+            };
+
+            const filtered = patients.filter(p => {
+                const matchSearch = p.full_name.toLowerCase().includes(search.toLowerCase()) || p.identification.includes(search);
+                const matchFilter = filter === 'all' || p.status === filter;
+                return matchSearch && matchFilter;
+            });
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">Pacientes</h1>
+                            <p className="text-gray-600 mt-2">Gestión de pacientes en UCI</p>
+                        </div>
+                        <Button onClick={() => setShowModal(true)}>➕ Nuevo Paciente</Button>
+                    </div>
+
+                    <Card>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="md:col-span-2">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre o identificación..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                                />
+                            </div>
+                            <select value={filter} onChange={(e) => setFilter(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500">
+                                <option value="all">Todos los estados</option>
+                                <option value="active">Activos</option>
+                                <option value="discharged">Alta médica</option>
+                            </select>
+                        </div>
+                    </Card>
+
+                    {filtered.length === 0 ? (
+                        <Card><p className="text-center text-gray-600 py-12">No se encontraron pacientes</p></Card>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filtered.map(patient => (
+                                <Card key={patient.id} hover onClick={() => onNavigate('patients', patient.id)}>
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-900">{patient.full_name}</h3>
+                                            <p className="text-sm text-gray-600">ID: {patient.identification}</p>
+                                        </div>
+                                        <Badge variant={patient.status === 'active' ? 'success' : 'gray'}>
+                                            {patient.status === 'active' ? 'Activo' : 'Alta'}
+                                        </Badge>
+                                    </div>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Edad:</span>
+                                            <span className="font-medium">{patient.age} años</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Género:</span>
+                                            <span className="font-medium">{patient.gender === 'M' ? 'Masculino' : 'Femenino'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Ingreso:</span>
+                                            <span className="font-medium">{formatDate(patient.admission_date)}</span>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+
+                    <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nuevo Paciente">
+                        <form onSubmit={handleCreate} className="space-y-4">
+                            <Input label="Identificación" value={formData.identification} onChange={(e) => setFormData({...formData, identification: e.target.value})} required />
+                            <Input label="Nombre Completo" value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} required />
+                            <Input label="Edad" type="number" value={formData.age} onChange={(e) => setFormData({...formData, age: e.target.value})} required />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Género *</label>
+                                <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" required>
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Femenino</option>
+                                </select>
+                            </div>
+                            <Input label="Fecha de Ingreso" type="date" value={formData.admission_date} onChange={(e) => setFormData({...formData, admission_date: e.target.value})} required />
+                            <div className="flex space-x-3 pt-4">
+                                <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancelar</Button>
+                                <Button type="submit" className="flex-1">Crear Paciente</Button>
+                            </div>
+                        </form>
+                    </Modal>
+                </div>
+            );
+        };
+
+        const PatientDetailPage = ({ patientId, onNavigate }) => {
+            const [patient, setPatient] = useState(null);
+            const [evaluations, setEvaluations] = useState([]);
+
+            useEffect(() => {
+                setPatient(API.patients.getById(patientId));
+                setEvaluations(API.evaluations.getByPatient(patientId));
+            }, [patientId]);
+
+            if (!patient) return <div className="text-center py-12">Cargando...</div>;
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex items-center space-x-4">
+                        <Button variant="outline" size="sm" onClick={() => onNavigate('patients')}>← Volver</Button>
+                        <div className="flex-1">
+                            <h1 className="text-3xl font-bold text-gray-900">{patient.full_name}</h1>
+                            <p className="text-gray-600 mt-1">ID: {patient.identification}</p>
+                        </div>
+                        <Badge variant={patient.status === 'active' ? 'success' : 'gray'}>
+                            {patient.status === 'active' ? 'Activo' : 'Alta'}
+                        </Badge>
+                    </div>
+
+                    <Card>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Información del Paciente</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div><p className="text-sm text-gray-600 mb-1">Edad</p><p className="text-lg font-semibold">{patient.age} años</p></div>
+                            <div><p className="text-sm text-gray-600 mb-1">Género</p><p className="text-lg font-semibold">{patient.gender === 'M' ? 'Masculino' : 'Femenino'}</p></div>
+                            <div><p className="text-sm text-gray-600 mb-1">Ingreso</p><p className="text-lg font-semibold">{formatDate(patient.admission_date)}</p></div>
+                            <div><p className="text-sm text-gray-600 mb-1">Días en UCI</p><p className="text-lg font-semibold">{Math.floor((new Date() - new Date(patient.admission_date)) / 86400000)} días</p></div>
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-gray-900">Historial de Evaluaciones</h2>
+                            <Button size="sm" onClick={() => onNavigate('new-evaluation', patientId)}>➕ Nueva Evaluación</Button>
+                        </div>
+                        {evaluations.length === 0 ? (
+                            <div className="text-center py-12">
+                                <p className="text-gray-600 mb-4">No hay evaluaciones registradas</p>
+                                <Button onClick={() => onNavigate('new-evaluation', patientId)}>Crear Primera Evaluación</Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {evaluations.map(eval => (
+                                    <div key={eval.id} className="p-4 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center space-x-3">
+                                                <Badge variant={getCPISLevel(eval.cpis_score).color}>CPIS: {eval.cpis_score}</Badge>
+                                                <span className="text-sm font-medium text-gray-900">{getCPISLevel(eval.cpis_score).text}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600">{formatDateTime(eval.evaluation_date)}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                            <div><span className="text-gray-600">Temperatura: </span><span className="font-medium">{eval.temperature}</span></div>
+                                            <div><span className="text-gray-600">Leucocitos: </span><span className="font-medium">{eval.leukocytes}</span></div>
+                                            <div><span className="text-gray-600">Secreciones: </span><span className="font-medium">{eval.secretions}</span></div>
+                                            <div><span className="text-gray-600">Oxigenación: </span><span className="font-medium">{eval.oxygenation}</span></div>
+                                            <div><span className="text-gray-600">Radiografía: </span><span className="font-medium">{eval.radiography}</span></div>
+                                            <div><span className="text-gray-600">Cultivo: </span><span className="font-medium">{eval.culture}</span></div>
+                                        </div>
+                                        {eval.notes && <div className="mt-3 pt-3 border-t"><p className="text-sm text-gray-600"><span className="font-medium">Notas: </span>{eval.notes}</p></div>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            );
+        };
+
+        const NewEvaluationPage = ({ onNavigate, preselectedPatientId }) => {
+            const [patients, setPatients] = useState([]);
+            const [formData, setFormData] = useState({
+                patient_id: preselectedPatientId || '',
+                temperature: 0, leukocytes: 0, secretions: 0,
+                oxygenation: 0, radiography: 0, culture: 0, notes: ''
+            });
+
+            useEffect(() => {
+                setPatients(API.patients.getAll().filter(p => p.status === 'active'));
+            }, []);
+
+            const cpis = formData.temperature + formData.leukocytes + formData.secretions + formData.oxygenation + formData.radiography + formData.culture;
+            const level = getCPISLevel(cpis);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.patient_id) { alert('Seleccione un paciente'); return; }
+                API.evaluations.create({ ...formData, evaluated_by: 1 });
+                alert('✅ Evaluación creada exitosamente');
+                onNavigate('patients', formData.patient_id);
+            };
+
+            const RadioOption = ({ name, value, label, points, checked, onChange }) => (
+                <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                    <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="w-4 h-4 text-primary-600" />
+                    <span className="ml-3 flex-1">{label}</span>
+                    <Badge variant={points === 0 ? 'gray' : 'danger'}>{points} {points === 1 ? 'punto' : 'puntos'}</Badge>
+                </label>
+            );
+
+            return (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                    <div className="flex items-center space-x-4">
+                        <Button variant="outline" size="sm" onClick={() => onNavigate('dashboard')}>← Volver</Button>
+                        <div className="flex-1">
+                            <h1 className="text-3xl font-bold text-gray-900">Nueva Evaluación CPIS</h1>
+                            <p className="text-gray-600 mt-1">Clinical Pulmonary Infection Score</p>
+                        </div>
+                    </div>
+
+                    <Card>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Seleccionar Paciente</h2>
+                        <select value={formData.patient_id} onChange={(e) => setFormData({...formData, patient_id: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" required>
+                            <option value="">Seleccione un paciente...</option>
+                            {patients.map(p => <option key={p.id} value={p.id}>{p.full_name} - ID: {p.identification}</option>)}
+                        </select>
+                    </Card>
+
+                    <Card>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Puntuación CPIS Calculada</h3>
+                                <p className="text-sm text-gray-600">Suma automática de los parámetros evaluados</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-5xl font-bold text-primary-600 mb-2">{cpis}</div>
+                                <Badge variant={level.color} className="text-base px-4 py-1">{level.text}</Badge>
+                            </div>
+                        </div>
+                        {cpis >= 7 && <Alert type="warning" message="⚠️ Puntuación de alto riesgo. Se recomienda evaluación médica inmediata." className="mt-4" />}
+                    </Card>
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">1. Temperatura Corporal</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="temp" value={0} label="36.5-38.4°C" points={0} checked={formData.temperature === 0} onChange={(e) => setFormData({...formData, temperature: 0})} />
+                                <RadioOption name="temp" value={1} label="<36 o >38.5°C + >39°C" points={1} checked={formData.temperature === 1} onChange={(e) => setFormData({...formData, temperature: 1})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">2. Leucocitos</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="leuk" value={0} label="4000-11000/mm³" points={0} checked={formData.leukocytes === 0} onChange={() => setFormData({...formData, leukocytes: 0})} />
+                                <RadioOption name="leuk" value={1} label="<4000 o >11000/mm³" points={1} checked={formData.leukocytes === 1} onChange={() => setFormData({...formData, leukocytes: 1})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">3. Secreciones Traqueales</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="sec" value={0} label="Ausentes" points={0} checked={formData.secretions === 0} onChange={() => setFormData({...formData, secretions: 0})} />
+                                <RadioOption name="sec" value={1} label="No purulentas" points={1} checked={formData.secretions === 1} onChange={() => setFormData({...formData, secretions: 1})} />
+                                <RadioOption name="sec" value={2} label="Purulentas" points={2} checked={formData.secretions === 2} onChange={() => setFormData({...formData, secretions: 2})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">4. Oxigenación (PaO2/FiO2)</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="oxy" value={0} label="PaO2/FiO2 >240 o SDRA" points={0} checked={formData.oxygenation === 0} onChange={() => setFormData({...formData, oxygenation: 0})} />
+                                <RadioOption name="oxy" value={2} label="PaO2/FiO2 ≤240 sin SDRA" points={2} checked={formData.oxygenation === 2} onChange={() => setFormData({...formData, oxygenation: 2})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">5. Radiografía de Tórax</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="radio" value={0} label="Sin infiltrado" points={0} checked={formData.radiography === 0} onChange={() => setFormData({...formData, radiography: 0})} />
+                                <RadioOption name="radio" value={1} label="Infiltrado difuso" points={1} checked={formData.radiography === 1} onChange={() => setFormData({...formData, radiography: 1})} />
+                                <RadioOption name="radio" value={2} label="Infiltrado localizado" points={2} checked={formData.radiography === 2} onChange={() => setFormData({...formData, radiography: 2})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">6. Cultivo Traqueal</h3>
+                            <div className="space-y-3">
+                                <RadioOption name="cult" value={0} label="Negativo o sin cultivo" points={0} checked={formData.culture === 0} onChange={() => setFormData({...formData, culture: 0})} />
+                                <RadioOption name="cult" value={1} label="Positivo" points={1} checked={formData.culture === 1} onChange={() => setFormData({...formData, culture: 1})} />
+                            </div>
+                        </Card>
+
+                        <Card>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notas Adicionales (Opcional)</h3>
+                            <textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500" placeholder="Observaciones clínicas..." />
+                        </Card>
+
+                        <div className="flex space-x-4">
+                            <Button type="button" variant="outline" onClick={() => onNavigate('dashboard')} className="flex-1">Cancelar</Button>
+                            <Button type="submit" className="flex-1">💾 Guardar Evaluación</Button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        const AlertsPage = ({ onNavigate }) => {
+            const [alerts, setAlerts] = useState([]);
+
+            useEffect(() => {
+                setAlerts(API.alerts.getAll());
+            }, []);
+
+            const handleResolve = (id) => {
+                if (confirm('¿Marcar como resuelta?')) {
+                    API.alerts.resolve(id);
+                    setAlerts(API.alerts.getAll());
+                }
+            };
+
+            const active = alerts.filter(a => a.status === 'active');
+            const resolved = alerts.filter(a => a.status === 'resolved');
+
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Alertas</h1>
+                        <p className="text-gray-600 mt-2">Notificaciones de alto riesgo NAVM</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card><div className="flex items-center space-x-4"><div className="text-4xl">⚠️</div><div><p className="text-sm text-gray-600">Activas</p><p className="text-2xl font-bold">{active.length}</p></div></div></Card>
+                        <Card><div className="flex items-center space-x-4"><div className="text-4xl">✅</div><div><p className="text-sm text-gray-600">Resueltas</p><p className="text-2xl font-bold">{resolved.length}</p></div></div></Card>
+                        <Card><div className="flex items-center space-x-4"><div className="text-4xl">📊</div><div><p className="text-sm text-gray-600">Total</p><p className="text-2xl font-bold">{alerts.length}</p></div></div></Card>
+                    </div>
+
+                    <Card>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Alertas Activas</h2>
+                        {active.length === 0 ? (
+                            <div className="text-center py-12"><p className="text-4xl mb-4">✅</p><p className="text-gray-600">No hay alertas activas</p></div>
+                        ) : (
+                            <div className="space-y-4">
+                                {active.map(alert => (
+                                    <div key={alert.id} className="p-4 border-l-4 border-danger-500 bg-danger-50 rounded-lg">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center space-x-3">
+                                                <span className="text-2xl">⚠️</span>
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900">Alto Riesgo NAVM - CPIS ≥ 7</h3>
+                                                    <p className="text-sm text-gray-600">Paciente ID: {alert.patient_id}</p>
+                                                </div>
+                                            </div>
+                                            <Badge variant="danger">Activa</Badge>
+                                        </div>
+                                        <p className="text-sm mb-3">CPIS: <strong>{alert.cpis_score}</strong> | {formatRelativeTime(alert.created_at)}</p>
+                                        <div className="flex space-x-3">
+                                            <Button size="sm" onClick={() => onNavigate('patients', alert.patient_id)}>Ver Paciente</Button>
+                                            <Button size="sm" variant="success" onClick={() => handleResolve(alert.id)}>✓ Resolver</Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+
+                    {resolved.length > 0 && (
+                        <Card>
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Alertas Resueltas (últimas 5)</h2>
+                            <div className="space-y-4">
+                                {resolved.slice(-5).reverse().map(alert => (
+                                    <div key={alert.id} className="p-4 bg-gray-50 rounded-lg opacity-75">
+                                        <div className="flex justify-between mb-2">
+                                            <p className="font-medium">Paciente ID: {alert.patient_id} | CPIS: {alert.cpis_score}</p>
+                                            <Badge variant="gray">Resuelta</Badge>
+                                        </div>
+                                        <p className="text-sm text-gray-600">{formatDateTime(alert.resolved_at)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+                </div>
+            );
+        };
+
+        // ============================================
+        // MAIN APP
+        // ============================================
+        
+        const App = () => {
+            const { isAuthenticated, user, logout } = useAuth();
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [pageData, setPageData] = useState(null);
+
+            const navigate = (page, data = null) => {
+                setCurrentPage(page);
+                setPageData(data);
+            };
+
+            if (!isAuthenticated) {
+                return <LoginPage />;
+            }
+
+            const renderPage = () => {
+                switch(currentPage) {
+                    case 'dashboard': return <DashboardPage onNavigate={navigate} />;
+                    case 'patients': return pageData ? <PatientDetailPage patientId={pageData} onNavigate={navigate} /> : <PatientsPage onNavigate={navigate} />;
+                    case 'new-evaluation': return <NewEvaluationPage onNavigate={navigate} preselectedPatientId={pageData} />;
+                    case 'alerts': return <AlertsPage onNavigate={navigate} />;
+                    default: return <DashboardPage onNavigate={navigate} />;
+                }
+            };
+
+            const menuItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'patients', label: 'Pacientes', icon: '👥' },
+                { id: 'new-evaluation', label: 'Nueva Evaluación', icon: '📋' },
+                { id: 'alerts', label: 'Alertas', icon: '🚨' }
+            ];
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Navbar */}
+                    <nav className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center h-16">
+                                <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('dashboard')}>
+                                    <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                                        <span className="text-white font-bold text-xl">AN</span>
+                                    </div>
+                                    <span className="text-xl font-bold text-gray-900">AVIA Nav</span>
+                                </div>
+                                <div className="flex items-center space-x-4">
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                                        <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={logout}>🚪 Salir</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div className="flex">
+                        {/* Sidebar */}
+                        <aside className="w-64 bg-white border-r min-h-[calc(100vh-4rem)]">
+                            <nav className="p-4 space-y-2">
+                                {menuItems.map(item => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => navigate(item.id)}
+                                        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition ${currentPage === item.id ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+                                    >
+                                        <span className="text-xl">{item.icon}</span>
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </nav>
+                        </aside>
+
+                        {/* Main Content */}
+                        <main className="flex-1 p-8">
+                            {renderPage()}
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================
+        // RENDER
+        // ============================================
+        
+        initializeData();
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(
+            <AuthProvider>
+                <App />
+            </AuthProvider>
+        );
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

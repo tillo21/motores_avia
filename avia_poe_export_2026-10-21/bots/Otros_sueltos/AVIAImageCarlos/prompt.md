@@ -1,0 +1,1 @@
+pinceladas borrosas, estilo pastel acuarela, minimalista al estilo de Carlos, mucho diseño

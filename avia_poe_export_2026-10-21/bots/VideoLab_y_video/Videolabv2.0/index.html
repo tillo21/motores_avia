@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoLab v2.0 - GraphQL API Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .job-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-processing { background: #dbeafe; color: #1e40af; }
+        .badge-completed { background: #d1fae5; color: #065f46; }
+        .badge-error { background: #fee2e2; color: #991b1b; }
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 32px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            outline: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        .select-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+        }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 20px;
+            width: 2px;
+            height: calc(100% + 20px);
+            background: #e5e7eb;
+        }
+        .timeline-item:last-child::after {
+            display: none;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 10px;
+            font-family: 'Monaco', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- HEADER -->
+        <header class="glass-effect text-white p-6 shadow-2xl">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white rounded-full p-3">
+                        <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">VideoLab v2.0</h1>
+                        <p class="text-sm opacity-80">GraphQL API Studio - Producción</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="text-sm opacity-80">Estado del Sistema</div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                            <span class="font-semibold">Operativo</span>
+                        </div>
+                    </div>
+                    <button @click="showApiDocs = true" class="btn btn-primary">
+                        📚 API Docs
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTAINER -->
+        <div class="container mx-auto px-6 py-8">
+            
+            <!-- ESTADÍSTICAS -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="stat-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm font-medium">Jobs Totales</span>
+                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold gradient-text">{{ stats.totalJobs }}</div>
+                    <div class="text-xs text-gray-500 mt-1">↑ 12% vs ayer</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm font-medium">En Proceso</span>
+                        <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-yellow-600">{{ stats.activeJobs }}</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ stats.queuedJobs }} en cola</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm font-medium">Completados</span>
+                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-green-600">{{ stats.completedJobs }}</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ stats.successRate }}% éxito</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-600 text-sm font-medium">Tiempo Proc.</span>
+                        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="text-3xl font-bold text-purple-600">{{ formatTime(stats.totalProcessingTime) }}</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ stats.avgProcessingTime }}s promedio</div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="flex border-b">
+                    <button 
+                        v-for="tab in tabs" 
+                        :key="tab.id"
+                        @click="activeTab = tab.id"
+                        :class="['flex-1 py-4 px-6 font-semibold transition-all', activeTab === tab.id ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50']">
+                        {{ tab.icon }} {{ tab.name }}
+                    </button>
+                </div>
+
+                <div class="p-6">
+                    
+                    <!-- TAB: CREAR JOB -->
+                    <div v-if="activeTab === 'create'" class="space-y-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">🚀 Crear Nuevo Job</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Job</label>
+                                <input v-model="newJob.name" type="text" class="input-field" placeholder="Mi video procesado">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Proceso</label>
+                                <select v-model="newJob.process" class="select-field" @change="updateProcessConfig">
+                                    <option value="">Selecciona proceso...</option>
+                                    <option value="UPSCALE">🔺 Upscale (Mejorar resolución)</option>
+                                    <option value="INTERPOLACION">🎬 Interpolación (Aumentar FPS)</option>
+                                    <option value="AUTO_EDICION">✂️ Auto-Edición Inteligente</option>
+                                    <option value="ELIMINACION_FONDO">🎭 Eliminar Fondo</option>
+                                    <option value="ESTABILIZACION">📹 Estabilización</option>
+                                    <option value="THUMBNAILS">🖼️ Generar Thumbnail</option>
+                                    <option value="COPYRIGHT_CHECK">©️ Verificar Copyright</option>
+                                    <option value="COMPRESION">📦 Comprimir Video</option>
+                                    <option value="PIPELINE_COMPLETO">⚡ Pipeline Completo</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Archivo de Video</label>
+                                <input v-model="newJob.videoInput" type="text" class="input-field" placeholder="/videos/input.mp4">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Prioridad</label>
+                                <select v-model="newJob.priority" class="select-field">
+                                    <option value="BAJA">Baja</option>
+                                    <option value="NORMAL" selected>Normal</option>
+                                    <option value="ALTA">Alta</option>
+                                    <option value="CRITICA">Crítica</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Configuración específica según proceso -->
+                        <div v-if="newJob.process === 'UPSCALE'" class="bg-purple-50 p-6 rounded-xl">
+                            <h3 class="font-bold text-lg mb-4 text-purple-800">⚙️ Configuración Upscale</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Modelo</label>
+                                    <select v-model="newJob.config.modelo" class="select-field">
+                                        <option value="REALESRGAN">RealESRGAN (Recomendado)</option>
+                                        <option value="BASICSR">BasicSR</option>
+                                        <option value="TOPAZ">Topaz Video AI</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Factor de Escala</label>
+                                    <select v-model="newJob.config.factor" class="select-field">
+                                        <option value="2">2x (HD → Full HD)</option>
+                                        <option value="4">4x (HD → 4K)</option>
+                                        <option value="8">8x (SD → 4K)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-2">
+                                        <input v-model="newJob.config.faceEnhance" type="checkbox" class="rounded">
+                                        <span class="text-sm">Mejorar rostros</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-2">
+                                        <input v-model="newJob.config.sharpen" type="checkbox" class="rounded">
+                                        <span class="text-sm">Aplicar sharpening</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="newJob.process === 'AUTO_EDICION'" class="bg-blue-50 p-6 rounded-xl">
+                            <h3 class="font-bold text-lg mb-4 text-blue-800">⚙️ Configuración Auto-Edición</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Tipo de Contenido</label>
+                                    <select v-model="newJob.config.tipoContenido" class="select-field">
+                                        <option value="VLOG">Vlog</option>
+                                        <option value="GAMING">Gaming</option>
+                                        <option value="TUTORIAL">Tutorial</option>
+                                        <option value="PODCAST">Podcast</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Estilo de Edición</label>
+                                    <select v-model="newJob.config.estiloEdicion" class="select-field">
+                                        <option value="DINAMICO">Dinámico</option>
+                                        <option value="CINEMATICO">Cinemático</option>
+                                        <option value="VIRAL">Viral</option>
+                                        <option value="MINIMALISTA">Minimalista</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Formato de Salida</label>
+                                    <select v-model="newJob.config.formatoSalida" class="select-field">
+                                        <option value="YOUTUBE">YouTube</option>
+                                        <option value="SHORTS">YouTube Shorts</option>
+                                        <option value="INSTAGRAM">Instagram</option>
+                                        <option value="TIKTOK">TikTok</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-2">
+                                        <input v-model="newJob.config.generarSubtitulos" type="checkbox" class="rounded">
+                                        <span class="text-sm">Generar subtítulos</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-4">
+                            <button @click="createJob" class="btn btn-primary flex-1">
+                                🚀 Crear y Ejecutar Job
+                            </button>
+                            <button @click="showGraphQLQuery" class="btn bg-gray-200 text-gray-700">
+                                📝 Ver Query GraphQL
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB: JOBS ACTIVOS -->
+                    <div v-if="activeTab === 'jobs'" class="space-y-4">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">📋 Jobs en Ejecución</h2>
+                            <button @click="refreshJobs" class="btn bg-purple-100 text-purple-700">
+                                🔄 Actualizar
+                            </button>
+                        </div>
+
+                        <div v-if="jobs.length === 0" class="text-center py-12 text-gray-500">
+                            <svg class="w-24 h-24 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                            <p class="text-lg">No hay jobs activos</p>
+                            <p class="text-sm mt-2">Crea un nuevo job para comenzar</p>
+                        </div>
+
+                        <div v-for="job in jobs" :key="job.id" class="job-card bg-white border-2 border-gray-200 rounded-xl p-6" @click="selectJob(job)">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-800">{{ job.nombre }}</h3>
+                                    <p class="text-sm text-gray-600">{{ job.proceso }}</p>
+                                </div>
+                                <span :class="['badge', getBadgeClass(job.estado)]">
+                                    {{ job.estado }}
+                                </span>
+                            </div>
+
+                            <div class="progress-bar mb-4">
+                                <div class="progress-fill" :style="{width: job.progreso + '%'}"></div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500">Progreso:</span>
+                                    <span class="font-semibold ml-2">{{ job.progreso }}%</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Tiempo:</span>
+                                    <span class="font-semibold ml-2">{{ formatTime(job.tiempoTranscurrido) }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Prioridad:</span>
+                                    <span class="font-semibold ml-2">{{ job.prioridad }}</span>
+                                </div>
+                            </div>
+
+                            <div v-if="job.estado === 'PROCESANDO'" class="mt-4 flex space-x-2">
+                                <button @click.stop="pauseJob(job.id)" class="btn bg-yellow-100 text-yellow-700 text-sm py-2 px-4">
+                                    ⏸️ Pausar
+                                </button>
+                                <button @click.stop="cancelJob(job.id)" class="btn bg-red-100 text-red-700 text-sm py-2 px-4">
+                                    ❌ Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: HISTORIAL -->
+                    <div v-if="activeTab === 'history'" class="space-y-4">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-6">📚 Historial de Jobs</h2>
+
+                        <div class="bg-white rounded-xl overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proceso</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiempo</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr v-for="job in jobHistory" :key="job.id" class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ job.id }}</td>
+                                        <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ job.nombre }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">{{ job.proceso }}</td>
+                                        <td class="px-6 py-4">
+                                            <span :class="['badge', getBadgeClass(job.estado)]">{{ job.estado }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">{{ formatDate(job.createdAt) }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-600">{{ formatTime(job.tiempoTotal) }}</td>
+                                        <td class="px-6 py-4 text-sm">
+                                            <button @click="viewJobDetails(job)" class="text-purple-600 hover:text-purple-800">
+                                                👁️ Ver
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB: GRAPHQL PLAYGROUND -->
+                    <div v-if="activeTab === 'graphql'" class="space-y-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">🎮 GraphQL Playground</h2>
+                        
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Query GraphQL</label>
+                                <textarea v-model="graphqlQuery" class="input-field font-mono text-sm" rows="15" placeholder="Escribe tu query GraphQL aquí..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Variables (JSON)</label>
+                                <textarea v-model="graphqlVariables" class="input-field font-mono text-sm" rows="15" placeholder='{"variable": "valor"}'></textarea>
+                            </div>
+                        </div>
+
+                        <button @click="executeGraphQL" class="btn btn-primary w-full">
+                            ▶️ Ejecutar Query
+                        </button>
+
+                        <div v-if="graphqlResult" class="bg-gray-50 rounded-xl p-6">
+                            <h3 class="font-bold mb-4">📊 Resultado:</h3>
+                            <pre class="code-block">{{ JSON.stringify(graphqlResult, null, 2) }}</pre>
+                        </div>
+
+                        <div class="bg-blue-50 p-6 rounded-xl">
+                            <h3 class="font-bold text-blue-800 mb-3">💡 Queries de Ejemplo:</h3>
+                            <div class="space-y-2">
+                                <button @click="loadExampleQuery('upscale')" class="text-blue-600 hover:underline text-sm block">
+                                    → Upscale Video 4K
+                                </button>
+                                <button @click="loadExampleQuery('stats')" class="text-blue-600 hover:underline text-sm block">
+                                    → Ver Estadísticas
+                                </button>
+                                <button @click="loadExampleQuery('pipeline')" class="text-blue-600 hover:underline text-sm block">
+                                    → Pipeline Completo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: DETALLES DEL JOB -->
+        <div v-if="selectedJob" class="modal-overlay" @click.self="selectedJob = null">
+            <div class="modal-content">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">{{ selectedJob.nombre }}</h2>
+                        <p class="text-gray-600">Job ID: {{ selectedJob.id }}</p>
+                    </div>
+                    <button @click="selectedJob = null" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600">Estado</div>
+                            <div class="text-lg font-bold">{{ selectedJob.estado }}</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600">Progreso</div>
+                            <div class="text-lg font-bold">{{ selectedJob.progreso }}%</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600">Proceso</div>
+                            <div class="text-lg font-bold">{{ selectedJob.proceso }}</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600">Prioridad</div>
+                            <div class="text-lg font-bold">{{ selectedJob.prioridad }}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-lg mb-3">📋 Timeline de Procesamiento</h3>
+                        <div class="space-y-2">
+                            <div v-for="(event, index) in selectedJob.timeline" :key="index" class="timeline-item">
+                                <div class="font-medium">{{ event.titulo }}</div>
+                                <div class="text-sm text-gray-600">{{ event.descripcion }} - {{ formatTime(event.tiempo) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="selectedJob.resultado" class="bg-green-50 p-6 rounded-xl">
+                        <h3 class="font-bold text-green-800 mb-3">✅ Resultado del Procesamiento</h3>
+                        <pre class="text-sm">{{ JSON.stringify(selectedJob.resultado, null, 2) }}</pre>
+                    </div>
+
+                    <div v-if="selectedJob.archivoSalida" class="flex space-x-4">
+                        <button class="btn btn-primary flex-1">
+                            💾 Descargar Video
+                        </button>
+                        <button class="btn bg-gray-200 text-gray-700">
+                            🔗 Copiar Enlace
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: API DOCS -->
+        <div v-if="showApiDocs" class="modal-overlay" @click.self="showApiDocs = false">
+            <div class="modal-content" style="max-width: 1000px;">
+                <div class="flex justify-between items-start mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">📚 Documentación de API</h2>
+                    <button @click="showApiDocs = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-bold text-lg mb-2">🔌 Endpoints</h3>
+                        <div class="code-block">
+GraphQL API: http://localhost:8000/graphql
+GraphQL Playground: http://localhost:8000/graphql
+REST Health: http://localhost:8000/health
+Documentación: http://localhost:8000/docs</div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-lg mb-2">🎯 Procesos Disponibles</h3>
+                        <ul class="space-y-2 text-sm">
+                            <li>🔺 <strong>UPSCALE</strong> - Mejora la resolución del video (2x, 4x, 8x)</li>
+                            <li>🎬 <strong>INTERPOLACION</strong> - Aumenta FPS (24→60, 30→120, etc.)</li>
+                            <li>✂️ <strong>AUTO_EDICION</strong> - Edición automática inteligente</li>
+                            <li>🎭 <strong>ELIMINACION_FONDO</strong> - Elimina fondo del video</li>
+                            <li>📹 <strong>ESTABILIZACION</strong> - Estabiliza video con IA</li>
+                            <li>🖼️ <strong>THUMBNAILS</strong> - Genera thumbnails optimizados</li>
+                            <li>©️ <strong>COPYRIGHT_CHECK</strong> - Verifica copyright de audio/video</li>
+                            <li>📦 <strong>COMPRESION</strong> - Comprime video inteligentemente</li>
+                            <li>⚡ <strong>PIPELINE_COMPLETO</strong> - Pipeline completo automático</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-lg mb-2">💻 Ejemplo de Uso (Python)</h3>
+                        <pre class="code-block">import requests
+
+query = """
+mutation {
+  quickUpscale(videoInput: "/videos/input.mp4", calidad: "4k") {
+    id
+    estado
+    progreso
+  }
+}
+"""
+
+response = requests.post(
+    'http://localhost:8000/graphql',
+    json={'query': query}
+)
+
+print(response.json())</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    activeTab: 'create',
+                    tabs: [
+                        { id: 'create', name: 'Crear Job', icon: '🚀' },
+                        { id: 'jobs', name: 'Jobs Activos', icon: '📋' },
+                        { id: 'history', name: 'Historial', icon: '📚' },
+                        { id: 'graphql', name: 'GraphQL', icon: '🎮' }
+                    ],
+                    stats: {
+                        totalJobs: 156,
+                        activeJobs: 3,
+                        queuedJobs: 7,
+                        completedJobs: 142,
+                        successRate: 94.2,
+                        totalProcessingTime: 18450,
+                        avgProcessingTime: 118
+                    },
+                    newJob: {
+                        name: '',
+                        process: '',
+                        videoInput: '',
+                        priority: 'NORMAL',
+                        config: {}
+                    },
+                    jobs: [],
+                    jobHistory: [],
+                    selectedJob: null,
+                    showApiDocs: false,
+                    graphqlQuery: '',
+                    graphqlVariables: '{}',
+                    graphqlResult: null,
+                    apiEndpoint: 'http://localhost:8000/graphql'
+                };
+            },
+            mounted() {
+                this.initializeDemoData();
+                this.startJobPolling();
+            },
+            methods: {
+                initializeDemoData() {
+                    // Datos de demostración
+                    this.jobs = [
+                        {
+                            id: 'job_001',
+                            nombre: 'Video Marketing 4K',
+                            proceso: 'UPSCALE',
+                            estado: 'PROCESANDO',
+                            progreso: 67,
+                            prioridad: 'ALTA',
+                            tiempoTranscurrido: 245,
+                            videoInput: '/videos/marketing.mp4'
+                        },
+                        {
+                            id: 'job_002',
+                            nombre: 'Gameplay Smooth 120fps',
+                            proceso: 'INTERPOLACION',
+                            estado: 'PROCESANDO',
+                            progreso: 34,
+                            prioridad: 'NORMAL',
+                            tiempoTranscurrido: 128,
+                            videoInput: '/videos/gameplay.mp4'
+                        },
+                        {
+                            id: 'job_003',
+                            nombre: 'Vlog Auto-Edit',
+                            proceso: 'AUTO_EDICION',
+                            estado: 'PENDIENTE',
+                            progreso: 0,
+                            prioridad: 'BAJA',
+                            tiempoTranscurrido: 0,
+                            videoInput: '/videos/vlog.mp4'
+                        }
+                    ];
+
+                    this.jobHistory = [
+                        {
+                            id: 'job_154',
+                            nombre: 'Tutorial YouTube',
+                            proceso: 'PIPELINE_COMPLETO',
+                            estado: 'COMPLETADO',
+                            createdAt: new Date('2026-07-29T10:30:00'),
+                            tiempoTotal: 567
+                        },
+                        {
+                            id: 'job_153',
+                            nombre: 'Video Corporativo',
+                            proceso: 'UPSCALE',
+                            estado: 'COMPLETADO',
+                            createdAt: new Date('2026-07-29T09:15:00'),
+                            tiempoTotal: 342
+                        },
+                        {
+                            id: 'job_152',
+                            nombre: 'Short Viral',
+                            proceso: 'AUTO_EDICION',
+                            estado: 'ERROR',
+                            createdAt: new Date('2026-07-28T18:45:00'),
+                            tiempoTotal: 89
+                        }
+                    ];
+                },
+                
+                startJobPolling() {
+                    // Simular actualización de progreso
+                    setInterval(() => {
+                        this.jobs.forEach(job => {
+                            if (job.estado === 'PROCESANDO' && job.progreso < 100) {
+                                job.progreso = Math.min(100, job.progreso + Math.random() * 5);
+                                job.tiempoTranscurrido += 1;
+                                
+                                if (job.progreso >= 100) {
+                                    job.estado = 'COMPLETADO';
+                                    this.stats.completedJobs++;
+                                    this.stats.activeJobs--;
+                                }
+                            }
+                        });
+                    }, 1000);
+                },
+
+                updateProcessConfig() {
+                    // Resetear configuración
+                    this.newJob.config = {};
+                    
+                    // Configuración por defecto según proceso
+                    if (this.newJob.process === 'UPSCALE') {
+                        this.newJob.config = {
+                            modelo: 'REALESRGAN',
+                            factor: 4,
+                            faceEnhance: true,
+                            sharpen: false
+                        };
+                    } else if (this.newJob.process === 'AUTO_EDICION') {
+                        this.newJob.config = {
+                            tipoContenido: 'VLOG',
+                            estiloEdicion: 'DINAMICO',
+                            formatoSalida: 'YOUTUBE',
+                            generarSubtitulos: true
+                        };
+                    }
+                },
+
+                async createJob() {
+                    if (!this.newJob.name || !this.newJob.process || !this.newJob.videoInput) {
+                        alert('Por favor completa todos los campos requeridos');
+                        return;
+                    }
+
+                    const newJob = {
+                        id: 'job_' + Date.now(),
+                        nombre: this.newJob.name,
+                        proceso: this.newJob.process,
+                        estado: 'PENDIENTE',
+                        progreso: 0,
+                        prioridad: this.newJob.priority,
+                        tiempoTranscurrido: 0,
+                        videoInput: this.newJob.videoInput,
+                        config: this.newJob.config
+                    };
+
+                    this.jobs.unshift(newJob);
+                    this.stats.totalJobs++;
+                    this.stats.activeJobs++;
+
+                    // Iniciar procesamiento
+                    setTimeout(() => {
+                        newJob.estado = 'PROCESANDO';
+                    }, 2000);
+
+                    // Limpiar formulario
+                    this.newJob = {
+                        name: '',
+                        process: '',
+                        videoInput: '',
+                        priority: 'NORMAL',
+                        config: {}
+                    };
+
+                    // Cambiar a tab de jobs
+                    this.activeTab = 'jobs';
+
+                    alert('✅ Job creado exitosamente!');
+                },
+
+                refreshJobs() {
+                    alert('🔄 Jobs actualizados');
+                },
+
+                selectJob(job) {
+                    this.selectedJob = {
+                        ...job,
+                        timeline: [
+                            { titulo: 'Job Creado', descripcion: 'Job agregado a la cola', tiempo: 0 },
+                            { titulo: 'Procesamiento Iniciado', descripcion: 'Cargando engines de IA', tiempo: 5 },
+                            { titulo: 'Procesando...', descripcion: 'Aplicando transformaciones', tiempo: job.tiempoTranscurrido }
+                        ],
+                        resultado: job.estado === 'COMPLETADO' ? {
+                            exitoso: true,
+                            archivoSalida: '/outputs/' + job.id + '.mp4',
+                            calidad: 98.5,
+                            tiempoTotal: job.tiempoTranscurrido
+                        } : null
+                    };
+                },
+
+                pauseJob(jobId) {
+                    const job = this.jobs.find(j => j.id === jobId);
+                    if (job) {
+                        job.estado = 'PAUSADO';
+                        alert('⏸️ Job pausado');
+                    }
+                },
+
+                cancelJob(jobId) {
+                    if (confirm('¿Estás seguro de cancelar este job?')) {
+                        const index = this.jobs.findIndex(j => j.id === jobId);
+                        if (index !== -1) {
+                            this.jobs.splice(index, 1);
+                            this.stats.activeJobs--;
+                            alert('❌ Job cancelado');
+                        }
+                    }
+                },
+
+                viewJobDetails(job) {
+                    this.selectJob(job);
+                },
+
+                showGraphQLQuery() {
+                    const query = this.generateGraphQLQuery();
+                    alert('Query GraphQL:\n\n' + query);
+                },
+
+                generateGraphQLQuery() {
+                    if (this.newJob.process === 'UPSCALE') {
+                        return `mutation {
+  crearJob(input: {
+    nombre: "${this.newJob.name}"
+    videoInput: "${this.newJob.videoInput}"
+    proceso: UPSCALE
+    configUpscale: {
+      modelo: ${this.newJob.config.modelo}
+      factorEscala: ${this.newJob.config.factor}
+      faceEnhance: ${this.newJob.config.faceEnhance}
+    }
+  }) {
+    id
+    estado
+    progreso
+  }
+}`;
+                    }
+                    return 'Query no disponible para este proceso';
+                },
+
+                async executeGraphQL() {
+                    try {
+                        const response = await axios.post(this.apiEndpoint, {
+                            query: this.graphqlQuery,
+                            variables: JSON.parse(this.graphqlVariables)
+                        });
+                        this.graphqlResult = response.data;
+                    } catch (error) {
+                        this.graphqlResult = { error: error.message };
+                    }
+                },
+
+                loadExampleQuery(type) {
+                    const queries = {
+                        upscale: `mutation {
+  quickUpscale(
+    videoInput: "/videos/input.mp4"
+    calidad: "4k"
+  ) {
+    id
+    estado
+    progreso
+    resultadoUpscale {
+      exitoso
+      resolucionFinal
+      archivoSalida
+    }
+  }
+}`,
+                        stats: `query {
+  estadisticas {
+    jobsTotales
+    jobsActivos
+    jobsCompletados
+    videosProcesadosHoy
+  }
+}`,
+                        pipeline: `mutation {
+  pipelineCompleto(input: {
+    videoInput: "/videos/raw.mp4"
+    preset: "youtube_pro"
+  }) {
+    id
+    proceso
+    estado
+  }
+}`
+                    };
+                    this.graphqlQuery = queries[type];
+                },
+
+                getBadgeClass(estado) {
+                    const map = {
+                        'PENDIENTE': 'badge-pending',
+                        'PROCESANDO': 'badge-processing',
+                        'COMPLETADO': 'badge-completed',
+                        'ERROR': 'badge-error',
+                        'PAUSADO': 'badge-pending'
+                    };
+                    return map[estado] || 'badge-pending';
+                },
+
+                formatTime(seconds) {
+                    if (!seconds) return '0s';
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                },
+
+                formatDate(date) {
+                    return new Date(date).toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

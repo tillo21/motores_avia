@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior - Multi-Agent Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        * { font-family: 'Outfit', sans-serif; box-sizing: border-box; }
+
+        :root {
+            --bg: #f0f4f8; --surface: #ffffff; --surface2: #f7f9fc;
+            --text: #1a2332; --text2: #5a6a7e; --border: #e2e8f0;
+            --brand: #0d9488; --brand-light: #ccfbf1;
+            --sidebar-bg: #0f172a; --sidebar-text: #94a3b8;
+        }
+        .dark {
+            --bg: #0a0e1a; --surface: #111827; --surface2: #1a2234;
+            --text: #e2e8f0; --text2: #8896ab; --border: #1e3048;
+            --brand: #14b8a6; --brand-light: #042f2e;
+        }
+
+        body { background: var(--bg); color: var(--text); }
+
+        #sidebar {
+            background: var(--sidebar-bg);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        @media(max-width:767px) {
+            #sidebar { transform: translateX(-100%); z-index: 50; }
+            #sidebar.open { transform: translateX(0); }
+            #main-wrapper { margin-left: 0 !important; }
+        }
+        #sidebar-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 45;
+        }
+        #sidebar-overlay.active { display: block; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 16px; border-radius: 10px;
+            color: var(--sidebar-text); cursor: pointer;
+            transition: all 0.2s; font-weight: 500; font-size: 14px;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+        .nav-item.active {
+            background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);
+            color: #fff; font-weight: 600;
+        }
+
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; transition: all 0.25s;
+        }
+        .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        .dark .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+        .agent-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            animation: pulse-dot 2s ease infinite;
+        }
+        @keyframes pulse-dot {
+            0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+        }
+
+        .command-input {
+            background: #0f172a; border: 2px solid #1e3048;
+            border-radius: 12px; font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0; transition: border-color 0.3s;
+        }
+        .command-input:focus { border-color: #14b8a6; outline: none; }
+        .dark .command-input { background: #060a14; border-color: #1a2744; }
+        .dark .command-input:focus { border-color: #14b8a6; }
+
+        .chat-bubble {
+            max-width: 88%; padding: 12px 16px; border-radius: 16px;
+            font-size: 14px; line-height: 1.6; word-wrap: break-word;
+        }
+        .chat-bubble.user {
+            background: linear-gradient(135deg, #0d9488, #06b6d4);
+            color: white; border-bottom-right-radius: 4px; margin-left: auto;
+        }
+        .chat-bubble.assistant {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bubble pre {
+            background: #0f172a; border-radius: 8px; padding: 12px;
+            overflow-x: auto; margin: 8px 0; font-size: 13px;
+        }
+        .dark .chat-bubble pre { background: #060a14; }
+        .chat-bubble code {
+            font-family: 'JetBrains Mono', monospace; font-size: 13px;
+        }
+        .chat-bubble p { margin: 0 0 8px 0; }
+        .chat-bubble p:last-child { margin-bottom: 0; }
+        .chat-bubble ul, .chat-bubble ol { padding-left: 20px; margin: 4px 0; }
+        .chat-bubble h1,.chat-bubble h2,.chat-bubble h3 { margin: 10px 0 6px; font-weight: 700; }
+        .chat-bubble h3 { font-size: 15px; }
+
+        .streaming::after {
+            content: ''; display: inline-block; width: 6px; height: 16px;
+            background: var(--brand); margin-left: 4px; vertical-align: text-bottom;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+        .kanban-col { min-height: 200px; border-radius: 14px; padding: 12px; }
+        .kanban-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 12px; cursor: grab;
+            transition: all 0.2s;
+        }
+        .kanban-card:active { cursor: grabbing; }
+        .kanban-card.dragging { opacity: 0.5; transform: rotate(2deg); }
+        .kanban-col.drag-over {
+            background: rgba(13,148,136,0.08) !important;
+            border: 2px dashed var(--brand) !important;
+        }
+
+        .chart-bar {
+            border-radius: 6px 6px 0 0; transition: height 0.8s ease;
+            min-width: 32px;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease both; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+
+        .slide-in { animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from{transform:translateX(300px);opacity:0;} to{transform:translateX(0);opacity:1;} }
+
+        .modal-bg { animation: fadeOverlay 0.2s ease; }
+        @keyframes fadeOverlay { from{opacity:0;} to{opacity:1;} }
+        .modal-box { animation: scaleIn 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes scaleIn { from{opacity:0;transform:scale(0.92) translateY(8px);} to{opacity:1;transform:scale(1) translateY(0);} }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #374151; }
+
+        input, select, textarea { font-size: 16px; }
+
+        .badge {
+            display: inline-flex; align-items: center; padding: 2px 10px;
+            border-radius: 20px; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .orch-pulse {
+            box-shadow: 0 0 0 0 rgba(13,148,136,0.4);
+            animation: orchPulse 1.5s ease infinite;
+        }
+        @keyframes orchPulse {
+            0% { box-shadow: 0 0 0 0 rgba(13,148,136,0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(13,148,136,0); }
+            100% { box-shadow: 0 0 0 0 rgba(13,148,136,0); }
+        }
+
+        .tab-btn {
+            padding: 8px 16px; border-radius: 10px; font-size: 13px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            border: 2px solid transparent; white-space: nowrap;
+        }
+        .tab-btn.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand); }
+        .tab-btn:not(.active) { color: var(--text2); }
+        .tab-btn:not(.active):hover { background: var(--surface2); }
+    </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 flex flex-col z-50">
+    <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-400 flex items-center justify-center">
+            <i class="fas fa-rocket text-white text-lg"></i>
+        </div>
+        <div>
+            <h1 class="text-white font-bold text-lg tracking-tight leading-none">AVIA SENIOR</h1>
+            <p class="text-slate-500 text-[11px] font-medium">Multi-Agent Platform</p>
+        </div>
+    </div>
+
+    <nav class="flex-1 p-3 space-y-1 overflow-y-auto" id="sidebar-nav"></nav>
+
+    <div class="p-4 border-t border-white/10">
+        <p class="text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-3">Equipo</p>
+        <div id="sidebar-agents" class="space-y-2"></div>
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ===== MAIN ===== -->
+<div id="main-wrapper" class="ml-64 min-h-screen transition-all duration-300">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-30 border-b" style="background:var(--surface);border-color:var(--border);">
+        <div class="flex items-center justify-between px-4 sm:px-6 py-3">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                    <i class="fas fa-bars" style="color:var(--text2)"></i>
+                </button>
+                <h2 id="view-title" class="text-lg sm:text-xl font-bold" style="color:var(--text)"></h2>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="orch-indicator" class="hidden items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                    <div class="w-2 h-2 rounded-full bg-teal-500 agent-dot"></div>
+                    <span>Orquestando...</span>
+                </div>
+                <button onclick="openSettingsModal()" class="w-9 h-9 rounded-lg flex items-center justify-center transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main id="main-content" class="p-4 sm:p-6"></main>
+</div>
+
+<!-- Notifications -->
+<div id="notifications" class="fixed top-4 right-4 space-y-2 z-[70] max-w-sm"></div>
+
+<!-- Modal root -->
+<div id="modal-root"></div>
+
+<script>
+/* ================================================================
+   1. DARK MODE
+   ================================================================ */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    document.documentElement.classList.toggle('dark', e.matches);
+});
+
+/* ================================================================
+   2. CONSTANTS & AGENT CONFIG
+   ================================================================ */
+const AGENT_MAP = {
+    carlos: {
+        id: 'carlos', name: 'Carlos', role: 'Orchestrator', avatar: '\u{1F468}\u200D\u{1F4BC}',
+        color: '#8b5cf6', bot: 'GPT-5.2',
+        capabilities: ['Orchestration', 'Planning', 'Delegation'],
+        shortPrompt: 'You are Carlos, Lead Orchestrator of AVIA Senior. Provide clear, practical guidance.',
+        orchPrompt: `You are Carlos, Lead Orchestrator of AVIA Senior dev team. Analyze the requirement and break it into concrete subtasks for the team.
+
+Respond ONLY with valid JSON (no markdown, no explanation, JUST the JSON object):
+{"analysis":"Brief analysis","subtasks":[{"title":"Task title","description":"Detailed description of what to do","assignTo":"ulises|diego|armando|javier","priority":"critical|high|medium|low"}],"notes":"Coordination notes"}
+
+Team: Ulises=Backend(APIs,DB,Node.js), Diego=Frontend(React,UI/UX,CSS), Armando=DevOps(CI/CD,Docker,Cloud), Javier=QA(Testing,Automation,Quality)`,
+        params: { reasoning_effort: 'low' }
+    },
+    ulises: {
+        id: 'ulises', name: 'Ulises', role: 'Backend Lead', avatar: '\u{1F468}\u200D\u{1F4BB}',
+        color: '#3b82f6', bot: 'Claude-Sonnet-4.5',
+        capabilities: ['APIs', 'Database', 'Node.js', 'Architecture'],
+        shortPrompt: 'You are Ulises, Backend Lead of AVIA Senior. Specialize in APIs, databases, server architecture. Provide production-ready solutions with code.',
+        params: {}
+    },
+    diego: {
+        id: 'diego', name: 'Diego', role: 'Frontend Lead', avatar: '\u{1F468}\u200D\u{1F3A8}',
+        color: '#10b981', bot: 'Claude-Sonnet-4.5',
+        capabilities: ['React', 'UI/UX', 'TypeScript', 'Tailwind'],
+        shortPrompt: 'You are Diego, Frontend Lead of AVIA Senior. Specialize in React, TypeScript, UI/UX. Write clean, accessible frontend code.',
+        params: {}
+    },
+    armando: {
+        id: 'armando', name: 'Armando', role: 'DevOps', avatar: '\u{1F468}\u200D\u{1F527}',
+        color: '#f59e0b', bot: 'Grok-4.1-Fast-Non-Reasoning',
+        capabilities: ['CI/CD', 'Docker', 'Cloud', 'Monitoring'],
+        shortPrompt: 'You are Armando, DevOps Engineer of AVIA Senior. Specialize in CI/CD, Docker, cloud infra. Be concise and practical.',
+        params: {}
+    },
+    javier: {
+        id: 'javier', name: 'Javier', role: 'QA Lead', avatar: '\u{1F468}\u200D\u{1F52C}',
+        color: '#f43f5e', bot: 'Grok-4.1-Fast-Non-Reasoning',
+        capabilities: ['Testing', 'Automation', 'Quality', 'E2E'],
+        shortPrompt: 'You are Javier, QA Lead of AVIA Senior. Specialize in test automation, quality assurance. Be thorough and systematic.',
+        params: {}
+    }
+};
+
+const VIEWS = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
+    { id: 'projects', label: 'Proyectos', icon: 'fa-folder-open' },
+    { id: 'kanban', label: 'Kanban', icon: 'fa-columns' },
+    { id: 'agents', label: 'Agentes', icon: 'fa-robot' },
+    { id: 'metrics', label: 'Métricas', icon: 'fa-chart-bar' }
+];
+
+const KANBAN_COLS = [
+    { id: 'backlog', label: 'Backlog', icon: 'fa-inbox', color: '#6366f1' },
+    { id: 'in_progress', label: 'En Progreso', icon: 'fa-spinner', color: '#f59e0b' },
+    { id: 'review', label: 'Revisión', icon: 'fa-magnifying-glass', color: '#06b6d4' },
+    { id: 'done', label: 'Completado', icon: 'fa-circle-check', color: '#22c55e' }
+];
+
+const PRIORITY_MAP = {
+    critical: { label: 'Crítica', color: '#ef4444', bg: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', icon: 'fa-circle-exclamation' },
+    high: { label: 'Alta', color: '#f97316', bg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300', icon: 'fa-arrow-up' },
+    medium: { label: 'Media', color: '#3b82f6', bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', icon: 'fa-minus' },
+    low: { label: 'Baja', color: '#6b7280', bg: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: 'fa-arrow-down' }
+};
+
+/* ================================================================
+   3. STATE
+   ================================================================ */
+const state = {
+    currentView: 'dashboard',
+    selectedAgent: 'carlos',
+    projects: [
+        { id: 'proj_1', name: 'AVIA Platform', description: 'Multi-agent development platform', createdAt: Date.now() }
+    ],
+    tasks: [],
+    sessions: {},
+    orchestrations: {},
+    activity: [],
+    metrics: {
+        totalTokens: 0, totalRequests: 0, responseTimes: [],
+        byAgent: {}
+    },
+    _nextId: { project: 2, task: 1, orch: 1 },
+    searchQuery: ''
+};
+
+// Initialize sessions
+Object.keys(AGENT_MAP).forEach(id => {
+    state.sessions[id] = { messages: [], isProcessing: false };
+    state.metrics.byAgent[id] = { tokens: 0, requests: 0, completed: 0, errors: 0, totalTime: 0 };
+});
+
+/* ================================================================
+   4. UTILITIES
+   ================================================================ */
+function renderMD(text) {
+    try {
+        if (typeof marked !== 'undefined' && marked.parse) {
+            return marked.parse(text || '');
+        }
+    } catch (_e) { /* fallback */ }
+    return (text || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+}
+
+function timeAgo(ts) {
+    const d = Math.floor((Date.now() - ts) / 1000);
+    if (d < 10) return 'ahora';
+    if (d < 60) return `hace ${d}s`;
+    if (d < 3600) return `hace ${Math.floor(d/60)}m`;
+    return `hace ${Math.floor(d/3600)}h`;
+}
+
+function generateId(type) {
+    return `${type}_${state._nextId[type]++}`;
+}
+
+function extractJSON(text) {
+    try {
+        const codeMatch = (text || '').match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeMatch) return JSON.parse(codeMatch[1].trim());
+    } catch (_e) { /* try next */ }
+    try {
+        const rawMatch = (text || '').match(/\{[\s\S]*\}/);
+        if (rawMatch) return JSON.parse(rawMatch[0]);
+    } catch (_e2) { /* fail */ }
+    return null;
+}
+
+/* ================================================================
+   5. NOTIFICATIONS
+   ================================================================ */
+function showNotification(message, type = 'info') {
+    const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-cyan-700', warning: 'bg-amber-600' };
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+    const el = document.createElement('div');
+    el.className = `slide-in ${colors[type] || colors.info} text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-medium`;
+    el.innerHTML = `<i class="fas ${icons[type] || icons.info} flex-shrink-0"></i><span class="flex-1">${message}</span>`;
+    document.getElementById('notifications').appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = '0'; el.style.transform = 'translateX(100px)'; el.style.transition = 'all 0.3s';
+        setTimeout(() => el.remove(), 300);
+    }, 4000);
+}
+
+/* ================================================================
+   6. MODAL SYSTEM
+   ================================================================ */
+function openModal(title, bodyHTML, footerHTML = '') {
+    closeModal();
+    const root = document.getElementById('modal-root');
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-overlay';
+    overlay.className = 'modal-bg fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4';
+    overlay.onclick = e => { if (e.target === overlay) closeModal(); };
+    overlay.innerHTML = `
+        <div class="modal-box w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl" style="background:var(--surface);border:1px solid var(--border);">
+            <div class="flex items-center justify-between p-5 border-b" style="border-color:var(--border)">
+                <h2 class="text-lg font-bold" style="color:var(--text)">${title}</h2>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg flex items-center justify-center transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5" id="modal-body">${bodyHTML}</div>
+            ${footerHTML ? `<div class="p-5 border-t flex justify-end gap-3" style="border-color:var(--border)">${footerHTML}</div>` : ''}
+        </div>`;
+    root.appendChild(overlay);
+}
+
+function closeModal() {
+    const el = document.getElementById('modal-overlay');
+    if (el) el.remove();
+}
+
+function openConfirmDialog(message, onConfirm) {
+    const body = `<p style="color:var(--text2)" class="text-sm">${message}</p>`;
+    const footer = `
+        <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)">Cancelar</button>
+        <button id="btn-confirm-ok" class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition">Confirmar</button>`;
+    openModal('<i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i>Confirmar', body, footer);
+    document.getElementById('btn-confirm-ok').onclick = () => { closeModal(); onConfirm(); };
+}
+
+/* ================================================================
+   7. POE API LAYER
+   ================================================================ */
+let poeInitialized = false;
+const poeAvailable = typeof window !== 'undefined' && window.Poe && window.Poe.sendUserMessage;
+
+function initPoeAPI() {
+    if (poeInitialized || !poeAvailable) return;
+    Object.keys(AGENT_MAP).forEach(agentId => {
+        window.Poe.registerHandler(`agent_${agentId}`, (result, context) => {
+            handleAgentResponse(agentId, result, context);
+        });
+    });
+    poeInitialized = true;
+}
+
+async function sendToAgent(agentId, userPrompt, context = {}) {
+    const agent = AGENT_MAP[agentId];
+    if (!agent) return;
+
+    const isOrchPlanning = context.phase === 'planning';
+    const systemPrompt = isOrchPlanning ? agent.orchPrompt : agent.shortPrompt;
+    const fullMessage = `@${agent.bot} ${systemPrompt}\n\n---\n${userPrompt}`;
+
+    state.sessions[agentId].isProcessing = true;
+    state.sessions[agentId].messages.push({
+        id: `usr_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+        role: 'user', content: userPrompt, status: 'complete', ts: Date.now()
+    });
+
+    addActivity(agentId, `procesando: ${(context.taskTitle || userPrompt).substring(0, 50)}...`, 'info');
+    refreshCurrentView();
+
+    if (!poeAvailable) {
+        simulateResponse(agentId, context);
+        return;
+    }
+
+    try {
+        await window.Poe.sendUserMessage(fullMessage, {
+            handler: `agent_${agentId}`,
+            stream: true,
+            openChat: false,
+            handlerContext: { ...context, agentId, startTime: performance.now() },
+            parameters: agent.params || {}
+        });
+    } catch (err) {
+        state.sessions[agentId].isProcessing = false;
+        const errMsg = err && err.message ? err.message : String(err);
+        addActivity(agentId, `error: ${errMsg}`, 'error');
+        state.metrics.byAgent[agentId].errors++;
+        showNotification(`Error al enviar a ${agent.name}: ${errMsg}`, 'error');
+        refreshCurrentView();
+    }
+}
+
+function handleAgentResponse(agentId, result, context) {
+    const resp = result.responses && result.responses[0];
+    if (!resp) return;
+
+    const session = state.sessions[agentId];
+    const existingIdx = session.messages.findIndex(m => m.id === resp.messageId);
+    const msgObj = {
+        id: resp.messageId, role: 'assistant',
+        content: resp.content || '', contentType: resp.contentType,
+        status: resp.status, ts: Date.now(),
+        attachments: resp.attachments || []
+    };
+
+    if (existingIdx >= 0) {
+        session.messages[existingIdx] = msgObj;
+    } else {
+        session.messages.push(msgObj);
+    }
+
+    // Targeted chat update (avoid full re-render on every stream chunk)
+    updateChatMessage(agentId, msgObj);
+
+    if (result.status === 'complete' || resp.status === 'complete') {
+        const elapsed = context.startTime ? performance.now() - context.startTime : 0;
+        session.isProcessing = false;
+        const estTokens = Math.ceil((resp.content || '').length / 4);
+
+        state.metrics.totalTokens += estTokens;
+        state.metrics.totalRequests++;
+        state.metrics.responseTimes.push({ agentId, ms: elapsed, ts: Date.now() });
+        state.metrics.byAgent[agentId].tokens += estTokens;
+        state.metrics.byAgent[agentId].requests++;
+        state.metrics.byAgent[agentId].totalTime += elapsed;
+        state.metrics.byAgent[agentId].completed++;
+
+        addActivity(agentId, `completó: ${(context.taskTitle || 'tarea')} (${(elapsed/1000).toFixed(1)}s)`, 'success');
+
+        // Orchestration routing
+        if (context.orchestrationId) {
+            if (agentId === 'carlos' && context.phase === 'planning') {
+                handlePlanningResponse(context.orchestrationId, resp.content);
+            } else if (context.phase === 'review') {
+                finalizeOrchestration(context.orchestrationId);
+            } else {
+                onSubTaskComplete(context.orchestrationId, agentId, context.taskId, resp.content);
+            }
+        }
+        refreshCurrentView();
+    }
+
+    if (resp.status === 'error') {
+        session.isProcessing = false;
+        state.metrics.byAgent[agentId].errors++;
+        addActivity(agentId, `error: ${resp.statusText || 'desconocido'}`, 'error');
+        refreshCurrentView();
+    }
+}
+
+// Fallback when Poe API is unavailable
+function simulateResponse(agentId, context) {
+    const agent = AGENT_MAP[agentId];
+    const isPlanning = context.phase === 'planning';
+
+    let fakeContent;
+    if (isPlanning) {
+        fakeContent = JSON.stringify({
+            analysis: "Análisis del requerimiento simulado. El sistema no está conectado a la API de Poe.",
+            subtasks: [
+                { title: "Backend: Diseñar modelo de datos", description: "Crear esquemas y relaciones para la base de datos", assignTo: "ulises", priority: "high" },
+                { title: "Frontend: Crear componentes UI", description: "Diseñar e implementar la interfaz de usuario", assignTo: "diego", priority: "high" },
+                { title: "DevOps: Configurar pipeline", description: "Configurar CI/CD y entorno de deployment", assignTo: "armando", priority: "medium" },
+                { title: "QA: Plan de testing", description: "Crear plan de pruebas y test cases", assignTo: "javier", priority: "medium" }
+            ],
+            notes: "Modo simulado - conecta en Poe para respuestas reales de IA."
+        }, null, 2);
+    } else {
+        fakeContent = `**${agent.name} (${agent.role})** - Modo Simulado\n\nEsta es una respuesta simulada. Para obtener respuestas reales de IA, ejecuta esta aplicación dentro de la plataforma Poe.\n\n\`\`\`\n// Ejemplo de código simulado\nfunction example() {\n  return "Hello from ${agent.name}";\n}\n\`\`\`\n\nTarea procesada correctamente en modo demo.`;
+    }
+
+    const msgId = `sim_${Date.now()}`;
+    setTimeout(() => {
+        const session = state.sessions[agentId];
+        session.messages.push({
+            id: msgId, role: 'assistant', content: fakeContent,
+            status: 'complete', ts: Date.now(), attachments: []
+        });
+        session.isProcessing = false;
+
+        const estTokens = Math.ceil(fakeContent.length / 4);
+        state.metrics.totalTokens += estTokens;
+        state.metrics.totalRequests++;
+        state.metrics.responseTimes.push({ agentId, ms: 1200, ts: Date.now() });
+        state.metrics.byAgent[agentId].tokens += estTokens;
+        state.metrics.byAgent[agentId].requests++;
+        state.metrics.byAgent[agentId].completed++;
+        state.metrics.byAgent[agentId].totalTime += 1200;
+
+        addActivity(agentId, `completó tarea (simulado)`, 'success');
+
+        if (context.orchestrationId) {
+            if (agentId === 'carlos' && context.phase === 'planning') {
+                handlePlanningResponse(context.orchestrationId, fakeContent);
+            } else if (context.phase === 'review') {
+                finalizeOrchestration(context.orchestrationId);
+            } else {
+                onSubTaskComplete(context.orchestrationId, agentId, context.taskId, fakeContent);
+            }
+        }
+        refreshCurrentView();
+    }, 1500 + Math.random() * 2000);
+}
+
+/* ================================================================
+   8. ORCHESTRATOR
+   ================================================================ */
+function startOrchestration(description, projectId) {
+    const orchId = generateId('orch');
+    state.orchestrations[orchId] = {
+        id: orchId, projectId, description,
+        status: 'planning', subtasks: [], results: {},
+        createdAt: Date.now(), completedAt: null
+    };
+
+    document.getElementById('orch-indicator').classList.remove('hidden');
+    document.getElementById('orch-indicator').classList.add('flex');
+    addActivity('carlos', `analizando: "${description.substring(0, 60)}..."`, 'info');
+    showNotification('Orquestación iniciada. Carlos está analizando...', 'info');
+
+    sendToAgent('carlos', description, {
+        orchestrationId: orchId, phase: 'planning', taskTitle: 'Análisis de requerimiento'
+    });
+}
+
+function handlePlanningResponse(orchId, content) {
+    const orch = state.orchestrations[orchId];
+    if (!orch) return;
+
+    const plan = extractJSON(content);
+    if (!plan || !plan.subtasks || !plan.subtasks.length) {
+        orch.status = 'error';
+        addActivity('carlos', 'no pudo generar el plan de tareas. Intenta reformular el requerimiento.', 'error');
+        showNotification('Error al parsear el plan de Carlos. Intenta de nuevo.', 'error');
+        hideOrchIndicator();
+        refreshCurrentView();
+        return;
+    }
+
+    orch.status = 'executing';
+    addActivity('carlos', `descompuso en ${plan.subtasks.length} sub-tareas`, 'success');
+
+    plan.subtasks.forEach(sub => {
+        const taskId = generateId('task');
+        const agentId = sub.assignTo;
+
+        state.tasks.push({
+            id: taskId, title: sub.title, description: sub.description,
+            status: 'in_progress', assignedTo: agentId,
+            priority: sub.priority || 'medium', projectId: orch.projectId,
+            orchestrationId: orchId, result: null, createdAt: Date.now()
+        });
+
+        orch.subtasks.push({ ...sub, taskId, agentId });
+
+        sendToAgent(agentId, sub.description, {
+            orchestrationId: orchId, taskId, taskTitle: sub.title, phase: 'execution'
+        });
+    });
+
+    showNotification(`${plan.subtasks.length} tareas creadas y asignadas a los agentes`, 'success');
+    refreshCurrentView();
+}
+
+function onSubTaskComplete(orchId, agentId, taskId, content) {
+    const orch = state.orchestrations[orchId];
+    if (!orch) return;
+
+    orch.results[`${agentId}_${taskId}`] = content;
+
+    const task = state.tasks.find(t => t.id === taskId);
+    if (task) { task.status = 'review'; task.result = content; }
+
+    const allDone = orch.subtasks.every(st => orch.results[`${st.agentId || st.assignTo}_${st.taskId}`]);
+
+    if (allDone) {
+        orch.status = 'reviewing';
+        addActivity('carlos', 'revisando resultados del equipo...', 'info');
+
+        const summary = orch.subtasks.map(st => {
+            const r = orch.results[`${st.agentId || st.assignTo}_${st.taskId}`] || '';
+            return `### ${st.title} (${AGENT_MAP[st.agentId || st.assignTo]?.name})\n${r.substring(0, 400)}`;
+        }).join('\n\n');
+
+        sendToAgent('carlos',
+            `Todas las sub-tareas están completas. Resume los resultados e indica próximos pasos:\n\n${summary}`,
+            { orchestrationId: orchId, phase: 'review', taskTitle: 'Revisión final' }
+        );
+    }
+    refreshCurrentView();
+}
+
+function finalizeOrchestration(orchId) {
+    const orch = state.orchestrations[orchId];
+    if (!orch) return;
+
+    orch.status = 'complete';
+    orch.completedAt = Date.now();
+
+    orch.subtasks.forEach(st => {
+        const task = state.tasks.find(t => t.id === st.taskId);
+        if (task) task.status = 'done';
+    });
+
+    hideOrchIndicator();
+    addActivity('carlos', `orquestación completada: "${orch.description.substring(0, 50)}..."`, 'success');
+    showNotification('Orquestación completada exitosamente!', 'success');
+    refreshCurrentView();
+}
+
+function hideOrchIndicator() {
+    const hasActive = Object.values(state.orchestrations).some(o => o.status !== 'complete' && o.status !== 'error');
+    if (!hasActive) {
+        document.getElementById('orch-indicator').classList.add('hidden');
+        document.getElementById('orch-indicator').classList.remove('flex');
+    }
+}
+
+/* ================================================================
+   9. ACTIVITY LOG
+   ================================================================ */
+function addActivity(agentId, action, type = 'info') {
+    state.activity.unshift({ agentId, action, type, ts: Date.now() });
+    if (state.activity.length > 50) state.activity.pop();
+}
+
+/* ================================================================
+   10. TASK MANAGEMENT
+   ================================================================ */
+function addManualTask(title, assignedTo, priority, projectId) {
+    const taskId = generateId('task');
+    state.tasks.push({
+        id: taskId, title, description: title,
+        status: 'backlog', assignedTo, priority,
+        projectId: projectId || (state.projects[0] && state.projects[0].id),
+        orchestrationId: null, result: null, createdAt: Date.now()
+    });
+    addActivity(assignedTo, `recibió nueva tarea: ${title}`, 'info');
+    showNotification(`Tarea "${title}" creada`, 'success');
+    refreshCurrentView();
+}
+
+function moveTask(taskId, newStatus) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.status = newStatus;
+        addActivity(task.assignedTo, `movió "${task.title}" a ${KANBAN_COLS.find(c=>c.id===newStatus)?.label || newStatus}`, 'info');
+    }
+}
+
+function deleteTask(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    openConfirmDialog(`¿Eliminar la tarea "${task.title}"?`, () => {
+        state.tasks = state.tasks.filter(t => t.id !== taskId);
+        showNotification(`Tarea "${task.title}" eliminada`, 'warning');
+        refreshCurrentView();
+    });
+}
+
+/* ================================================================
+   11. ROUTER & NAVIGATION
+   ================================================================ */
+function navigate(viewId) {
+    state.currentView = viewId;
+    renderSidebarNav();
+    renderViewTitle();
+    renderCurrentView();
+    // Close sidebar on mobile
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('active');
+}
+
+function renderViewTitle() {
+    const view = VIEWS.find(v => v.id === state.currentView);
+    document.getElementById('view-title').textContent = view ? view.label : '';
+}
+
+function refreshCurrentView() {
+    renderCurrentView();
+    renderSidebarAgents();
+}
+
+function renderCurrentView() {
+    const main = document.getElementById('main-content');
+    switch (state.currentView) {
+        case 'dashboard': renderDashboard(main); break;
+        case 'projects': renderProjects(main); break;
+        case 'kanban': renderKanban(main); break;
+        case 'agents': renderAgents(main); break;
+        case 'metrics': renderMetrics(main); break;
+        default: renderDashboard(main);
+    }
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('active');
+}
+
+/* ================================================================
+   12. SIDEBAR
+   ================================================================ */
+function renderSidebarNav() {
+    document.getElementById('sidebar-nav').innerHTML = VIEWS.map(v =>
+        `<div class="nav-item ${v.id === state.currentView ? 'active' : ''}" onclick="navigate('${v.id}')">
+            <i class="fas ${v.icon} w-5 text-center"></i><span>${v.label}</span>
+            ${v.id === 'kanban' && state.tasks.length ? `<span class="ml-auto text-[11px] font-bold opacity-60">${state.tasks.filter(t=>t.status!=='done').length}</span>` : ''}
+        </div>`
+    ).join('');
+}
+
+function renderSidebarAgents() {
+    document.getElementById('sidebar-agents').innerHTML = Object.values(AGENT_MAP).map(a => {
+        const s = state.sessions[a.id];
+        const dotColor = s.isProcessing ? '#f59e0b' : '#22c55e';
+        return `<div class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg cursor-pointer transition hover:bg-white/5" onclick="navigate('agents');state.selectedAgent='${a.id}';renderCurrentView();">
+            <div class="agent-dot flex-shrink-0" style="background:${dotColor}"></div>
+            <span class="text-xs font-medium text-slate-400 truncate">${a.avatar} ${a.name}</span>
+            ${s.isProcessing ? '<i class="fas fa-spinner fa-spin text-amber-500 text-[10px] ml-auto"></i>' : ''}
+        </div>`;
+    }).join('');
+}
+
+/* ================================================================
+   13. DASHBOARD VIEW
+   ================================================================ */
+function renderDashboard(container) {
+    const activeTasks = state.tasks.filter(t => t.status === 'in_progress').length;
+    const doneTasks = state.tasks.filter(t => t.status === 'done').length;
+    const processingAgents = Object.values(state.sessions).filter(s => s.isProcessing).length;
+    const activeOrch = Object.values(state.orchestrations).filter(o => o.status !== 'complete' && o.status !== 'error').length;
+
+    container.innerHTML = `
+    <div class="space-y-6 fade-in">
+        <!-- Command Center -->
+        <div class="card p-5 sm:p-6" style="border-left: 4px solid var(--brand);">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-400 flex items-center justify-center">
+                    <i class="fas fa-terminal text-white text-sm"></i>
+                </div>
+                <h3 class="font-bold" style="color:var(--text)">Command Center</h3>
+                <span class="badge bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 ml-auto">
+                    ${activeOrch > 0 ? `${activeOrch} activa${activeOrch > 1 ? 's' : ''}` : 'Listo'}
+                </span>
+            </div>
+            <div class="flex gap-3">
+                <input id="command-input" class="command-input flex-1 px-4 py-3 text-sm" placeholder="Describe tu requerimiento... ej: Crear API REST con autenticación JWT" onkeydown="if(event.key==='Enter')handleCommandSubmit()" />
+                <button onclick="handleCommandSubmit()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 text-white font-semibold text-sm transition flex items-center gap-2 flex-shrink-0">
+                    <i class="fas fa-play"></i><span class="hidden sm:inline">Ejecutar</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            ${statCard('fa-robot', 'Agentes Activos', `${5 - processingAgents} / 5`, processingAgents > 0 ? `${processingAgents} trabajando` : 'Todos disponibles', 'teal')}
+            ${statCard('fa-list-check', 'Tareas', `${state.tasks.length}`, `${activeTasks} en progreso, ${doneTasks} completadas`, 'blue')}
+            ${statCard('fa-bolt', 'Requests', `${state.metrics.totalRequests}`, `~${(state.metrics.totalTokens/1000).toFixed(1)}k tokens est.`, 'violet')}
+            ${statCard('fa-gauge-high', 'Tiempo Prom.', state.metrics.responseTimes.length ? `${(state.metrics.responseTimes.reduce((a,b)=>a+b.ms,0)/state.metrics.responseTimes.length/1000).toFixed(1)}s` : '--', `${state.metrics.responseTimes.length} mediciones`, 'amber')}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Agent Overview -->
+            <div class="lg:col-span-2 card p-5">
+                <h3 class="font-bold mb-4" style="color:var(--text)"><i class="fas fa-users text-teal-500 mr-2"></i>Equipo</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    ${Object.values(AGENT_MAP).map(a => {
+                        const s = state.sessions[a.id];
+                        const m = state.metrics.byAgent[a.id];
+                        return `<div class="flex items-center gap-3 p-3 rounded-xl transition hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer" onclick="state.selectedAgent='${a.id}';navigate('agents');" style="border-left: 3px solid ${a.color};">
+                            <span class="text-2xl">${a.avatar}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm" style="color:var(--text)">${a.name}</span>
+                                    <span class="badge" style="background:${a.color}20;color:${a.color}">${a.role}</span>
+                                </div>
+                                <p class="text-xs truncate" style="color:var(--text2)">${s.isProcessing ? 'Procesando...' : `${m.completed} tareas · ${(m.tokens/1000).toFixed(1)}k tokens`}</p>
+                            </div>
+                            ${s.isProcessing ? '<i class="fas fa-spinner fa-spin text-amber-500"></i>' : '<i class="fas fa-circle text-emerald-500 text-[8px]"></i>'}
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold" style="color:var(--text)"><i class="fas fa-bolt text-amber-500 mr-2"></i>Actividad</h3>
+                    ${state.activity.length > 0 ? `<button onclick="state.activity=[];refreshCurrentView();" class="text-xs font-medium transition hover:text-red-500" style="color:var(--text2)"><i class="fas fa-trash-can"></i></button>` : ''}
+                </div>
+                <div class="space-y-2 max-h-80 overflow-y-auto">
+                    ${state.activity.length === 0 ? '<p class="text-center text-sm py-6" style="color:var(--text2)">Sin actividad aún. Ejecuta un comando para comenzar.</p>' :
+                    state.activity.slice(0, 15).map(a => {
+                        const ag = AGENT_MAP[a.agentId];
+                        const dotColor = a.type === 'success' ? '#22c55e' : a.type === 'error' ? '#ef4444' : '#3b82f6';
+                        return `<div class="flex items-start gap-2.5 py-2">
+                            <div class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style="background:${dotColor}"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs leading-relaxed" style="color:var(--text)"><span class="font-semibold" style="color:${ag ? ag.color : 'var(--text)'}">${ag ? ag.name : a.agentId}</span> ${a.action}</p>
+                                <p class="text-[10px] mt-0.5" style="color:var(--text2)">${timeAgo(a.ts)}</p>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Orchestrations -->
+        ${Object.values(state.orchestrations).filter(o => o.status !== 'complete' && o.status !== 'error').length > 0 ? `
+        <div class="card p-5 orch-pulse" style="border: 2px solid var(--brand);">
+            <h3 class="font-bold mb-3" style="color:var(--text)"><i class="fas fa-diagram-project text-teal-500 mr-2"></i>Orquestaciones Activas</h3>
+            ${Object.values(state.orchestrations).filter(o => o.status !== 'complete' && o.status !== 'error').map(o => `
+                <div class="flex items-center gap-3 p-3 rounded-xl" style="background:var(--surface2)">
+                    <i class="fas fa-spinner fa-spin text-teal-500"></i>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate" style="color:var(--text)">${o.description.substring(0, 80)}</p>
+                        <p class="text-xs" style="color:var(--text2)">Estado: ${o.status} · ${o.subtasks.length} sub-tareas · ${Object.keys(o.results).length} completadas</p>
+                    </div>
+                </div>
+            `).join('')}
+        </div>` : ''}
+    </div>`;
+}
+
+function statCard(icon, label, value, sub, color) {
+    const colorMap = { teal: 'from-teal-500 to-cyan-400', blue: 'from-blue-500 to-indigo-400', violet: 'from-violet-500 to-purple-400', amber: 'from-amber-500 to-orange-400' };
+    return `<div class="card p-4 sm:p-5">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${colorMap[color] || colorMap.teal} flex items-center justify-center">
+                <i class="fas ${icon} text-white"></i>
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-wider" style="color:var(--text2)">${label}</p>
+        </div>
+        <p class="text-2xl sm:text-3xl font-bold" style="color:var(--text)">${value}</p>
+        <p class="text-xs mt-1" style="color:var(--text2)">${sub}</p>
+    </div>`;
+}
+
+function handleCommandSubmit() {
+    const input = document.getElementById('command-input');
+    const description = input.value.trim();
+    if (!description) { showNotification('Escribe un requerimiento para comenzar', 'warning'); return; }
+    input.value = '';
+    const projectId = state.projects[0] ? state.projects[0].id : null;
+    startOrchestration(description, projectId);
+}
+
+/* ================================================================
+   14. PROJECTS VIEW
+   ================================================================ */
+function renderProjects(container) {
+    container.innerHTML = `
+    <div class="space-y-6 fade-in">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-lg" style="color:var(--text)">Proyectos</h3>
+            <button onclick="openNewProjectModal()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-semibold transition hover:shadow-lg flex items-center gap-2">
+                <i class="fas fa-plus"></i>Nuevo Proyecto
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${state.projects.map(p => {
+                const pTasks = state.tasks.filter(t => t.projectId === p.id);
+                const orchs = Object.values(state.orchestrations).filter(o => o.projectId === p.id);
+                return `<div class="card p-5">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <h4 class="font-bold" style="color:var(--text)">${p.name}</h4>
+                            <p class="text-xs mt-1" style="color:var(--text2)">${p.description}</p>
+                        </div>
+                        <button onclick="deleteProject('${p.id}')" class="w-8 h-8 rounded-lg flex items-center justify-center transition hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500" style="color:var(--text2)">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        ${KANBAN_COLS.map(c => {
+                            const count = pTasks.filter(t => t.status === c.id).length;
+                            return `<span class="badge" style="background:${c.color}20;color:${c.color}">${c.label}: ${count}</span>`;
+                        }).join('')}
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openOrchestrationModal('${p.id}')" class="flex-1 px-3 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-semibold transition hover:shadow-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-play"></i>Orquestar
+                        </button>
+                        <button onclick="openNewTaskModalForProject('${p.id}')" class="px-3 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2" style="background:var(--surface2);color:var(--text)">
+                            <i class="fas fa-plus"></i>Tarea
+                        </button>
+                    </div>
+                    ${orchs.length > 0 ? `<div class="mt-4 pt-3 border-t" style="border-color:var(--border)">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider mb-2" style="color:var(--text2)">Orquestaciones</p>
+                        ${orchs.slice(0, 3).map(o => `<div class="flex items-center gap-2 py-1.5 text-xs" style="color:var(--text2)">
+                            <i class="fas ${o.status === 'complete' ? 'fa-circle-check text-emerald-500' : o.status === 'error' ? 'fa-circle-xmark text-red-500' : 'fa-spinner fa-spin text-teal-500'}"></i>
+                            <span class="truncate flex-1">${o.description.substring(0, 40)}...</span>
+                            <span>${o.status}</span>
+                        </div>`).join('')}
+                    </div>` : ''}
+                </div>`;
+            }).join('')}
+        </div>
+    </div>`;
+}
+
+function openNewProjectModal() {
+    openModal('<i class="fas fa-folder-plus text-teal-500 mr-2"></i>Nuevo Proyecto',
+        `<div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold mb-1" style="color:var(--text)">Nombre</label>
+                <input id="new-proj-name" class="w-full px-4 py-2.5 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500" style="background:var(--surface);border-color:var(--border);color:var(--text)" placeholder="Mi Proyecto" />
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1" style="color:var(--text)">Descripción</label>
+                <textarea id="new-proj-desc" rows="2" class="w-full px-4 py-2.5 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500 resize-none" style="background:var(--surface);border-color:var(--border);color:var(--text)" placeholder="Descripción del proyecto"></textarea>
+            </div>
+        </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)">Cancelar</button>
+         <button onclick="createProject()" class="px-5 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-semibold transition">Crear</button>`
+    );
+}
+
+function createProject() {
+    const name = document.getElementById('new-proj-name').value.trim();
+    const desc = document.getElementById('new-proj-desc').value.trim();
+    if (!name) { showNotification('Ingresa un nombre para el proyecto', 'warning'); return; }
+    state.projects.push({ id: generateId('project'), name, description: desc || name, createdAt: Date.now() });
+    closeModal();
+    showNotification(`Proyecto "${name}" creado`, 'success');
+    refreshCurrentView();
+}
+
+function deleteProject(id) {
+    const p = state.projects.find(pr => pr.id === id);
+    if (!p) return;
+    openConfirmDialog(`¿Eliminar el proyecto "${p.name}" y todas sus tareas?`, () => {
+        state.tasks = state.tasks.filter(t => t.projectId !== id);
+        state.projects = state.projects.filter(pr => pr.id !== id);
+        showNotification(`Proyecto "${p.name}" eliminado`, 'warning');
+        refreshCurrentView();
+    });
+}
+
+function openOrchestrationModal(projectId) {
+    openModal('<i class="fas fa-diagram-project text-teal-500 mr-2"></i>Nueva Orquestación',
+        `<div class="space-y-4">
+            <p class="text-sm" style="color:var(--text2)">Describe el requerimiento a alto nivel. Carlos lo descompondrá y asignará tareas al equipo automáticamente.</p>
+            <textarea id="orch-description" rows="4" class="w-full px-4 py-3 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500 resize-none" style="background:var(--surface);border-color:var(--border);color:var(--text)" placeholder="Ej: Implementar sistema de autenticación con JWT, registro de usuarios, login, y recuperación de contraseña..."></textarea>
+        </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)">Cancelar</button>
+         <button onclick="submitOrchestration('${projectId}')" class="px-5 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-semibold transition flex items-center gap-2"><i class="fas fa-play"></i>Iniciar</button>`
+    );
+}
+
+function submitOrchestration(projectId) {
+    const desc = document.getElementById('orch-description').value.trim();
+    if (!desc) { showNotification('Describe el requerimiento', 'warning'); return; }
+    closeModal();
+    startOrchestration(desc, projectId);
+}
+
+function openNewTaskModalForProject(projectId) {
+    openModal('<i class="fas fa-clipboard-list text-blue-500 mr-2"></i>Nueva Tarea',
+        `<div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold mb-1" style="color:var(--text)">Título</label>
+                <input id="new-task-title" class="w-full px-4 py-2.5 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500" style="background:var(--surface);border-color:var(--border);color:var(--text)" placeholder="Nombre de la tarea" />
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1" style="color:var(--text)">Asignar a</label>
+                <select id="new-task-agent" class="w-full px-4 py-2.5 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500" style="background:var(--surface);border-color:var(--border);color:var(--text)">
+                    ${Object.values(AGENT_MAP).map(a => `<option value="${a.id}">${a.avatar} ${a.name} - ${a.role}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1" style="color:var(--text)">Prioridad</label>
+                <select id="new-task-priority" class="w-full px-4 py-2.5 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500" style="background:var(--surface);border-color:var(--border);color:var(--text)">
+                    ${Object.entries(PRIORITY_MAP).map(([k,v]) => `<option value="${k}" ${k==='medium'?'selected':''}>${v.label}</option>`).join('')}
+                </select>
+            </div>
+        </div>`,
+        `<button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium transition hover:bg-gray-100 dark:hover:bg-gray-800" style="color:var(--text2)">Cancelar</button>
+         <button onclick="submitNewTask('${projectId}')" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition">Crear</button>`
+    );
+}
+
+function submitNewTask(projectId) {
+    const title = document.getElementById('new-task-title').value.trim();
+    const agent = document.getElementById('new-task-agent').value;
+    const priority = document.getElementById('new-task-priority').value;
+    if (!title) { showNotification('Ingresa un título', 'warning'); return; }
+    closeModal();
+    addManualTask(title, agent, priority, projectId);
+}
+
+/* ================================================================
+   15. KANBAN VIEW
+   ================================================================ */
+function renderKanban(container) {
+    const filterProject = state.projects[0] ? state.projects[0].id : null;
+    const filteredTasks = filterProject ? state.tasks : state.tasks;
+
+    container.innerHTML = `
+    <div class="space-y-4 fade-in">
+        <div class="flex items-center justify-between">
+            <h3 class="font-bold text-lg" style="color:var(--text)">Tablero Kanban</h3>
+            <button onclick="openNewTaskModalForProject('${filterProject || ''}')" class="px-3 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2" style="background:var(--surface2);color:var(--text)">
+                <i class="fas fa-plus"></i>Tarea
+            </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+            ${KANBAN_COLS.map(col => {
+                const colTasks = filteredTasks.filter(t => t.status === col.id);
+                return `<div class="kanban-col transition-all" style="background:var(--surface2)" data-col="${col.id}" ondragover="onDragOver(event)" ondrop="onDrop(event, '${col.id}')" ondragenter="onDragEnter(event)" ondragleave="onDragLeave(event)">
+                    <div class="flex items-center gap-2 mb-3 px-1">
+                        <div class="w-3 h-3 rounded-full" style="background:${col.color}"></div>
+                        <h4 class="text-sm font-bold" style="color:var(--text)">${col.label}</h4>
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background:${col.color}20;color:${col.color}">${colTasks.length}</span>
+                    </div>
+                    <div class="space-y-2 min-h-[80px]" data-col="${col.id}">
+                        ${colTasks.map(t => renderKanbanCard(t)).join('')}
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+    </div>`;
+}
+
+function renderKanbanCard(task) {
+    const agent = AGENT_MAP[task.assignedTo];
+    const pri = PRIORITY_MAP[task.priority] || PRIORITY_MAP.medium;
+    return `<div class="kanban-card" draggable="true" data-task-id="${task.id}" ondragstart="onDragStart(event)">
+        <div class="flex items-center justify-between mb-2">
+            <span class="badge" style="background:${pri.color}20;color:${pri.color}"><i class="fas ${pri.icon} mr-1"></i>${pri.label}</span>
+            <div class="flex items-center gap-1">
+                ${task.status !== 'done' ? KANBAN_COLS.filter(c => c.id !== task.status).map(c =>
+                    `<button onclick="event.stopPropagation();moveTask('${task.id}','${c.id}');refreshCurrentView();" class="w-6 h-6 rounded flex items-center justify-center transition hover:bg-gray-100 dark:hover:bg-gray-700" title="Mover a ${c.label}" style="color:${c.color}">
+                        <i class="fas ${c.icon} text-[10px]"></i>
+                    </button>`
+                ).join('') : ''}
+                <button onclick="event.stopPropagation();deleteTask('${task.id}')" class="w-6 h-6 rounded flex items-center justify-center transition hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 text-[10px]" style="color:var(--text2)"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <p class="text-sm font-semibold mb-1.5 ${task.status === 'done' ? 'line-through opacity-50' : ''}" style="color:var(--text)" onclick="openTaskDetailModal('${task.id}')">${task.title}</p>
+        <div class="flex items-center gap-2">
+            <span class="text-lg">${agent ? agent.avatar : '?'}</span>
+            <span class="text-[11px] font-medium" style="color:${agent ? agent.color : 'var(--text2)'}">${agent ? agent.name : task.assignedTo}</span>
+        </div>
+    </div>`;
+}
+
+function onDragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+    e.target.classList.add('dragging');
+    setTimeout(() => e.target.classList.add('opacity-50'), 0);
+}
+function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function onDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function onDrop(e, colId) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId && colId) {
+        moveTask(taskId, colId);
+        refreshCurrentView();
+    }
+}
+
+function openTaskDetailModal(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const agent = AGENT_MAP[task.assignedTo];
+    const pri = PRIORITY_MAP[task.priority] || PRIORITY_MAP.medium;
+    const colLabel = KANBAN_COLS.find(c => c.id === task.status)?.label || task.status;
+
+    openModal(`<i class="fas fa-clipboard text-teal-500 mr-2"></i>${task.title}`,
+        `<div class="space-y-4">
+            <div class="flex flex-wrap gap-2">
+                <span class="badge" style="background:${pri.color}20;color:${pri.color}"><i class="fas ${pri.icon} mr-1"></i>${pri.label}</span>
+                <span class="badge bg-gray-100 dark:bg-gray-800" style="color:var(--text2)"><i class="fas fa-columns mr-1"></i>${colLabel}</span>
+                ${agent ? `<span class="badge" style="background:${agent.color}20;color:${agent.color}">${agent.avatar} ${agent.name}</span>` : ''}
+            </div>
+            <div>
+                <p class="text-sm font-semibold mb-1" style="color:var(--text)">Descripción</p>
+                <p class="text-sm" style="color:var(--text2)">${task.description || 'Sin descripción'}</p>
+            </div>
+            ${task.result ? `<div>
+                <p class="text-sm font-semibold mb-2" style="color:var(--text)">Resultado del Agente</p>
+                <div class="chat-bubble assistant text-sm max-w-full" style="max-width:100%">${renderMD(task.result.substring(0, 2000))}</div>
+            </div>` : ''}
+            <div>
+                <p class="text-sm font-semibold mb-1" style="color:var(--text)">Mover a</p>
+                <div class="flex gap-2">
+                    ${KANBAN_COLS.map(c => `<button onclick="moveTask('${task.id}','${c.id}');closeModal();refreshCurrentView();" class="flex-1 px-2 py-2 rounded-xl text-xs font-semibold transition border-2 ${task.status === c.id ? '' : 'hover:opacity-80'}" style="border-color:${c.color};${task.status === c.id ? `background:${c.color}20;color:${c.color}` : `color:${c.color}`}">${c.label}</button>`).join('')}
+                </div>
+            </div>
+        </div>`
+    );
+}
+
+/* ================================================================
+   16. AGENTS VIEW (CHAT)
+   ================================================================ */
+function renderAgents(container) {
+    const selAgent = AGENT_MAP[state.selectedAgent] || AGENT_MAP.carlos;
+    const session = state.sessions[selAgent.id];
+
+    container.innerHTML = `
+    <div class="space-y-4 fade-in">
+        <!-- Agent Tabs -->
+        <div class="flex gap-2 overflow-x-auto pb-1">
+            ${Object.values(AGENT_MAP).map(a => {
+                const s = state.sessions[a.id];
+                return `<button onclick="state.selectedAgent='${a.id}';renderAgents(document.getElementById('main-content'));" class="tab-btn flex items-center gap-2 ${a.id === selAgent.id ? 'active' : ''}" style="${a.id === selAgent.id ? `border-color:${a.color};background:${a.color}15;color:${a.color}` : ''}">
+                    <span>${a.avatar}</span><span>${a.name}</span>
+                    ${s.isProcessing ? '<i class="fas fa-spinner fa-spin text-[10px]"></i>' : ''}
+                </button>`;
+            }).join('')}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <!-- Agent Info Panel -->
+            <div class="card p-5 lg:col-span-1">
+                <div class="text-center mb-4">
+                    <div class="text-5xl mb-2">${selAgent.avatar}</div>
+                    <h3 class="font-bold text-lg" style="color:var(--text)">${selAgent.name}</h3>
+                    <p class="text-sm" style="color:${selAgent.color}">${selAgent.role}</p>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text2)">Estado</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2.5 h-2.5 rounded-full ${session.isProcessing ? 'bg-amber-500 agent-dot' : 'bg-emerald-500'}"></div>
+                            <span class="text-sm font-medium" style="color:var(--text)">${session.isProcessing ? 'Procesando...' : 'Disponible'}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text2)">Modelo</p>
+                        <span class="badge bg-gray-100 dark:bg-gray-800" style="color:var(--text2)"><i class="fas fa-microchip mr-1"></i>${selAgent.bot}</span>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text2)">Capacidades</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${selAgent.capabilities.map(c => `<span class="badge" style="background:${selAgent.color}15;color:${selAgent.color}">${c}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wider mb-1.5" style="color:var(--text2)">Métricas</p>
+                        <div class="space-y-1 text-xs" style="color:var(--text2)">
+                            <p>Requests: <strong style="color:var(--text)">${state.metrics.byAgent[selAgent.id].requests}</strong></p>
+                            <p>Tokens est.: <strong style="color:var(--text)">${(state.metrics.byAgent[selAgent.id].tokens/1000).toFixed(1)}k</strong></p>
+                            <p>Completados: <strong style="color:var(--text)">${state.metrics.byAgent[selAgent.id].completed}</strong></p>
+                            <p>Errores: <strong style="color:var(--text)">${state.metrics.byAgent[selAgent.id].errors}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="card lg:col-span-3 flex flex-col" style="height: calc(100vh - 200px); min-height: 400px;">
+                <div class="p-4 border-b flex items-center gap-2" style="border-color:var(--border)">
+                    <div class="w-2.5 h-2.5 rounded-full" style="background:${selAgent.color}"></div>
+                    <h4 class="font-bold text-sm" style="color:var(--text)">Chat con ${selAgent.name}</h4>
+                    <span class="text-xs ml-auto" style="color:var(--text2)">${session.messages.length} mensajes</span>
+                </div>
+
+                <div id="chat-${selAgent.id}" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    ${session.messages.length === 0 ? `
+                        <div class="flex flex-col items-center justify-center h-full text-center py-10">
+                            <div class="text-5xl mb-3">${selAgent.avatar}</div>
+                            <p class="font-semibold" style="color:var(--text)">Chat con ${selAgent.name}</p>
+                            <p class="text-sm mt-1" style="color:var(--text2)">Envía un mensaje para comenzar una conversación directa con ${selAgent.name} (${selAgent.role}).</p>
+                        </div>` :
+                    session.messages.map(m => renderChatBubble(selAgent, m)).join('')}
+                </div>
+
+                <div class="p-4 border-t" style="border-color:var(--border)">
+                    <div class="flex gap-3">
+                        <input id="chat-input-${selAgent.id}" class="flex-1 px-4 py-3 rounded-xl border outline-none transition focus:ring-2 focus:ring-teal-500 text-sm" style="background:var(--surface2);border-color:var(--border);color:var(--text)" placeholder="Escribe un mensaje para ${selAgent.name}..." onkeydown="if(event.key==='Enter')sendDirectChat('${selAgent.id}')" ${session.isProcessing ? 'disabled' : ''} />
+                        <button onclick="sendDirectChat('${selAgent.id}')" class="px-5 py-3 rounded-xl text-white text-sm font-semibold transition flex items-center gap-2 flex-shrink-0 ${session.isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'}" style="background:${selAgent.color}" ${session.isProcessing ? 'disabled' : ''}>
+                            ${session.isProcessing ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-paper-plane"></i>'}
+                            <span class="hidden sm:inline">Enviar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    // Auto-scroll chat to bottom
+    const chatEl = document.getElementById(`chat-${selAgent.id}`);
+    if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function renderChatBubble(agent, msg) {
+    if (msg.role === 'user') {
+        return `<div class="flex justify-end"><div class="chat-bubble user" id="msg_${msg.id}">${renderMD(msg.content)}</div></div>`;
+    }
+    const isStreaming = msg.status === 'incomplete';
+    return `<div class="flex justify-start gap-2">
+        <div class="flex-shrink-0 text-xl mt-1">${agent.avatar}</div>
+        <div class="chat-bubble assistant ${isStreaming ? 'streaming' : ''}" id="msg_${msg.id}">
+            ${renderMD(msg.content)}
+            ${msg.attachments && msg.attachments.length > 0 ? msg.attachments.map(att =>
+                att.mimeType && att.mimeType.startsWith('image/') ?
+                    `<img src="${att.url}" alt="${att.name}" class="rounded-lg max-w-full mt-2" style="max-height:300px" />` :
+                    `<a href="${att.url}" class="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg text-xs font-medium" style="background:var(--surface);border:1px solid var(--border);color:var(--brand)"  download="${att.name}"><i class="fas fa-download"></i>${att.name}</a>`
+            ).join('') : ''}
+        </div>
+    </div>`;
+}
+
+function updateChatMessage(agentId, msg) {
+    if (state.currentView !== 'agents' || state.selectedAgent !== agentId) return;
+
+    const chatContainer = document.getElementById(`chat-${agentId}`);
+    if (!chatContainer) return;
+
+    let el = document.getElementById(`msg_${msg.id}`);
+    const agent = AGENT_MAP[agentId];
+
+    if (!el) {
+        // Create new bubble
+        const wrapper = document.createElement('div');
+        wrapper.className = msg.role === 'user' ? 'flex justify-end' : 'flex justify-start gap-2';
+        if (msg.role !== 'user') {
+            wrapper.innerHTML = `<div class="flex-shrink-0 text-xl mt-1">${agent.avatar}</div>`;
+        }
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${msg.role} ${msg.status === 'incomplete' ? 'streaming' : ''}`;
+        bubble.id = `msg_${msg.id}`;
+        bubble.innerHTML = renderMD(msg.content);
+        wrapper.appendChild(bubble);
+        chatContainer.appendChild(wrapper);
+    } else {
+        el.innerHTML = renderMD(msg.content);
+        el.className = `chat-bubble ${msg.role} ${msg.status === 'incomplete' ? 'streaming' : ''}`;
+    }
+
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function sendDirectChat(agentId) {
+    const input = document.getElementById(`chat-input-${agentId}`);
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    if (state.sessions[agentId].isProcessing) return;
+    input.value = '';
+
+    sendToAgent(agentId, text, { taskTitle: 'Chat directo' });
+}
+
+/* ================================================================
+   17. METRICS VIEW
+   ================================================================ */
+function renderMetrics(container) {
+    const m = state.metrics;
+    const agents = Object.values(AGENT_MAP);
+    const maxTokens = Math.max(1, ...agents.map(a => m.byAgent[a.id].tokens));
+    const maxRequests = Math.max(1, ...agents.map(a => m.byAgent[a.id].requests));
+    const avgResponseTime = m.responseTimes.length ?
+        (m.responseTimes.reduce((a,b) => a + b.ms, 0) / m.responseTimes.length / 1000).toFixed(2) : '0.00';
+
+    container.innerHTML = `
+    <div class="space-y-6 fade-in">
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            ${statCard('fa-coins', 'Tokens Totales', `${(m.totalTokens/1000).toFixed(1)}k`, 'Estimación basada en caracteres', 'teal')}
+            ${statCard('fa-paper-plane', 'Total Requests', `${m.totalRequests}`, `${agents.reduce((a,ag) => a + m.byAgent[ag.id].errors, 0)} errores`, 'blue')}
+            ${statCard('fa-stopwatch', 'Tiempo Promedio', `${avgResponseTime}s`, `${m.responseTimes.length} mediciones`, 'amber')}
+            ${statCard('fa-check-double', 'Completados', `${agents.reduce((a,ag) => a + m.byAgent[ag.id].completed, 0)}`, 'Total tareas procesadas', 'violet')}
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Tokens by Agent -->
+            <div class="card p-5">
+                <h3 class="font-bold mb-4" style="color:var(--text)"><i class="fas fa-coins text-teal-500 mr-2"></i>Tokens por Agente</h3>
+                <div class="flex items-end justify-around gap-2" style="height:200px">
+                    ${agents.map(a => {
+                        const tokens = m.byAgent[a.id].tokens;
+                        const pct = maxTokens > 0 ? (tokens / maxTokens * 100) : 0;
+                        return `<div class="flex flex-col items-center flex-1">
+                            <span class="text-[11px] font-bold mb-1" style="color:var(--text2)">${(tokens/1000).toFixed(1)}k</span>
+                            <div class="chart-bar w-full max-w-[48px] opacity-90 hover:opacity-100 transition" style="height:${Math.max(4, pct)}%;background:${a.color}"></div>
+                            <span class="text-[11px] font-semibold mt-2 truncate max-w-full" style="color:var(--text)">${a.avatar}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Requests by Agent -->
+            <div class="card p-5">
+                <h3 class="font-bold mb-4" style="color:var(--text)"><i class="fas fa-paper-plane text-blue-500 mr-2"></i>Requests por Agente</h3>
+                <div class="flex items-end justify-around gap-2" style="height:200px">
+                    ${agents.map(a => {
+                        const reqs = m.byAgent[a.id].requests;
+                        const pct = maxRequests > 0 ? (reqs / maxRequests * 100) : 0;
+                        return `<div class="flex flex-col items-center flex-1">
+                            <span class="text-[11px] font-bold mb-1" style="color:var(--text2)">${reqs}</span>
+                            <div class="chart-bar w-full max-w-[48px] opacity-90 hover:opacity-100 transition" style="height:${Math.max(4, pct)}%;background:${a.color}"></div>
+                            <span class="text-[11px] font-semibold mt-2 truncate max-w-full" style="color:var(--text)">${a.avatar}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Detail Table -->
+        <div class="card p-5 overflow-x-auto">
+            <h3 class="font-bold mb-4" style="color:var(--text)"><i class="fas fa-table text-violet-500 mr-2"></i>Detalle por Agente</h3>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b" style="border-color:var(--border)">
+                        <th class="text-left py-2 px-3 font-semibold" style="color:var(--text2)">Agente</th>
+                        <th class="text-left py-2 px-3 font-semibold" style="color:var(--text2)">Modelo</th>
+                        <th class="text-right py-2 px-3 font-semibold" style="color:var(--text2)">Requests</th>
+                        <th class="text-right py-2 px-3 font-semibold" style="color:var(--text2)">Tokens Est.</th>
+                        <th class="text-right py-2 px-3 font-semibold" style="color:var(--text2)">Completados</th>
+                        <th class="text-right py-2 px-3 font-semibold" style="color:var(--text2)">Errores</th>
+                        <th class="text-right py-2 px-3 font-semibold" style="color:var(--text2)">Tiempo Prom.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${agents.map(a => {
+                        const am = m.byAgent[a.id];
+                        const avgT = am.requests > 0 ? (am.totalTime / am.requests / 1000).toFixed(2) : '--';
+                        return `<tr class="border-b transition hover:bg-gray-50 dark:hover:bg-white/5" style="border-color:var(--border)">
+                            <td class="py-2.5 px-3 font-semibold" style="color:${a.color}">${a.avatar} ${a.name}</td>
+                            <td class="py-2.5 px-3 font-mono text-xs" style="color:var(--text2)">${a.bot}</td>
+                            <td class="py-2.5 px-3 text-right font-bold" style="color:var(--text)">${am.requests}</td>
+                            <td class="py-2.5 px-3 text-right" style="color:var(--text)">${(am.tokens/1000).toFixed(1)}k</td>
+                            <td class="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 font-bold">${am.completed}</td>
+                            <td class="py-2.5 px-3 text-right ${am.errors > 0 ? 'text-red-500 font-bold' : ''}" style="color:${am.errors > 0 ? '' : 'var(--text2)'}">${am.errors}</td>
+                            <td class="py-2.5 px-3 text-right" style="color:var(--text)">${avgT}s</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Orchestration History -->
+        <div class="card p-5">
+            <h3 class="font-bold mb-4" style="color:var(--text)"><i class="fas fa-clock-rotate-left text-amber-500 mr-2"></i>Historial de Orquestaciones</h3>
+            ${Object.values(state.orchestrations).length === 0 ?
+                `<p class="text-sm text-center py-6" style="color:var(--text2)">No hay orquestaciones registradas aún.</p>` :
+                `<div class="space-y-2">
+                    ${Object.values(state.orchestrations).reverse().map(o => {
+                        const dur = o.completedAt ? ((o.completedAt - o.createdAt)/1000).toFixed(1) + 's' : 'En curso...';
+                        const statusIcon = o.status === 'complete' ? 'fa-circle-check text-emerald-500' : o.status === 'error' ? 'fa-circle-xmark text-red-500' : 'fa-spinner fa-spin text-teal-500';
+                        return `<div class="flex items-center gap-3 p-3 rounded-xl transition hover:bg-gray-50 dark:hover:bg-white/5">
+                            <i class="fas ${statusIcon} flex-shrink-0"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold truncate" style="color:var(--text)">${o.description.substring(0, 80)}</p>
+                                <p class="text-xs" style="color:var(--text2)">${o.subtasks.length} tareas · ${Object.keys(o.results).length} completadas · Duración: ${dur}</p>
+                            </div>
+                            <span class="badge" style="background:${o.status === 'complete' ? '#22c55e' : o.status === 'error' ? '#ef4444' : '#14b8a6'}20;color:${o.status === 'complete' ? '#22c55e' : o.status === 'error' ? '#ef4444' : '#14b8a6'}">${o.status}</span>
+                        </div>`;
+                    }).join('')}
+                </div>`}
+        </div>
+    </div>`;
+}
+
+/* ================================================================
+   18. SETTINGS MODAL
+   ================================================================ */
+function openSettingsModal() {
+    const isDark = document.documentElement.classList.contains('dark');
+    openModal('<i class="fas fa-cog text-teal-500 mr-2"></i>Configuración',
+        `<div class="space-y-5">
+            <div>
+                <label class="block text-sm font-semibold mb-2" style="color:var(--text)">Apariencia</label>
+                <div class="flex gap-2">
+                    <button onclick="setTheme('light')" class="flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition ${!isDark ? 'border-teal-500' : ''}" style="${!isDark ? 'background:var(--brand-light);color:var(--brand)' : 'border-color:var(--border);color:var(--text2)'}"><i class="fas fa-sun mr-2"></i>Claro</button>
+                    <button onclick="setTheme('dark')" class="flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition ${isDark ? 'border-teal-500' : ''}" style="${isDark ? 'background:var(--brand-light);color:var(--brand)' : 'border-color:var(--border);color:var(--text2)'}"><i class="fas fa-moon mr-2"></i>Oscuro</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-2" style="color:var(--text)">Información</label>
+                <div class="text-xs space-y-1" style="color:var(--text2)">
+                    <p><strong>API Poe:</strong> ${poeAvailable ? '<span class="text-emerald-500">Conectada</span>' : '<span class="text-amber-500">Modo simulado</span>'}</p>
+                    <p><strong>Agentes:</strong> 5 (Carlos, Ulises, Diego, Armando, Javier)</p>
+                    <p><strong>Modelos:</strong> GPT-5.2, Claude-Sonnet-4.5, Grok-4.1-Fast-Non-Reasoning</p>
+                </div>
+            </div>
+            <div class="pt-2 border-t" style="border-color:var(--border)">
+                <button onclick="resetAllData()" class="w-full px-4 py-2.5 rounded-xl border-2 border-red-300 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium transition"><i class="fas fa-trash-alt mr-2"></i>Resetear datos</button>
+            </div>
+        </div>`
+    );
+}
+
+function setTheme(theme) {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    closeModal();
+    openSettingsModal();
+    showNotification(`Tema cambiado a ${theme === 'dark' ? 'oscuro' : 'claro'}`, 'success');
+}
+
+function resetAllData() {
+    openConfirmDialog('¿Resetear todos los datos? Se perderán todas las conversaciones, tareas y métricas.', () => {
+        state.tasks = [];
+        state.activity = [];
+        state.orchestrations = {};
+        state.metrics = { totalTokens: 0, totalRequests: 0, responseTimes: [], byAgent: {} };
+        Object.keys(AGENT_MAP).forEach(id => {
+            state.sessions[id] = { messages: [], isProcessing: false };
+            state.metrics.byAgent[id] = { tokens: 0, requests: 0, completed: 0, errors: 0, totalTime: 0 };
+        });
+        showNotification('Datos reseteados', 'success');
+        refreshCurrentView();
+    });
+}
+
+/* ================================================================
+   19. INITIALIZATION
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+    initPoeAPI();
+    renderSidebarNav();
+    renderSidebarAgents();
+    renderViewTitle();
+    renderCurrentView();
+
+    if (!poeAvailable) {
+        showNotification('Modo simulado: ejecuta en Poe para respuestas reales de IA', 'warning');
+    } else {
+        showNotification('AVIA Senior conectada a Poe. Agentes listos.', 'success');
+    }
+});
+</script>
+</body>
+</html>
+

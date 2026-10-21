@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reproductor de audio interactivo AVIA-LEID con accesibilidad AAA, modo oscuro, velocidad variable y diseño responsive.">
+    <meta name="keywords" content="AVIA, LEID, educación, accesibilidad, audio, reproductor, inclusión">
+    <meta name="author" content="AVIA-Proyecto">
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; 
+                   style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+                   font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+                   img-src 'self' data: https:;
+                   media-src 'self' data:;">
+    
+    <title>🎧 AVIA-LEID Interactive Player</title>
+    
+    <!-- Preconnects for performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome (lazy loaded) -->
+    <link rel="stylesheet" 
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+          media="print" 
+          onload="this.media='all'">
+    
+    <style>
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, 
+                        color 0.3s ease, 
+                        transform 0.2s ease,
+                        opacity 0.2s ease;
+        }
+
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #6c5ce7;
+            --success-color: #00b894;
+            --warning-color: #fdcb6e;
+            --danger-color: #d63031;
+            --background: #f5f7fa;
+            --card-bg: white;
+            --text-color: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --border-color: #e1e8ed;
+            --shadow: 0 8px 24px rgba(0,0,0,0.08);
+            --shadow-hover: 0 12px 32px rgba(0,0,0,0.12);
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Dark mode variables */
+        [data-theme="dark"] {
+            --background: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #eaeaea;
+            --text-secondary: #a8a8a8;
+            --border-color: #2d3e50;
+            --shadow: 0 8px 24px rgba(0,0,0,0.4);
+            --shadow-hover: 0 12px 32px rgba(0,0,0,0.6);
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        /* Skip link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #000;
+            color: #fff;
+            padding: 8px;
+            text-decoration: none;
+            z-index: 100;
+            border-radius: 0 0 4px 0;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* Screen reader only */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Main container */
+        .player-container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        /* Header */
+        .player-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .player-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .player-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Audio element (hidden visually but accessible) */
+        audio {
+            width: 100%;
+            margin-bottom: 24px;
+            border-radius: 8px;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            margin: 24px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-filled {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+
+        .progress-filled::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-btn {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .ctrl-btn:hover,
+        .ctrl-btn:focus {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: var(--primary-color);
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.98);
+        }
+
+        .ctrl-btn:focus {
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .ctrl-btn.primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            width: 64px;
+            height: 64px;
+            font-size: 24px;
+        }
+
+        .ctrl-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+        }
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .tooltip:hover::after,
+        .tooltip:focus::after {
+            opacity: 1;
+        }
+
+        /* Settings */
+        .settings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .setting-item {
+            background: var(--background);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .speed-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .speed-btn {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .speed-btn:hover,
+        .speed-btn:focus {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .speed-btn:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .speed-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Language selector */
+        .lang-select {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+            transition: var(--transition);
+        }
+
+        .lang-select:hover,
+        .lang-select:focus {
+            border-color: var(--primary-color);
+        }
+
+        .lang-select:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Footer badges */
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--background);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .badge i {
+            color: var(--success-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .player-container {
+                padding: 24px 16px;
+            }
+
+            .player-title {
+                font-size: 24px;
+            }
+
+            .controls {
+                gap: 8px;
+            }
+
+            .ctrl-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
+            }
+
+            .ctrl-btn.primary {
+                width: 56px;
+                height: 56px;
+                font-size: 20px;
+            }
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Dashboard */
+        #avia-dashboard {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .dashboard-btn {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+    <!-- Live region for screen readers -->
+    <div role="status" aria-live="polite" aria-atomic="true" class="sr-only" id="status-announcer"></div>
+
+    <!-- Main content -->
+    <main id="main-content" class="player-container" role="main">
+        <!-- Header -->
+        <header class="player-header">
+            <h1 class="player-title">🎧 AVIA-LEID Interactive Player</h1>
+            <p class="player-subtitle">Reproductor accesible con certificación AAA</p>
+        </header>
+
+        <!-- Audio element -->
+        <audio id="audio" preload="metadata">
+            <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            Tu navegador no soporta el elemento de audio. <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Descarga el audio aquí</a>.
+        </audio>
+
+        <!-- Progress bar -->
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar" role="slider" 
+                 aria-label="Progreso de reproducción" 
+                 aria-valuemin="0" 
+                 aria-valuemax="100" 
+                 aria-valuenow="0"
+                 tabindex="0">
+                <div class="progress-filled" id="progressFilled"></div>
+            </div>
+            <div class="progress-info">
+                <span id="currentTimeDisplay">0:00</span>
+                <span id="durationDisplay">0:00</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <nav class="controls" role="navigation" aria-label="Controles de reproducción">
+            <button class="ctrl-btn tooltip" data-tooltip="Retroceder 10s (Flecha izquierda)" 
+                    onclick="skip(-10)" 
+                    aria-label="Retroceder 10 segundos">
+                <i class="fas fa-backward"></i>
+            </button>
+
+            <button class="ctrl-btn primary tooltip" data-tooltip="Reproducir/Pausar (Espacio)" 
+                    onclick="playPause()" 
+                    id="playPauseBtn"
+                    aria-label="Reproducir o pausar">
+                <i class="fas fa-play" id="playPauseIcon"></i>
+            </button>
+
+            <button class="ctrl-btn tooltip" data-tooltip="Avanzar 10s (Flecha derecha)" 
+                    onclick="skip(10)" 
+                    aria-label="Avanzar 10 segundos">
+                <i class="fas fa-forward"></i>
+            </button>
+
+            <button class="ctrl-btn tooltip" data-tooltip="Silenciar/Activar (M)" 
+                    onclick="toggleMute()" 
+                    id="muteBtn"
+                    aria-label="Silenciar o activar audio">
+                <i class="fas fa-volume-up" id="muteIcon"></i>
+            </button>
+        </nav>
+
+        <!-- Settings -->
+        <div class="settings">
+            <!-- Speed control -->
+            <div class="setting-item">
+                <label class="setting-label" for="speed-group">Velocidad</label>
+                <div class="speed-controls" id="speed-group" role="group" aria-label="Control de velocidad">
+                    <button class="speed-btn" onclick="changeSpeed(0.5)" aria-label="Velocidad 0.5x">0.5x</button>
+                    <button class="speed-btn active" onclick="changeSpeed(1)" aria-label="Velocidad normal 1x">1x</button>
+                    <button class="speed-btn" onclick="changeSpeed(1.5)" aria-label="Velocidad 1.5x">1.5x</button>
+                    <button class="speed-btn" onclick="changeSpeed(2)" aria-label="Velocidad 2x">2x</button>
+                </div>
+            </div>
+
+            <!-- Language selector -->
+            <div class="setting-item">
+                <label class="setting-label" for="langSelect">Idioma</label>
+                <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)" aria-label="Seleccionar idioma">
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="cat">🇪🇸 Català</option>
+                    <option value="gal">🇪🇸 Galego</option>
+                </select>
+            </div>
+
+            <!-- Dark mode toggle -->
+            <div class="setting-item">
+                <label class="setting-label" for="btnDarkMode">Tema</label>
+                <button class="ctrl-btn" id="btnDarkMode" onclick="toggleDarkMode()" 
+                        aria-label="Cambiar entre modo claro y oscuro"
+                        aria-pressed="false"
+                        style="margin: 0 auto;">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Certification badges -->
+        <footer class="badges" role="contentinfo">
+            <span class="badge"><i class="fas fa-certificate"></i> AVIA-SIMPLIT</span>
+            <span class="badge"><i class="fas fa-universal-access"></i> AAA</span>
+            <span class="badge"><i class="fas fa-shield-alt"></i> CertiAVIA</span>
+            <span class="badge"><i class="fas fa-stamp"></i> Pukkart</span>
+        </footer>
+    </main>
+
+    <!-- AVIA Dashboard -->
+    <div id="avia-dashboard" style="display: none; position: fixed; bottom: 20px; right: 20px; background: white; border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); max-width: 300px; z-index: 10000;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 16px; color: #2c3e50;">📊 AVIA Monitor</h3>
+            <button onclick="document.getElementById('avia-dashboard').style.display='none'" 
+                    style="background: none; border: none; cursor: pointer; font-size: 20px; color: #2c3e50;"
+                    aria-label="Cerrar dashboard">
+                &times;
+            </button>
+        </div>
+        <div style="font-size: 13px; line-height: 1.8; color: #2c3e50;">
+            <div><strong>Estado:</strong> <span id="dash-status" style="color: #27ae60;">●</span> Operativo</div>
+            <div><strong>Sesión:</strong> <span id="dash-session-time">0:00</span></div>
+            <div><strong>Reproducciones:</strong> <span id="dash-plays">0</span></div>
+            <div><strong>Errores:</strong> <span id="dash-errors">0</span></div>
+            <div><strong>Accesibilidad:</strong> ✅ AAA</div>
+            <div><strong>Certificación:</strong> ✅ 6 sellos</div>
+            <div><strong>ID Pukkart:</strong> <code style="font-size: 10px;">...2024-001</code></div>
+        </div>
+    </div>
+
+    <button onclick="document.getElementById('avia-dashboard').style.display='block'" 
+            class="dashboard-btn"
+            style="position: fixed; bottom: 20px; right: 20px; background: #4a90e2; color: white; border: none; border-radius: 50%; width: 56px; height: 56px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; display: flex; align-items: center; justify-content: center;"
+            aria-label="Abrir dashboard de monitorización AVIA">
+        📊
+    </button>
+
+    <!-- Confetti library (deferred) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    <!-- Main JavaScript -->
+    <script>
+        // Global references
+        const audio = document.getElementById('audio');
+        const playPauseIcon = document.getElementById('playPauseIcon');
+        const progressBar = document.getElementById('progressBar');
+        const progressFilled = document.getElementById('progressFilled');
+        const muteIcon = document.getElementById('muteIcon');
+        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+        const durationDisplay = document.getElementById('durationDisplay');
+
+        // State
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+        let currentSpeed = 1;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initDarkMode();
+            initKeyboardShortcuts();
+            initProgressBar();
+            initDashboard();
+        });
+
+        // Status announcer helper
+        function announceStatus(message) {
+            const announcer = document.getElementById('status-announcer');
+            announcer.textContent = message;
+            setTimeout(() => { announcer.textContent = ''; }, 1000);
+        }
+
+        // Play/Pause
+        function playPause() {
+            if (audio.paused) {
+                audio.play();
+                playPauseIcon.className = 'fas fa-pause';
+                announceStatus('Reproducción iniciada');
+            } else {
+                audio.pause();
+                playPauseIcon.className = 'fas fa-play';
+                announceStatus('Reproducción pausada');
+            }
+        }
+
+        // Skip forward/backward
+        function skip(seconds) {
+            audio.currentTime += seconds;
+            const direction = seconds > 0 ? 'adelante' : 'atrás';
+            announceStatus(`${Math.abs(seconds)} segundos ${direction}`);
+        }
+
+        // Toggle mute
+        function toggleMute() {
+            audio.muted = !audio.muted;
+            muteIcon.className = audio.muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+            announceStatus(audio.muted ? 'Audio silenciado' : 'Audio activado');
+        }
+
+        // Change speed
+        function changeSpeed(speed) {
+            audio.playbackRate = speed;
+            currentSpeed = speed;
+            
+            // Update UI
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            announceStatus(`Velocidad cambiada a ${speed}x`);
+        }
+
+        // Progress bar
+        function initProgressBar() {
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('loadedmetadata', updateProgress);
+            
+            progressBar.addEventListener('click', (e) => {
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = percent * audio.duration;
+            });
+
+            // Keyboard support for progress bar
+            progressBar.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') {
+                    skip(5);
+                    e.preventDefault();
+                } else if (e.key === 'ArrowLeft') {
+                    skip(-5);
+                    e.preventDefault();
+                }
+            });
+        }
+
+        function updateProgress() {
+            const percent = (audio.currentTime / audio.duration) * 100;
+            progressFilled.style.width = `${percent}%`;
+            progressBar.setAttribute('aria-valuenow', percent.toFixed(0));
+            
+            currentTimeDisplay.textContent = formatTime(audio.currentTime);
+            durationDisplay.textContent = formatTime(audio.duration);
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Dark mode
+        function initDarkMode() {
+            if (isDarkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+            }
+            updateDarkModeBtn(isDarkMode);
+        }
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('darkMode', isDarkMode);
+            
+            if (isDarkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+            } else {
+                document.body.removeAttribute('data-theme');
+            }
+            
+            updateDarkModeBtn(isDarkMode);
+            announceStatus(isDarkMode ? 'Modo oscuro activado' : 'Modo claro activado');
+        }
+
+        function updateDarkModeBtn(isDark) {
+            const btn = document.getElementById('btnDarkMode');
+            btn.innerHTML = isDark
+                ? '<i class="fas fa-sun"></i>'
+                : '<i class="fas fa-moon"></i>';
+            btn.classList.toggle('active', isDark);
+            btn.setAttribute('aria-pressed', isDark.toString());
+        }
+
+        // Language (placeholder)
+        function changeLanguage(lang) {
+            console.log('Language changed to:', lang);
+            announceStatus(`Idioma cambiado a ${lang}`);
+            // TODO: Implement actual translation logic
+        }
+
+        // Keyboard shortcuts
+        function initKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+                switch(e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        playPause();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        skip(-10);
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        skip(10);
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        const nextSpeed = Math.min(currentSpeed + 0.5, 2);
+                        changeSpeed(nextSpeed);
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        const prevSpeed = Math.max(currentSpeed - 0.5, 0.5);
+                        changeSpeed(prevSpeed);
+                        break;
+                    case 'm':
+                    case 'M':
+                        toggleMute();
+                        break;
+                }
+            });
+        }
+
+        // Dashboard monitoring
+        let sessionStart = Date.now();
+        let playCount = 0;
+        let errorCount = 0;
+
+        function initDashboard() {
+            // Session time
+            setInterval(() => {
+                const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                document.getElementById('dash-session-time').textContent = 
+                    `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+
+            // Play count
+            audio.addEventListener('play', () => {
+                playCount++;
+                document.getElementById('dash-plays').textContent = playCount;
+            });
+
+            // Error tracking
+            audio.addEventListener('error', () => {
+                errorCount++;
+                document.getElementById('dash-errors').textContent = errorCount;
+                document.getElementById('dash-status').style.color = '#e74c3c';
+                document.getElementById('dash-status').textContent = '●';
+            });
+        }
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered:', reg))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>

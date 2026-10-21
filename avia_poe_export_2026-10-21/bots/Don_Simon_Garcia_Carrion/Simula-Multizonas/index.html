@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>AVIA Simulación Multi-Zona Multi-Producto</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+* { box-sizing: border-box; }
+body { 
+  font-family: 'Segoe UI', Arial, sans-serif; 
+  background: #F7F7F5; 
+  padding: 20px;
+  color: #1a1a1a;
+}
+
+.header {
+  background: linear-gradient(135deg, #2D5A27 0%, #4A7C42 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.header h1 { margin: 0 0 10px 0; }
+.header p { margin: 0; opacity: 0.9; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.card h3 {
+  margin: 0 0 16px 0;
+  color: #2D5A27;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.kpi-positive { color: #2D5A27; }
+.kpi-negative { color: #C53030; }
+
+.controls {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-group label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+select, input[type="number"] {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.checkbox-group label:hover {
+  background: #e8f5e8;
+}
+
+.checkbox-group input:checked + span {
+  color: #2D5A27;
+  font-weight: bold;
+}
+
+button {
+  background: #2D5A27;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: #1e3d1a;
+  transform: translateY(-1px);
+}
+
+.chart-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .chart-row { grid-template-columns: 1fr; }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background: #f8f8f8;
+  font-weight: 600;
+  color: #2D5A27;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.tag-zona { background: #E8F5E8; color: #2D5A27; }
+.tag-producto { background: #FFF9DB; color: #805A00; }
+
+.insight-box {
+  background: #EBF5EB;
+  border-left: 4px solid #2D5A27;
+  padding: 16px;
+  margin: 20px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.sap-panel {
+  background: #1a1a2e;
+  color: #00ff88;
+  padding: 20px;
+  border-radius: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  margin-top: 20px;
+}
+
+.sap-panel h3 {
+  color: #00ff88;
+  margin: 0 0 15px 0;
+}
+
+.sap-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid #333;
+}
+
+.discurso {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  line-height: 1.8;
+  margin-top: 20px;
+}
+
+.discurso h3 {
+  color: #2D5A27;
+  border-bottom: 2px solid #2D5A27;
+  padding-bottom: 8px;
+}
+
+.highlight {
+  background: #FFF9DB;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>🧭 AVIA — Simulación Multi-Zona Multi-Producto</h1>
+  <p>Modelo escalable con estructura SAP-ready | ROI + Adopción + Fatiga</p>
+</div>
+
+<!-- DATOS SAP SIMULADOS -->
+<div class="card">
+  <h3>📊 Datos Base (Estructura SAP)</h3>
+  
+  <div class="controls">
+    <div class="control-group">
+      <label>Zonas Seleccionadas</label>
+      <div class="checkbox-group" id="zonasCheck">
+        <!-- generado dinámicamente -->
+      </div>
+    </div>
+  </div>
+  
+  <div class="controls" style="margin-top:15px;">
+    <div class="control-group">
+      <label>Productos Seleccionados</label>
+      <div class="checkbox-group" id="productosCheck">
+        <!-- generado dinámicamente -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PARÁMETROS -->
+<div class="card">
+  <h3>⚙️ Parámetros del Piloto</h3>
+  <div class="controls">
+    
+    <div class="control-group">
+      <label>Semanas</label>
+      <input type="number" id="semanas" value="8" min="4" max="24">
+    </div>
+    
+    <div class="control-group">
+      <label>Coste AVIA (€)</label>
+      <input type="number" id="coste" value="15000" min="1000" step="1000">
+    </div>
+    
+    <div class="control-group">
+      <label>Umbral Fatiga</label>
+      <select id="fatiga">
+        <option value="0.3">Bajo (0.3)</option>
+        <option value="0.5" selected>Medio (0.5)</option>
+        <option value="0.7">Alto (0.7)</option>
+      </select>
+    </div>
+    
+    <button onclick="ejecutarSimulacion()">🚀 Ejecutar Simulación</button>
+    
+  </div>
+</div>
+
+<!-- KPIs GLOBALES -->
+<div class="grid" id="kpisGlobales">
+  <!-- generado dinámicamente -->
+</div>
+
+<!-- GRÁFICOS -->
+<div class="chart-row">
+  <div class="chart-container">
+    <h3>📈 Evolución por Zona</h3>
+    <canvas id="chartZonas"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>📦 Impacto por Producto</h3>
+    <canvas id="chartProductos"></canvas>
+  </div>
+</div>
+
+<div class="chart-container">
+  <h3>💰 ROI Acumulado Total</h3>
+  <canvas id="chartROI"></canvas>
+</div>
+
+<!-- TABLA DETALLE -->
+<div class="card">
+  <h3>📋 Detalle por Zona y Producto</h3>
+  <table id="tablaDetalle">
+    <!-- generado dinámicamente -->
+  </table>
+</div>
+
+<!-- INSIGHT -->
+<div class="insight-box" id="insight">
+  <!-- generado dinámicamente -->
+</div>
+
+<!-- PANEL SAP -->
+<div class="sap-panel" id="sapPanel">
+  <h3>🔌 SAP Integration Ready</h3>
+  <!-- generado dinámicamente -->
+</div>
+
+<!-- DISCURSO -->
+<div class="discurso" id="discurso">
+  <!-- generado dinámicamente -->
+</div>
+
+<script>
+
+// ═══════════════════════════════════════════
+// DATOS ESTRUCTURA SAP (SIMULADOS)
+// ═══════════════════════════════════════════
+
+const ZONAS = [
+  { id: "Z01", nombre: "Levante", ventaBase: 8000, distribuidores: 12 },
+  { id: "Z02", nombre: "Andalucía", ventaBase: 7500, distribuidores: 15 },
+  { id: "Z03", nombre: "Centro", ventaBase: 6000, distribuidores: 10 },
+  { id: "Z04", nombre: "Norte", ventaBase: 5500, distribuidores: 8 },
+  { id: "Z05", nombre: "Cataluña", ventaBase: 7000, distribuidores: 11 }
+];
+
+const PRODUCTOS = [
+  { id: "P01", nombre: "Don Simón Naranja", categoria: "Zumos", margen: 0.25, estacionalidad: 1.2 },
+  { id: "P02", nombre: "Don Simón Melocotón", categoria: "Zumos", margen: 0.23, estacionalidad: 1.1 },
+  { id: "P03", nombre: "Vino Pata Negra", categoria: "Vinos", margen: 0.35, estacionalidad: 0.9 },
+  { id: "P04", nombre: "Sangría Don Simón", categoria: "Vinos", margen: 0.30, estacionalidad: 1.4 },
+  { id: "P05", nombre: "Leche Don Simón", categoria: "Lácteos", margen: 0.15, estacionalidad: 1.0 }
+];
+
+// Estado
+let estado = {
+  zonasSeleccionadas: ["Z01", "Z02"],
+  productosSeleccionados: ["P01", "P03"],
+  semanas: 8,
+  coste: 15000,
+  umbralFatiga: 0.5,
+  resultados: null
+};
+
+// Charts
+let charts = {};
+
+// ═══════════════════════════════════════════
+// INICIALIZACIÓN UI
+// ═══════════════════════════════════════════
+
+function initUI() {
+  
+  // Zonas
+  let zonasHTML = '';
+  ZONAS.forEach(z => {
+    const checked = estado.zonasSeleccionadas.includes(z.id) ? 'checked' : '';
+    zonasHTML += `
+      <label>
+        <input type="checkbox" value="${z.id}" ${checked} onchange="toggleZona('${z.id}')">
+        <span>${z.nombre}</span>
+      </label>
+    `;
+  });
+  document.getElementById('zonasCheck').innerHTML = zonasHTML;
+  
+  // Productos
+  let productosHTML = '';
+  PRODUCTOS.forEach(p => {
+    const checked = estado.productosSeleccionados.includes(p.id) ? 'checked' : '';
+    productosHTML += `
+      <label>
+        <input type="checkbox" value="${p.id}" ${checked} onchange="toggleProducto('${p.id}')">
+        <span>${p.nombre}</span>
+      </label>
+    `;
+  });
+  document.getElementById('productosCheck').innerHTML = productosHTML;
+}
+
+function toggleZona(id) {
+  const idx = estado.zonasSeleccionadas.indexOf(id);
+  if (idx > -1) {
+    estado.zonasSeleccionadas.splice(idx, 1);
+  } else {
+    estado.zonasSeleccionadas.push(id);
+  }
+}
+
+function toggleProducto(id) {
+  const idx = estado.productosSeleccionados.indexOf(id);
+  if (idx > -1) {
+    estado.productosSeleccionados.splice(idx, 1);
+  } else {
+    estado.productosSeleccionados.push(id);
+  }
+}
+
+// ═══════════════════════════════════════════
+// MOTOR DE SIMULACIÓN
+// ═══════════════════════════════════════════
+
+function calcularAdopcion(semana, velocidad = 0.5) {
+  const t0 = estado.semanas / 2;
+  return 1 / (1 + Math.exp(-velocidad * (semana - t0)));
+}
+
+function calcularFatiga(semana) {
+  return Math.min(estado.umbralFatiga, semana * 0.04);
+}
+
+function simular() {
+  
+  const semanas = estado.semanas;
+  const zonasActivas = ZONAS.filter(z => estado.zonasSeleccionadas.includes(z.id));
+  const productosActivos = PRODUCTOS.filter(p => estado.productosSeleccionados.includes(p.id));
+  
+  if (zonasActivas.length === 0 || productosActivos.length === 0) {
+    alert("Selecciona al menos una zona y un producto");
+    return null;
+  }
+  
+  let resultados = {
+    semanas: [],
+    porZona: {},
+    porProducto: {},
+    global: {
+      sinAVIA: [],
+      conAVIA: [],
+      roiAcumulado: []
+    },
+    detalle: []
+  };
+  
+  // Inicializar estructuras
+  zonasActivas.forEach(z => {
+    resultados.porZona[z.id] = { 
+      nombre: z.nombre, 
+      sinAVIA: 0, 
+      conAVIA: 0, 
+      evolución: [] 
+    };
+  });
+  
+  productosActivos.forEach(p => {
+    resultados.porProducto[p.id] = { 
+      nombre: p.nombre, 
+      sinAVIA: 0, 
+      conAVIA: 0,
+      margenCapturado: 0
+    };
+  });
+  
+  let acumSinGlobal = 0;
+  let acumConGlobal = 0;
+  
+  // Simular semana a semana
+  for (let s = 1; s <= semanas; s++) {
+    
+    resultados.semanas.push(s);
+    
+    const adopcion = calcularAdopcion(s);
+    const fatiga = calcularFatiga(s);
+    const efectividad = adopcion * (1 - fatiga);
+    
+    let ventaSinSemana = 0;
+    let ventaConSemana = 0;
+    
+    // Por cada combinación zona-producto
+    zonasActivas.forEach(zona => {
+      productosActivos.forEach(producto => {
+        
+        // Venta base (proporción zona + estacionalidad producto)
+        const ventaBase = (zona.ventaBase / productosActivos.length) * producto.estacionalidad;
+        
+        // Sin AVIA: variación aleatoria pequeña
+        const sinAVIA = ventaBase * (1 + (Math.random() * 0.06 - 0.03));
+        
+        // Con AVIA: incremento por efectividad
+        const incremento = ventaBase * efectividad * 0.15 * (1 + producto.margen);
+        const conAVIA = sinAVIA + incremento;
+        
+        // Acumular
+        ventaSinSemana += sinAVIA;
+        ventaConSemana += conAVIA;
+        
+        resultados.porZona[zona.id].sinAVIA += sinAVIA;
+        resultados.porZona[zona.id].conAVIA += conAVIA;
+        
+        resultados.porProducto[producto.id].sinAVIA += sinAVIA;
+        resultados.porProducto[producto.id].conAVIA += conAVIA;
+        resultados.porProducto[producto.id].margenCapturado += incremento * producto.margen;
+        
+        // Detalle
+        if (s === semanas) {
+          resultados.detalle.push({
+            zona: zona.nombre,
+            producto: producto.nombre,
+            sinAVIA: resultados.porZona[zona.id].sinAVIA / productosActivos.length,
+            conAVIA: resultados.porZona[zona.id].conAVIA / productosActivos.length,
+            incremento: (resultados.porZona[zona.id].conAVIA - resultados.porZona[zona.id].sinAVIA) / productosActivos.length
+          });
+        }
+      });
+      
+      resultados.porZona[zona.id].evolución.push(
+        resultados.porZona[zona.id].conAVIA
+      );
+    });
+    
+    acumSinGlobal += ventaSinSemana;
+    acumConGlobal += ventaConSemana;
+    
+    resultados.global.sinAVIA.push(acumSinGlobal);
+    resultados.global.conAVIA.push(acumConGlobal);
+    
+    const roiSemana = ((acumConGlobal - acumSinGlobal - estado.coste) / estado.coste) * 100;
+    resultados.global.roiAcumulado.push(roiSemana);
+  }
+  
+  // Resumen global
+  const incrementoTotal = acumConGlobal - acumSinGlobal;
+  
+  resultados.resumen = {
+    ventasSinAVIA: acumSinGlobal,
+    ventasConAVIA: acumConGlobal,
+    incremento: incrementoTotal,
+    incrementoPct: (incrementoTotal / acumSinGlobal) * 100,
+    coste: estado.coste,
+    beneficioNeto: incrementoTotal - estado.coste,
+    roi: ((incrementoTotal - estado.coste) / estado.coste) * 100,
+    payback: estado.coste / (incrementoTotal / semanas),
+    zonasActivas: zonasActivas.length,
+    productosActivos: productosActivos.length
+  };
+  
+  return resultados;
+}
+
+// ═══════════════════════════════════════════
+// RENDERIZADO
+// ═══════════════════════════════════════════
+
+function renderKPIs(res) {
+  const r = res.resumen;
+  
+  document.getElementById('kpisGlobales').innerHTML = `
+    <div class="card">
+      <h3>💰 ROI Total</h3>
+      <div class="kpi-value ${r.roi > 0 ? 'kpi-positive' : 'kpi-negative'}">
+        ${r.roi.toFixed(1)}%
+      </div>
+      <div class="kpi-label">Retorno sobre inversión</div>
+    </div>
+    
+    <div class="card">
+      <h3>📈 Incremento</h3>
+      <div class="kpi-value kpi-positive">
+        €${Math.round(r.incremento).toLocaleString()}
+      </div>
+      <div class="kpi-label">+${r.incrementoPct.toFixed(1)}% vs base</div>
+    </div>
+    
+    <div class="card">
+      <h3>💵 Beneficio Neto</h3>
+      <div class="kpi-value ${r.beneficioNeto > 0 ? 'kpi-positive' : 'kpi-negative'}">
+        €${Math.round(r.beneficioNeto).toLocaleString()}
+      </div>
+      <div class="kpi-label">Después de costes</div>
+    </div>
+    
+    <div class="card">
+      <h3>⏱️ Payback</h3>
+      <div class="kpi-value">
+        ${r.payback.toFixed(1)} sem
+      </div>
+      <div class="kpi-label">Recuperación inversión</div>
+    </div>
+    
+    <div class="card">
+      <h3>🗺️ Alcance</h3>
+      <div class="kpi-value">
+        ${r.zonasActivas}z / ${r.productosActivos}p
+      </div>
+      <div class="kpi-label">Zonas / Productos</div>
+    </div>
+  `;
+}
+
+function renderChartZonas(res) {
+  const ctx = document.getElementById('chartZonas').getContext('2d');
+  if (charts.zonas) charts.zonas.destroy();
+  
+  const datasets = [];
+  const colores = ['#2D5A27', '#4A7C42', '#6B9B5E', '#8DBA7A', '#B0D99A'];
+  
+  let i = 0;
+  for (const [id, data] of Object.entries(res.porZona)) {
+    datasets.push({
+      label: data.nombre,
+      data: data.evolución,
+      borderColor: colores[i % colores.length],
+      fill: false,
+      tension: 0.3
+    });
+    i++;
+  }
+  
+  charts.zonas = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: res.semanas.map(s => `S${s}`),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { title: { display: true, text: 'Ventas Acumuladas (€)' } }
+      }
+    }
+  });
+}
+
+function renderChartProductos(res) {
+  const ctx = document.getElementById('chartProductos').getContext('2d');
+  if (charts.productos) charts.productos.destroy();
+  
+  const labels = [];
+  const dataSin = [];
+  const dataCon = [];
+  
+  for (const [id, data] of Object.entries(res.porProducto)) {
+    labels.push(data.nombre.split(' ').slice(-1)[0]); // Última palabra
+    dataSin.push(data.sinAVIA);
+    dataCon.push(data.conAVIA);
+  }
+  
+  charts.productos = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Sin AVIA',
+          data: dataSin,
+          backgroundColor: '#999'
+        },
+        {
+          label: 'Con AVIA',
+          data: dataCon,
+          backgroundColor: '#2D5A27'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { title: { display: true, text: '€' } }
+      }
+    }
+  });
+}
+
+function renderChartROI(res) {
+  const ctx = document.getElementById('chartROI').getContext('2d');
+  if (charts.roi) charts.roi.destroy();
+  
+  charts.roi = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: res.semanas.map(s => `Semana ${s}`),
+      datasets: [{
+        label: 'ROI Acumulado (%)',
+        data: res.global.roiAcumulado,
+        borderColor: '#2D5A27',
+        backgroundColor: res.global.roiAcumulado.map(v => 
+          v >= 0 ? 'rgba(45,90,39,0.2)' : 'rgba(197,48,48,0.2)'
+        ),
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { title: { display: true, text: 'ROI (%)' } }
+      }
+    }
+  });
+}
+
+function renderTabla(res) {
+  let html = `
+    <thead>
+      <tr>
+        <th>Zona</th>
+        <th>Producto</th>
+        <th>Sin AVIA</th>
+        <th>Con AVIA</th>
+        <th>Δ Incremento</th>
+      </tr>
+    </thead>
+    <tbody>
+  `;
+  
+  res.detalle.forEach(d => {
+    html += `
+      <tr>
+        <td><span class="tag tag-zona">${d.zona}</span></td>
+        <td><span class="tag tag-producto">${d.producto}</span></td>
+        <td>€${Math.round(d.sinAVIA).toLocaleString()}</td>
+        <td>€${Math.round(d.conAVIA).toLocaleString()}</td>
+        <td class="kpi-positive">+€${Math.round(d.incremento).toLocaleString()}</td>
+      </tr>
+    `;
+  });
+  
+  html += '</tbody>';
+  document.getElementById('tablaDetalle').innerHTML = html;
+}
+
+function renderInsight(res) {
+  const r = res.resumen;
+  
+  // Encontrar mejor zona y producto
+  let mejorZona = { nombre: '', incremento: 0 };
+  for (const [id, data] of Object.entries(res.porZona)) {
+    const inc = data.conAVIA - data.sinAVIA;
+    if (inc > mejorZona.incremento) {
+      mejorZona = { nombre: data.nombre, incremento: inc };
+    }
+  }
+  
+  let mejorProducto = { nombre: '', incremento: 0 };
+  for (const [id, data] of Object.entries(res.porProducto)) {
+    const inc = data.conAVIA - data.sinAVIA;
+    if (inc > mejorProducto.incremento) {
+      mejorProducto = { nombre: data.nombre, incremento: inc };
+    }
+  }
+  
+  document.getElementById('insight').innerHTML = `
+    <h4>🎯 Insights Clave</h4>
+    <ul>
+      <li><strong>Mejor zona:</strong> ${mejorZona.nombre} (+€${Math.round(mejorZona.incremento).toLocaleString()})</li>
+      <li><strong>Mejor producto:</strong> ${mejorProducto.nombre} (+€${Math.round(mejorProducto.incremento).toLocaleString()})</li>
+      <li><strong>Recomendación:</strong> ${r.roi > 50 ? 'Escalar piloto a más zonas' : 'Optimizar antes de escalar'}</li>
+    </ul>
+  `;
+}
+
+function renderSAP(res) {
+  const r = res.resumen;
+  
+  let sapHTML = '';
+  
+  sapHTML += `<div class="sap-row"><span>ZCORP_AVIA_PILOT</span><span>ACTIVE</span></div>`;
+  sapHTML += `<div class="sap-row"><span>SALES_ORG</span><span>${estado.zonasSeleccionadas.join(', ')}</span></div>`;
+  sapHTML += `<div class="sap-row"><span>MATERIAL_GRP</span><span>${estado.productosSeleccionados.join(', ')}</span></div>`;
+  sapHTML += `<div class="sap-row"><span>PERIOD</span><span>${estado.semanas} WEEKS</span></div>`;
+  sapHTML += `<div class="sap-row"><span>DELTA_REVENUE</span><span>€${Math.round(r.incremento).toLocaleString()}</span></div>`;
+  sapHTML += `<div class="sap-row"><span>ROI_CALCULATED</span><span>${r.roi.toFixed(2)}%</span></div>`;
+  sapHTML += `<div class="sap-row"><span>STATUS</span><span>${r.roi > 0 ? 'PROFITABLE' : 'REVIEW'}</span></div>`;
+  
+  document.getElementById('sapPanel').innerHTML = `
+    <h3>🔌 SAP Integration Ready</h3>
+    ${sapHTML}
+  `;
+}
+
+function renderDiscurso(res) {
+  const r = res.resumen;
+  const zonasNombres = ZONAS
+    .filter(z => estado.zonasSeleccionadas.includes(z.id))
+    .map(z => z.nombre)
+    .join(', ');
+  const productosNombres = PRODUCTOS
+    .filter(p => estado.productosSeleccionados.includes(p.id))
+    .map(p => p.nombre)
+    .join(', ');
+  
+  document.getElementById('discurso').innerHTML = `
+    <h3>📋 Discurso para Comité de Dirección</h3>
+    
+    <p><strong>Resumen ejecutivo:</strong><br>
+    Hemos simulado un piloto AVIA de <span class="highlight">${estado.semanas} semanas</span> 
+    en <span class="highlight">${r.zonasActivas} zonas</span> (${zonasNombres}) 
+    con <span class="highlight">${r.productosActivos} productos</span> (${productosNombres}).</p>
+    
+    <p><strong>Inversión vs Retorno:</strong></p>
+    <ul>
+      <li>Inversión: <span class="highlight">€${estado.coste.toLocaleString()}</span></li>
+      <li>Incremento ventas: <span class="highlight">€${Math.round(r.incremento).toLocaleString()}</span> (+${r.incrementoPct.toFixed(1)}%)</li>
+      <li>Beneficio neto: <span class="highlight">€${Math.round(r.beneficioNeto).toLocaleString()}</span></li>
+      <li>ROI: <span class="highlight">${r.roi.toFixed(0)}%</span></li>
+      <li>Payback: <span class="highlight">${r.payback.toFixed(1)} semanas</span></li>
+    </ul>
+    
+    <p><strong>Conclusión:</strong><br>
+    ${r.roi > 100 ? 
+      'El piloto demuestra un retorno excepcional. Recomendamos aprobación inmediata y plan de escalado.' : 
+      r.roi > 50 ?
+      'El piloto es rentable. Recomendamos aprobación con revisión en semana 4.' :
+      r.roi > 0 ?
+      'El piloto es marginalmente rentable. Considerar ajustar alcance o duración.' :
+      'El piloto no alcanza rentabilidad. Revisar parámetros antes de proceder.'}
+    </p>
+    
+    <p><strong>Siguiente paso:</strong><br>
+    Validar con datos reales SAP y activar piloto en las zonas seleccionadas.</p>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// EJECUCIÓN
+// ═══════════════════════════════════════════
+
+function ejecutarSimulacion() {
+  estado.semanas = parseInt(document.getElementById('semanas').value);
+  estado.coste = parseInt(document.getElementById('coste').value);
+  estado.umbralFatiga = parseFloat(document.getElementById('fatiga').value);
+  
+  const res = simular();
+  if (!res) return;
+  
+  estado.resultados = res;
+  
+  renderKPIs(res);
+  renderChartZonas(res);
+  renderChartProductos(res);
+  renderChartROI(res);
+  renderTabla(res);
+  renderInsight(res);
+  renderSAP(res);
+  renderDiscurso(res);
+}
+
+// Inicialización
+initUI();
+ejecutarSimulacion();
+
+</script>
+
+</body>
+</html>

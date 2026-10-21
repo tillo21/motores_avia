@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA-Proyecto — Figuras de Patente OEPM</title>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=Karla:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F5F4F0;--card:#FFFFFF;--card2:#FAFAF8;--text:#18181A;--text2:#4A4A44;
+  --text3:#8A8A80;--border:#DBD9D2;--primary:#1A5276;--pLight:#DDE9F2;--pBg:#EDF3F8;
+  --accent:#B87A2E;--aLight:#F6EDDD;--aBg:#FAF5EC;--ok:#2B7A3B;--okL:#E2F0E5;
+  --err:#B83D2F;--errL:#FAEAE7;--shadow:0 2px 10px rgba(0,0,0,.06);
+  --shadowL:0 6px 24px rgba(0,0,0,.08);--r:10px;--rL:14px;
+}
+.dark{
+  --bg:#111113;--card:#1A1A1E;--card2:#202024;--text:#E2E1DC;--text2:#9A9990;
+  --text3:#5A5A52;--border:#2C2C30;--primary:#5CAED8;--pLight:#162636;--pBg:#141E28;
+  --accent:#D4A250;--aLight:#2A2214;--aBg:#221C12;--ok:#5EAA68;--okL:#18281A;
+  --err:#E06050;--errL:#2C1816;--shadow:0 2px 10px rgba(0,0,0,.25);
+  --shadowL:0 6px 24px rgba(0,0,0,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Karla',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+.shell{max-width:840px;margin:0 auto;padding:20px 16px 80px}
+
+/* Header */
+.hdr{text-align:center;padding:24px 12px 20px;margin-bottom:24px;animation:fadeIn .5s}
+.hdr-chip{display:inline-flex;align-items:center;gap:6px;background:var(--pLight);color:var(--primary);font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:12px}
+.hdr h1{font-family:'Zilla Slab',serif;font-size:clamp(22px,4.5vw,30px);font-weight:700;letter-spacing:-.3px;margin-bottom:6px}
+.hdr p{font-size:14px;color:var(--text2);font-weight:400;max-width:520px;margin:0 auto;line-height:1.6}
+
+/* Auto-fill cards */
+.autofill{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;animation:slideUp .5s .1s both}
+.af-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--shadow);transition:box-shadow .2s}
+.af-card:hover{box-shadow:var(--shadowL)}
+.af-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.af-icon.i1{background:var(--pBg);color:var(--primary)}
+.af-icon.i2{background:var(--aBg);color:var(--accent)}
+.af-icon.i3{background:var(--okL);color:var(--ok)}
+.af-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+.af-value{font-size:15px;font-weight:500;color:var(--text);line-height:1.4}
+.af-tag{display:inline-block;background:var(--okL);color:var(--ok);font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:10px;margin-top:4px}
+
+/* Figure gallery */
+.gallery-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;animation:slideUp .5s .2s both}
+.gallery-header h2{font-family:'Zilla Slab',serif;font-size:22px;font-weight:600}
+.fig-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rL);margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);animation:slideUp .4s both}
+.fig-card:nth-child(1){animation-delay:.25s}
+.fig-card:nth-child(2){animation-delay:.3s}
+.fig-card:nth-child(3){animation-delay:.35s}
+.fig-card:nth-child(4){animation-delay:.4s}
+.fig-card:nth-child(5){animation-delay:.45s}
+.fig-card:nth-child(6){animation-delay:.5s}
+.fig-card:nth-child(7){animation-delay:.55s}
+.fig-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);gap:10px}
+.fig-head-left{display:flex;align-items:center;gap:10px;min-width:0}
+.fig-num{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:var(--pBg);color:var(--primary);padding:3px 10px;border-radius:6px;white-space:nowrap}
+.fig-name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fig-canvas-wrap{background:var(--card2);padding:12px;display:flex;justify-content:center;overflow-x:auto}
+.fig-canvas-wrap canvas{border:1px solid var(--border);border-radius:4px;max-width:100%;height:auto}
+.fig-actions{display:flex;gap:8px;flex-shrink:0}
+.btn-sm{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:600;font-family:'Karla',sans-serif;border:none;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-sm i{font-size:11px}
+.btn-png{background:var(--pLight);color:var(--primary)}
+.btn-png:hover{background:var(--primary);color:#fff}
+
+/* Export section */
+.export-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;animation:slideUp .5s .6s both}
+.btn-lg{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:var(--r);font-size:15px;font-weight:700;font-family:'Karla',sans-serif;border:none;cursor:pointer;transition:all .2s}
+.btn-lg i{font-size:14px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:var(--shadow)}
+.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.btn-secondary{background:var(--card);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--card2);border-color:var(--text3)}
+.btn-accent{background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+.btn-accent:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-lg:disabled{opacity:.5;pointer-events:none}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);padding:13px 20px;border-radius:var(--r);box-shadow:var(--shadowL);font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;z-index:100;transition:transform .4s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.ok{border-color:var(--ok);color:var(--ok)}
+.toast.err{border-color:var(--err);color:var(--err)}
+
+/* Progress overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.show{opacity:1;pointer-events:auto}
+.overlay-box{background:var(--card);border-radius:var(--rL);padding:32px 28px;text-align:center;max-width:360px;width:90%;box-shadow:var(--shadowL)}
+.overlay-box h3{font-family:'Zilla Slab',serif;font-size:20px;margin-bottom:8px}
+.overlay-box p{font-size:14px;color:var(--text2);margin-bottom:16px}
+.prog-bar{width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0%}
+.prog-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text3);margin-top:8px}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:500px){.fig-head{flex-direction:column;align-items:flex-start}.fig-actions{width:100%}.btn-sm{flex:1;justify-content:center}}
+</style>
+</head>
+<body>
+<div class="shell" id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h3 id="ovTitle">Generando PDF</h3>
+    <p id="ovMsg">Renderizando figuras a 300 DPI…</p>
+    <div class="prog-bar"><div class="prog-fill" id="ovFill"></div></div>
+    <div class="prog-label" id="ovLabel">0 / 7</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════ DARK MODE ═══════════════════════════ */
+if(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.classList.add('dark');
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',e=>{e.matches?document.documentElement.classList.add('dark'):document.documentElement.classList.remove('dark')});
+
+/* ═══════════════════════════ DATA ═══════════════════════════ */
+const INVENCION = {
+  tituloES: 'Sistema y método de asistencia virtual inteligente para la generación automatizada de documentación técnica de patentes',
+  tituloEN: 'Intelligent Virtual Assistance System and Method for Automated Generation of Patent Technical Documentation',
+  ipc: ['G06F 40/10 — Procesamiento de texto', 'G06N 20/00 — Aprendizaje automático', 'G06Q 50/18 — Servicios legales']
+};
+
+const FIGURES = [
+  {id:'fig1', num:'Fig. 1', name:'Diagrama de bloques del sistema AVIA', draw:drawFig1},
+  {id:'fig2', num:'Fig. 2', name:'Diagrama de flujo del proceso documental', draw:drawFig2},
+  {id:'fig3', num:'Fig. 3', name:'Arquitectura del módulo de inteligencia artificial', draw:drawFig3},
+  {id:'fig4', num:'Fig. 4', name:'Esquema de la interfaz de usuario', draw:drawFig4},
+  {id:'fig5', num:'Fig. 5', name:'Diagrama de conexiones y flujo de datos', draw:drawFig5},
+  {id:'tab1', num:'Tabla I', name:'Lista de referencias numéricas', draw:drawTable1},
+  {id:'tab2', num:'Tabla II', name:'Especificaciones técnicas del sistema', draw:drawTable2},
+];
+
+/* Reference numbers */
+const REFS = {
+  1:'Dispositivo de usuario',2:'Módulo de interfaz de comunicación',3:'Motor de procesamiento de lenguaje natural (PLN)',
+  4:'Módulo de inteligencia artificial',5:'Base de datos de conocimiento',6:'Generador de documentos',
+  7:'Módulo de validación automática',8:'Módulo de exportación',9:'Entrada de solicitud',
+  10:'Analizador de requisitos',11:'Verificador de completitud',12:'Procesador de IA',
+  13:'Compositor de documentos',14:'Revisor automático',15:'Salida de documentos',
+  16:'Capa de entrada de datos',17:'Preprocesador de texto',18:'Modelo de lenguaje',
+  19:'Clasificador de intenciones',20:'Motor de decisión',21:'Capa de salida',
+  22:'Barra de herramientas',23:'Panel de entrada de datos',24:'Área de previsualización',
+  25:'Panel de estado del proceso',26:'Barra de progreso',27:'Almacén de plantillas',
+  28:'Registro de solicitudes',29:'Caché de procesamiento',30:'Archivo de patentes generadas',31:'Módulo de cifrado'
+};
+
+/* ═══════════════════════════ DRAWING HELPERS ═══════════════════════════ */
+const P = { // Patent drawing style
+  lc:'#1A1A1A', bg:'#FFFFFF', ref:'#1A5276',
+  font(s,w='400'){return `${w} ${s}px 'Karla', Arial, sans-serif`},
+  mono(s,w='600'){return `${w} ${s}px 'JetBrains Mono', Courier New, monospace`},
+};
+
+function pClear(ctx,w,h){ctx.fillStyle=P.bg;ctx.fillRect(0,0,w,h)}
+
+function pBox(ctx,x,y,w,h,r){
+  r=r||4;ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);
+  else{ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y)}
+  ctx.closePath()
+}
+
+function pLabelBox(ctx,x,y,w,h,lines,fs){
+  fs=fs||Math.max(9,h*.2);
+  pBox(ctx,x,y,w,h);ctx.fillStyle=P.bg;ctx.fill();ctx.stroke();
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs,'500');ctx.textAlign='center';ctx.textBaseline='middle';
+  if(typeof lines==='string')lines=[lines];
+  const lh=fs*1.25;const sy=y+h/2-(lines.length-1)*lh/2;
+  lines.forEach((t,i)=>ctx.fillText(t,x+w/2,sy+i*lh))
+}
+
+function pRef(ctx,x,y,num,sz){
+  sz=sz||10;ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);
+  ctx.fillStyle=P.bg;ctx.fill();ctx.strokeStyle=P.lc;ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle=P.lc;ctx.font=P.mono(sz*.9);ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(String(num),x,y+.5);ctx.lineWidth=1.5;ctx.strokeStyle=P.lc
+}
+
+function pArrow(ctx,x1,y1,x2,y2,hl){
+  hl=hl||8;const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));
+  ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));
+  ctx.closePath();ctx.fillStyle=P.lc;ctx.fill()
+}
+
+function pBiArrow(ctx,x1,y1,x2,y2,hl){
+  hl=hl||7;const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.fillStyle=P.lc;
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-Math.PI/6),y2-hl*Math.sin(a-Math.PI/6));ctx.lineTo(x2-hl*Math.cos(a+Math.PI/6),y2-hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1+hl*Math.cos(a-Math.PI/6),y1+hl*Math.sin(a-Math.PI/6));ctx.lineTo(x1+hl*Math.cos(a+Math.PI/6),y1+hl*Math.sin(a+Math.PI/6));ctx.closePath();ctx.fill()
+}
+
+function pDiamond(ctx,cx,cy,w,h){
+  ctx.beginPath();ctx.moveTo(cx,cy-h/2);ctx.lineTo(cx+w/2,cy);ctx.lineTo(cx,cy+h/2);ctx.lineTo(cx-w/2,cy);ctx.closePath();ctx.fillStyle=P.bg;ctx.fill();ctx.stroke()
+}
+
+function pOval(ctx,cx,cy,rx,ry){
+  ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fillStyle=P.bg;ctx.fill();ctx.stroke()
+}
+
+function pDashedLine(ctx,x1,y1,x2,y2){ctx.setLineDash([6,3]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([])}
+
+function pTitle(ctx,w,h,text,fs){
+  fs=fs||14;ctx.fillStyle=P.lc;ctx.font=P.font(fs,'700');ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(text,w/2,h-10)
+}
+
+function pSetup(ctx){ctx.strokeStyle=P.lc;ctx.lineWidth=1.5;ctx.fillStyle=P.lc;ctx.lineJoin='round';ctx.lineCap='round'}
+
+/* ═══════════════════════════ FIGURE 1: Block Diagram ═══════════════════════════ */
+function drawFig1(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const bw=w*.155,bh=h*.115,mx=w*.04,my=h*.1;
+  const sx=(w-2*mx-bw)/3;
+  const r1y=my+h*.06, r2y=my+h*.06+h*.36;
+  const boxes=[
+    {x:mx,y:r1y,t:['Terminal de','Usuario'],r:1},
+    {x:mx+sx,y:r1y,t:['Módulo de','Interfaz'],r:2},
+    {x:mx+2*sx,y:r1y,t:['Motor','PLN'],r:3},
+    {x:mx+3*sx,y:r1y,t:['Módulo de','IA'],r:4},
+    {x:mx,y:r2y,t:['Base de Datos','Conocimiento'],r:5},
+    {x:mx+sx,y:r2y,t:['Generador de','Documentos'],r:6},
+    {x:mx+2*sx,y:r2y,t:['Módulo de','Validación'],r:7},
+    {x:mx+3*sx,y:r2y,t:['Módulo de','Exportación'],r:8},
+  ];
+  const fs=Math.max(9,bh*.19);
+  boxes.forEach(b=>{pLabelBox(ctx,b.x,b.y,bw,bh,b.t,fs);pRef(ctx,b.x-4,b.y-4,b.r,Math.max(8,w*.013))});
+  // Row 1 horizontal arrows
+  for(let i=0;i<3;i++){const b=boxes[i],n=boxes[i+1];pArrow(ctx,b.x+bw,b.y+bh/2,n.x,n.y+bh/2)}
+  // Row 2 horizontal
+  pBiArrow(ctx,boxes[4].x+bw,boxes[4].y+bh/2,boxes[5].x,boxes[5].y+bh/2);
+  pArrow(ctx,boxes[5].x+bw,boxes[5].y+bh/2,boxes[6].x,boxes[6].y+bh/2);
+  pArrow(ctx,boxes[6].x+bw,boxes[6].y+bh/2,boxes[7].x,boxes[7].y+bh/2);
+  // Vertical connections
+  pArrow(ctx,boxes[3].x+bw/2,boxes[3].y+bh,boxes[3].x+bw/2,r2y);// 4→below
+  pDashedLine(ctx,boxes[3].x+bw/2,r2y,boxes[5].x+bw/2,r2y);// horizontal dash to 6
+  pBiArrow(ctx,boxes[4].x+bw/2,r1y+bh,boxes[4].x+bw/2,r2y);// 5↔1 col
+  pDashedLine(ctx,boxes[2].x+bw/2,r1y+bh,boxes[2].x+bw/2,r2y);// 3↕7
+
+  pTitle(ctx,w,h,'Fig. 1')
+}
+
+/* ═══════════════════════════ FIGURE 2: Flowchart ═══════════════════════════ */
+function drawFig2(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const cx=w/2,bw=w*.22,bh=h*.065,dw=w*.2,dh=h*.08;
+  const fs=Math.max(9,bh*.32);
+  let y=h*.06;
+  const gap=h*.09;
+
+  // Start oval
+  pOval(ctx,cx,y+bh/2,bw*.55,bh*.55);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs,'600');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('INICIO',cx,y+bh/2);pRef(ctx,cx+bw*.6,y,9,Math.max(7,w*.012));
+  let py=y+bh;y+=gap;
+
+  // Steps
+  const steps=[
+    {t:'Recepción de solicitud',r:10},
+    {t:'Análisis de requisitos',r:10.5},
+  ];
+  steps.forEach(s=>{
+    pArrow(ctx,cx,py,cx,y);pLabelBox(ctx,cx-bw/2,y,bw,bh,[s.t],fs);
+    if(s.r===10)pRef(ctx,cx-bw/2-12,y+bh/2,10,Math.max(7,w*.012));
+    else pRef(ctx,cx-bw/2-12,y+bh/2,10,Math.max(7,w*.012)); // reuse logic
+    py=y+bh;y+=gap
+  });
+  // Fix refs
+  // Diamond 1: ¿Datos completos?
+  pArrow(ctx,cx,py,cx,y+dh/2-dh/2);
+  pDiamond(ctx,cx,y+dh/2,dw,dh);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs*.85,'500');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('¿Completo?',cx,y+dh/2);
+  pRef(ctx,cx+dw/2+14,y+dh/2,11,Math.max(7,w*.012));
+  // No branch
+  ctx.font=P.font(fs*.8,'600');ctx.textAlign='left';ctx.fillText('No',cx+dw/2+4,y+dh/2-dh*.4);
+  const noX=cx+dw/2;
+  pArrow(ctx,noX,y+dh/2,w*.82,y+dh/2);
+  pLabelBox(ctx,w*.82-bw*.35,y+dh/2-bh/2,bw*.7,bh,['Solicitar datos'],fs*.85);
+  // Loop back arrow
+  ctx.beginPath();ctx.moveTo(w*.82,y+dh/2-bh/2);ctx.lineTo(w*.82,h*.06+bh);ctx.stroke();
+  pArrow(ctx,w*.82,h*.06+bh,cx+bw/2,h*.06+bh);
+
+  ctx.textAlign='center';ctx.font=P.font(fs*.8,'600');ctx.fillText('Sí',cx-dw/2-14,y+dh/2+4);
+  py=y+dh;y+=gap;
+
+  // More steps
+  const steps2=[
+    {t:'Procesamiento IA',r:12},
+    {t:'Generación documentos',r:13},
+    {t:'Validación automática',r:14},
+  ];
+  steps2.forEach(s=>{
+    pArrow(ctx,cx,py,cx,y);pLabelBox(ctx,cx-bw/2,y,bw,bh,[s.t],fs);
+    pRef(ctx,cx-bw/2-12,y+bh/2,s.r,Math.max(7,w*.012));
+    py=y+bh;y+=gap
+  });
+
+  // Diamond 2: ¿Aprobado?
+  pArrow(ctx,cx,py,cx,y+dh/2-dh/2);
+  pDiamond(ctx,cx,y+dh/2,dw,dh);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs*.85,'500');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('¿Aprobado?',cx,y+dh/2);
+  // Yes
+  ctx.font=P.font(fs*.8,'600');ctx.fillText('Sí',cx-dw/2-14,y+dh/2+4);
+  py=y+dh;y+=gap;
+
+  // End
+  pArrow(ctx,cx,py,cx,y+bh/2);
+  pOval(ctx,cx,y+bh/2,bw*.55,bh*.55);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs,'600');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('EXPORTAR',cx,y+bh/2);
+  pRef(ctx,cx+bw*.6,y,15,Math.max(7,w*.012));
+
+  pTitle(ctx,w,h,'Fig. 2')
+}
+
+/* ═══════════════════════════ FIGURE 3: AI Module ═══════════════════════════ */
+function drawFig3(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const cx=w/2,bw=w*.24,bh=h*.09;
+  const fs=Math.max(9,bh*.28);
+  const gap=h*.125;
+  let y=h*.08;
+  const layers=[
+    {t:'Capa de entrada de datos',r:16},
+    {t:'Preprocesador de texto',r:17},
+    {t:'Modelo de lenguaje',r:18},
+    {t:'Motor de decisión',r:20},
+    {t:'Capa de salida',r:21},
+  ];
+  // Side box: classifier
+  const sideX=cx+bw/2+w*.12;
+  const sideY=y+gap*2;
+
+  layers.forEach((l,i)=>{
+    if(i>0)pArrow(ctx,cx,y-gap+bh,cx,y);
+    pLabelBox(ctx,cx-bw/2,y,bw,bh,[l.t],fs);
+    pRef(ctx,cx-bw/2-14,y+bh/2,l.r,Math.max(7,w*.012));
+    y+=gap
+  });
+
+  // Classifier side box
+  pLabelBox(ctx,sideX-bw*.4,sideY,bw*.8,bh,['Clasificador','de intenciones'],fs*.9);
+  pRef(ctx,sideX+bw*.4+8,sideY+bh/2,19,Math.max(7,w*.012));
+  // Connect to model layer
+  const modelY=h*.08+gap*2;
+  pBiArrow(ctx,cx+bw/2,modelY+bh/2,sideX-bw*.4,sideY+bh/2);
+
+  // Dashed enclosure for "Módulo IA (4)"
+  ctx.setLineDash([8,4]);
+  pBox(ctx,cx-bw/2-w*.06,h*.04,w*.62,h*.84,8);
+  ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs*.85,'600');ctx.textAlign='left';
+  ctx.fillText('Módulo de IA (4)',cx-bw/2-w*.04,h*.04+fs);
+
+  pTitle(ctx,w,h,'Fig. 3')
+}
+
+/* ═══════════════════════════ FIGURE 4: UI Layout ═══════════════════════════ */
+function drawFig4(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const mx=w*.12,my=h*.08,fw=w*.76,fh=h*.74;
+  const fs=Math.max(9,h*.025);
+
+  // Outer frame
+  pBox(ctx,mx,my,fw,fh,6);ctx.stroke();
+
+  // Toolbar (22)
+  const tbh=fh*.1;
+  pLabelBox(ctx,mx,my,fw,tbh,['Barra de herramientas'],fs);
+  pRef(ctx,mx-12,my+tbh/2,22,Math.max(7,w*.012));
+
+  // Left panel: Input (23)
+  const panelY=my+tbh;const panelH=fh*.65;const leftW=fw*.4;
+  pLabelBox(ctx,mx,panelY,leftW,panelH,['Panel de','entrada de','datos'],fs);
+  pRef(ctx,mx-12,panelY+panelH/2,23,Math.max(7,w*.012));
+
+  // Right panel: Preview (24)
+  pLabelBox(ctx,mx+leftW,panelY,fw-leftW,panelH,['Área de','previsualización','de documentos'],fs);
+  pRef(ctx,mx+fw+12,panelY+panelH/2,24,Math.max(7,w*.012));
+
+  // Status panel (25)
+  const statY=panelY+panelH;const statH=fh*.15;
+  pLabelBox(ctx,mx,statY,fw,statH,['Panel de estado del proceso'],fs);
+  pRef(ctx,mx-12,statY+statH/2,25,Math.max(7,w*.012));
+
+  // Progress bar (26)
+  const progY=statY+statH;const progH=fh-tbh-panelH-statH;
+  pLabelBox(ctx,mx,progY,fw,progH,['Barra de progreso'],fs*.9);
+  pRef(ctx,mx-12,progY+progH/2,26,Math.max(7,w*.012));
+
+  // Outer label
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs*.85,'600');ctx.textAlign='center';
+  ctx.fillText('Interfaz de usuario del sistema AVIA',w/2,my+fh+fs*2.5);
+
+  pTitle(ctx,w,h,'Fig. 4')
+}
+
+/* ═══════════════════════════ FIGURE 5: Data Flow ═══════════════════════════ */
+function drawFig5(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const bw=w*.18,bh=h*.1;
+  const cx=w/2,cy=h*.42;
+  const fs=Math.max(9,bh*.24);
+
+  // Central: Processing cache (29)
+  pLabelBox(ctx,cx-bw/2,cy-bh/2,bw,bh,['Caché de','procesamiento'],fs);
+  pRef(ctx,cx+bw/2+10,cy,29,Math.max(7,w*.012));
+
+  // Top: Templates (27)
+  const ty=cy-h*.28;
+  pLabelBox(ctx,cx-bw/2,ty,bw,bh,['Almacén de','plantillas'],fs);
+  pRef(ctx,cx-bw/2-12,ty+bh/2,27,Math.max(7,w*.012));
+  pBiArrow(ctx,cx,ty+bh,cx,cy-bh/2);
+
+  // Bottom: Archive (30)
+  const by=cy+h*.28;
+  pLabelBox(ctx,cx-bw/2,by,bw,bh,['Archivo de','patentes'],fs);
+  pRef(ctx,cx-bw/2-12,by+bh/2,30,Math.max(7,w*.012));
+  pArrow(ctx,cx,cy+bh/2,cx,by);
+
+  // Left: Requests (28)
+  const lx=cx-w*.32;
+  pLabelBox(ctx,lx-bw/2,cy-bh/2,bw,bh,['Registro de','solicitudes'],fs);
+  pRef(ctx,lx-bw/2-12,cy,28,Math.max(7,w*.012));
+  pArrow(ctx,lx+bw/2,cy,cx-bw/2,cy);
+
+  // Right: Encryption (31)
+  const rx=cx+w*.32;
+  pLabelBox(ctx,rx-bw/2,cy-bh/2,bw,bh,['Módulo de','cifrado'],fs);
+  pRef(ctx,rx+bw/2+10,cy,31,Math.max(7,w*.012));
+  pBiArrow(ctx,cx+bw/2,cy,rx-bw/2,cy);
+
+  // Dashed connections to external
+  ctx.setLineDash([5,3]);
+  // 28 → 27
+  ctx.beginPath();ctx.moveTo(lx,cy-bh/2);ctx.lineTo(cx-bw/2,ty+bh/2);ctx.stroke();
+  // 31 → 30
+  ctx.beginPath();ctx.moveTo(rx,cy+bh/2);ctx.lineTo(cx+bw/2,by+bh/2);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Label
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs*.9,'600');ctx.textAlign='center';
+  ctx.fillText('Flujo de datos del sistema AVIA',cx,h*.88);
+
+  pTitle(ctx,w,h,'Fig. 5')
+}
+
+/* ═══════════════════════════ TABLE I: References ═══════════════════════════ */
+function drawTable1(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const mx=w*.05,my=h*.06;
+  const tw=w*.9,cols=[tw*.15,tw*.85];
+  const entries=Object.entries(REFS);
+  const rows=entries.length;
+  const hdrH=h*.055;
+  const rh=Math.min(h*.028,(h-my*2-hdrH)/rows);
+  const fs=Math.max(8,rh*.6);
+
+  // Title
+  ctx.fillStyle=P.lc;ctx.font=P.font(Math.max(11,h*.03),'700');ctx.textAlign='center';
+  ctx.fillText('TABLA I — Lista de referencias numéricas',w/2,my-4);
+
+  const ty=my+8;
+  // Header
+  ctx.fillStyle='#E8E8E4';ctx.fillRect(mx,ty,tw,hdrH);
+  ctx.strokeRect(mx,ty,tw,hdrH);
+  ctx.strokeRect(mx,ty,cols[0],hdrH);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs,'700');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('Ref.',mx+cols[0]/2,ty+hdrH/2);
+  ctx.fillText('Descripción',mx+cols[0]+cols[1]/2,ty+hdrH/2);
+
+  // Rows
+  let ry=ty+hdrH;
+  ctx.font=P.font(fs,'400');
+  entries.forEach(([num,desc],i)=>{
+    if(i%2===0){ctx.fillStyle='#F8F8F5';ctx.fillRect(mx,ry,tw,rh)}
+    ctx.strokeStyle=P.lc;ctx.lineWidth=.5;
+    ctx.strokeRect(mx,ry,cols[0],rh);ctx.strokeRect(mx+cols[0],ry,cols[1],rh);
+    ctx.fillStyle=P.lc;ctx.font=P.mono(fs);ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(num,mx+cols[0]/2,ry+rh/2);
+    ctx.font=P.font(fs,'400');ctx.textAlign='left';
+    ctx.fillText(desc,mx+cols[0]+8,ry+rh/2);
+    ry+=rh;ctx.lineWidth=1.5;ctx.strokeStyle=P.lc
+  });
+}
+
+/* ═══════════════════════════ TABLE II: Specifications ═══════════════════════════ */
+function drawTable2(ctx,w,h){
+  pClear(ctx,w,h);pSetup(ctx);
+  const mx=w*.06,my=h*.08;
+  const tw=w*.88;
+  const specs=[
+    ['Parámetro','Valor'],
+    ['Nombre del sistema','AVIA — Asistente Virtual de IA'],
+    ['Versión','1.0.0'],
+    ['Lenguajes NLP soportados','Español, Inglés, Francés, Alemán'],
+    ['Modelo de IA base','Transformer (atención multi-cabeza)'],
+    ['Dimensión de embeddings','768'],
+    ['Capacidad de procesamiento','500 solicitudes/hora'],
+    ['Tiempo medio de generación','< 45 segundos por documento'],
+    ['Formatos de exportación','PDF, DOCX, XML (ST.36), HTML'],
+    ['Cifrado','AES-256 + TLS 1.3'],
+    ['Disponibilidad objetivo','99.9% (SLA)'],
+    ['Almacenamiento plantillas','> 200 plantillas OEPM/PCT/EPO'],
+    ['Compatibilidad','Sede electrónica OEPM, EPO Online Filing'],
+    ['Clasificación IPC auto.','Sí — basada en análisis de reivindicaciones'],
+    ['Validación formal','Reglas OEPM + Convenio de Múnich (CPE)'],
+  ];
+
+  const rows=specs.length;
+  const hdrH=h*.055;
+  const rh=Math.min(h*.052,(h-my*2-hdrH)/(rows-1));
+  const fs=Math.max(8,rh*.42);
+  const cols=[tw*.42,tw*.58];
+
+  // Title
+  ctx.fillStyle=P.lc;ctx.font=P.font(Math.max(11,h*.03),'700');ctx.textAlign='center';
+  ctx.fillText('TABLA II — Especificaciones técnicas del sistema AVIA',w/2,my-6);
+
+  const ty=my+6;
+  // Header
+  ctx.fillStyle='#E8E8E4';ctx.fillRect(mx,ty,tw,hdrH);
+  ctx.strokeRect(mx,ty,tw,hdrH);ctx.strokeRect(mx,ty,cols[0],hdrH);
+  ctx.fillStyle=P.lc;ctx.font=P.font(fs,'700');ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(specs[0][0],mx+cols[0]/2,ty+hdrH/2);
+  ctx.fillText(specs[0][1],mx+cols[0]+cols[1]/2,ty+hdrH/2);
+
+  let ry=ty+hdrH;
+  for(let i=1;i<specs.length;i++){
+    if(i%2===0){ctx.fillStyle='#F8F8F5';ctx.fillRect(mx,ry,tw,rh)}
+    ctx.strokeStyle=P.lc;ctx.lineWidth=.5;
+    ctx.strokeRect(mx,ry,cols[0],rh);ctx.strokeRect(mx+cols[0],ry,cols[1],rh);
+    ctx.fillStyle=P.lc;ctx.font=P.font(fs,'600');ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(specs[i][0],mx+8,ry+rh/2);
+    ctx.font=P.font(fs,'400');
+    ctx.fillText(specs[i][1],mx+cols[0]+8,ry+rh/2);
+    ry+=rh;ctx.lineWidth=1.5;ctx.strokeStyle=P.lc
+  }
+}
+
+/* ═══════════════════════════ RENDER UI ═══════════════════════════ */
+const CW=760,CH=480;
+
+function renderApp(){
+  const app=document.getElementById('app');
+  app.innerHTML=`
+    <div class="hdr">
+      <div class="hdr-chip"><i class="fa-solid fa-microchip"></i> AVIA-Proyecto</div>
+      <h1>Figuras de Patente — Sistema AVIA</h1>
+      <p>Datos auto-completados y 7 figuras/tablas generadas programáticamente, listas para exportar como PNG individual o PDF profesional A4 (300 DPI).</p>
+    </div>
+
+    <div class="autofill">
+      <div class="af-card">
+        <div class="af-icon i1"><i class="fa-solid fa-heading"></i></div>
+        <div>
+          <div class="af-label">Título de la invención (ES)</div>
+          <div class="af-value">${INVENCION.tituloES}</div>
+          <span class="af-tag"><i class="fa-solid fa-check"></i> Auto-completado</span>
+        </div>
+      </div>
+      <div class="af-card">
+        <div class="af-icon i2"><i class="fa-solid fa-language"></i></div>
+        <div>
+          <div class="af-label">Title (EN)</div>
+          <div class="af-value">${INVENCION.tituloEN}</div>
+          <span class="af-tag"><i class="fa-solid fa-check"></i> Auto-completado</span>
+        </div>
+      </div>
+      <div class="af-card">
+        <div class="af-icon i3"><i class="fa-solid fa-tags"></i></div>
+        <div>
+          <div class="af-label">Clasificación IPC</div>
+          <div class="af-value">${INVENCION.ipc.map(c=>`<div style="margin-bottom:2px">${c}</div>`).join('')}</div>
+          <span class="af-tag"><i class="fa-solid fa-check"></i> Auto-completado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery-header">
+      <h2><i class="fa-solid fa-images" style="color:var(--primary);margin-right:6px"></i> Figuras y Tablas</h2>
+      <span style="font-size:13px;color:var(--text3)">5 figuras + 2 tablas</span>
+    </div>
+
+    <div id="gallery"></div>
+
+    <div class="export-bar">
+      <button class="btn-lg btn-primary" onclick="exportAllPNG()"><i class="fa-solid fa-images"></i> Descargar todas PNG</button>
+      <button class="btn-lg btn-accent" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Exportar PDF A4 (300 DPI)</button>
+    </div>
+  `;
+
+  const gallery=document.getElementById('gallery');
+  FIGURES.forEach(fig=>{
+    const card=document.createElement('div');card.className='fig-card';
+    card.innerHTML=`
+      <div class="fig-head">
+        <div class="fig-head-left">
+          <span class="fig-num">${fig.num}</span>
+          <span class="fig-name">${fig.name}</span>
+        </div>
+        <div class="fig-actions">
+          <button class="btn-sm btn-png" onclick="exportPNG('${fig.id}','${fig.num}')"><i class="fa-solid fa-download"></i> PNG</button>
+        </div>
+      </div>
+      <div class="fig-canvas-wrap"><canvas id="${fig.id}"></canvas></div>`;
+    gallery.appendChild(card)
+  });
+
+  // Draw all canvases
+  const dpr=window.devicePixelRatio||1;
+  FIGURES.forEach(fig=>{
+    const c=document.getElementById(fig.id);
+    c.width=CW*dpr;c.height=CH*dpr;
+    c.style.width=CW+'px';c.style.height=CH+'px';
+    const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+    fig.draw(ctx,CW,CH)
+  })
+}
+
+/* ═══════════════════════════ EXPORT PNG ═══════════════════════════ */
+function exportPNG(id,name){
+  const c=document.getElementById(id);
+  // Create high-res offscreen canvas
+  const scale=3;
+  const oc=document.createElement('canvas');oc.width=CW*scale;oc.height=CH*scale;
+  const octx=oc.getContext('2d');octx.scale(scale,scale);
+  const fig=FIGURES.find(f=>f.id===id);
+  fig.draw(octx,CW,CH);
+  const link=document.createElement('a');
+  link.download=`AVIA_${name.replace(/\s+/g,'_').replace(/\./g,'')}.png`;
+  link.href=oc.toDataURL('image/png');
+  link.click();
+  showToast(`${name} exportada como PNG`,'ok')
+}
+
+function exportAllPNG(){
+  FIGURES.forEach((fig,i)=>{
+    setTimeout(()=>{
+      exportPNG(fig.id,fig.num);
+      if(i===FIGURES.length-1)showToast('Todas las figuras exportadas','ok')
+    },i*400)
+  })
+}
+
+/* ═══════════════════════════ EXPORT PDF ═══════════════════════════ */
+async function exportPDF(){
+  const ov=document.getElementById('overlay');
+  const fill=document.getElementById('ovFill');
+  const label=document.getElementById('ovLabel');
+  ov.classList.add('show');
+
+  await new Promise(r=>setTimeout(r,100));
+
+  try{
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pageW=210,pageH=297;
+    const margin=20;
+    const usableW=pageW-2*margin;
+
+    // DPI 300: pixels per mm = 300/25.4 ≈ 11.811
+    const ppmm=300/25.4;
+    const figWpx=Math.round(usableW*ppmm);// ~2008
+    const figHpx=Math.round(figWpx*(CH/CW));// maintain aspect
+
+    for(let i=0;i<FIGURES.length;i++){
+      const fig=FIGURES[i];
+      fill.style.width=((i+1)/FIGURES.length*100)+'%';
+      label.textContent=`${i+1} / ${FIGURES.length} — ${fig.num}`;
+      await new Promise(r=>setTimeout(r,50));
+
+      if(i>0)pdf.addPage();
+
+      // Title page header
+      pdf.setFont('helvetica','bold');pdf.setFontSize(10);pdf.setTextColor(100);
+      pdf.text('AVIA-Proyecto — Solicitud de Patente OEPM',pageW/2,12,{align:'center'});
+      pdf.setDrawColor(200);pdf.line(margin,15,pageW-margin,15);
+
+      // Figure title
+      pdf.setFont('helvetica','bold');pdf.setFontSize(14);pdf.setTextColor(30);
+      pdf.text(`${fig.num} — ${fig.name}`,pageW/2,26,{align:'center'});
+
+      // Render figure at 300 DPI
+      const oc=document.createElement('canvas');oc.width=figWpx;oc.height=figHpx;
+      const octx=oc.getContext('2d');
+      const s=figWpx/CW;octx.scale(s,s);
+      fig.draw(octx,CW,CH);
+
+      const imgData=oc.toDataURL('image/png');
+      const figH_mm=usableW*(CH/CW);
+      const figY=32;
+      pdf.addImage(imgData,'PNG',margin,figY,usableW,figH_mm);
+
+      // Border around figure
+      pdf.setDrawColor(180);pdf.setLineWidth(.3);
+      pdf.rect(margin,figY,usableW,figH_mm);
+
+      // Footer
+      pdf.setFont('helvetica','normal');pdf.setFontSize(8);pdf.setTextColor(150);
+      pdf.text(`Página ${i+1} de ${FIGURES.length}`,pageW/2,pageH-10,{align:'center'});
+      pdf.text('Documento generado por AVIA-Proyecto',margin,pageH-10);
+      pdf.text('300 DPI · A4',pageW-margin,pageH-10,{align:'right'})
+    }
+
+    // Save
+    pdf.save('AVIA_Figuras_Patente_OEPM.pdf');
+    showToast('PDF profesional exportado (A4, 300 DPI)','ok')
+  }catch(e){
+    showToast('Error al generar PDF: '+e.message,'err');
+    console.log('PDF error: '+JSON.stringify(e))
+  }finally{
+    ov.classList.remove('show')
+  }
+}
+
+/* ═══════════════════════════ UTILS ═══════════════════════════ */
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.className='toast '+type;
+  t.innerHTML=`<i class="fa-solid fa-${type==='ok'?'circle-check':'circle-xmark'}"></i> ${msg}`;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200)
+}
+
+/* ═══════════════════════════ INIT ═══════════════════════════ */
+document.fonts.ready.then(()=>renderApp());
+</script>
+</body>
+</html>
+

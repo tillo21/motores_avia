@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML38 — Aprendizaje Adaptativo AVIA</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0f172a; color:#e2e8f0;
+       font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; }
+
+/* Header */
+.hdr { background:#1e293b; border-bottom:1px solid #334155;
+       padding:12px 20px; display:flex; align-items:center; gap:12px; }
+.hdr-badge { background:#0891b2; color:#fff; font-size:11px;
+             font-weight:700; padding:3px 8px; border-radius:4px; }
+.hdr-title { font-size:15px; font-weight:700; color:#f1f5f9; }
+.hdr-rules { margin-left:auto; display:flex; gap:8px; }
+.rule-pill { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+.rule-pill.r7   { background:#1e3a5f; color:#93c5fd; }
+.rule-pill.c001 { background:#1a2e1a; color:#86efac; }
+.rule-pill.c002 { background:#2d1b69; color:#c4b5fd; }
+
+/* Live bar */
+.live-bar { background:#1e293b; border-bottom:1px solid #0f172a;
+            padding:6px 20px; display:flex; align-items:center;
+            gap:16px; font-size:11px; }
+.live-dot { width:7px; height:7px; border-radius:50%; background:#0891b2;
+            animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.live-label { color:#94a3b8; }
+.live-label span { color:#e2e8f0; font-weight:600; }
+
+/* KPI bar */
+.kpi-bar { display:grid; grid-template-columns:repeat(4,1fr);
+           gap:1px; background:#0f172a; border-bottom:1px solid #0f172a; }
+.kpi { background:#1e293b; padding:14px 20px; }
+.kpi-val { font-size:26px; font-weight:800; }
+.kpi-label { font-size:11px; color:#64748b; margin-top:2px; }
+.kpi.ciclos  .kpi-val { color:#0891b2; }
+.kpi.recoms  .kpi-val { color:#a855f7; }
+.kpi.ajustes .kpi-val { color:#f59e0b; }
+.kpi.prec    .kpi-val { color:#22c55e; }
+
+/* Layout */
+.main { display:grid; grid-template-columns:1fr 340px;
+        gap:1px; background:#0f172a; min-height:calc(100vh - 132px); }
+.panel { background:#1e293b; padding:20px; overflow-y:auto; }
+.panel-hdr { font-size:11px; font-weight:700; color:#64748b;
+             letter-spacing:.08em; text-transform:uppercase;
+             margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.panel-hdr::after { content:''; flex:1; height:1px; background:#334155; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; margin-bottom:18px;
+        border-bottom:1px solid #334155; }
+.tab { font-size:12px; font-weight:600; padding:8px 18px;
+       cursor:pointer; color:#64748b; background:transparent;
+       border:none; border-bottom:2px solid transparent; }
+.tab.active { color:#e2e8f0; border-bottom-color:#0891b2; }
+.tab:hover:not(.active) { color:#94a3b8; }
+
+/* Rule cards */
+.rule-card { background:#0f172a; border:1px solid #334155;
+             border-radius:8px; padding:14px; margin-bottom:10px; }
+.rule-card-hdr { display:flex; align-items:center;
+                 gap:8px; margin-bottom:10px; }
+.rule-id { font-size:11px; font-weight:700; color:#64748b;
+           background:#1e293b; padding:2px 7px; border-radius:3px; }
+.rule-name { font-size:13px; font-weight:600; color:#f1f5f9; flex:1; }
+.rule-status { font-size:10px; font-weight:700;
+               padding:2px 7px; border-radius:3px; }
+.rule-status.estable  { background:#14532d; color:#86efac; }
+.rule-status.revisar  { background:#713f12; color:#fde68a; }
+.rule-status.ajustada { background:#1e3a5f; color:#93c5fd; }
+.rule-status.critica  { background:#7f1d1d; color:#fca5a5; }
+
+/* Bars */
+.bar-row { display:flex; align-items:center;
+           gap:10px; margin-bottom:6px; }
+.bar-label { font-size:11px; color:#94a3b8; width:116px; flex-shrink:0; }
+.bar-bg { flex:1; height:6px; background:#334155;
+          border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; transition:width .5s ease; }
+.bar-val { font-size:11px; font-weight:700;
+           width:38px; text-align:right; flex-shrink:0; }
+
+/* Weight row */
+.weight-row { display:flex; align-items:center; gap:8px;
+              margin-top:10px; font-size:11px; color:#475569;
+              background:#1e293b; padding:8px 10px;
+              border-radius:5px; flex-wrap:wrap; }
+.weight-val { font-size:12px; font-weight:700; color:#a5b4fc;
+              background:#1e1b4b; padding:2px 8px; border-radius:3px; }
+.wd-up   { color:#22c55e; font-weight:700; }
+.wd-down { color:#ef4444; font-weight:700; }
+.wd-flat { color:#64748b; }
+.wstat   { color:#64748b; }
+.wstat strong { color:#94a3b8; }
+
+/* Recomendaciones */
+.rec-card { border-radius:8px; padding:12px 14px;
+            margin-bottom:10px; border-left:3px solid; }
+.rec-card.alta  { background:#1c0a04; border-left-color:#ef4444; }
+.rec-card.media { background:#1c1204; border-left-color:#f59e0b; }
+.rec-card.baja  { background:#041c10; border-left-color:#22c55e; }
+.rec-meta { display:flex; align-items:center;
+            gap:6px; margin-bottom:6px; }
+.rec-priority { font-size:10px; font-weight:700;
+               padding:2px 6px; border-radius:3px; }
+.rec-card.alta  .rec-priority { background:#7f1d1d; color:#fca5a5; }
+.rec-card.media .rec-priority { background:#78350f; color:#fde68a; }
+.rec-card.baja  .rec-priority { background:#14532d; color:#86efac; }
+.rec-regla { font-size:10px; font-weight:700; padding:2px 6px;
+             border-radius:3px; background:#1e293b; color:#64748b; }
+.rec-titulo  { font-size:13px; font-weight:600;
+               color:#f1f5f9; margin-bottom:4px; }
+.rec-detalle { font-size:12px; color:#94a3b8; line-height:1.5; }
+.rec-accion  { font-size:11px; color:#7dd3fc; margin-top:6px;
+               background:rgba(12,74,110,.25); padding:5px 8px;
+               border-radius:4px; }
+
+/* Precision gauge (sidebar) */
+.prec-gauge { background:#0f172a; border:1px solid #334155;
+              border-radius:8px; padding:14px; margin-bottom:14px; }
+.pg-title { font-size:11px; font-weight:700; color:#64748b;
+            text-transform:uppercase; letter-spacing:.07em;
+            margin-bottom:10px; }
+.pg-row { display:flex; align-items:center;
+          gap:8px; margin-bottom:5px; font-size:11px; }
+.pg-num { width:30px; color:#475569; }
+.pg-bg  { flex:1; height:5px; background:#334155;
+          border-radius:3px; overflow:hidden; }
+.pg-fill { height:100%; border-radius:3px; }
+.pg-val { width:34px; text-align:right; font-weight:700; }
+
+/* Timeline */
+.tl-entry { padding:12px; border-bottom:1px solid #1e293b; font-size:12px; }
+.tl-entry:last-child { border-bottom:none; }
+.tl-time   { color:#475569; font-size:11px; }
+.tl-evt    { font-weight:600; color:#e2e8f0; margin:3px 0 2px; }
+.tl-detail { color:#64748b; font-size:11px; }
+.tl-tags   { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+.t-tag { display:inline-block; font-size:10px; font-weight:700;
+         padding:1px 6px; border-radius:3px; }
+.t-tag.learn  { background:#0c4a6e; color:#7dd3fc; }
+.t-tag.adj    { background:#1e1b4b; color:#c4b5fd; }
+.t-tag.pat    { background:#14532d; color:#86efac; }
+.t-tag.up     { background:#14532d; color:#4ade80; }
+.t-tag.down   { background:#7f1d1d; color:#f87171; }
+
+/* Empty */
+.empty { text-align:center; padding:48px 20px; color:#475569; }
+.empty-icon { font-size:36px; margin-bottom:8px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <span class="hdr-badge">HTML38</span>
+  <span class="hdr-title">Aprendizaje Adaptativo — AVIA Dashboard</span>
+  <div class="hdr-rules">
+    <span class="rule-pill r7">R7 ACTIVO</span>
+    <span class="rule-pill c001">CORE-001 ACTIVO</span>
+    <span class="rule-pill c002">CORE-002 ACTIVO</span>
+  </div>
+</div>
+
+<!-- LIVE BAR -->
+<div class="live-bar">
+  <div class="live-dot"></div>
+  <div class="live-label">Motor aprendizaje · ciclo <span>6s</span></div>
+  <div class="live-label">Ciclos: <span id="liveCiclos">—</span></div>
+  <div class="live-label">Ajustados este ciclo: <span id="liveAdj">—</span></div>
+  <div class="live-label">Recomendaciones: <span id="liveRecs">—</span></div>
+  <div class="live-label" style="margin-left:auto">
+    Precisión sistema: <span id="livePrec">—</span>
+  </div>
+</div>
+
+<!-- KPI BAR -->
+<div class="kpi-bar">
+  <div class="kpi ciclos">
+    <div class="kpi-val" id="kpiCiclos">0</div>
+    <div class="kpi-label">Ciclos de aprendizaje</div>
+  </div>
+  <div class="kpi recoms">
+    <div class="kpi-val" id="kpiRecs">0</div>
+    <div class="kpi-label">Recomendaciones activas</div>
+  </div>
+  <div class="kpi ajustes">
+    <div class="kpi-val" id="kpiAjustes">0</div>
+    <div class="kpi-label">Reglas con peso ajustado</div>
+  </div>
+  <div class="kpi prec">
+    <div class="kpi-val" id="kpiPrec">—</div>
+    <div class="kpi-label">Precisión media del sistema</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab active"
+        onclick="switchTab('reglas',this)">Rendimiento por regla</button>
+      <button class="tab"
+        onclick="switchTab('recs',this)">Recomendaciones</button>
+    </div>
+    <div id="tabReglas"></div>
+    <div id="tabRecs" style="display:none"></div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="panel" style="border-left:1px solid #0f172a;">
+    <div class="panel-hdr">Historial de ciclos</div>
+    <div id="precGauge"></div>
+    <div id="timelineLog"></div>
+  </div>
+
+</div>
+
+<script>
+
+/* ═══════════════════════════════════════════
+   AVIA CONTEXT — R7 + CORE-001 + CORE-002
+═══════════════════════════════════════════ */
+var AVIA_CONTEXT = {
+  proyecto:  'AVIA-Dashboard',
+  artefacto: 'HTML38-Aprendizaje',
+  anterior:  'HTML37-Intervencion',
+  siguiente: 'HTML39-TBD'
+};
+
+/* ═══════════════════════════════════════════
+   CORE-002 — Persistencia Evolutiva
+═══════════════════════════════════════════ */
+var ESTADO_PROYECTO = {
+  artefacto_actual: 'HTML38',
+  artefactos_previos: [
+    'HTML27','HTML28','HTML29','HTML30',
+    'HTML31','HTML32','HTML33','HTML34',
+    'HTML35','HTML36','HTML37'
+  ]
+};
+
+function validarEvolucion(ctx) {
+  var actual    = parseInt(ESTADO_PROYECTO.artefacto_actual.replace('HTML',''));
+  var siguiente = parseInt((ctx.siguiente||'').replace('HTML',''));
+  if (!isNaN(siguiente) && siguiente < actual) {
+    console.warn('[CORE-002] Regresión bloqueada:', ctx.siguiente);
+    return false;
+  }
+  return true;
+}
+
+/* ═══════════════════════════════════════════
+   R7 Guard
+═══════════════════════════════════════════ */
+function AVIA_guardFocus(label) {
+  var ext = ['presentacion','slides','pitch','jgc','ppt','portada'];
+  if (ext.some(function(k){ return label.toLowerCase().indexOf(k) !== -1; })) {
+    console.warn('[R7] Conflicto de contexto:', label);
+    return false;
+  }
+  return true;
+}
+
+/* ═══════════════════════════════════════════
+   AVIA_LEDGER — registro certificado
+═══════════════════════════════════════════ */
+var AVIA_LEDGER = (function() {
+  var _s = [];
+  return {
+    push: function(e) {
+      e.ledger_id = 'L-' + String(_s.length + 1).padStart(3,'0');
+      e.timestamp = Date.now();
+      _s.push(e);
+      return e;
+    },
+    getAll: function() { return _s; }
+  };
+})();
+
+/* ═══════════════════════════════════════════
+   HISTORIAL DE INTERVENCIONES — heredado HTML37
+   Representa sesiones acumuladas previas
+═══════════════════════════════════════════ */
+var HISTORIAL_INTERVENCIONES = [
+
+  // RA-01 Confianza crítica · 3/3 overrides → regla demasiado agresiva
+  { id:'INT-01', regla:'RA-01', estado:'override',
+    override:{ justificacion:'Contexto estacional validado', actor:'operador' }},
+  { id:'INT-02', regla:'RA-01', estado:'override',
+    override:{ justificacion:'Factor validado por supervisor', actor:'supervisor' }},
+  { id:'INT-03', regla:'RA-01', estado:'override',
+    override:{ justificacion:'Umbral ajustado en pipeline', actor:'operador' }},
+
+  // RA-02 Confianza baja · 0/2 overrides → estable, confiable
+  { id:'INT-04', regla:'RA-02', estado:'activa', override:null },
+  { id:'INT-05', regla:'RA-02', estado:'activa', override:null },
+
+  // RA-03 Sin evidencia trazable · 0/2 overrides → estable
+  { id:'INT-06', regla:'RA-03', estado:'activa', override:null },
+  { id:'INT-07', regla:'RA-03', estado:'activa', override:null },
+
+  // RA-04 Inconsistencia lógica · 1/2 overrides → revisar
+  { id:'INT-08', regla:'RA-04', estado:'override',
+    override:{ justificacion:'Datos de mercado externo no modelados', actor:'analista' }},
+  { id:'INT-09', regla:'RA-04', estado:'activa', override:null },
+
+  // RA-05 Violación ética · 0/1 → estable
+  { id:'INT-10', regla:'RA-05', estado:'activa', override:null },
+
+  // RA-06 Decisión bloqueada · 0/1 → estable
+  { id:'INT-11', regla:'RA-06', estado:'activa', override:null },
+
+  // RA-07 Violación R7 · 0/1 → estable
+  { id:'INT-12', regla:'RA-07', estado:'activa', override:null },
+
+  // RA-08 Cambio foco · 0/1 → estable
+  { id:'INT-13', regla:'RA-08', estado:'activa', override:null }
+];
+
+/* ═══════════════════════════════════════════
+   REGLAS META
+═══════════════════════════════════════════ */
+var REGLAS_META = {
+  'RA-01': { nombre:'Confianza crítica',      tipo:'CRITICO' },
+  'RA-02': { nombre:'Confianza baja',          tipo:'ALERTA'  },
+  'RA-03': { nombre:'Sin evidencia trazable',  tipo:'AVISO'   },
+  'RA-04': { nombre:'Inconsistencia lógica',   tipo:'ALERTA'  },
+  'RA-05': { nombre:'Violación ética',         tipo:'CRITICO' },
+  'RA-06': { nombre:'Decisión bloqueada',      tipo:'CRITICO' },
+  'RA-07': { nombre:'Violación R7',            tipo:'ALERTA'  },
+  'RA-08': { nombre:'Cambio de foco',          tipo:'AVISO'   }
+};
+
+/* ═══════════════════════════════════════════
+   AVIA_LEARNING_ENGINE — núcleo HTML38
+═══════════════════════════════════════════ */
+var AVIA_LEARNING_ENGINE = (function() {
+
+  /* Pesos iniciales heredados de HTML37 */
+  var _pesos = {
+    'RA-01':1.00,'RA-02':1.00,'RA-03':1.00,'RA-04':1.00,
+    'RA-05':1.00,'RA-06':1.00,'RA-07':1.00,'RA-08':1.00
+  };
+  var _pesoAnterior = {
+    'RA-01':1.00,'RA-02':1.00,'RA-03':1.00,'RA-04':1.00,
+    'RA-05':1.00,'RA-06':1.00,'RA-07':1.00,'RA-08':1.00
+  };
+
+  var _ciclos          = 0;
+  var _historial       = [];
+  var _ajustadasTotal  = 0;
+
+  /* Métricas por regla */
+  function _calcularMetricas(intervenciones) {
+    var m = {};
+    Object.keys(REGLAS_META).forEach(function(id) {
+      var ints      = intervenciones.filter(function(i){ return i.regla === id; });
+      var total     = ints.length;
+      var overrides = ints.filter(function(i){ return i.estado === 'override'; }).length;
+      var activas   = total - overrides;
+      m[id] = {
+        id:           id,
+        nombre:       REGLAS_META[id].nombre,
+        tipo:         REGLAS_META[id].tipo,
+        total:        total,
+        overrides:    overrides,
+        activas:      activas,
+        tasaOverride: total > 0 ? overrides / total : 0,
+        precision:    total > 0 ? Math.round((activas / total) * 100) : 100
+      };
+    });
+    return m;
+  }
+
+  /* Ajuste de pesos — núcleo del aprendizaje */
+  function _ajustarPesos(metricas) {
+    /* Snapshot previo */
+    Object.keys(_pesos).forEach(function(id){
+      _pesoAnterior[id] = _pesos[id];
+    });
+
+    var ajustadas = 0;
+    Object.keys(metricas).forEach(function(id) {
+      var m = metricas[id];
+      if (m.total === 0) return;
+      var p = _pesos[id];
+
+      if (m.tasaOverride >= 0.60) {
+        /* Alta tasa override → falsos positivos → reducir agresividad */
+        _pesos[id] = parseFloat(Math.max(0.30, p - 0.15).toFixed(2));
+        ajustadas++;
+      } else if (m.tasaOverride >= 0.30) {
+        /* Override moderado → reducir levemente */
+        _pesos[id] = parseFloat(Math.max(0.50, p - 0.05).toFixed(2));
+        ajustadas++;
+      } else if (m.tasaOverride <= 0.10 && m.total >= 2) {
+        /* Regla confiable → reforzar */
+        _pesos[id] = parseFloat(Math.min(1.50, p + 0.05).toFixed(2));
+        ajustadas++;
+      }
+    });
+    return ajustadas;
+  }
+
+  /* Estado cualitativo de una regla */
+  function _estadoRegla(m) {
+    if (m.tasaOverride >= 0.60) return 'critica';
+    if (m.tasaOverride >= 0.30) return 'revisar';
+    if (m.total === 0 || m.precision >= 80) return 'estable';
+    return 'ajustada';
+  }
+
+  /* Recomendaciones accionables */
+  function _recomendaciones(metricas) {
+    var recs = [];
+
+    /* Alerta sistémica si ≥2 reglas críticas */
+    var criticas = Object.values(metricas)
+      .filter(function(m){ return m.tasaOverride >= 0.60; }).length;
+    if (criticas >= 2) {
+      recs.push({
+        prioridad:'alta', regla:'SISTEMA',
+        titulo:  'Revisión general del motor de intervención',
+        detalle: criticas + ' regla(s) con tasa de override ≥ 60%. '
+                 + 'Riesgo de erosión de confianza del operador en el sistema.',
+        accion:  '→ Sesión de calibración con equipo de gobernanza recomendada'
+      });
+    }
+
+    Object.values(metricas).forEach(function(m) {
+      if (m.total === 0) return;
+
+      if (m.tasaOverride >= 0.60) {
+        recs.push({
+          prioridad:'alta', regla:m.id,
+          titulo:  'Recalibrar umbral — ' + m.nombre,
+          detalle: m.overrides + ' de ' + m.total + ' intervenciones sobreescritas ('
+                   + Math.round(m.tasaOverride * 100) + '%). '
+                   + 'Generando falsos positivos en exceso.',
+          accion:  '→ Elevar umbral de activación o revisar condición fn()'
+        });
+      } else if (m.tasaOverride >= 0.30) {
+        recs.push({
+          prioridad:'media', regla:m.id,
+          titulo:  'Revisar parámetros — ' + m.nombre,
+          detalle: Math.round(m.tasaOverride * 100) + '% de tasa de override. '
+                   + 'Posible contexto operativo no modelado en la regla actual.',
+          accion:  '→ Analizar justificaciones de overrides para identificar patrón'
+        });
+      } else if (m.total >= 2 && m.precision >= 90) {
+        recs.push({
+          prioridad:'baja', regla:m.id,
+          titulo:  'Regla de alto rendimiento — ' + m.nombre,
+          detalle: 'Precisión ' + m.precision + '% en ' + m.total
+                   + ' intervención(es). Tasa override: '
+                   + Math.round(m.tasaOverride * 100) + '%.',
+          accion:  '→ Considerar elevar su prioridad en el motor de intervención'
+        });
+      }
+    });
+    return recs;
+  }
+
+  /* Precisión media del sistema */
+  function _precisionSistema(metricas) {
+    var activos = Object.values(metricas).filter(function(m){ return m.total > 0; });
+    if (!activos.length) return 100;
+    var suma = activos.reduce(function(s, m){ return s + m.precision; }, 0);
+    return Math.round(suma / activos.length);
+  }
+
+  /* ─── CICLO PRINCIPAL ─── */
+  function ejecutarCiclo(intervenciones) {
+    _ciclos++;
+
+    var metricas  = _calcularMetricas(intervenciones);
+    var adjCiclo  = _ajustarPesos(metricas);
+    var recs      = _recomendaciones(metricas);
+    var prec      = _precisionSistema(metricas);
+
+    /* Reglas actualmente calibradas (≠ baseline 1.00) */
+    _ajustadasTotal = Object.keys(_pesos)
+      .filter(function(id){ return Math.abs(_pesos[id] - 1.00) > 0.005; }).length;
+
+    var ciclo = {
+      numero:             _ciclos,
+      hora:               new Date().toLocaleTimeString(),
+      ts:                 Date.now(),
+      metricas:           metricas,
+      ajustadasEsteCiclo: adjCiclo,
+      ajustadasTotal:     _ajustadasTotal,
+      recomendaciones:    recs,
+      precisionSistema:   prec
+    };
+
+    _historial.push(ciclo);
+
+    /* Certifica en ledger */
+    AVIA_LEDGER.push({
+      id:       'LEARN-' + _ciclos,
+      tipo:     'APRENDIZAJE',
+      decision: 'CICLO_COMPLETADO',
+      actor:    'AVIA_LEARNING_ENGINE',
+      contexto: 'HTML38',
+      hora:     ciclo.hora,
+      precision: prec,
+      ajustadas: adjCiclo,
+      recs:      recs.length
+    });
+
+    return ciclo;
+  }
+
+  return {
+    ejecutarCiclo:     ejecutarCiclo,
+    getCiclos:         function(){ return _ciclos; },
+    getHistorial:      function(){ return _historial; },
+    getUltimoCiclo:    function(){
+      return _historial[_historial.length - 1] || null;
+    },
+    getPesos:          function(){ return _pesos; },
+    getPesoAnterior:   function(){ return _pesoAnterior; },
+    getAjustadasTotal: function(){ return _ajustadasTotal; },
+    getEstadoRegla:    _estadoRegla
+  };
+})();
+
+/* ═══════════════════════════════════════════
+   UI — HELPERS
+═══════════════════════════════════════════ */
+function colorPrec(p) {
+  return p >= 80 ? '#22c55e' : p >= 60 ? '#f59e0b' : '#ef4444';
+}
+function colorOverr(t) {
+  return t >= 0.60 ? '#ef4444' : t >= 0.30 ? '#f59e0b' : '#22c55e';
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.classList.remove('active');
+  });
+  el.classList.add('active');
+  document.getElementById('tabReglas').style.display =
+    tab === 'reglas' ? '' : 'none';
+  document.getElementById('tabRecs').style.display =
+    tab === 'recs' ? '' : 'none';
+}
+
+/* ═══════════════════════════════════════════
+   RENDERS
+═══════════════════════════════════════════ */
+function renderLiveBar(c) {
+  document.getElementById('liveCiclos').textContent = c.numero;
+  document.getElementById('liveAdj').textContent    = c.ajustadasEsteCiclo;
+  document.getElementById('liveRecs').textContent   = c.recomendaciones.length;
+  document.getElementById('livePrec').textContent   = c.precisionSistema + '%';
+}
+
+function renderKPIs(c) {
+  document.getElementById('kpiCiclos').textContent  = c.numero;
+  document.getElementById('kpiRecs').textContent    = c.recomendaciones.length;
+  document.getElementById('kpiAjustes').textContent = c.ajustadasTotal;
+  document.getElementById('kpiPrec').textContent    = c.precisionSistema + '%';
+}
+
+function renderTabReglas(c) {
+  var pesos = AVIA_LEARNING_ENGINE.getPesos();
+  var pAnt  = AVIA_LEARNING_ENGINE.getPesoAnterior();
+  var el    = document.getElementById('tabReglas');
+
+  el.innerHTML = Object.values(c.metricas).map(function(m) {
+    var est    = AVIA_LEARNING_ENGINE.getEstadoRegla(m);
+    var estLbl = { critica:'CRÍTICA', revisar:'REVISAR',
+                   estable:'ESTABLE', ajustada:'AJUSTADA' }[est];
+    var pc     = colorPrec(m.precision);
+    var oc     = colorOverr(m.tasaOverride);
+    var peso   = pesos[m.id];
+    var pA     = pAnt[m.id] || 1.00;
+    var delta  = parseFloat((peso - pA).toFixed(2));
+    var dCls   = delta > 0 ? 'wd-up' : delta < 0 ? 'wd-down' : 'wd-flat';
+    var dLbl   = delta > 0 ? '▲ +' + delta.toFixed(2)
+               : delta < 0 ? '▼ '  + delta.toFixed(2)
+               : '— sin cambio';
+
+    return '<div class="rule-card">'
+      + '<div class="rule-card-hdr">'
+      +   '<span class="rule-id">'     + m.id    + '</span>'
+      +   '<span class="rule-name">'   + m.nombre + '</span>'
+      +   '<span class="rule-status '  + est + '">' + estLbl + '</span>'
+      + '</div>'
+      /* Precisión */
+      + '<div class="bar-row">'
+      +   '<span class="bar-label">Precisión</span>'
+      +   '<div class="bar-bg"><div class="bar-fill" style="width:'
+      +     m.precision + '%;background:' + pc + '"></div></div>'
+      +   '<span class="bar-val" style="color:' + pc + '">'
+      +     m.precision + '%</span>'
+      + '</div>'
+      /* Tasa override */
+      + '<div class="bar-row">'
+      +   '<span class="bar-label">Tasa override</span>'
+      +   '<div class="bar-bg"><div class="bar-fill" style="width:'
+      +     Math.round(m.tasaOverride * 100) + '%;background:' + oc + '"></div></div>'
+      +   '<span class="bar-val" style="color:' + oc + '">'
+      +     Math.round(m.tasaOverride * 100) + '%</span>'
+      + '</div>'
+      /* Peso */
+      + '<div class="weight-row">'
+      +   'Peso: <span class="weight-val">' + peso.toFixed(2) + '</span>'
+      +   ' &nbsp;anterior: ' + pA.toFixed(2)
+      +   ' &nbsp;<span class="' + dCls + '">' + dLbl + '</span>'
+      +   ' &nbsp;·&nbsp; <span class="wstat">Intervenciones: <strong>'
+      +     m.total + '</strong></span>'
+      +   ' &nbsp;·&nbsp; <span class="wstat">Overrides: <strong>'
+      +     m.overrides + '</strong></span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderTabRecs(c) {
+  var el = document.getElementById('tabRecs');
+  if (!c.recomendaciones.length) {
+    el.innerHTML = '<div class="empty">'
+      + '<div class="empty-icon">✅</div>'
+      + '<div class="empty-txt">Sin recomendaciones — sistema correctamente calibrado</div>'
+      + '</div>';
+    return;
+  }
+  el.innerHTML = c.recomendaciones.map(function(r) {
+    return '<div class="rec-card ' + r.prioridad + '">'
+      + '<div class="rec-meta">'
+      +   '<span class="rec-priority">' + r.prioridad.toUpperCase() + '</span>'
+      +   '<span class="rec-regla">'    + r.regla                   + '</span>'
+      + '</div>'
+      + '<div class="rec-titulo">'  + r.titulo  + '</div>'
+      + '<div class="rec-detalle">' + r.detalle + '</div>'
+      + '<div class="rec-accion">'  + r.accion  + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderGauge(historial) {
+  var el = document.getElementById('precGauge');
+  if (historial.length < 2) { el.innerHTML = ''; return; }
+  var ultimos = historial.slice(-6).reverse();
+  el.innerHTML = '<div class="prec-gauge">'
+    + '<div class="pg-title">Precisión por ciclo</div>'
+    + ultimos.map(function(c) {
+        var col = colorPrec(c.precisionSistema);
+        return '<div class="pg-row">'
+          + '<span class="pg-num">#' + c.numero + '</span>'
+          + '<div class="pg-bg"><div class="pg-fill" style="width:'
+          +   c.precisionSistema + '%;background:' + col + '"></div></div>'
+          + '<span class="pg-val" style="color:' + col + '">'
+          +   c.precisionSistema + '%</span>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+function renderTimeline(historial) {
+  var el  = document.getElementById('timelineLog');
+  var rev = historial.slice().reverse();
+  if (!rev.length) {
+    el.innerHTML =
+      '<div style="color:#475569;font-size:12px;padding:12px">'
+      + 'Esperando primer ciclo…</div>';
+    return;
+  }
+  el.innerHTML = rev.map(function(c) {
+    var prev  = historial[c.numero - 2];
+    var drift = '';
+    var dTag  = '';
+    if (prev) {
+      var d = c.precisionSistema - prev.precisionSistema;
+      if (d > 0) { drift = ' ▲ +' + d + '%'; dTag = '<span class="t-tag up">MEJORA</span>';      }
+      if (d < 0) { drift = ' ▼ '  + d + '%'; dTag = '<span class="t-tag down">DETERIORO</span>';}
+    }
+    return '<div class="tl-entry">'
+      + '<div class="tl-time">' + c.hora + '</div>'
+      + '<div class="tl-evt">Ciclo #' + c.numero
+      +   ' — Precisión: ' + c.precisionSistema + '%' + drift + '</div>'
+      + '<div class="tl-detail">'
+      +   c.ajustadasEsteCiclo + ' peso(s) ajustado(s) · '
+      +   c.recomendaciones.length + ' recomendación(es)'
+      + '</div>'
+      + '<div class="tl-tags">'
+      +   '<span class="t-tag learn">APRENDIZAJE</span>'
+      +   (c.ajustadasEsteCiclo > 0
+            ? '<span class="t-tag adj">AJUSTE</span>' : '')
+      +   (c.recomendaciones.length > 0
+            ? '<span class="t-tag pat">PATRÓN</span>' : '')
+      +   dTag
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   RENDER ALL + CICLO
+═══════════════════════════════════════════ */
+function renderAll() {
+  var ciclo = AVIA_LEARNING_ENGINE.ejecutarCiclo(HISTORIAL_INTERVENCIONES);
+  var hist  = AVIA_LEARNING_ENGINE.getHistorial();
+  renderLiveBar(ciclo);
+  renderKPIs(ciclo);
+  renderTabReglas(ciclo);
+  renderTabRecs(ciclo);
+  renderGauge(hist);
+  renderTimeline(hist);
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+(function init() {
+  if (!AVIA_guardFocus(AVIA_CONTEXT.artefacto)) return;
+  if (!validarEvolucion(AVIA_CONTEXT)) return;
+
+  renderAll();
+  setInterval(renderAll, 6000);
+
+  console.log('[AVIA-HTML38] Aprendizaje Adaptativo iniciado'
+    + ' · Artefacto: ' + AVIA_CONTEXT.artefacto
+    + ' · Anterior: '  + AVIA_CONTEXT.anterior
+    + ' · Siguiente: ' + AVIA_CONTEXT.siguiente);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Video v2.0 — Constelación Económica</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ═══ DESIGN TOKENS ═══ */
+:root {
+  --c-primary: #7C3AED;
+  --c-primary-light: #A78BFA;
+  --c-primary-dark: #5B21B6;
+  --c-primary-glow: rgba(124,58,237,0.35);
+  --c-secondary: #06B6D4;
+  --c-success: #10B981;
+  --c-warning: #F59E0B;
+  --c-error: #EF4444;
+  --c-bg: #0B0B19;
+  --c-surface: #14142B;
+  --c-surface-2: #1E1E3A;
+  --c-surface-3: #2A2A4A;
+  --c-text: #E2E8F0;
+  --c-text-muted: #8892A8;
+  --c-border: rgba(124,58,237,0.2);
+  --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-full: 50%;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --glow: 0 0 30px var(--c-primary-glow);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--c-bg);color:var(--c-text);min-height:100vh;overflow-x:hidden;line-height:1.6}
+
+/* ═══ LAYOUT ═══ */
+.app{display:flex;flex-direction:column;height:100vh;max-height:100vh;overflow:hidden}
+.header{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--c-border);background:linear-gradient(180deg,rgba(124,58,237,.08),transparent);flex-shrink:0}
+.header .logo{display:flex;align-items:center;gap:10px}
+.header .logo i{font-size:1.4rem;color:var(--c-primary-light)}
+.header .logo h1{font-size:1rem;font-weight:700;background:linear-gradient(135deg,var(--c-primary-light),var(--c-secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header .badges{display:flex;gap:6px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--r-sm);font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.badge-primary{background:rgba(124,58,237,.15);color:var(--c-primary-light);border:1px solid var(--c-border)}
+.badge-success{background:rgba(16,185,129,.15);color:var(--c-success);border:1px solid rgba(16,185,129,.3)}
+.badge-warning{background:rgba(245,158,11,.15);color:var(--c-warning);border:1px solid rgba(245,158,11,.3)}
+
+.main{display:flex;flex:1;overflow:hidden}
+
+/* ═══ TIMELINE PANEL (Left) ═══ */
+.panel-left{width:280px;border-right:1px solid var(--c-border);display:flex;flex-direction:column;flex-shrink:0;background:var(--c-surface)}
+.panel-header{padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--c-text-muted)}
+.panel-header i{color:var(--c-primary-light);font-size:.9rem}
+
+/* Drop Zone */
+.drop-zone{margin:12px;padding:28px 16px;border:2px dashed var(--c-border);border-radius:var(--r-md);text-align:center;transition:all .3s var(--ease);cursor:pointer;background:rgba(124,58,237,.03)}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--c-primary);background:rgba(124,58,237,.08);transform:scale(1.01)}
+.drop-zone i{font-size:2rem;color:var(--c-primary-light);margin-bottom:8px;display:block}
+.drop-zone p{font-size:.78rem;color:var(--c-text-muted)}
+.drop-zone .hint{font-size:.68rem;margin-top:4px;color:var(--c-text-muted);opacity:.7}
+
+/* Video List */
+.video-list{flex:1;overflow-y:auto;padding:8px 12px}
+.video-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--c-surface-2);border:1px solid var(--c-border);border-radius:var(--r-sm);margin-bottom:8px;cursor:grab;transition:all .25s var(--ease);position:relative}
+.video-item:hover{border-color:var(--c-primary);transform:translateX(2px)}
+.video-item.active{border-color:var(--c-primary);background:rgba(124,58,237,.1)}
+.video-item .thumb{width:48px;height:34px;border-radius:4px;background:var(--c-surface-3);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.video-item .thumb video{width:100%;height:100%;object-fit:cover}
+.video-item .thumb i{font-size:.8rem;color:var(--c-text-muted)}
+.video-item .info{flex:1;min-width:0}
+.video-item .info .name{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.video-item .info .meta{font-size:.65rem;color:var(--c-text-muted);display:flex;gap:8px;margin-top:2px}
+.video-item .remove{background:none;border:none;color:var(--c-text-muted);cursor:pointer;padding:4px;font-size:.75rem;transition:color .2s}
+.video-item .remove:hover{color:var(--c-error)}
+
+/* ═══ CENTER: Preview + Timeline ═══ */
+.panel-center{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* Preview */
+.preview-area{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;min-height:0}
+.preview-area video{max-width:100%;max-height:100%;object-fit:contain}
+.preview-placeholder{text-align:center;color:var(--c-text-muted)}
+.preview-placeholder i{font-size:3rem;margin-bottom:12px;display:block;color:var(--c-surface-3)}
+.preview-placeholder p{font-size:.85rem}
+
+/* Controls */
+.controls{padding:10px 20px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--c-border);background:var(--c-surface);flex-shrink:0}
+.ctrl-btn{width:36px;height:36px;border-radius:var(--r-full);border:none;background:var(--c-surface-2);color:var(--c-text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s var(--ease);font-size:.85rem}
+.ctrl-btn:hover{background:var(--c-primary);color:#fff}
+.ctrl-btn.play-btn{width:42px;height:42px;background:var(--c-primary);color:#fff;font-size:1rem}
+.ctrl-btn.play-btn:hover{background:var(--c-primary-dark);box-shadow:var(--glow)}
+.time-display{font-size:.75rem;color:var(--c-text-muted);font-variant-numeric:tabular-nums;min-width:90px;text-align:center}
+.progress-bar{flex:1;height:6px;background:var(--c-surface-3);border-radius:3px;cursor:pointer;position:relative;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--c-primary),var(--c-primary-light));border-radius:3px;width:0%;transition:width .1s linear}
+.volume-slider{width:70px;height:4px;-webkit-appearance:none;appearance:none;background:var(--c-surface-3);border-radius:2px;outline:none;cursor:pointer}
+.volume-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--c-primary-light);cursor:pointer}
+
+/* Timeline */
+.timeline{height:100px;border-top:1px solid var(--c-border);background:var(--c-surface);display:flex;flex-direction:column;flex-shrink:0}
+.timeline-header{padding:6px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(124,58,237,.1)}
+.timeline-header span{font-size:.7rem;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:1px}
+.timeline-tracks{flex:1;display:flex;gap:2px;padding:8px 16px;overflow-x:auto;align-items:center}
+.track-clip{height:40px;min-width:60px;background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.2));border:1px solid var(--c-border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--c-text-muted);padding:0 10px;cursor:pointer;transition:all .2s;flex-shrink:0}
+.track-clip:hover{border-color:var(--c-primary);background:rgba(124,58,237,.2)}
+.track-clip.active{border-color:var(--c-primary-light);box-shadow:0 0 10px var(--c-primary-glow)}
+.track-empty{flex:1;height:40px;border:1px dashed rgba(124,58,237,.15);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--c-text-muted);opacity:.5}
+
+/* ═══ RIGHT PANEL: Metadata + Chat ═══ */
+.panel-right{width:300px;border-left:1px solid var(--c-border);display:flex;flex-direction:column;flex-shrink:0;background:var(--c-surface)}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--c-border);flex-shrink:0}
+.tab{flex:1;padding:10px;text-align:center;font-size:.75rem;font-weight:500;color:var(--c-text-muted);cursor:pointer;transition:all .2s;border-bottom:2px solid transparent}
+.tab:hover{color:var(--c-text)}
+.tab.active{color:var(--c-primary-light);border-bottom-color:var(--c-primary)}
+
+/* Metadata */
+.tab-content{flex:1;overflow-y:auto;display:none}
+.tab-content.active{display:flex;flex-direction:column}
+.metadata-section{padding:16px}
+.meta-row{margin-bottom:12px}
+.meta-row label{display:block;font-size:.7rem;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.meta-row .value{font-size:.82rem;color:var(--c-text);padding:8px 12px;background:var(--c-surface-2);border:1px solid var(--c-border);border-radius:var(--r-sm)}
+.meta-row input,.meta-row textarea{width:100%;padding:8px 12px;background:var(--c-surface-2);border:1px solid var(--c-border);border-radius:var(--r-sm);color:var(--c-text);font-family:var(--font);font-size:.82rem;outline:none;transition:border-color .2s}
+.meta-row input:focus,.meta-row textarea:focus{border-color:var(--c-primary)}
+.meta-row textarea{resize:vertical;min-height:60px}
+.no-video-msg{padding:24px;text-align:center;color:var(--c-text-muted);font-size:.82rem}
+
+/* Chat */
+.chat-area{flex:1;display:flex;flex-direction:column}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{padding:10px 14px;border-radius:var(--r-md);font-size:.8rem;line-height:1.5;max-width:90%;animation:fadeIn .3s var(--ease)}
+.chat-msg.bot{background:var(--c-surface-2);border:1px solid var(--c-border);align-self:flex-start}
+.chat-msg.user{background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.3);align-self:flex-end}
+.chat-msg .sender{font-size:.65rem;color:var(--c-text-muted);margin-bottom:3px;font-weight:600}
+.chat-input-area{padding:10px 12px;border-top:1px solid var(--c-border);display:flex;gap:8px;flex-shrink:0}
+.chat-input{flex:1;padding:8px 12px;background:var(--c-surface-2);border:1px solid var(--c-border);border-radius:var(--r-lg);color:var(--c-text);font-family:var(--font);font-size:.82rem;outline:none}
+.chat-input:focus{border-color:var(--c-primary)}
+.chat-send{width:34px;height:34px;border-radius:var(--r-full);border:none;background:var(--c-primary);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.chat-send:hover{background:var(--c-primary-dark)}
+
+/* Voice button in chat */
+.chat-voice{width:34px;height:34px;border-radius:var(--r-full);border:1px solid var(--c-border);background:var(--c-surface-2);color:var(--c-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:.8rem;flex-shrink:0}
+.chat-voice:hover{border-color:var(--c-primary);color:var(--c-primary-light)}
+.chat-voice.recording{background:rgba(239,68,68,.15);border-color:var(--c-error);color:var(--c-error);animation:pulse-rec 1.5s infinite}
+.chat-voice.unavailable{opacity:.35;cursor:not-allowed}
+
+/* ═══ MODAL ═══ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal-box{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-md);padding:24px;max-width:380px;text-align:center}
+.modal-box p{margin-bottom:16px;font-size:.88rem;line-height:1.5}
+.modal-box .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border:none;border-radius:var(--r-sm);font-family:var(--font);font-size:.85rem;font-weight:500;cursor:pointer;background:var(--c-primary);color:#fff;transition:all .2s}
+.modal-box .btn:hover{background:var(--c-primary-dark)}
+
+/* ═══ TOAST / STATUS BAR ═══ */
+.status-bar{padding:6px 20px;border-top:1px solid var(--c-border);background:var(--c-surface);display:flex;align-items:center;justify-content:space-between;font-size:.68rem;color:var(--c-text-muted);flex-shrink:0}
+.status-bar .left{display:flex;gap:16px}
+.status-bar .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.status-bar .dot.green{background:var(--c-success)}
+.status-bar .dot.yellow{background:var(--c-warning)}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-rec{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 10px rgba(239,68,68,0)}}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:900px){
+  .panel-left{width:220px}
+  .panel-right{width:260px}
+}
+@media(max-width:700px){
+  .main{flex-direction:column}
+  .panel-left,.panel-right{width:100%;max-height:35vh;border:none;border-bottom:1px solid var(--c-border)}
+  .panel-center{min-height:30vh}
+  .timeline{height:70px}
+}
+
+/* ═══ ACCESSIBILITY ═══ */
+:focus-visible{outline:2px solid var(--c-primary-light);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--c-surface-3);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <i class="fas fa-film"></i>
+      <h1>AVIA Video</h1>
+      <span class="badge badge-primary">v2.0</span>
+      <span class="badge badge-success">Fase 1</span>
+    </div>
+    <div class="badges">
+      <span class="badge badge-primary" id="voiceBadge">
+        <i class="fas fa-microphone"></i> Voz: Verificando...
+      </span>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- LEFT PANEL -->
+    <div class="panel-left">
+      <div class="panel-header"><i class="fas fa-layer-group"></i> Clips</div>
+      <div class="drop-zone" id="dropZone">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <p>Arrastra videos aquí</p>
+        <p class="hint">o haz clic para seleccionar</p>
+        <input type="file" id="fileInput" accept="video/*" multiple hidden>
+      </div>
+      <div class="video-list" id="videoList"></div>
+    </div>
+
+    <!-- CENTER PANEL -->
+    <div class="panel-center">
+      <div class="preview-area" id="previewArea">
+        <div class="preview-placeholder" id="placeholder">
+          <i class="fas fa-play-circle"></i>
+          <p>Añade un video para comenzar</p>
+        </div>
+        <video id="previewVideo" style="display:none" playsinline></video>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" id="prevBtn" title="Anterior"><i class="fas fa-step-backward"></i></button>
+        <button class="ctrl-btn play-btn" id="playBtn" title="Play/Pause"><i class="fas fa-play" id="playIcon"></i></button>
+        <button class="ctrl-btn" id="nextBtn" title="Siguiente"><i class="fas fa-step-forward"></i></button>
+        <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+        <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+        <i class="fas fa-volume-up" style="font-size:.75rem;color:var(--c-text-muted)"></i>
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="timeline">
+        <div class="timeline-header">
+          <span><i class="fas fa-film" style="margin-right:4px"></i> Timeline</span>
+          <span id="clipCount">0 clips</span>
+        </div>
+        <div class="timeline-tracks" id="timelineTracks">
+          <div class="track-empty">Arrastra clips al timeline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="panel-right">
+      <div class="tabs">
+        <div class="tab active" data-tab="metadata"><i class="fas fa-info-circle"></i> Metadatos</div>
+        <div class="tab" data-tab="chat"><i class="fas fa-comments"></i> Chat AVIA</div>
+      </div>
+      <!-- Metadata Tab -->
+      <div class="tab-content active" id="tab-metadata">
+        <div class="no-video-msg" id="noVideoMsg">Selecciona un clip para ver sus metadatos</div>
+        <div class="metadata-section" id="metadataSection" style="display:none">
+          <div class="meta-row"><label>Nombre</label><div class="value" id="metaName">—</div></div>
+          <div class="meta-row"><label>Duración</label><div class="value" id="metaDuration">—</div></div>
+          <div class="meta-row"><label>Resolución</label><div class="value" id="metaResolution">—</div></div>
+          <div class="meta-row"><label>Tamaño</label><div class="value" id="metaSize">—</div></div>
+          <div class="meta-row"><label>Tipo</label><div class="value" id="metaType">—</div></div>
+          <div class="meta-row"><label>Título del clip</label><input id="metaTitle" placeholder="Título personalizado..."></div>
+          <div class="meta-row"><label>Notas</label><textarea id="metaNotes" placeholder="Notas del clip..."></textarea></div>
+        </div>
+      </div>
+      <!-- Chat Tab -->
+      <div class="tab-content" id="tab-chat">
+        <div class="chat-area">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg bot">
+              <div class="sender">🧠 AVIA Orquestador</div>
+              ¡Hola! Soy AVIA Video Assistant. Puedo ayudarte con tu proyecto de video. Pregúntame sobre edición, efectos o cualquier duda.
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <button class="chat-voice" id="voiceBtn" title="Dictar por voz"><i class="fas fa-microphone" id="voiceBtnIcon"></i></button>
+            <input class="chat-input" id="chatInput" placeholder="Escribe o dicta por voz..." autocomplete="off">
+            <button class="chat-send" id="chatSend" title="Enviar"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="left">
+      <span><span class="dot green"></span> Constelación activa</span>
+      <span id="statusVoice"><span class="dot yellow"></span> Voz: verificando</span>
+    </div>
+    <span id="statusRight">AVIA Video v2.0 · Constelación Económica</span>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <p id="modalMsg"></p>
+      <button class="btn" id="modalClose">Entendido</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS SANDBOX FIX — Override blocked native dialogs
+   MUST be FIRST before any other code
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  var m = document.getElementById('modal');
+  var p = document.getElementById('modalMsg');
+  var c = document.getElementById('modalClose');
+  function safe(msg){
+    if(m && p){ p.textContent = String(msg); m.classList.add('active'); }
+  }
+  window.alert = function(msg){ safe(msg); };
+  window.confirm = function(msg){ safe(msg); return true; };
+  window.prompt = function(msg){ safe(msg); return null; };
+  if(c) c.addEventListener('click', function(){ m.classList.remove('active'); });
+  if(m) m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('active'); });
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   AVIA Video v2.0 — Main Application
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+
+  /* ═══ UTILITIES ═══ */
+  function showModal(msg){
+    var m = document.getElementById('modal');
+    var p = document.getElementById('modalMsg');
+    if(m && p){ p.textContent = msg; m.classList.add('active'); }
+  }
+
+  function formatTime(s){
+    if(!s || isNaN(s)) return '0:00';
+    var m = Math.floor(s/60);
+    var sec = Math.floor(s%60);
+    return m + ':' + (sec<10?'0':'') + sec;
+  }
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1048576).toFixed(1) + ' MB';
+  }
+
+  /* ═══ STATE ═══ */
+  var clips = [];
+  var activeClipIndex = -1;
+  var isPlaying = false;
+
+  /* ═══ DOM REFS ═══ */
+  var dropZone = document.getElementById('dropZone');
+  var fileInput = document.getElementById('fileInput');
+  var videoList = document.getElementById('videoList');
+  var previewVideo = document.getElementById('previewVideo');
+  var placeholder = document.getElementById('placeholder');
+  var playBtn = document.getElementById('playBtn');
+  var playIcon = document.getElementById('playIcon');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var timeDisplay = document.getElementById('timeDisplay');
+  var progressBar = document.getElementById('progressBar');
+  var progressFill = document.getElementById('progressFill');
+  var volumeSlider = document.getElementById('volumeSlider');
+  var timelineTracks = document.getElementById('timelineTracks');
+  var clipCount = document.getElementById('clipCount');
+  var chatMessages = document.getElementById('chatMessages');
+  var chatInput = document.getElementById('chatInput');
+  var chatSend = document.getElementById('chatSend');
+  var voiceBtn = document.getElementById('voiceBtn');
+  var voiceBtnIcon = document.getElementById('voiceBtnIcon');
+  var voiceBadge = document.getElementById('voiceBadge');
+  var statusVoice = document.getElementById('statusVoice');
+  var metadataSection = document.getElementById('metadataSection');
+  var noVideoMsg = document.getElementById('noVideoMsg');
+
+  /* ═══ TABS ═══ */
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(tc){ tc.classList.remove('active'); });
+      this.classList.add('active');
+      var target = document.getElementById('tab-' + this.getAttribute('data-tab'));
+      if(target) target.classList.add('active');
+    });
+  });
+
+  /* ═══ DRAG & DROP ═══ */
+  dropZone.addEventListener('click', function(){ fileInput.click(); });
+  fileInput.addEventListener('change', function(){ handleFiles(this.files); this.value=''; });
+
+  dropZone.addEventListener('dragover', function(e){
+    e.preventDefault(); e.stopPropagation();
+    this.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', function(e){
+    e.preventDefault(); e.stopPropagation();
+    this.classList.remove('dragover');
+  });
+  dropZone.addEventListener('drop', function(e){
+    e.preventDefault(); e.stopPropagation();
+    this.classList.remove('dragover');
+    var files = e.dataTransfer.files;
+    handleFiles(files);
+  });
+
+  function handleFiles(files){
+    for(var i=0; i<files.length; i++){
+      var f = files[i];
+      if(!f.type.startsWith('video/')){
+        showModal('El archivo "' + f.name + '" no es un video válido.');
+        continue;
+      }
+      addClip(f);
+    }
+  }
+
+  function addClip(file){
+    var url = URL.createObjectURL(file);
+    var clip = {
+      file: file,
+      name: file.name,
+      url: url,
+      duration: 0,
+      width: 0,
+      height: 0,
+      title: '',
+      notes: ''
+    };
+
+    /* Extract metadata via hidden video element */
+    var tempVid = document.createElement('video');
+    tempVid.preload = 'metadata';
+    tempVid.onloadedmetadata = function(){
+      clip.duration = tempVid.duration;
+      clip.width = tempVid.videoWidth;
+      clip.height = tempVid.videoHeight;
+      URL.revokeObjectURL(tempVid.src);
+      renderClipList();
+      renderTimeline();
+      if(activeClipIndex === clips.indexOf(clip)){
+        updateMetadata(clip);
+      }
+    };
+    tempVid.src = url;
+
+    clips.push(clip);
+    if(clips.length === 1){
+      selectClip(0);
+    }
+    renderClipList();
+    renderTimeline();
+  }
+
+  function renderClipList(){
+    videoList.innerHTML = '';
+    clips.forEach(function(clip, idx){
+      var div = document.createElement('div');
+      div.className = 'video-item' + (idx === activeClipIndex ? ' active' : '');
+      div.innerHTML =
+        '<div class="thumb"><video src="'+clip.url+'" muted preload="metadata"></video></div>' +
+        '<div class="info">' +
+          '<div class="name">' + clip.name + '</div>' +
+          '<div class="meta"><span>' + formatTime(clip.duration) + '</span><span>' + formatSize(clip.file.size) + '</span></div>' +
+        '</div>' +
+        '<button class="remove" title="Eliminar"><i class="fas fa-times"></i></button>';
+      div.querySelector('.thumb').addEventListener('click', function(){ selectClip(idx); });
+      div.querySelector('.info').addEventListener('click', function(){ selectClip(idx); });
+      div.querySelector('.remove').addEventListener('click', function(e){
+        e.stopPropagation();
+        removeClip(idx);
+      });
+      videoList.appendChild(div);
+    });
+    clipCount.textContent = clips.length + ' clip' + (clips.length !== 1 ? 's' : '');
+  }
+
+  function renderTimeline(){
+    timelineTracks.innerHTML = '';
+    if(clips.length === 0){
+      timelineTracks.innerHTML = '<div class="track-empty">Arrastra clips al timeline</div>';
+      return;
+    }
+    clips.forEach(function(clip, idx){
+      var div = document.createElement('div');
+      div.className = 'track-clip' + (idx === activeClipIndex ? ' active' : '');
+      var w = Math.max(60, Math.min(200, clip.duration * 15));
+      div.style.minWidth = w + 'px';
+      div.textContent = clip.name.substring(0,12) + (clip.name.length>12?'...':'');
+      div.addEventListener('click', function(){ selectClip(idx); });
+      timelineTracks.appendChild(div);
+    });
+  }
+
+  function selectClip(idx){
+    if(idx < 0 || idx >= clips.length) return;
+    activeClipIndex = idx;
+    var clip = clips[idx];
+
+    placeholder.style.display = 'none';
+    previewVideo.style.display = 'block';
+    previewVideo.src = clip.url;
+    previewVideo.load();
+
+    updateMetadata(clip);
+    renderClipList();
+    renderTimeline();
+  }
+
+  function removeClip(idx){
+    URL.revokeObjectURL(clips[idx].url);
+    clips.splice(idx, 1);
+    if(clips.length === 0){
+      activeClipIndex = -1;
+      placeholder.style.display = '';
+      previewVideo.style.display = 'none';
+      previewVideo.removeAttribute('src');
+      noVideoMsg.style.display = '';
+      metadataSection.style.display = 'none';
+    } else {
+      if(activeClipIndex >= clips.length) activeClipIndex = clips.length - 1;
+      selectClip(activeClipIndex);
+    }
+    renderClipList();
+    renderTimeline();
+  }
+
+  function updateMetadata(clip){
+    noVideoMsg.style.display = 'none';
+    metadataSection.style.display = '';
+    document.getElementById('metaName').textContent = clip.name;
+    document.getElementById('metaDuration').textContent = formatTime(clip.duration);
+    document.getElementById('metaResolution').textContent = (clip.width && clip.height) ? clip.width + ' × ' + clip.height : 'Cargando...';
+    document.getElementById('metaSize').textContent = formatSize(clip.file.size);
+    document.getElementById('metaType').textContent = clip.file.type;
+    document.getElementById('metaTitle').value = clip.title || '';
+    document.getElementById('metaNotes').value = clip.notes || '';
+  }
+
+  /* Save metadata on change */
+  document.getElementById('metaTitle').addEventListener('input', function(){
+    if(activeClipIndex >= 0) clips[activeClipIndex].title = this.value;
+  });
+  document.getElementById('metaNotes').addEventListener('input', function(){
+    if(activeClipIndex >= 0) clips[activeClipIndex].notes = this.value;
+  });
+
+  /* ═══ PLAYBACK ═══ */
+  playBtn.addEventListener('click', function(){
+    if(activeClipIndex < 0) return;
+    if(previewVideo.paused){
+      previewVideo.play().catch(function(){});
+    } else {
+      previewVideo.pause();
+    }
+  });
+
+  previewVideo.addEventListener('play', function(){
+    isPlaying = true;
+    playIcon.className = 'fas fa-pause';
+  });
+  previewVideo.addEventListener('pause', function(){
+    isPlaying = false;
+    playIcon.className = 'fas fa-play';
+  });
+  previewVideo.addEventListener('ended', function(){
+    isPlaying = false;
+    playIcon.className = 'fas fa-play';
+    /* Auto-advance to next clip */
+    if(activeClipIndex < clips.length - 1){
+      selectClip(activeClipIndex + 1);
+      previewVideo.play().catch(function(){});
+    }
+  });
+  previewVideo.addEventListener('timeupdate', function(){
+    var cur = previewVideo.currentTime;
+    var dur = previewVideo.duration || 0;
+    timeDisplay.textContent = formatTime(cur) + ' / ' + formatTime(dur);
+    progressFill.style.width = dur ? ((cur/dur)*100) + '%' : '0%';
+  });
+
+  progressBar.addEventListener('click', function(e){
+    if(!previewVideo.duration) return;
+    var rect = this.getBoundingClientRect();
+    var pct = (e.clientX - rect.left) / rect.width;
+    previewVideo.currentTime = pct * previewVideo.duration;
+  });
+
+  volumeSlider.addEventListener('input', function(){
+    previewVideo.volume = parseFloat(this.value);
+  });
+
+  prevBtn.addEventListener('click', function(){
+    if(activeClipIndex > 0) selectClip(activeClipIndex - 1);
+  });
+  nextBtn.addEventListener('click', function(){
+    if(activeClipIndex < clips.length - 1) selectClip(activeClipIndex + 1);
+  });
+
+  /* ═══ CHAT AVIA ═══ */
+  function addChatMsg(text, sender){
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + (sender === 'user' ? 'user' : 'bot');
+    if(sender !== 'user'){
+      div.innerHTML = '<div class="sender">🧠 AVIA Orquestador</div>';
+    }
+    div.appendChild(document.createTextNode(text));
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function processChat(text){
+    addChatMsg(text, 'user');
+    var lower = text.toLowerCase();
+
+    /* Simple AVIA responses */
+    var response;
+    if(lower.indexOf('cortar') > -1 || lower.indexOf('split') > -1){
+      response = 'Para cortar un clip: selecciona el clip en el timeline, posiciona el cursor de tiempo en el punto de corte. La función de corte estará disponible en la Fase 2.';
+    } else if(lower.indexOf('efecto') > -1 || lower.indexOf('filtro') > -1){
+      response = 'Los efectos y filtros se implementarán en la Fase 2. Incluirán: ajustes de color, brillo/contraste, transiciones y efectos de texto.';
+    } else if(lower.indexOf('exportar') > -1 || lower.indexOf('render') > -1){
+      response = 'La exportación/render se implementará en la Fase 3. Soportará múltiples formatos y resoluciones.';
+    } else if(lower.indexOf('hola') > -1 || lower.indexOf('hello') > -1){
+      response = '¡Hola! Estoy aquí para ayudarte con tu proyecto de video. ¿En qué puedo asistirte?';
+    } else if(lower.indexOf('clips') > -1 || lower.indexOf('video') > -1){
+      response = 'Actualmente tienes ' + clips.length + ' clip(s) en tu proyecto. ' + (clips.length > 0 ? 'El clip activo es: ' + clips[activeClipIndex].name : 'Arrastra videos al panel izquierdo para comenzar.');
+    } else if(lower.indexOf('ayuda') > -1 || lower.indexOf('help') > -1){
+      response = 'Funciones disponibles en Fase 1: Drag & Drop de videos, preview con playback, metadatos automáticos, y este chat. Escribe tu consulta y te orientaré.';
+    } else {
+      response = 'Entendido. He registrado tu consulta: "' + text + '". ¿Necesitas algo más sobre tu proyecto de video?';
+    }
+
+    setTimeout(function(){ addChatMsg(response, 'bot'); }, 400 + Math.random() * 400);
+  }
+
+  chatSend.addEventListener('click', function(){
+    var text = chatInput.value.trim();
+    if(!text) return;
+    processChat(text);
+    chatInput.value = '';
+  });
+  chatInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      var text = this.value.trim();
+      if(!text) return;
+      processChat(text);
+      this.value = '';
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════
+     VOICE RECOGNITION — FIX: not-allowed error
+     ═════════════════════════════════════════════════════════ */
+
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognition = null;
+  var voiceAvailable = false;
+  var isVoiceRecording = false;
+
+  /*
+   * FIX PRINCIPAL:
+   * NO llamamos recognition.start() al cargar la página.
+   * Solo lo creamos. El .start() ocurre SOLO dentro del
+   * handler de click del botón (gesto del usuario).
+   *
+   * Esto evita el error "not-allowed" porque el navegador
+   * requiere un user gesture para permitir el micrófono.
+   */
+  if(SpeechRecognition){
+    try {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;    /* Single utterance mode */
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+      voiceAvailable = true;
+
+      recognition.onstart = function(){
+        isVoiceRecording = true;
+        voiceBtn.classList.add('recording');
+        voiceBtnIcon.className = 'fas fa-stop';
+        chatInput.placeholder = 'Escuchando...';
+      };
+
+      recognition.onresult = function(event){
+        var finalText = '';
+        var interimText = '';
+        for(var i = event.resultIndex; i < event.results.length; i++){
+          var t = event.results[i][0].transcript;
+          if(event.results[i].isFinal){ finalText += t; }
+          else { interimText += t; }
+        }
+        chatInput.value = finalText || interimText;
+      };
+
+      recognition.onerror = function(event){
+        /* ═══ FIX: Handle errors gracefully, NO console.error ═══ */
+        var msgs = {
+          'not-allowed': 'Micrófono no permitido. Haz clic en el candado de la barra de direcciones y permite el acceso.',
+          'no-speech': 'No se detectó voz. Intenta de nuevo.',
+          'network': 'Error de red para reconocimiento de voz.',
+          'aborted': 'Reconocimiento cancelado.',
+          'audio-capture': 'No se encontró micrófono.',
+          'service-not-allowed': 'Servicio de voz no disponible en este entorno.'
+        };
+
+        var errMsg = msgs[event.error] || 'Error de voz: ' + event.error;
+
+        /* If not-allowed or service-not-allowed, disable voice gracefully */
+        if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+          voiceAvailable = false;
+          voiceBtn.classList.add('unavailable');
+          voiceBtn.title = errMsg;
+          updateVoiceStatus(false, errMsg);
+        }
+
+        stopVoice();
+        chatInput.placeholder = 'Escribe tu mensaje...';
+
+        /* Show info via modal instead of console error */
+        showModal(errMsg);
+      };
+
+      recognition.onend = function(){
+        /* If we have text, auto-send it */
+        var text = chatInput.value.trim();
+        if(text && isVoiceRecording){
+          processChat(text);
+          chatInput.value = '';
+        }
+        stopVoice();
+      };
+
+    } catch(e){
+      voiceAvailable = false;
+    }
+  }
+
+  function stopVoice(){
+    isVoiceRecording = false;
+    voiceBtn.classList.remove('recording');
+    voiceBtnIcon.className = 'fas fa-microphone';
+    chatInput.placeholder = 'Escribe o dicta por voz...';
+  }
+
+  function updateVoiceStatus(available, msg){
+    if(available){
+      voiceBadge.innerHTML = '<i class="fas fa-microphone"></i> Voz: Disponible';
+      voiceBadge.className = 'badge badge-success';
+      statusVoice.innerHTML = '<span class="dot green"></span> Voz: disponible';
+    } else {
+      var label = msg || 'No disponible';
+      voiceBadge.innerHTML = '<i class="fas fa-microphone-slash"></i> Voz: ' + (label.length > 30 ? 'No disponible' : label);
+      voiceBadge.className = 'badge badge-warning';
+      statusVoice.innerHTML = '<span class="dot yellow"></span> Voz: no disponible';
+    }
+  }
+
+  /*
+   * VOICE BUTTON CLICK — This is the ONLY place where
+   * recognition.start() is called, ensuring it's always
+   * triggered by a user gesture.
+   */
+  voiceBtn.addEventListener('click', function(){
+    if(!voiceAvailable){
+      showModal('El reconocimiento de voz no está disponible en este entorno. Puedes escribir tu mensaje en el campo de texto.');
+      return;
+    }
+    if(isVoiceRecording){
+      try { recognition.stop(); } catch(e){}
+      stopVoice();
+      return;
+    }
+    /* Start recognition — always from user click */
+    try {
+      recognition.start();
+    } catch(e){
+      if(e.message && e.message.indexOf('already started') > -1){
+        try { recognition.stop(); } catch(ex){}
+        setTimeout(function(){
+          try { recognition.start(); } catch(ex2){
+            showModal('No se pudo iniciar el reconocimiento de voz.');
+          }
+        }, 300);
+      } else {
+        showModal('Error al iniciar micrófono: ' + e.message);
+      }
+    }
+  });
+
+  /* ═══ INITIAL VOICE STATUS (no .start() call!) ═══ */
+  if(voiceAvailable){
+    updateVoiceStatus(true);
+    voiceBtn.classList.remove('unavailable');
+  } else {
+    updateVoiceStatus(false, 'Navegador no compatible');
+    voiceBtn.classList.add('unavailable');
+  }
+
+  /* ═══ STARTUP LOG ═══ */
+  var features = [
+    'Drag & Drop de videos',
+    'Preview video real',
+    'Playback sincronizado',
+    'Metadatos automáticos',
+    'Chat AVIA integrado',
+    'Reconocimiento de voz: ' + (voiceAvailable ? 'disponible (activar con botón)' : 'no soportado en este navegador')
+  ];
+
+  /* Use console.log safely — no alert, no auto-start */
+  try {
+    console.log('AVIA Video v2.0 - Fase 1 Cargado');
+    console.log('Funcionalidades implementadas:');
+    features.forEach(function(f){ console.log('✅ ' + f); });
+  } catch(e){}
+
+})();
+</script>
+</body>
+</html>

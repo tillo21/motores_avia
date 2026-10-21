@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XynapxAI v5.0 - Co-Creación Visual AAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .constellation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .agent-node {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: pulse 3s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.5); }
+        }
+        
+        .agent-connection {
+            position: absolute;
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            transform-origin: left center;
+            animation: flow 4s infinite;
+        }
+        
+        @keyframes flow {
+            0% { opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0; }
+        }
+        
+        .main-container {
+            position: relative;
+            z-index: 1;
+            background: rgba(255,255,255,0.95);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            max-width: 1400px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .agent-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .agent-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+        }
+        
+        .agent-card.active {
+            border-left-color: #10b981;
+            background: #ecfdf5;
+        }
+        
+        .agent-name {
+            font-weight: 600;
+            font-size: 12px;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        
+        .agent-kpi {
+            font-size: 11px;
+            color: #64748b;
+        }
+        
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        .canvas-area {
+            background: #f1f5f9;
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .input-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        
+        .output-canvas {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+        
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .context-panel {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        
+        .context-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .context-value {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .emotion-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .emotion-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(102,126,234,0.5);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(102,126,234,0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .explanation-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .generated-image {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 1024px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fondo de constelación de agentes -->
+    <div class="constellation" id="constellation"></div>
+    
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 10px;">
+                XynapxAI v5.0
+            </h1>
+            <p style="opacity: 0.9; font-size: 14px;">
+                Orquestación Inteligente de Co-Creación Visual para Entornos AAL
+            </p>
+            <div style="margin-top: 20px; display: flex; gap: 20px; justify-content: center; font-size: 12px;">
+                <div>
+                    <div style="font-weight: 600;">23 Agentes</div>
+                    <div style="opacity: 0.8;">Activos</div>
+                </div>
+                <div>
+                    <div style="font-weight: 600;">12 Fases</div>
+                    <div style="opacity: 0.8;">Implementadas</div>
+                </div>
+                <div>
+                    <div style="font-weight: 600;">∞</div>
+                    <div style="opacity: 0.8;">Posibilidades</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estado de Agentes -->
+        <div class="agent-status" id="agentStatus">
+            <!-- Se genera dinámicamente -->
+        </div>
+        
+        <!-- Área de Trabajo -->
+        <div class="workspace">
+            <!-- Canvas Principal -->
+            <div class="canvas-area">
+                <div class="input-section">
+                    <label style="font-weight: 600; display: block; margin-bottom: 10px; color: #1e293b;">
+                        Describe tu visión visual
+                    </label>
+                    <textarea 
+                        id="userInput" 
+                        placeholder="Ej: Crea una imagen calmante con tonos azules que transmita esperanza para un usuario con demencia leve. Debe incluir elementos naturales y ser visible con poca luz..."
+                    ></textarea>
+                    <button class="btn-primary" id="generateBtn" style="margin-top: 15px;">
+                        🎨 Co-Crear Visual
+                    </button>
+                </div>
+                
+                <div class="output-canvas" id="outputCanvas">
+                    <div style="text-align: center; color: #94a3b8;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">✨</div>
+                        <div style="font-size: 14px;">La magia visual aparecerá aquí</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar de Contexto -->
+            <div class="sidebar">
+                <div class="context-panel">
+                    <div class="context-label">Contexto AAL</div>
+                    <div class="context-value">
+                        🏠 Hogar | 🌅 Tarde (17:30)
+                    </div>
+                    <div class="context-value">
+                        🌡️ 22°C | 💡 300 lux
+                    </div>
+                </div>
+                
+                <div class="context-panel">
+                    <div class="context-label">Estado Emocional Inferido</div>
+                    <div class="context-value">😌 Calma</div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill" style="width: 75%;"></div>
+                    </div>
+                </div>
+                
+                <div class="context-panel">
+                    <div class="context-label">Perfil Psicográfico</div>
+                    <div class="context-value">
+                        👴 Boomer | 🧠 Apertura: Alta<br>
+                        🎨 Preferencia: Nostalgia cálida
+                    </div>
+                </div>
+                
+                <div class="context-panel">
+                    <div class="context-label">Ritmo Circadiano</div>
+                    <div class="context-value">
+                        🌅 Fase vespertina<br>
+                        Sugerencia: Tonos cálidos (2800K)
+                    </div>
+                </div>
+                
+                <div class="context-panel">
+                    <div class="context-label">Predicción Temporal</div>
+                    <div class="context-value">
+                        📊 Patrón detectado: Mayor receptividad a imágenes de naturaleza en esta hora
+                    </div>
+                </div>
+                
+                <div class="context-panel" id="explanationPanel" style="display: none;">
+                    <div class="context-label">Justificación de Diseño</div>
+                    <div id="designExplanation" style="font-size: 12px; line-height: 1.5; color: #475569;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuración de agentes
+        const agents = [
+            { name: 'Orquestador Visual', status: 'active', kpi: 'Eficiencia: 98%' },
+            { name: 'Semiólogo Afectivo', status: 'active', kpi: 'Precisión: 87%' },
+            { name: 'Contextualizador AAL', status: 'active', kpi: 'Inferencia: 92%' },
+            { name: 'Brand Guardian', status: 'standby', kpi: 'Coherencia: 100%' },
+            { name: 'MOOS-Video', status: 'standby', kpi: 'Renderizado: 2.3s' },
+            { name: 'CHRONO-AI', status: 'active', kpi: 'Predicción: 84%' },
+            { name: 'ACCESS-CORE', status: 'active', kpi: 'Inclusividad: 95%' },
+            { name: 'MEMORA-SYNC', status: 'active', kpi: 'Coherencia: 91%' },
+            { name: 'FAM-BRIDGE', status: 'standby', kpi: 'Engagement: 78%' },
+            { name: 'PSYCHO-MAP', status: 'active', kpi: 'Precisión: 89%' },
+            { name: 'NARRATIVE-HEAL', status: 'standby', kpi: 'Impacto: 4.2/5' },
+            { name: 'SYNESTHESIA', status: 'standby', kpi: 'Coherencia: 93%' },
+            { name: 'CIRCADIAN-SYNC', status: 'active', kpi: 'Sincronía: 96%' },
+            { name: 'SOCIAL-WEAVE', status: 'standby', kpi: 'Conexión: +120%' },
+            { name: 'CULTURE-ROOTS', status: 'active', kpi: 'Resonancia: 88%' },
+            { name: 'COGNITIVE-LIFT', status: 'active', kpi: 'Autonomía: +35%' },
+            { name: 'LIFECYCLE-NAV', status: 'standby', kpi: 'Acompañamiento' },
+            { name: 'META-LEARN', status: 'active', kpi: 'Optimización: ∞' },
+            { name: 'ETHICS-GUARDIAN', status: 'active', kpi: 'Dignidad: 100%' },
+            { name: 'LEGACY-VAULT', status: 'standby', kpi: 'Preservación' },
+            { name: 'MEANING-FORGE', status: 'standby', kpi: 'Trascendencia' },
+            { name: 'Renderizador', status: 'standby', kpi: 'Calidad: 4K' },
+            { name: 'Analista Impacto', status: 'active', kpi: 'Feedback: Real-time' }
+        ];
+        
+        // Renderizar estado de agentes
+        const agentStatusDiv = document.getElementById('agentStatus');
+        agents.forEach(agent => {
+            const card = document.createElement('div');
+            card.className = `agent-card ${agent.status === 'active' ? 'active' : ''}`;
+            card.innerHTML = `
+                <div class="agent-name">${agent.name}</div>
+                <div class="agent-kpi">${agent.kpi}</div>
+            `;
+            agentStatusDiv.appendChild(card);
+        });
+        
+        // Crear constelación de fondo
+        const constellation = document.getElementById('constellation');
+        const nodeCount = 50;
+        const nodes = [];
+        
+        for (let i = 0; i < nodeCount; i++) {
+            const node = document.createElement('div');
+            node.className = 'agent-node';
+            node.style.left = Math.random() * 100 + '%';
+            node.style.top = Math.random() * 100 + '%';
+            node.style.animationDelay = Math.random() * 3 + 's';
+            constellation.appendChild(node);
+            nodes.push(node);
+        }
+        
+        // Crear conexiones aleatorias
+        for (let i = 0; i < 30; i++) {
+            const connection = document.createElement('div');
+            connection.className = 'agent-connection';
+            const node1 = nodes[Math.floor(Math.random() * nodes.length)];
+            const node2 = nodes[Math.floor(Math.random() * nodes.length)];
+            
+            const rect1 = node1.getBoundingClientRect();
+            const rect2 = node2.getBoundingClientRect();
+            
+            const x1 = rect1.left + rect1.width / 2;
+            const y1 = rect1.top + rect1.height / 2;
+            const x2 = rect2.left + rect2.width / 2;
+            const y2 = rect2.top + rect2.height / 2;
+            
+            const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+            
+            connection.style.width = length + 'px';
+            connection.style.left = x1 + 'px';
+            connection.style.top = y1 + 'px';
+            connection.style.transform = `rotate(${angle}deg)`;
+            connection.style.animationDelay = Math.random() * 4 + 's';
+            
+            constellation.appendChild(connection);
+        }
+        
+        // Lógica de generación
+        const generateBtn = document.getElementById('generateBtn');
+        const userInput = document.getElementById('userInput');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const explanationPanel = document.getElementById('explanationPanel');
+        const designExplanation = document.getElementById('designExplanation');
+        
+        generateBtn.addEventListener('click', async () => {
+            const input = userInput.value.trim();
+            
+            if (!input) {
+                alert('Por favor, describe tu visión visual');
+                return;
+            }
+            
+            // Deshabilitar botón
+            generateBtn.disabled = true;
+            generateBtn.textContent = '🔄 Orquestando agentes...';
+            
+            // Mostrar spinner
+            outputCanvas.innerHTML = '<div class="loading-spinner"></div>';
+            
+            // Activar agentes visualmente
+            const agentCards = document.querySelectorAll('.agent-card');
+            let activationDelay = 0;
+            
+            agentCards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('active');
+                    setTimeout(() => {
+                        if (index < 10) card.classList.remove('active');
+                    }, 2000);
+                }, activationDelay);
+                activationDelay += 100;
+            });
+            
+            // Simular procesamiento multi-agente
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Generar explicación de diseño
+            const explanation = `
+                <strong>Decisiones Semióticas:</strong><br>
+                • Paleta cálida (2800K) adaptada al ritmo circadiano vespertino<br>
+                • Elementos naturales (agua, árboles) para evocar calma<br>
+                • Composición equilibrada para reducir carga cognitiva<br><br>
+                
+                <strong>Optimización AAL:</strong><br>
+                • Contraste aumentado (+40%) para visibilidad con poca luz<br>
+                • Simplicidad visual acorde a perfil cognitivo<br>
+                • Saturación moderada (65%) para evitar sobreestimulación<br><br>
+                
+                <strong>Resonancia Emocional:</strong><br>
+                • Tonalidad esperanzadora mediante horizontes abiertos<br>
+                • Familiaridad nostálgica (preferencia Boomer detectada)<br>
+                • Simbolismo de continuidad (ciclos naturales)
+            `;
+            
+            designExplanation.innerHTML = explanation;
+            explanationPanel.style.display = 'block';
+            
+            // Mostrar imagen generada (placeholder)
+            outputCanvas.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">🖼️</div>
+                    <div style="color: #1e293b; font-weight: 600; font-size: 18px; margin-bottom: 10px;">
+                        Imagen Co-Creada Generada
+                    </div>
+                    <div style="color: #64748b; font-size: 14px; max-width: 400px; margin: 0 auto; line-height: 1.6;">
+                        Paisaje sereno de atardecer con lago tranquilo, árboles suaves y tonos cálidos optimizados para contexto AAL vespertino
+                    </div>
+                    <div style="margin-top: 20px; padding: 15px; background: #ecfdf5; border-radius: 8px; display: inline-block;">
+                        <div style="font-size: 12px; color: #10b981; font-weight: 600;">
+                            ✓ Impacto Emocional: 4.5/5<br>
+                            ✓ Accesibilidad: AAA+<br>
+                            ✓ Coherencia Terapéutica: 92%
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Restaurar botón
+            generateBtn.disabled = false;
+            generateBtn.textContent = '🎨 Co-Crear Nueva Visual';
+        });
+        
+        // Easter egg: Click en el título
+        document.querySelector('h1').addEventListener('click', () => {
+            alert('🌟 XynapxAI v5.0 - 23 agentes, 12 fases, infinitas posibilidades para transformar el cuidado de personas mayores a través del diseño visual empático.');
+        });
+    </script>
+</body>
+</html>

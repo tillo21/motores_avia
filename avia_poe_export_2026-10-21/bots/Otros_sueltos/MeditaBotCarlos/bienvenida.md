@@ -1,0 +1,1 @@
+Hola soy MeditaBot y podeis preguntarme cualquier duda que tengais sobre el taller de Meditación 21 Dias de Abundancia con Chopra.

@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ControlNextMedA v1.1 — AVIA Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Karla:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        heading: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        body: ['Karla', 'system-ui', 'sans-serif'],
+        mono: ['"DM Mono"', 'Menlo', 'monospace'],
+      },
+    }
+  }
+};
+</script>
+<style>
+:root {
+  --bg-base: #faf8f5; --bg-surface: #ffffff; --bg-elevated: #f5f2ed;
+  --text-1: #1a1a1a; --text-2: #555; --text-3: #888;
+  --border: #e5e2dc; --border-strong: #d0ccc4;
+  --accent: #c06d15; --accent-light: #fdf3e7; --accent-dark: #9e5114;
+  --teal: #0d9488; --teal-light: #ccfbf1;
+  --rose: #e11d48; --rose-light: #fff1f2;
+  --violet: #7c3aed; --violet-light: #f5f3ff;
+  --blue: #2563eb; --blue-light: #eff6ff;
+  --green: #059669; --green-light: #ecfdf5;
+}
+.dark {
+  --bg-base: #0a0a0f; --bg-surface: #12121a; --bg-elevated: #1a1a26;
+  --text-1: #e8e6e1; --text-2: #9b9a97; --text-3: #6b6a67;
+  --border: #2a2a3a; --border-strong: #3a3a4a;
+  --accent: #e89b20; --accent-light: #2a2010; --accent-dark: #f0b040;
+  --teal: #2dd4bf; --teal-light: #0a2520;
+  --rose: #fb7185; --rose-light: #2a0a10;
+  --violet: #a78bfa; --violet-light: #1a102a;
+  --blue: #60a5fa; --blue-light: #0a1a2a;
+  --green: #34d399; --green-light: #0a2a1a;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Karla', sans-serif; background: var(--bg-base); color: var(--text-1); margin:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius:3px; }
+.font-heading { font-family: 'Cormorant Garamond', Georgia, serif; }
+.font-mono { font-family: 'DM Mono', monospace; }
+input, select, textarea { font-size: 16px !important; background: var(--bg-surface); color: var(--text-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; }
+.btn { padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg-elevated); color: var(--text-1); }
+.btn-danger { background: var(--rose); color: #fff; }
+.btn-danger:hover { filter: brightness(1.1); }
+.btn-success { background: var(--green); color: #fff; }
+.btn-teal { background: var(--teal); color: #fff; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+.status-dot.warning { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.status-dot.error { background: var(--rose); box-shadow: 0 0 6px var(--rose); animation: pulse-dot 1s infinite; }
+.status-dot.inactive { background: var(--text-3); }
+@keyframes pulse-dot { 0%,100%{opacity:1}50%{opacity:.5} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+@keyframes slideIn { from{transform:translateX(-100%)}to{transform:translateX(0)} }
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:8px; cursor:pointer; transition: all 0.15s; color: var(--text-2); font-weight: 500; font-size:14px; }
+.nav-item:hover { background: var(--bg-elevated); color: var(--text-1); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 700; border-left: 3px solid var(--accent); }
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(4px); animation:fadeIn .2s; }
+.modal-content { background:var(--bg-surface); border:1px solid var(--border); border-radius:16px; padding:24px; max-width:520px; width:90%; max-height:85vh; overflow-y:auto; }
+.layer-bar { height: 52px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; margin-bottom: 6px; border: 1px solid var(--border); transition: all 0.2s; cursor: pointer; }
+.layer-bar:hover { transform: translateX(4px); border-color: var(--accent); }
+.tag { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+.grid-bg { background-image: radial-gradient(circle, var(--border) 1px, transparent 1px); background-size: 24px 24px; }
+@media (max-width: 768px) {
+  .sidebar { position:fixed !important; z-index:90; transform:translateX(-100%); transition:transform .3s; }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:89; }
+}
+</style>
+</head>
+<body>
+<script>
+if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',e=>{e.matches?document.documentElement.classList.add('dark'):document.documentElement.classList.remove('dark')});
+</script>
+<div id="root"></div>
+<script type="text/plain" id="app-code">
+const {useState,useEffect,useRef,useReducer,useCallback,useMemo}=React;
+
+/* ═══════════════════════════════════════════
+   CONSTANTS
+   ═══════════════════════════════════════════ */
+const TABS=[
+  {id:'dashboard',label:'Dashboard',icon:'fa-gauge-high'},
+  {id:'tasks',label:'Tareas',icon:'fa-list-check'},
+  {id:'transmedia',label:'Transmedia',icon:'fa-tower-broadcast'},
+  {id:'auditor',label:'Auditor',icon:'fa-shield-halved'},
+  {id:'versions',label:'Versiones',icon:'fa-code-branch'},
+  {id:'persistence',label:'Persistencia',icon:'fa-database'},
+  {id:'agents',label:'AgentOS',icon:'fa-robot'},
+  {id:'costs',label:'Cost Shield',icon:'fa-coins'},
+];
+const PRIORITIES=['critical','high','medium','low'];
+const STATUSES=['not-started','in-progress','completed','blocked'];
+const STATUS_LABELS={'not-started':'Sin iniciar','in-progress':'En progreso','completed':'Completada','blocked':'Bloqueada'};
+const PRIORITY_LABELS={critical:'Crítica',high:'Alta',medium:'Media',low:'Baja'};
+const WPS=['WP1','WP2','WP3','WP4'];
+const TEAM=['Elena','Roberto','William','Carlos','Meisel'];
+const AGENT_TYPES=['AVIA-Clon-Carlosv2','AVIA-Studiov2','AVIA-Auditor','AVIA-AgentOS'];
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function fmtDate(d){return new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function simpleHash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*0x01000193)>>>0}return h.toString(16).padStart(8,'0')}
+function merkleRoot(items){if(!items.length)return '00000000';if(items.length===1)return simpleHash(items[0]);const mid=Math.ceil(items.length/2);const left=merkleRoot(items.slice(0,mid));const right=merkleRoot(items.slice(mid));return simpleHash(left+right)}
+
+/* ═══════════════════════════════════════════
+   INITIAL STATE
+   ═══════════════════════════════════════════ */
+const NOW=new Date().toISOString();
+const initialState={
+  activeTab:'dashboard',
+  sidebarOpen:false,
+  modal:null,
+  notifications:[],
+  lastSync:NOW,
+  // Tasks
+  tasks:[
+    {id:'t1',wp:'WP2',name:'Arquitectura del sistema',owner:'Elena',deadline:'2026-05-15',status:'in-progress',progress:85,priority:'critical',daysStalled:1,description:'Diseño arquitectónico completo del sistema NEXTMED_IA',created:NOW},
+    {id:'t2',wp:'WP2',name:'Ingesta de datos clínicos',owner:'William',deadline:'2026-05-29',status:'in-progress',progress:25,priority:'high',daysStalled:4,description:'Pipeline de ingesta de datos de pacientes',created:NOW},
+    {id:'t3',wp:'WP2',name:'IA afectiva — modelo emocional',owner:'Elena',deadline:'2026-06-12',status:'in-progress',progress:45,priority:'critical',daysStalled:0,description:'Modelo de reconocimiento emocional basado en señales fisiológicas',created:NOW},
+    {id:'t4',wp:'WP2',name:'Motor de personalización',owner:'Elena',deadline:'2026-06-26',status:'not-started',progress:0,priority:'high',daysStalled:0,description:'Motor de recomendaciones personalizado para tratamientos',created:NOW},
+    {id:'t5',wp:'WP2',name:'Prototipo funcional MVP',owner:'Roberto',deadline:'2026-07-10',status:'not-started',progress:0,priority:'critical',daysStalled:0,description:'Prototipo demostrable con funcionalidad core',created:NOW},
+    {id:'t6',wp:'WP3',name:'Integración plataforma OTT',owner:'Roberto',deadline:'2026-07-24',status:'not-started',progress:0,priority:'critical',daysStalled:0,description:'Integración con plataforma de distribución OTT',created:NOW},
+    {id:'t7',wp:'WP3',name:'Validación técnica end-to-end',owner:'Roberto',deadline:'2026-07-31',status:'not-started',progress:0,priority:'high',daysStalled:0,description:'Testing completo de la pipeline técnica',created:NOW},
+    {id:'t8',wp:'WP3',name:'Validación emocional con usuarios',owner:'Elena',deadline:'2026-07-31',status:'not-started',progress:0,priority:'high',daysStalled:0,description:'Estudio de validación con pacientes reales',created:NOW},
+  ],
+  // Team
+  team:[
+    {id:'m1',name:'Elena',role:'IA + Arquitectura',load:87,status:'overload',skills:['ML','NLP','Arquitectura']},
+    {id:'m2',name:'Roberto',role:'Integración + DevOps',load:40,status:'ok',skills:['DevOps','OTT','Testing']},
+    {id:'m3',name:'William',role:'Datos + ETL',load:35,status:'ok',skills:['ETL','SQL','Python']},
+    {id:'m4',name:'Carlos',role:'Dirección Técnica',load:20,status:'ok',skills:['CTO','Estrategia','Gestión']},
+    {id:'m5',name:'Meisel',role:'Coordinación',load:42,status:'ok',skills:['PM','Comunicación','QA']},
+  ],
+  // Transmedia TOOC
+  tooc:[
+    {id:'tc1',title:'1. Introducción NEXTMED_IA',type:'documento',owner:'Carlos',status:'completed',order:1},
+    {id:'tc2',title:'2. Arquitectura técnica',type:'diagrama',owner:'Elena',status:'in-progress',order:2},
+    {id:'tc3',title:'3. Pipeline de datos',type:'documento',owner:'William',status:'in-progress',order:3},
+    {id:'tc4',title:'4. Modelo IA afectiva',type:'video',owner:'Elena',status:'pending',order:4},
+    {id:'tc5',title:'5. Demo MVP',type:'interactivo',owner:'Roberto',status:'pending',order:5},
+    {id:'tc6',title:'6. Validación clínica',type:'informe',owner:'Elena',status:'pending',order:6},
+  ],
+  pipeline:[
+    {id:'p1',name:'Vídeo demo arquitectura',stage:'produccion',owner:'Elena',due:'2026-05-20'},
+    {id:'p2',name:'Infografía datos clínicos',stage:'concepto',owner:'William',due:'2026-05-25'},
+    {id:'p3',name:'Post redes — avance IA',stage:'qa',owner:'Meisel',due:'2026-05-18'},
+    {id:'p4',name:'Whitepaper técnico',stage:'concepto',owner:'Carlos',due:'2026-06-01'},
+  ],
+  // Auditor
+  auditLog:[
+    {id:'a1',ts:NOW,severity:'info',module:'Sistema',message:'Sistema inicializado correctamente',rule:'LB-INIT-001'},
+    {id:'a2',ts:NOW,severity:'warning',module:'Equipo',message:'Elena supera 80% de carga — redistribución recomendada',rule:'LB-TEAM-002'},
+    {id:'a3',ts:NOW,severity:'critical',module:'WP3',message:'WP3 con 0% de avance — riesgo de incumplimiento',rule:'LB-RISK-006'},
+  ],
+  compliance:{
+    'LB-REGRESS-010':{name:'Anti-regresión',status:'pass',desc:'Progreso monotónico verificado'},
+    'LB-DATA-007':{name:'Datos monotónicos',status:'pass',desc:'Sin decrementos detectados'},
+    'LB-VER-008':{name:'Versionado correcto',status:'pass',desc:'Merkle chain válido'},
+    'LB-PERSIST-009':{name:'6 capas activas',status:'warning',desc:'Solo 3/6 capas operativas'},
+    'LB-COST-001':{name:'Uso eficiente modelos',status:'pass',desc:'Dentro de presupuesto'},
+    'LB-ERR-003':{name:'Errores en español',status:'pass',desc:'100% mensajes traducidos'},
+    'LB-ASYNC-004':{name:'Async/Await',status:'pass',desc:'Patrones async verificados'},
+    'LB-UX-005':{name:'Feedback visual',status:'pass',desc:'Loaders y estados presentes'},
+  },
+  threats:[],
+  // Versions
+  versionHistory:[
+    {id:'v1',version:'1.0.0',hash:'a3f2c891',ts:'2026-04-15T10:00:00Z',author:'Carlos',changes:'Versión inicial — estructura base',parentHash:null},
+    {id:'v2',version:'1.0.1',hash:'b7d4e1f3',ts:'2026-04-22T14:30:00Z',author:'Elena',changes:'Añadido módulo IA afectiva',parentHash:'a3f2c891'},
+    {id:'v3',version:'1.1.0',hash:'c9a0f245',ts:'2026-05-01T09:00:00Z',author:'Roberto',changes:'Dashboard ejecutivo + alertas',parentHash:'b7d4e1f3'},
+  ],
+  conflicts:[],
+  // Persistence layers
+  layers:[
+    {id:'L1',name:'L1 — Memoria RAM',status:'active',lastSync:NOW,records:847,desc:'Estado en memoria de la aplicación'},
+    {id:'L2',name:'L2 — State Snapshot',status:'active',lastSync:NOW,records:847,desc:'Snapshots periódicos del estado'},
+    {id:'L3',name:'L3 — Export JSON',status:'active',lastSync:NOW,records:23,desc:'Exportación de datos a archivos JSON'},
+    {id:'L4',name:'L4 — Cloud Sync',status:'degraded',lastSync:'2026-05-05T12:00:00Z',records:0,desc:'Sincronización con almacenamiento cloud'},
+    {id:'L5',name:'L5 — Replicación',status:'pending',lastSync:null,records:0,desc:'Replicación multi-nodo para redundancia'},
+    {id:'L6',name:'L6 — Blockchain Anchor',status:'pending',lastSync:null,records:0,desc:'Ancla en blockchain para inmutabilidad'},
+  ],
+  // AgentOS
+  agentInstances:[
+    {id:'ag1',type:'AVIA-Clon-Carlosv2',status:'idle',lastTask:'Revisión sprint S4',lastActive:NOW,tasksCompleted:12},
+    {id:'ag2',type:'AVIA-Studiov2',status:'idle',lastTask:'Generación diagrama WP2',lastActive:NOW,tasksCompleted:8},
+    {id:'ag3',type:'AVIA-Auditor',status:'idle',lastTask:'Auditoría regla LB-PERSIST-009',lastActive:NOW,tasksCompleted:15},
+    {id:'ag4',type:'AVIA-AgentOS',status:'idle',lastTask:'Orquestación pipeline transmedia',lastActive:NOW,tasksCompleted:6},
+  ],
+  agentLog:[],
+  // Costs
+  budget:{total:150000,spent:42300,projected:138000,currency:'EUR'},
+  costBreakdown:[
+    {module:'IA Afectiva',spent:15200,budget:35000,status:'ok'},
+    {module:'Ingesta Datos',spent:8100,budget:20000,status:'ok'},
+    {module:'Infraestructura',spent:9800,budget:25000,status:'ok'},
+    {module:'Integración OTT',spent:2200,budget:30000,status:'ok'},
+    {module:'Validación',spent:4000,budget:20000,status:'ok'},
+    {module:'Gestión/Coord.',spent:3000,budget:20000,status:'ok'},
+  ],
+};
+
+/* ═══════════════════════════════════════════
+   REDUCER
+   ═══════════════════════════════════════════ */
+function reducer(state,action){
+  switch(action.type){
+    case 'SET_TAB': return {...state,activeTab:action.payload,sidebarOpen:false};
+    case 'TOGGLE_SIDEBAR': return {...state,sidebarOpen:!state.sidebarOpen};
+    case 'SET_MODAL': return {...state,modal:action.payload};
+    case 'CLOSE_MODAL': return {...state,modal:null};
+    case 'SYNC': return {...state,lastSync:new Date().toISOString()};
+    // Tasks
+    case 'ADD_TASK': {
+      const t={...action.payload,id:genId(),created:new Date().toISOString(),daysStalled:0};
+      return {...state,tasks:[...state.tasks,t],modal:null,
+        auditLog:[{id:genId(),ts:new Date().toISOString(),severity:'info',module:'Tareas',message:`Tarea creada: ${t.name}`,rule:'LB-DATA-007'},...state.auditLog]};
+    }
+    case 'UPDATE_TASK': {
+      const prev=state.tasks.find(t=>t.id===action.payload.id);
+      if(prev&&action.payload.progress<prev.progress){
+        return {...state,modal:null,notifications:[...state.notifications,{id:genId(),type:'error',msg:'Error LB-REGRESS-010: No se permite retroceder el progreso'}]};
+      }
+      return {...state,tasks:state.tasks.map(t=>t.id===action.payload.id?{...t,...action.payload}:t),modal:null,
+        auditLog:[{id:genId(),ts:new Date().toISOString(),severity:'info',module:'Tareas',message:`Tarea actualizada: ${action.payload.name||prev?.name}`,rule:'LB-VER-008'},...state.auditLog]};
+    }
+    case 'DELETE_TASK': return {...state,tasks:state.tasks.filter(t=>t.id!==action.payload),modal:null,
+      auditLog:[{id:genId(),ts:new Date().toISOString(),severity:'warning',module:'Tareas',message:'Tarea eliminada',rule:'LB-DATA-007'},...state.auditLog]};
+    // TOOC
+    case 'ADD_TOOC': return {...state,tooc:[...state.tooc,{...action.payload,id:genId(),order:state.tooc.length+1}],modal:null};
+    case 'UPDATE_TOOC': return {...state,tooc:state.tooc.map(t=>t.id===action.payload.id?{...t,...action.payload}:t),modal:null};
+    case 'DELETE_TOOC': return {...state,tooc:state.tooc.filter(t=>t.id!==action.payload),modal:null};
+    // Pipeline
+    case 'ADD_PIPELINE': return {...state,pipeline:[...state.pipeline,{...action.payload,id:genId()}],modal:null};
+    case 'UPDATE_PIPELINE': return {...state,pipeline:state.pipeline.map(p=>p.id===action.payload.id?{...p,...action.payload}:p)};
+    case 'MOVE_PIPELINE': {
+      const stages=['concepto','produccion','qa','publicado'];
+      const item=state.pipeline.find(p=>p.id===action.payload.id);
+      if(!item)return state;
+      const ci=stages.indexOf(item.stage);
+      const ni=action.payload.direction==='forward'?ci+1:ci-1;
+      if(ni<0||ni>=stages.length)return state;
+      return {...state,pipeline:state.pipeline.map(p=>p.id===action.payload.id?{...p,stage:stages[ni]}:p)};
+    }
+    // Audit
+    case 'ADD_AUDIT': return {...state,auditLog:[{...action.payload,id:genId(),ts:new Date().toISOString()},...state.auditLog]};
+    case 'ADD_THREAT': return {...state,threats:[...state.threats,{...action.payload,id:genId(),detected:new Date().toISOString(),status:'open'}]};
+    case 'RESOLVE_THREAT': return {...state,threats:state.threats.map(t=>t.id===action.payload?{...t,status:'resolved'}:t)};
+    // Versions
+    case 'CREATE_SNAPSHOT': {
+      const prev=state.versionHistory[state.versionHistory.length-1];
+      const stateStr=JSON.stringify({tasks:state.tasks.length,tooc:state.tooc.length});
+      const hash=simpleHash(stateStr+(prev?.hash||''));
+      const parts=(prev?.version||'1.0.0').split('.').map(Number);
+      parts[2]++;
+      const v={id:genId(),version:parts.join('.'),hash,ts:new Date().toISOString(),author:action.payload.author||'Sistema',changes:action.payload.changes||'Snapshot automático',parentHash:prev?.hash||null};
+      return {...state,versionHistory:[...state.versionHistory,v],
+        auditLog:[{id:genId(),ts:new Date().toISOString(),severity:'info',module:'Versiones',message:`Snapshot v${v.version} creado (${hash})`,rule:'LB-VER-008'},...state.auditLog]};
+    }
+    case 'ADD_CONFLICT': return {...state,conflicts:[...state.conflicts,{...action.payload,id:genId(),ts:new Date().toISOString(),resolved:false}]};
+    case 'RESOLVE_CONFLICT': return {...state,conflicts:state.conflicts.map(c=>c.id===action.payload?{...c,resolved:true}:c)};
+    // Persistence
+    case 'SYNC_LAYER': {
+      return {...state,layers:state.layers.map(l=>l.id===action.payload?{...l,status:'active',lastSync:new Date().toISOString(),records:state.tasks.length+state.tooc.length+state.pipeline.length}:l),
+        auditLog:[{id:genId(),ts:new Date().toISOString(),severity:'info',module:'Persistencia',message:`Capa ${action.payload} sincronizada`,rule:'LB-PERSIST-009'},...state.auditLog]};
+    }
+    // Agents
+    case 'RUN_AGENT': {
+      const ag=state.agentInstances.find(a=>a.id===action.payload.agentId);
+      return {...state,
+        agentInstances:state.agentInstances.map(a=>a.id===action.payload.agentId?{...a,status:'running',lastTask:action.payload.task,lastActive:new Date().toISOString()}:a),
+        agentLog:[{id:genId(),ts:new Date().toISOString(),agent:ag?.type||'Unknown',task:action.payload.task,status:'running',result:null},...state.agentLog]};
+    }
+    case 'COMPLETE_AGENT': {
+      return {...state,
+        agentInstances:state.agentInstances.map(a=>a.id===action.payload.agentId?{...a,status:'idle',tasksCompleted:a.tasksCompleted+1}:a),
+        agentLog:state.agentLog.map((l,i)=>i===0?{...l,status:'completed',result:action.payload.result}:l)};
+    }
+    // Costs
+    case 'UPDATE_COST': return {...state,costBreakdown:state.costBreakdown.map(c=>c.module===action.payload.module?{...c,...action.payload}:c)};
+    // Notifications
+    case 'DISMISS_NOTIFICATION': return {...state,notifications:state.notifications.filter(n=>n.id!==action.payload)};
+    default: return state;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   UI PRIMITIVES
+   ═══════════════════════════════════════════ */
+function Modal({title,children,onClose}){
+  return(
+    <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div className="modal-content animate-fadeIn">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-heading text-2xl font-bold" style={{color:'var(--text-1)'}}>{title}</h3>
+          <button onClick={onClose} className="btn btn-ghost" style={{padding:'4px 10px'}}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Card({title,icon,children,actions,className=''}){
+  return(
+    <div className={`card p-5 ${className}`}>
+      {(title||actions)&&(
+        <div className="flex items-center justify-between mb-4">
+          {title&&<h3 className="font-heading text-xl font-bold flex items-center gap-2" style={{color:'var(--text-1)'}}>
+            {icon&&<i className={`fas ${icon}`} style={{color:'var(--accent)'}}></i>}{title}</h3>}
+          {actions&&<div className="flex gap-2">{actions}</div>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Badge({label,color='gray'}){
+  const colors={
+    critical:{bg:'var(--rose-light)',text:'var(--rose)'},
+    high:{bg:'var(--accent-light)',text:'var(--accent)'},
+    medium:{bg:'var(--blue-light)',text:'var(--blue)'},
+    low:{bg:'var(--bg-elevated)',text:'var(--text-3)'},
+    green:{bg:'var(--green-light)',text:'var(--green)'},
+    teal:{bg:'var(--teal-light)',text:'var(--teal)'},
+    violet:{bg:'var(--violet-light)',text:'var(--violet)'},
+    gray:{bg:'var(--bg-elevated)',text:'var(--text-2)'},
+    info:{bg:'var(--blue-light)',text:'var(--blue)'},
+    warning:{bg:'var(--accent-light)',text:'var(--accent)'},
+  };
+  const c=colors[color]||colors.gray;
+  return <span className="tag" style={{background:c.bg,color:c.text}}>{label}</span>;
+}
+
+function ProgressBar({value,max=100,color='var(--accent)',h=8}){
+  const pct=Math.min(100,Math.max(0,(value/max)*100));
+  return(
+    <div style={{background:'var(--bg-elevated)',borderRadius:h/2,height:h,width:'100%'}}>
+      <div style={{background:color,height:'100%',borderRadius:h/2,width:`${pct}%`,transition:'width 0.4s ease'}}></div>
+    </div>
+  );
+}
+
+function StatCard({label,value,icon,color='var(--accent)',sub}){
+  return(
+    <div className="card p-4">
+      <div className="flex items-center gap-3">
+        <div style={{background:color+'20',color:color,width:40,height:40,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <i className={`fas ${icon}`}></i>
+        </div>
+        <div className="flex-1">
+          <div style={{color:'var(--text-3)',fontSize:12,fontWeight:600,textTransform:'uppercase',letterSpacing:1}}>{label}</div>
+          <div className="font-heading" style={{fontSize:28,fontWeight:700,color:'var(--text-1)',lineHeight:1.1}}>{value}</div>
+          {sub&&<div style={{color:'var(--text-3)',fontSize:12,marginTop:2}}>{sub}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({icon,title,desc}){
+  return(
+    <div className="text-center py-12" style={{color:'var(--text-3)'}}>
+      <i className={`fas ${icon} text-4xl mb-3`}></i>
+      <h4 className="font-heading text-xl font-bold mb-1" style={{color:'var(--text-2)'}}>{title}</h4>
+      <p style={{fontSize:14}}>{desc}</p>
+    </div>
+  );
+}
+
+function Notifications({items,dispatch}){
+  if(!items.length)return null;
+  return(
+    <div style={{position:'fixed',top:16,right:16,zIndex:200,maxWidth:360}}>
+      {items.map(n=>(
+        <div key={n.id} className="card p-3 mb-2 animate-fadeIn" style={{borderLeft:`4px solid ${n.type==='error'?'var(--rose)':'var(--green)'}`}}>
+          <div className="flex justify-between items-start">
+            <p style={{fontSize:13,color:'var(--text-1)',margin:0}}>{n.msg}</p>
+            <button onClick={()=>dispatch({type:'DISMISS_NOTIFICATION',payload:n.id})} style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',marginLeft:8}}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════ */
+function Sidebar({activeTab,dispatch,open,layers}){
+  const activeLayers=layers.filter(l=>l.status==='active').length;
+  return(
+    <aside className={`sidebar ${open?'open':''}`} style={{width:240,background:'var(--bg-surface)',borderRight:'1px solid var(--border)',height:'100vh',position:'fixed',top:0,left:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'20px 16px 12px',borderBottom:'1px solid var(--border)'}}>
+        <h1 className="font-heading" style={{fontSize:26,fontWeight:700,color:'var(--accent)',margin:0,lineHeight:1}}>NEXTMED<span style={{color:'var(--text-1)'}}>_IA</span></h1>
+        <div style={{fontSize:11,color:'var(--text-3)',marginTop:4}} className="font-mono">ControlNextMedA v1.1</div>
+        <div style={{display:'flex',gap:4,marginTop:8}}>
+          <span className="tag" style={{background:'var(--green-light)',color:'var(--green)',fontSize:10}}>AVIA Activo</span>
+          <span className="tag" style={{background:'var(--teal-light)',color:'var(--teal)',fontSize:10}}>L{activeLayers}/6</span>
+        </div>
+      </div>
+      <nav style={{flex:1,padding:'12px 8px',overflowY:'auto'}}>
+        {TABS.map(tab=>(
+          <div key={tab.id} className={`nav-item ${activeTab===tab.id?'active':''}`}
+            onClick={()=>dispatch({type:'SET_TAB',payload:tab.id})}>
+            <i className={`fas ${tab.icon}`} style={{width:18,textAlign:'center'}}></i>
+            <span>{tab.label}</span>
+          </div>
+        ))}
+      </nav>
+      <div style={{padding:'12px 16px',borderTop:'1px solid var(--border)',fontSize:11,color:'var(--text-3)'}}>
+        <div className="font-mono">AVIA Protocol Suite</div>
+        <div style={{marginTop:4}}>Libro Blanco: 8/8 reglas</div>
+      </div>
+    </aside>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   DASHBOARD
+   ═══════════════════════════════════════════ */
+function Dashboard({state,dispatch}){
+  const {tasks,team,layers,versionHistory,auditLog,budget,costBreakdown}=state;
+  const total=tasks.length;
+  const completed=tasks.filter(t=>t.status==='completed').length;
+  const inProgress=tasks.filter(t=>t.status==='in-progress').length;
+  const blocked=tasks.filter(t=>t.daysStalled>=3).length;
+  const health=total?Math.round((tasks.reduce((s,t)=>s+t.progress,0))/(total)):0;
+  const activeLayers=layers.filter(l=>l.status==='active').length;
+  const lastVer=versionHistory[versionHistory.length-1];
+  const criticalAlerts=auditLog.filter(a=>a.severity==='critical').length;
+  const budgetPct=Math.round((budget.spent/budget.total)*100);
+
+  const chartRef=useRef(null);const chartInst=useRef(null);
+  useEffect(()=>{
+    if(!chartRef.current)return;
+    if(chartInst.current)chartInst.current.destroy();
+    const weeks=['S1','S2','S3','S4'];
+    const prog=[15,21,26,health];
+    chartInst.current=new Chart(chartRef.current.getContext('2d'),{
+      type:'line',data:{labels:weeks,datasets:[{label:'Progreso %',data:prog,borderColor:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#c06d15',backgroundColor:'rgba(192,109,21,0.15)',fill:true,tension:0.3,pointRadius:5,pointBackgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#c06d15'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(128,128,128,0.1)'},ticks:{color:'#888'}},x:{grid:{display:false},ticks:{color:'#888'}}}}
+    });
+    return()=>{if(chartInst.current)chartInst.current.destroy()};
+  },[health]);
+
+  // AVIA protocols status
+  const protocols=[
+    {name:'Transmedia',icon:'fa-tower-broadcast',pct:state.tooc.filter(t=>t.status==='completed').length/Math.max(1,state.tooc.length)*100},
+    {name:'Auditor',icon:'fa-shield-halved',pct:Object.values(state.compliance).filter(c=>c.status==='pass').length/Object.keys(state.compliance).length*100},
+    {name:'Versiones',icon:'fa-code-branch',pct:versionHistory.length>=3?80:40},
+    {name:'Persistencia',icon:'fa-database',pct:activeLayers/6*100},
+    {name:'AgentOS',icon:'fa-robot',pct:state.agentInstances.filter(a=>a.tasksCompleted>0).length/state.agentInstances.length*100},
+    {name:'Cost Shield',icon:'fa-coins',pct:budgetPct<90?100:50},
+  ];
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-heading" style={{fontSize:32,fontWeight:700,margin:0}}>Dashboard Ejecutivo</h2>
+          <p style={{color:'var(--text-3)',fontSize:13,margin:0}}>Última sincronización: {fmtDate(state.lastSync)}</p>
+        </div>
+        <button className="btn btn-primary" onClick={()=>dispatch({type:'SYNC'})}>
+          <i className="fas fa-rotate"></i> Sincronizar
+        </button>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Total tareas" value={total} icon="fa-list" color="var(--blue)"/>
+        <StatCard label="En progreso" value={inProgress} icon="fa-spinner" color="var(--accent)"/>
+        <StatCard label="Completadas" value={completed} icon="fa-check-circle" color="var(--green)"/>
+        <StatCard label="Bloqueadas" value={blocked} icon="fa-exclamation-triangle" color="var(--rose)" sub={`${criticalAlerts} alertas críticas`}/>
+      </div>
+
+      {/* Health + Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <Card title="Salud del Proyecto" icon="fa-heart-pulse">
+          <div className="text-center mb-4">
+            <div className="font-heading" style={{fontSize:64,fontWeight:700,color:health>60?'var(--green)':health>30?'var(--accent)':'var(--rose)'}}>{health}%</div>
+            <div style={{color:'var(--text-3)',fontSize:13}}>Progreso global ponderado</div>
+          </div>
+          <div className="space-y-2" style={{fontSize:13}}>
+            <div className="flex justify-between"><span>WP2</span><span className="font-mono">{Math.round(tasks.filter(t=>t.wp==='WP2').reduce((s,t)=>s+t.progress,0)/Math.max(1,tasks.filter(t=>t.wp==='WP2').length))}%</span></div>
+            <ProgressBar value={tasks.filter(t=>t.wp==='WP2').reduce((s,t)=>s+t.progress,0)/Math.max(1,tasks.filter(t=>t.wp==='WP2').length)} color="var(--violet)"/>
+            <div className="flex justify-between"><span>WP3</span><span className="font-mono">{Math.round(tasks.filter(t=>t.wp==='WP3').reduce((s,t)=>s+t.progress,0)/Math.max(1,tasks.filter(t=>t.wp==='WP3').length))}%</span></div>
+            <ProgressBar value={tasks.filter(t=>t.wp==='WP3').reduce((s,t)=>s+t.progress,0)/Math.max(1,tasks.filter(t=>t.wp==='WP3').length)} color="var(--teal)"/>
+          </div>
+        </Card>
+        <div className="lg:col-span-2">
+          <Card title="Evolución Semanal" icon="fa-chart-line">
+            <div style={{height:220}}><canvas ref={chartRef}></canvas></div>
+          </Card>
+        </div>
+      </div>
+
+      {/* AVIA Protocols Grid */}
+      <Card title="Protocolos AVIA" icon="fa-dna">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {protocols.map(p=>(
+            <div key={p.name} className="text-center p-3" style={{background:'var(--bg-elevated)',borderRadius:10,cursor:'pointer'}}
+              onClick={()=>dispatch({type:'SET_TAB',payload:p.name==='Transmedia'?'transmedia':p.name==='Auditor'?'auditor':p.name==='Versiones'?'versions':p.name==='Persistencia'?'persistence':p.name==='AgentOS'?'agents':'costs'})}>
+              <i className={`fas ${p.icon}`} style={{fontSize:20,color:'var(--accent)',marginBottom:6,display:'block'}}></i>
+              <div style={{fontSize:12,fontWeight:600,color:'var(--text-1)',marginBottom:4}}>{p.name}</div>
+              <ProgressBar value={p.pct} color={p.pct>=80?'var(--green)':p.pct>=50?'var(--accent)':'var(--rose)'} h={5}/>
+              <div className="font-mono" style={{fontSize:11,color:'var(--text-3)',marginTop:4}}>{Math.round(p.pct)}%</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Team + Version + Budget row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <Card title="Equipo" icon="fa-users">
+          <div className="space-y-3">
+            {team.map(m=>(
+              <div key={m.id} className="flex items-center gap-3">
+                <div style={{width:36,height:36,borderRadius:'50%',background:'var(--accent-light)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--accent)',fontWeight:700,fontSize:14}}>{m.name[0]}</div>
+                <div className="flex-1">
+                  <div className="flex justify-between" style={{fontSize:13}}>
+                    <span style={{fontWeight:600}}>{m.name}</span>
+                    <span className="font-mono" style={{color:m.load>80?'var(--rose)':m.load>60?'var(--accent)':'var(--green)'}}>{m.load}%</span>
+                  </div>
+                  <ProgressBar value={m.load} color={m.load>80?'var(--rose)':m.load>60?'var(--accent)':'var(--green)'} h={4}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card title="Última Versión" icon="fa-code-branch">
+          <div className="text-center">
+            <div className="font-heading" style={{fontSize:48,fontWeight:700,color:'var(--violet)'}}>{lastVer?.version}</div>
+            <div className="font-mono" style={{fontSize:12,color:'var(--text-3)',margin:'4px 0 8px'}}>Hash: {lastVer?.hash}</div>
+            <div style={{fontSize:13,color:'var(--text-2)',marginBottom:4}}>{lastVer?.changes}</div>
+            <div style={{fontSize:11,color:'var(--text-3)'}}>por {lastVer?.author} — {lastVer?fmtDate(lastVer.ts):'-'}</div>
+          </div>
+          <div style={{marginTop:16}}>
+            <div style={{fontSize:12,color:'var(--text-3)',marginBottom:4}}>Merkle Root</div>
+            <div className="font-mono" style={{fontSize:11,padding:'6px 10px',background:'var(--bg-elevated)',borderRadius:6,wordBreak:'break-all',color:'var(--teal)'}}>
+              {merkleRoot(versionHistory.map(v=>v.hash))}
+            </div>
+          </div>
+        </Card>
+        <Card title="Presupuesto" icon="fa-wallet">
+          <div className="text-center mb-3">
+            <div className="font-heading" style={{fontSize:36,fontWeight:700,color:'var(--text-1)'}}>{budget.spent.toLocaleString('es-ES')}€</div>
+            <div style={{fontSize:12,color:'var(--text-3)'}}>de {budget.total.toLocaleString('es-ES')}€</div>
+          </div>
+          <ProgressBar value={budgetPct} color={budgetPct>80?'var(--rose)':budgetPct>60?'var(--accent)':'var(--green)'}/>
+          <div className="flex justify-between mt-3" style={{fontSize:12,color:'var(--text-3)'}}>
+            <span>Consumido: {budgetPct}%</span>
+            <span>Proyección: {budget.projected.toLocaleString('es-ES')}€</span>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Alerts */}
+      {auditLog.filter(a=>a.severity!=='info').length>0&&(
+        <Card title="Alertas Recientes" icon="fa-bell">
+          <div className="space-y-2">
+            {auditLog.filter(a=>a.severity!=='info').slice(0,5).map(a=>(
+              <div key={a.id} className="flex items-start gap-3 p-3" style={{background:a.severity==='critical'?'var(--rose-light)':'var(--accent-light)',borderRadius:8}}>
+                <i className={`fas ${a.severity==='critical'?'fa-circle-exclamation':'fa-triangle-exclamation'}`} style={{color:a.severity==='critical'?'var(--rose)':'var(--accent)',marginTop:2}}></i>
+                <div className="flex-1">
+                  <div style={{fontSize:13,fontWeight:600,color:'var(--text-1)'}}>{a.module}</div>
+                  <div style={{fontSize:12,color:'var(--text-2)'}}>{a.message}</div>
+                </div>
+                <Badge label={a.rule} color="gray"/>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   TASK MANAGER (CRUD)
+   ═══════════════════════════════════════════ */
+function TaskForm({task,onSubmit,onCancel}){
+  const [form,setForm]=useState(task||{name:'',wp:'WP2',owner:'Elena',priority:'high',status:'not-started',progress:0,deadline:'',description:''});
+  const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
+  return(
+    <div className="space-y-4">
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Nombre de la tarea *</label>
+        <input value={form.name} onChange={e=>upd('name',e.target.value)} style={{width:'100%'}} placeholder="Ej: Diseño del modelo predictivo"/></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Work Package</label>
+          <select value={form.wp} onChange={e=>upd('wp',e.target.value)} style={{width:'100%'}}>{WPS.map(w=><option key={w} value={w}>{w}</option>)}</select></div>
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Responsable</label>
+          <select value={form.owner} onChange={e=>upd('owner',e.target.value)} style={{width:'100%'}}>{TEAM.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Prioridad</label>
+          <select value={form.priority} onChange={e=>upd('priority',e.target.value)} style={{width:'100%'}}>{PRIORITIES.map(p=><option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}</select></div>
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Estado</label>
+          <select value={form.status} onChange={e=>upd('status',e.target.value)} style={{width:'100%'}}>{STATUSES.map(s=><option key={s} value={s}>{STATUS_LABELS[s]}</option>)}</select></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Fecha límite</label>
+          <input type="date" value={form.deadline} onChange={e=>upd('deadline',e.target.value)} style={{width:'100%'}}/></div>
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Progreso: {form.progress}%</label>
+          <input type="range" min="0" max="100" value={form.progress} onChange={e=>upd('progress',Number(e.target.value))} style={{width:'100%',background:'transparent',border:'none',padding:0}}/></div>
+      </div>
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Descripción</label>
+        <textarea value={form.description} onChange={e=>upd('description',e.target.value)} rows={3} style={{width:'100%',resize:'vertical'}} placeholder="Detalles de la tarea..."></textarea></div>
+      <div className="flex justify-end gap-2">
+        <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button className="btn btn-primary" onClick={()=>{if(!form.name.trim())return;onSubmit(form)}} disabled={!form.name.trim()}>
+          <i className="fas fa-save"></i>{task?'Guardar':'Crear'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TaskManager({state,dispatch}){
+  const [filter,setFilter]=useState({wp:'all',status:'all',search:''});
+  const [deleteTarget,setDeleteTarget]=useState(null);
+  const tasks=useMemo(()=>{
+    let t=state.tasks;
+    if(filter.wp!=='all')t=t.filter(x=>x.wp===filter.wp);
+    if(filter.status!=='all')t=t.filter(x=>x.status===filter.status);
+    if(filter.search)t=t.filter(x=>x.name.toLowerCase().includes(filter.search.toLowerCase())||x.owner.toLowerCase().includes(filter.search.toLowerCase()));
+    return t;
+  },[state.tasks,filter]);
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>Gestión de Tareas</h2>
+        <button className="btn btn-primary" onClick={()=>dispatch({type:'SET_MODAL',payload:{type:'addTask'}})}>
+          <i className="fas fa-plus"></i> Nueva Tarea
+        </button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <div className="flex flex-wrap gap-3 items-center">
+          <input placeholder="Buscar tarea o responsable..." value={filter.search} onChange={e=>setFilter(p=>({...p,search:e.target.value}))} style={{flex:'1 1 200px',minWidth:200}}/>
+          <select value={filter.wp} onChange={e=>setFilter(p=>({...p,wp:e.target.value}))} style={{minWidth:100}}>
+            <option value="all">Todos WP</option>{WPS.map(w=><option key={w} value={w}>{w}</option>)}
+          </select>
+          <select value={filter.status} onChange={e=>setFilter(p=>({...p,status:e.target.value}))} style={{minWidth:120}}>
+            <option value="all">Todo estado</option>{STATUSES.map(s=><option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+          </select>
+          <span style={{fontSize:13,color:'var(--text-3)'}}>{tasks.length} tarea{tasks.length!==1?'s':''}</span>
+        </div>
+      </Card>
+
+      {/* Task list */}
+      <div className="space-y-3">
+        {tasks.length===0?<EmptyState icon="fa-clipboard-list" title="Sin tareas" desc="No hay tareas que coincidan con los filtros"/>:
+          tasks.map(task=>(
+            <div key={task.id} className="card p-4 hover:shadow-md transition-all" style={{borderLeft:`4px solid ${task.priority==='critical'?'var(--rose)':task.priority==='high'?'var(--accent)':'var(--blue)'}`}}>
+              <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span style={{fontWeight:700,fontSize:15}}>{task.name}</span>
+                    <Badge label={task.wp} color="violet"/>
+                    <Badge label={PRIORITY_LABELS[task.priority]} color={task.priority==='critical'?'critical':task.priority==='high'?'high':'medium'}/>
+                    <Badge label={STATUS_LABELS[task.status]} color={task.status==='completed'?'green':task.status==='in-progress'?'teal':task.status==='blocked'?'critical':'gray'}/>
+                    {task.daysStalled>=3&&<Badge label={`${task.daysStalled}d estancada`} color="critical"/>}
+                  </div>
+                  {task.description&&<p style={{fontSize:13,color:'var(--text-2)',margin:'4px 0 0'}}>{task.description}</p>}
+                </div>
+                <div className="flex gap-1">
+                  <button className="btn btn-ghost" style={{padding:'4px 8px',fontSize:12}} onClick={()=>dispatch({type:'SET_MODAL',payload:{type:'editTask',data:task}})}>
+                    <i className="fas fa-pen"></i>
+                  </button>
+                  <button className="btn btn-ghost" style={{padding:'4px 8px',fontSize:12,color:'var(--rose)'}} onClick={()=>setDeleteTarget(task)}>
+                    <i className="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2" style={{fontSize:12,color:'var(--text-3)'}}>
+                <span><i className="fas fa-user" style={{marginRight:4}}></i>{task.owner}</span>
+                <span><i className="fas fa-calendar" style={{marginRight:4}}></i>{task.deadline||'Sin fecha'}</span>
+                <span className="font-mono" style={{fontWeight:700,color:'var(--accent)'}}>{task.progress}%</span>
+              </div>
+              <ProgressBar value={task.progress} color={task.status==='completed'?'var(--green)':task.status==='in-progress'?'var(--teal)':'var(--text-3)'}/>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* Modals */}
+      {state.modal?.type==='addTask'&&(
+        <Modal title="Nueva Tarea" onClose={()=>dispatch({type:'CLOSE_MODAL'})}>
+          <TaskForm onSubmit={data=>dispatch({type:'ADD_TASK',payload:data})} onCancel={()=>dispatch({type:'CLOSE_MODAL'})}/>
+        </Modal>
+      )}
+      {state.modal?.type==='editTask'&&(
+        <Modal title="Editar Tarea" onClose={()=>dispatch({type:'CLOSE_MODAL'})}>
+          <TaskForm task={state.modal.data} onSubmit={data=>dispatch({type:'UPDATE_TASK',payload:{...state.modal.data,...data}})} onCancel={()=>dispatch({type:'CLOSE_MODAL'})}/>
+        </Modal>
+      )}
+      {deleteTarget&&(
+        <Modal title="Confirmar Eliminación" onClose={()=>setDeleteTarget(null)}>
+          <p style={{color:'var(--text-2)',marginBottom:16}}>¿Estás seguro de que deseas eliminar la tarea <strong>"{deleteTarget.name}"</strong>? Esta acción no se puede deshacer.</p>
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost" onClick={()=>setDeleteTarget(null)}>Cancelar</button>
+            <button className="btn btn-danger" onClick={()=>{dispatch({type:'DELETE_TASK',payload:deleteTarget.id});setDeleteTarget(null)}}>
+              <i className="fas fa-trash"></i> Eliminar
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-TRANSMEDIA
+   ═══════════════════════════════════════════ */
+function Transmedia({state,dispatch}){
+  const [view,setView]=useState('tooc');
+  const STAGES={concepto:'Concepto',produccion:'Producción',qa:'QA',publicado:'Publicado'};
+  const STAGE_COLORS={concepto:'var(--text-3)',produccion:'var(--accent)',qa:'var(--teal)',publicado:'var(--green)'};
+  const TOOC_TYPES=['documento','diagrama','video','interactivo','informe','presentación'];
+  const TOOC_STATUS={completed:'Completado','in-progress':'En progreso',pending:'Pendiente'};
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-Transmedia</h2>
+        <div className="flex gap-2">
+          <button className={`btn ${view==='tooc'?'btn-primary':'btn-ghost'}`} onClick={()=>setView('tooc')}>
+            <i className="fas fa-list-ol"></i> TOOC
+          </button>
+          <button className={`btn ${view==='pipeline'?'btn-primary':'btn-ghost'}`} onClick={()=>setView('pipeline')}>
+            <i className="fas fa-diagram-project"></i> Pipeline
+          </button>
+        </div>
+      </div>
+
+      {view==='tooc'&&(
+        <>
+        <Card title="TOOC Interactivo" icon="fa-book-open" actions={
+          <button className="btn btn-primary" onClick={()=>dispatch({type:'SET_MODAL',payload:{type:'addTooc'}})}>
+            <i className="fas fa-plus"></i> Añadir Entrada
+          </button>
+        }>
+          <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+            <strong>ENTRADAS:</strong> Título, tipo de contenido, responsable, estado
+            &nbsp;|&nbsp;<strong>SALIDA:</strong> Índice interactivo con estado de producción
+          </div>
+          <div className="space-y-2">
+            {state.tooc.sort((a,b)=>a.order-b.order).map((entry,i)=>(
+              <div key={entry.id} className="flex items-center gap-3 p-3" style={{background:'var(--bg-elevated)',borderRadius:8}}>
+                <span className="font-mono" style={{color:'var(--text-3)',fontSize:12,minWidth:24}}>{String(i+1).padStart(2,'0')}</span>
+                <span className={`status-dot ${entry.status==='completed'?'active':entry.status==='in-progress'?'warning':'inactive'}`}></span>
+                <div className="flex-1">
+                  <span style={{fontWeight:600,fontSize:14}}>{entry.title}</span>
+                  <div className="flex gap-2 mt-1">
+                    <Badge label={entry.type} color="violet"/>
+                    <span style={{fontSize:11,color:'var(--text-3)'}}>{entry.owner}</span>
+                  </div>
+                </div>
+                <Badge label={TOOC_STATUS[entry.status]||entry.status} color={entry.status==='completed'?'green':entry.status==='in-progress'?'teal':'gray'}/>
+                <button className="btn btn-ghost" style={{padding:'4px 8px',fontSize:11}} onClick={()=>dispatch({type:'SET_MODAL',payload:{type:'editTooc',data:entry}})}>
+                  <i className="fas fa-pen"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* TOOC Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Completados" value={state.tooc.filter(t=>t.status==='completed').length} icon="fa-check" color="var(--green)"/>
+          <StatCard label="En progreso" value={state.tooc.filter(t=>t.status==='in-progress').length} icon="fa-spinner" color="var(--accent)"/>
+          <StatCard label="Pendientes" value={state.tooc.filter(t=>t.status==='pending').length} icon="fa-clock" color="var(--text-3)"/>
+        </div>
+        </>
+      )}
+
+      {view==='pipeline'&&(
+        <div>
+          <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+            <strong>ENTRADAS:</strong> Nombre del asset, etapa, responsable, fecha
+            &nbsp;|&nbsp;<strong>SALIDA:</strong> Kanban de producción transmedia
+          </div>
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <button className="btn btn-primary" onClick={()=>dispatch({type:'SET_MODAL',payload:{type:'addPipeline'}})}>
+              <i className="fas fa-plus"></i> Nuevo Asset
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Object.entries(STAGES).map(([key,label])=>{
+              const items=state.pipeline.filter(p=>p.stage===key);
+              return(
+                <div key={key}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div style={{width:12,height:12,borderRadius:'50%',background:STAGE_COLORS[key]}}></div>
+                    <span style={{fontWeight:700,fontSize:14}}>{label}</span>
+                    <span className="font-mono" style={{fontSize:11,color:'var(--text-3)'}}>{items.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map(item=>(
+                      <div key={item.id} className="card p-3" style={{borderTop:`3px solid ${STAGE_COLORS[key]}`}}>
+                        <div style={{fontWeight:600,fontSize:13,marginBottom:4}}>{item.name}</div>
+                        <div style={{fontSize:11,color:'var(--text-3)',marginBottom:6}}>{item.owner} · {item.due}</div>
+                        <div className="flex gap-1">
+                          {key!=='concepto'&&<button className="btn btn-ghost" style={{padding:'2px 6px',fontSize:10}} onClick={()=>dispatch({type:'MOVE_PIPELINE',payload:{id:item.id,direction:'back'}})}>
+                            <i className="fas fa-arrow-left"></i></button>}
+                          {key!=='publicado'&&<button className="btn btn-ghost" style={{padding:'2px 6px',fontSize:10}} onClick={()=>dispatch({type:'MOVE_PIPELINE',payload:{id:item.id,direction:'forward'}})}>
+                            <i className="fas fa-arrow-right"></i></button>}
+                        </div>
+                      </div>
+                    ))}
+                    {items.length===0&&<div style={{padding:16,textAlign:'center',color:'var(--text-3)',fontSize:12,border:'1px dashed var(--border)',borderRadius:8}}>Vacío</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {state.modal?.type==='addTooc'&&(
+        <Modal title="Nueva Entrada TOOC" onClose={()=>dispatch({type:'CLOSE_MODAL'})}>
+          <ToocForm onSubmit={data=>dispatch({type:'ADD_TOOC',payload:data})} onCancel={()=>dispatch({type:'CLOSE_MODAL'})} types={TOOC_TYPES}/>
+        </Modal>
+      )}
+      {state.modal?.type==='editTooc'&&(
+        <Modal title="Editar Entrada TOOC" onClose={()=>dispatch({type:'CLOSE_MODAL'})}>
+          <ToocForm entry={state.modal.data} onSubmit={data=>dispatch({type:'UPDATE_TOOC',payload:{...state.modal.data,...data}})} onCancel={()=>dispatch({type:'CLOSE_MODAL'})} types={TOOC_TYPES}/>
+        </Modal>
+      )}
+      {state.modal?.type==='addPipeline'&&(
+        <Modal title="Nuevo Asset Pipeline" onClose={()=>dispatch({type:'CLOSE_MODAL'})}>
+          <PipelineForm onSubmit={data=>dispatch({type:'ADD_PIPELINE',payload:data})} onCancel={()=>dispatch({type:'CLOSE_MODAL'})}/>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ToocForm({entry,onSubmit,onCancel,types}){
+  const [f,set]=useState(entry||{title:'',type:'documento',owner:'Elena',status:'pending'});
+  const upd=(k,v)=>set(p=>({...p,[k]:v}));
+  return(
+    <div className="space-y-4">
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Título *</label>
+        <input value={f.title} onChange={e=>upd('title',e.target.value)} style={{width:'100%'}} placeholder="Ej: Capítulo 3 — Pipeline de datos"/></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Tipo</label>
+          <select value={f.type} onChange={e=>upd('type',e.target.value)} style={{width:'100%'}}>{types.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Responsable</label>
+          <select value={f.owner} onChange={e=>upd('owner',e.target.value)} style={{width:'100%'}}>{TEAM.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+      </div>
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Estado</label>
+        <select value={f.status} onChange={e=>upd('status',e.target.value)} style={{width:'100%'}}>
+          <option value="pending">Pendiente</option><option value="in-progress">En progreso</option><option value="completed">Completado</option>
+        </select></div>
+      <div className="flex justify-end gap-2">
+        <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button className="btn btn-primary" onClick={()=>{if(f.title.trim())onSubmit(f)}} disabled={!f.title.trim()}>
+          <i className="fas fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PipelineForm({onSubmit,onCancel}){
+  const [f,set]=useState({name:'',stage:'concepto',owner:'Elena',due:''});
+  const upd=(k,v)=>set(p=>({...p,[k]:v}));
+  return(
+    <div className="space-y-4">
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Nombre del Asset *</label>
+        <input value={f.name} onChange={e=>upd('name',e.target.value)} style={{width:'100%'}} placeholder="Ej: Vídeo explicativo módulo IA"/></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Etapa</label>
+          <select value={f.stage} onChange={e=>upd('stage',e.target.value)} style={{width:'100%'}}>
+            <option value="concepto">Concepto</option><option value="produccion">Producción</option><option value="qa">QA</option><option value="publicado">Publicado</option>
+          </select></div>
+        <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Responsable</label>
+          <select value={f.owner} onChange={e=>upd('owner',e.target.value)} style={{width:'100%'}}>{TEAM.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+      </div>
+      <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Fecha límite</label>
+        <input type="date" value={f.due} onChange={e=>upd('due',e.target.value)} style={{width:'100%'}}/></div>
+      <div className="flex justify-end gap-2">
+        <button className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
+        <button className="btn btn-primary" onClick={()=>{if(f.name.trim())onSubmit(f)}} disabled={!f.name.trim()}>
+          <i className="fas fa-save"></i> Crear
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-AUDITOR
+   ═══════════════════════════════════════════ */
+function Auditor({state,dispatch}){
+  const [view,setView]=useState('log');
+  const [filterSev,setFilterSev]=useState('all');
+  const filteredLog=filterSev==='all'?state.auditLog:state.auditLog.filter(a=>a.severity===filterSev);
+  const complianceEntries=Object.entries(state.compliance);
+  const passCount=complianceEntries.filter(([,v])=>v.status==='pass').length;
+  const compliancePct=Math.round(passCount/complianceEntries.length*100);
+
+  async function runAutoAudit(){
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'AVIA-Auditor',message:'Ejecutando auditoría automática...',rule:'LB-AUDIT-000'}});
+    // Simulate audit checks
+    const checks=[
+      ()=>{const overloaded=state.team.filter(m=>m.load>80);if(overloaded.length)dispatch({type:'ADD_AUDIT',payload:{severity:'warning',module:'Equipo',message:`${overloaded.map(m=>m.name).join(', ')} con carga superior al 80%`,rule:'LB-TEAM-002'}})},
+      ()=>{const stalled=state.tasks.filter(t=>t.daysStalled>=3);if(stalled.length)dispatch({type:'ADD_AUDIT',payload:{severity:'critical',module:'Tareas',message:`${stalled.length} tarea(s) estancada(s) más de 3 días`,rule:'LB-RISK-006'}})},
+      ()=>{const inactive=state.layers.filter(l=>l.status!=='active');if(inactive.length>3)dispatch({type:'ADD_AUDIT',payload:{severity:'warning',module:'Persistencia',message:`Solo ${6-inactive.length}/6 capas activas`,rule:'LB-PERSIST-009'}})},
+      ()=>{const noProgress=state.tasks.filter(t=>t.status==='not-started'&&t.priority==='critical');if(noProgress.length)dispatch({type:'ADD_AUDIT',payload:{severity:'critical',module:'Tareas',message:`${noProgress.length} tarea(s) crítica(s) sin iniciar`,rule:'LB-RISK-006'}})},
+    ];
+    for(const check of checks){await new Promise(r=>setTimeout(r,300));check()}
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'AVIA-Auditor',message:'Auditoría automática completada',rule:'LB-AUDIT-000'}});
+  }
+
+  async function runThreatDetection(){
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'ML-Threat',message:'Ejecutando detección de amenazas ML...',rule:'LB-THREAT-001'}});
+    await new Promise(r=>setTimeout(r,800));
+    const potentialThreats=[];
+    if(state.budget.spent/state.budget.total>0.5)potentialThreats.push({level:'medium',category:'Financiero',description:'Consumo presupuestario por encima del 50% con avance inferior al 50%',recommendation:'Revisar partidas y redistribuir fondos'});
+    const criticalTasks=state.tasks.filter(t=>t.priority==='critical'&&t.status==='not-started');
+    if(criticalTasks.length>=2)potentialThreats.push({level:'high',category:'Calendario',description:`${criticalTasks.length} tareas críticas sin iniciar`,recommendation:'Priorizar asignación inmediata de recursos'});
+    if(state.team.some(m=>m.load>85))potentialThreats.push({level:'high',category:'Recurso Humano',description:'Miembro del equipo con sobrecarga >85%',recommendation:'Redistribuir tareas o incorporar apoyo externo'});
+    for(const t of potentialThreats){dispatch({type:'ADD_THREAT',payload:t})}
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'ML-Threat',message:`Detección completada: ${potentialThreats.length} amenaza(s) encontrada(s)`,rule:'LB-THREAT-001'}});
+  }
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-Auditor</h2>
+        <div className="flex gap-2">
+          <button className="btn btn-primary" onClick={runAutoAudit}><i className="fas fa-play"></i> Auto-Audit</button>
+          <button className="btn btn-teal" onClick={runThreatDetection}><i className="fas fa-radar"></i> ML Threats</button>
+        </div>
+      </div>
+
+      {/* Compliance Dashboard */}
+      <Card title="Cumplimiento Libro Blanco" icon="fa-clipboard-check">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+          <strong>SALIDA:</strong> Score de cumplimiento: <span className="font-mono" style={{color:'var(--green)',fontWeight:700}}>{compliancePct}%</span> ({passCount}/{complianceEntries.length} reglas)
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {complianceEntries.map(([code,rule])=>(
+            <div key={code} className="flex items-center gap-3 p-3" style={{background:'var(--bg-elevated)',borderRadius:8}}>
+              <span className={`status-dot ${rule.status==='pass'?'active':rule.status==='warning'?'warning':'error'}`}></span>
+              <div className="flex-1">
+                <span className="font-mono" style={{fontSize:11,color:'var(--accent)'}}>{code}</span>
+                <div style={{fontSize:13,fontWeight:600}}>{rule.name}</div>
+                <div style={{fontSize:11,color:'var(--text-3)'}}>{rule.desc}</div>
+              </div>
+              <Badge label={rule.status==='pass'?'OK':rule.status==='warning'?'Aviso':'Fallo'} color={rule.status==='pass'?'green':rule.status==='warning'?'warning':'critical'}/>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Threats */}
+      {state.threats.length>0&&(
+        <Card title="Amenazas Detectadas" icon="fa-shield-virus">
+          <div className="space-y-2">
+            {state.threats.map(t=>(
+              <div key={t.id} className="p-3" style={{background:t.level==='high'?'var(--rose-light)':'var(--accent-light)',borderRadius:8,border:`1px solid ${t.level==='high'?'var(--rose)':'var(--accent)'}22`}}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Badge label={t.level==='high'?'ALTA':'MEDIA'} color={t.level==='high'?'critical':'warning'}/>
+                    <span style={{fontWeight:700,fontSize:14}}>{t.category}</span>
+                  </div>
+                  <Badge label={t.status==='resolved'?'Resuelta':'Abierta'} color={t.status==='resolved'?'green':'critical'}/>
+                </div>
+                <p style={{fontSize:13,color:'var(--text-2)',margin:'4px 0'}}>{t.description}</p>
+                <div style={{fontSize:12,color:'var(--teal)',fontWeight:600}}>→ {t.recommendation}</div>
+                {t.status!=='resolved'&&(
+                  <button className="btn btn-success mt-2" style={{padding:'4px 10px',fontSize:11}} onClick={()=>dispatch({type:'RESOLVE_THREAT',payload:t.id})}>
+                    <i className="fas fa-check"></i> Marcar resuelta
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Audit Log */}
+      <Card title="Registro de Auditoría" icon="fa-scroll" actions={
+        <select value={filterSev} onChange={e=>setFilterSev(e.target.value)} style={{fontSize:13,padding:'4px 8px'}}>
+          <option value="all">Todas</option><option value="critical">Críticas</option><option value="warning">Avisos</option><option value="info">Info</option>
+        </select>
+      }>
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:8}}>
+          <strong>ENTRADAS:</strong> Generado automáticamente por cada acción del sistema &nbsp;|&nbsp; <strong>SALIDA:</strong> Trazabilidad completa de cambios
+        </div>
+        <div className="space-y-1" style={{maxHeight:400,overflowY:'auto'}}>
+          {filteredLog.slice(0,50).map(entry=>(
+            <div key={entry.id} className="flex items-start gap-3 p-2" style={{borderBottom:'1px solid var(--border)'}}>
+              <span className={`status-dot ${entry.severity==='critical'?'error':entry.severity==='warning'?'warning':'active'}`} style={{marginTop:5}}></span>
+              <div className="flex-1">
+                <span style={{fontWeight:600,fontSize:13}}>{entry.module}</span>
+                <span className="font-mono" style={{fontSize:10,color:'var(--text-3)',marginLeft:8}}>{entry.rule}</span>
+                <div style={{fontSize:12,color:'var(--text-2)'}}>{entry.message}</div>
+              </div>
+              <span className="font-mono" style={{fontSize:10,color:'var(--text-3)',whiteSpace:'nowrap'}}>{fmtDate(entry.ts)}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-CONTROL VERSIONES
+   ═══════════════════════════════════════════ */
+function VersionControl({state,dispatch}){
+  const [showSnapshotForm,setShowSnapshotForm]=useState(false);
+  const [snapForm,setSnapForm]=useState({author:'Carlos',changes:''});
+  const mRoot=merkleRoot(state.versionHistory.map(v=>v.hash));
+
+  function createSnapshot(){
+    if(!snapForm.changes.trim())return;
+    dispatch({type:'CREATE_SNAPSHOT',payload:snapForm});
+    setSnapForm({author:'Carlos',changes:''});
+    setShowSnapshotForm(false);
+  }
+
+  function simulateConflict(){
+    dispatch({type:'ADD_CONFLICT',payload:{
+      fileA:'módulo-ia-afectiva.config',fileB:'módulo-ia-afectiva.config',
+      authorA:'Elena',authorB:'William',
+      description:'Ambos modificaron parámetros del modelo emocional simultáneamente',
+      resolution:null,
+    }});
+    dispatch({type:'ADD_AUDIT',payload:{severity:'warning',module:'Versiones',message:'Conflicto detectado en módulo-ia-afectiva.config',rule:'LB-VER-008'}});
+  }
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-Control Versiones</h2>
+        <div className="flex gap-2">
+          <button className="btn btn-primary" onClick={()=>setShowSnapshotForm(true)}><i className="fas fa-camera"></i> Crear Snapshot</button>
+          <button className="btn btn-ghost" onClick={simulateConflict}><i className="fas fa-code-merge"></i> Simular Conflicto</button>
+        </div>
+      </div>
+
+      {/* Merkle Root */}
+      <Card title="Merkle Root" icon="fa-fingerprint">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:8}}>
+          <strong>SALIDA:</strong> Hash raíz del árbol Merkle — integridad verificable de todo el historial
+        </div>
+        <div className="font-mono" style={{fontSize:18,padding:'12px 16px',background:'var(--bg-elevated)',borderRadius:8,color:'var(--teal)',fontWeight:500,letterSpacing:2,textAlign:'center'}}>
+          {mRoot}
+        </div>
+        <div className="flex justify-between mt-3" style={{fontSize:12,color:'var(--text-3)'}}>
+          <span>Versiones encadenadas: {state.versionHistory.length}</span>
+          <span>Anti-regresión: <span style={{color:'var(--green)',fontWeight:700}}>ACTIVA</span></span>
+        </div>
+      </Card>
+
+      {/* Conflicts */}
+      {state.conflicts.length>0&&(
+        <Card title="Conflictos" icon="fa-code-merge">
+          <div style={{fontSize:13,color:'var(--text-3)',marginBottom:8}}>
+            <strong>ENTRADA:</strong> Detección automática de ediciones concurrentes &nbsp;|&nbsp;
+            <strong>SALIDA:</strong> Lista de conflictos con resolución
+          </div>
+          <div className="space-y-2">
+            {state.conflicts.map(c=>(
+              <div key={c.id} className="p-3" style={{background:c.resolved?'var(--green-light)':'var(--rose-light)',borderRadius:8}}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono" style={{fontSize:13,fontWeight:700}}>{c.fileA}</span>
+                  <Badge label={c.resolved?'Resuelto':'Pendiente'} color={c.resolved?'green':'critical'}/>
+                </div>
+                <div style={{fontSize:12,color:'var(--text-2)'}}>{c.description}</div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginTop:4}}>{c.authorA} vs {c.authorB} — {fmtDate(c.ts)}</div>
+                {!c.resolved&&(
+                  <div className="flex gap-2 mt-2">
+                    <button className="btn btn-success" style={{padding:'4px 10px',fontSize:11}} onClick={()=>dispatch({type:'RESOLVE_CONFLICT',payload:c.id})}>
+                      <i className="fas fa-check"></i> Resolver (mantener último)
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Version Timeline */}
+      <Card title="Historial de Versiones" icon="fa-timeline">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:8}}>
+          <strong>ENTRADA:</strong> Snapshots manuales o automáticos &nbsp;|&nbsp;
+          <strong>SALIDA:</strong> Cadena inmutable con hashes enlazados
+        </div>
+        <div style={{position:'relative',paddingLeft:24}}>
+          <div style={{position:'absolute',left:7,top:0,bottom:0,width:2,background:'var(--border)'}}></div>
+          {[...state.versionHistory].reverse().map((v,i)=>(
+            <div key={v.id} className="mb-4" style={{position:'relative'}}>
+              <div style={{position:'absolute',left:-20,top:4,width:12,height:12,borderRadius:'50%',background:i===0?'var(--accent)':'var(--border)',border:'2px solid var(--bg-surface)'}}></div>
+              <div className="card p-3 ml-2">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="font-heading" style={{fontSize:20,fontWeight:700,color:'var(--accent)'}}>v{v.version}</span>
+                  <span className="font-mono tag" style={{background:'var(--bg-elevated)',color:'var(--teal)',fontSize:10}}>{v.hash}</span>
+                  {v.parentHash&&<span className="font-mono" style={{fontSize:10,color:'var(--text-3)'}}>← {v.parentHash}</span>}
+                </div>
+                <div style={{fontSize:13,color:'var(--text-2)'}}>{v.changes}</div>
+                <div style={{fontSize:11,color:'var(--text-3)',marginTop:4}}>por {v.author} — {fmtDate(v.ts)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Snapshot Modal */}
+      {showSnapshotForm&&(
+        <Modal title="Crear Snapshot" onClose={()=>setShowSnapshotForm(false)}>
+          <div className="space-y-4">
+            <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Autor</label>
+              <select value={snapForm.author} onChange={e=>setSnapForm(p=>({...p,author:e.target.value}))} style={{width:'100%'}}>{TEAM.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+            <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Descripción del cambio *</label>
+              <textarea value={snapForm.changes} onChange={e=>setSnapForm(p=>({...p,changes:e.target.value}))} rows={3} style={{width:'100%',resize:'vertical'}} placeholder="Ej: Añadidos módulos AVIA-Auditor y Transmedia"></textarea></div>
+            <div className="flex justify-end gap-2">
+              <button className="btn btn-ghost" onClick={()=>setShowSnapshotForm(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={createSnapshot} disabled={!snapForm.changes.trim()}>
+                <i className="fas fa-camera"></i> Crear Snapshot
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-PERSISTENCIA (6 CAPAS)
+   ═══════════════════════════════════════════ */
+function Persistence({state,dispatch}){
+  const activeLayers=state.layers.filter(l=>l.status==='active').length;
+  const LAYER_COLORS={active:'var(--green)',degraded:'var(--accent)',pending:'var(--text-3)'};
+  const LAYER_ICONS={active:'fa-circle-check',degraded:'fa-triangle-exclamation',pending:'fa-clock'};
+
+  function exportState(){
+    const exportData={
+      exportTimestamp:new Date().toISOString(),
+      version:state.versionHistory[state.versionHistory.length-1]?.version||'1.0.0',
+      merkleRoot:merkleRoot(state.versionHistory.map(v=>v.hash)),
+      tasks:state.tasks,tooc:state.tooc,pipeline:state.pipeline,
+      auditLog:state.auditLog.slice(0,20),
+      team:state.team,budget:state.budget,
+    };
+    const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`controlnextmed-export-${Date.now()}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'Persistencia',message:'Estado exportado a JSON (L3)',rule:'LB-PERSIST-009'}});
+  }
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-Persistencia</h2>
+        <div className="flex gap-2">
+          <button className="btn btn-primary" onClick={exportState}><i className="fas fa-download"></i> Exportar JSON (L3)</button>
+        </div>
+      </div>
+
+      {/* Layer Status Overview */}
+      <Card title="Estado de las 6 Capas" icon="fa-layer-group">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+          <strong>ENTRADA:</strong> Sincronización manual por capa &nbsp;|&nbsp;
+          <strong>SALIDA:</strong> Estado de integridad de datos en todas las capas
+        </div>
+        <div className="text-center mb-4">
+          <div className="font-heading" style={{fontSize:48,fontWeight:700,color:activeLayers>=5?'var(--green)':activeLayers>=3?'var(--accent)':'var(--rose)'}}>{activeLayers}/6</div>
+          <div style={{fontSize:13,color:'var(--text-3)'}}>Capas operativas</div>
+          <ProgressBar value={activeLayers} max={6} color={activeLayers>=5?'var(--green)':activeLayers>=3?'var(--accent)':'var(--rose)'} h={10}/>
+        </div>
+
+        {/* Layer Stack */}
+        <div className="space-y-2">
+          {state.layers.map((layer,i)=>(
+            <div key={layer.id} className="layer-bar" style={{
+              background:layer.status==='active'?'var(--green-light)':layer.status==='degraded'?'var(--accent-light)':'var(--bg-elevated)',
+              borderColor:LAYER_COLORS[layer.status]+'44',
+            }}>
+              <div className="flex items-center gap-3">
+                <div style={{width:32,height:32,borderRadius:8,background:LAYER_COLORS[layer.status]+'22',display:'flex',alignItems:'center',justifyContent:'center',color:LAYER_COLORS[layer.status]}}>
+                  <i className={`fas ${LAYER_ICONS[layer.status]}`}></i>
+                </div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{layer.name}</div>
+                  <div style={{fontSize:11,color:'var(--text-3)'}}>{layer.desc}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right" style={{fontSize:11}}>
+                  <div className="font-mono" style={{color:'var(--text-2)'}}>{layer.records} registros</div>
+                  <div style={{color:'var(--text-3)'}}>{layer.lastSync?fmtDate(layer.lastSync):'Sin sincronizar'}</div>
+                </div>
+                <Badge label={layer.status==='active'?'Activa':layer.status==='degraded'?'Degradada':'Pendiente'} color={layer.status==='active'?'green':layer.status==='degraded'?'warning':'gray'}/>
+                {layer.status!=='active'&&(
+                  <button className="btn btn-success" style={{padding:'4px 10px',fontSize:11}} onClick={()=>dispatch({type:'SYNC_LAYER',payload:layer.id})}>
+                    <i className="fas fa-sync"></i> Sincronizar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Data Flow Diagram */}
+      <Card title="Flujo de Datos" icon="fa-arrows-turn-to-dots">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <StatCard label="Tareas" value={state.tasks.length} icon="fa-list-check" color="var(--blue)"/>
+          <StatCard label="TOOC" value={state.tooc.length} icon="fa-book" color="var(--violet)"/>
+          <StatCard label="Pipeline" value={state.pipeline.length} icon="fa-diagram-project" color="var(--teal)"/>
+          <StatCard label="Audit Log" value={state.auditLog.length} icon="fa-scroll" color="var(--accent)"/>
+          <StatCard label="Versiones" value={state.versionHistory.length} icon="fa-code-branch" color="var(--green)"/>
+          <StatCard label="Amenazas" value={state.threats.length} icon="fa-shield-virus" color="var(--rose)"/>
+        </div>
+      </Card>
+
+      {/* Replication Matrix */}
+      <Card title="Matriz de Replicación" icon="fa-table-cells">
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead>
+              <tr style={{borderBottom:'2px solid var(--border)'}}>
+                <th style={{textAlign:'left',padding:'8px',color:'var(--text-3)',fontWeight:600}}>Capa</th>
+                <th style={{textAlign:'center',padding:'8px',color:'var(--text-3)',fontWeight:600}}>Estado</th>
+                <th style={{textAlign:'center',padding:'8px',color:'var(--text-3)',fontWeight:600}}>Latencia</th>
+                <th style={{textAlign:'center',padding:'8px',color:'var(--text-3)',fontWeight:600}}>Integridad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.layers.map(l=>(
+                <tr key={l.id} style={{borderBottom:'1px solid var(--border)'}}>
+                  <td style={{padding:'8px',fontWeight:600}}>{l.name}</td>
+                  <td style={{padding:'8px',textAlign:'center'}}><span className={`status-dot ${l.status==='active'?'active':l.status==='degraded'?'warning':'inactive'}`}></span></td>
+                  <td style={{padding:'8px',textAlign:'center'}} className="font-mono">{l.status==='active'?'<1ms':l.status==='degraded'?'~500ms':'—'}</td>
+                  <td className="font-mono" style={{padding:'8px',textAlign:'center',color:l.status==='active'?'var(--green)':'var(--text-3)'}}>{l.status==='active'?'100%':l.status==='degraded'?'87%':'—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-BSE / AGENT-OS
+   ═══════════════════════════════════════════ */
+function AgentOSModule({state,dispatch}){
+  const [taskInput,setTaskInput]=useState('');
+  const [selectedAgent,setSelectedAgent]=useState(state.agentInstances[0]?.id||'');
+  const STATUS_COLORS={idle:'var(--green)',running:'var(--accent)',error:'var(--rose)'};
+
+  async function runAgentTask(){
+    if(!taskInput.trim()||!selectedAgent)return;
+    dispatch({type:'RUN_AGENT',payload:{agentId:selectedAgent,task:taskInput}});
+    setTaskInput('');
+    // Simulate agent execution
+    await new Promise(r=>setTimeout(r,2000));
+    dispatch({type:'COMPLETE_AGENT',payload:{agentId:selectedAgent,result:'Tarea completada exitosamente'}});
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'AgentOS',message:`Agente completó: ${taskInput}`,rule:'LB-ASYNC-004'}});
+  }
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-BSE / AgentOS</h2>
+
+      {/* Agent Grid */}
+      <Card title="Agentes Activos" icon="fa-robot">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+          <strong>ENTRADA:</strong> Tarea + selección de agente &nbsp;|&nbsp;
+          <strong>SALIDA:</strong> Resultado de ejecución + log de orquestación
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {state.agentInstances.map(ag=>(
+            <div key={ag.id} className="card p-4 text-center" style={{borderTop:`3px solid ${STATUS_COLORS[ag.status]}`}}>
+              <div style={{width:48,height:48,borderRadius:'50%',background:STATUS_COLORS[ag.status]+'22',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 8px',color:STATUS_COLORS[ag.status]}}>
+                <i className="fas fa-robot" style={{fontSize:20}}></i>
+              </div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>{ag.type}</div>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className={`status-dot ${ag.status==='idle'?'active':ag.status==='running'?'warning':'error'}`}></span>
+                <span style={{fontSize:12,color:'var(--text-3)',textTransform:'capitalize'}}>{ag.status==='idle'?'Disponible':ag.status==='running'?'Ejecutando':'Error'}</span>
+              </div>
+              <div className="font-mono" style={{fontSize:24,fontWeight:700,color:'var(--accent)'}}>{ag.tasksCompleted}</div>
+              <div style={{fontSize:11,color:'var(--text-3)'}}>tareas completadas</div>
+              <div style={{fontSize:11,color:'var(--text-3)',marginTop:4}}>{ag.lastTask}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Task Assignment */}
+      <Card title="Asignar Tarea a Agente" icon="fa-paper-plane">
+        <div className="flex flex-wrap gap-3">
+          <select value={selectedAgent} onChange={e=>setSelectedAgent(e.target.value)} style={{minWidth:200}}>
+            {state.agentInstances.map(ag=><option key={ag.id} value={ag.id}>{ag.type} ({ag.status})</option>)}
+          </select>
+          <input value={taskInput} onChange={e=>setTaskInput(e.target.value)} placeholder="Describir tarea para el agente..." style={{flex:'1 1 300px'}}
+            onKeyDown={e=>{if(e.key==='Enter')runAgentTask()}}/>
+          <button className="btn btn-primary" onClick={runAgentTask} disabled={!taskInput.trim()}>
+            <i className="fas fa-play"></i> Ejecutar
+          </button>
+        </div>
+      </Card>
+
+      {/* Agent Log */}
+      <Card title="Log de Orquestación" icon="fa-terminal">
+        {state.agentLog.length===0?<EmptyState icon="fa-terminal" title="Sin actividad" desc="Asigna una tarea a un agente para ver el log"/>:(
+          <div className="space-y-1" style={{maxHeight:300,overflowY:'auto'}}>
+            {state.agentLog.slice(0,30).map(entry=>(
+              <div key={entry.id} className="flex items-start gap-3 p-2 font-mono" style={{fontSize:12,borderBottom:'1px solid var(--border)'}}>
+                <span style={{color:'var(--text-3)',whiteSpace:'nowrap'}}>{fmtDate(entry.ts)}</span>
+                <span style={{color:'var(--violet)',fontWeight:600,minWidth:120}}>[{entry.agent}]</span>
+                <span style={{color:entry.status==='completed'?'var(--green)':entry.status==='running'?'var(--accent)':'var(--rose)'}}>{entry.task}</span>
+                {entry.result&&<span style={{color:'var(--green)'}}>→ {entry.result}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   AVIA-COST SHIELD
+   ═══════════════════════════════════════════ */
+function CostShield({state,dispatch}){
+  const {budget,costBreakdown}=state;
+  const totalSpent=costBreakdown.reduce((s,c)=>s+c.spent,0);
+  const totalBudget=costBreakdown.reduce((s,c)=>s+c.budget,0);
+  const burnRate=totalSpent/(4); // 4 weeks elapsed
+  const weeksRemaining=Math.ceil((totalBudget-totalSpent)/burnRate);
+  const [editModule,setEditModule]=useState(null);
+  const [editAmount,setEditAmount]=useState('');
+
+  const chartRef=useRef(null);const chartInst=useRef(null);
+  useEffect(()=>{
+    if(!chartRef.current)return;
+    if(chartInst.current)chartInst.current.destroy();
+    const accentColor=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#c06d15';
+    chartInst.current=new Chart(chartRef.current.getContext('2d'),{
+      type:'doughnut',
+      data:{labels:costBreakdown.map(c=>c.module),datasets:[{data:costBreakdown.map(c=>c.spent),backgroundColor:['#c06d15','#0d9488','#7c3aed','#2563eb','#e11d48','#059669'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},color:'#888'}}}}
+    });
+    return()=>{if(chartInst.current)chartInst.current.destroy()};
+  },[costBreakdown]);
+
+  function applyExpense(){
+    if(!editModule||!editAmount)return;
+    const mod=costBreakdown.find(c=>c.module===editModule);
+    if(!mod)return;
+    const newSpent=mod.spent+Number(editAmount);
+    dispatch({type:'UPDATE_COST',payload:{module:editModule,spent:newSpent}});
+    dispatch({type:'ADD_AUDIT',payload:{severity:'info',module:'Cost Shield',message:`Gasto registrado en ${editModule}: +${Number(editAmount).toLocaleString('es-ES')}€`,rule:'LB-COST-001'}});
+    setEditModule(null);setEditAmount('');
+  }
+
+  return(
+    <div className="space-y-5 animate-fadeIn">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading" style={{fontSize:32,fontWeight:700}}>AVIA-Cost Shield</h2>
+        <button className="btn btn-primary" onClick={()=>setEditModule(costBreakdown[0]?.module||null)}>
+          <i className="fas fa-plus"></i> Registrar Gasto
+        </button>
+      </div>
+
+      {/* Budget Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Total Gastado" value={`${totalSpent.toLocaleString('es-ES')}€`} icon="fa-money-bill-wave" color="var(--accent)"/>
+        <StatCard label="Presupuesto" value={`${totalBudget.toLocaleString('es-ES')}€`} icon="fa-wallet" color="var(--blue)"/>
+        <StatCard label="Burn Rate" value={`${burnRate.toLocaleString('es-ES')}€/sem`} icon="fa-fire" color={burnRate>10000?'var(--rose)':'var(--teal)'}/>
+        <StatCard label="Semanas restantes" value={weeksRemaining} icon="fa-hourglass-half" color={weeksRemaining<8?'var(--rose)':'var(--green)'} sub="al ritmo actual"/>
+      </div>
+
+      {/* Budget Bar */}
+      <Card title="Consumo Presupuestario" icon="fa-chart-bar">
+        <div style={{fontSize:13,color:'var(--text-3)',marginBottom:12}}>
+          <strong>ENTRADA:</strong> Gastos por módulo &nbsp;|&nbsp;
+          <strong>SALIDA:</strong> Proyección de consumo y alertas de sobrecosto
+        </div>
+        <ProgressBar value={totalSpent} max={totalBudget} color={totalSpent/totalBudget>0.8?'var(--rose)':totalSpent/totalBudget>0.6?'var(--accent)':'var(--green)'} h={16}/>
+        <div className="flex justify-between mt-2" style={{fontSize:12,color:'var(--text-3)'}}>
+          <span>0€</span>
+          <span className="font-mono" style={{fontWeight:700,color:'var(--accent)'}}>{Math.round(totalSpent/totalBudget*100)}%</span>
+          <span>{totalBudget.toLocaleString('es-ES')}€</span>
+        </div>
+      </Card>
+
+      {/* Chart + Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card title="Distribución de Costos" icon="fa-chart-pie">
+          <div style={{height:250}}><canvas ref={chartRef}></canvas></div>
+        </Card>
+        <Card title="Desglose por Módulo" icon="fa-table-list">
+          <div className="space-y-3">
+            {costBreakdown.map(c=>{
+              const pct=Math.round(c.spent/c.budget*100);
+              return(
+                <div key={c.module}>
+                  <div className="flex justify-between mb-1" style={{fontSize:13}}>
+                    <span style={{fontWeight:600}}>{c.module}</span>
+                    <span className="font-mono" style={{color:pct>80?'var(--rose)':'var(--text-2)'}}>{c.spent.toLocaleString('es-ES')}€ / {c.budget.toLocaleString('es-ES')}€ ({pct}%)</span>
+                  </div>
+                  <ProgressBar value={pct} color={pct>80?'var(--rose)':pct>60?'var(--accent)':'var(--green)'} h={6}/>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* Optimization Recommendations */}
+      <Card title="Recomendaciones de Optimización" icon="fa-lightbulb">
+        <div className="space-y-2">
+          {[
+            {icon:'fa-compress',label:'Consolidar infraestructura',desc:'Migrar a instancias compartidas para reducir costos de cloud en un 20%',saving:'~1.960€'},
+            {icon:'fa-robot',label:'Automatizar ETL',desc:'Reducir horas manuales de William con pipelines automatizados',saving:'~3.200€'},
+            {icon:'fa-users-between-lines',label:'Redistribuir carga de Elena',desc:'Delegar tareas no-críticas para evitar horas extra',saving:'~1.500€'},
+          ].map((rec,i)=>(
+            <div key={i} className="flex items-start gap-3 p-3" style={{background:'var(--bg-elevated)',borderRadius:8}}>
+              <div style={{width:36,height:36,borderRadius:8,background:'var(--teal-light)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--teal)',flexShrink:0}}>
+                <i className={`fas ${rec.icon}`}></i>
+              </div>
+              <div className="flex-1">
+                <div style={{fontWeight:700,fontSize:14}}>{rec.label}</div>
+                <div style={{fontSize:12,color:'var(--text-2)'}}>{rec.desc}</div>
+              </div>
+              <Badge label={`Ahorro: ${rec.saving}`} color="green"/>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Expense Modal */}
+      {editModule&&(
+        <Modal title="Registrar Gasto" onClose={()=>{setEditModule(null);setEditAmount('')}}>
+          <div className="space-y-4">
+            <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Módulo</label>
+              <select value={editModule} onChange={e=>setEditModule(e.target.value)} style={{width:'100%'}}>
+                {costBreakdown.map(c=><option key={c.module} value={c.module}>{c.module}</option>)}
+              </select></div>
+            <div><label style={{fontSize:13,fontWeight:600,color:'var(--text-2)',display:'block',marginBottom:4}}>Cantidad (€)</label>
+              <input type="number" value={editAmount} onChange={e=>setEditAmount(e.target.value)} style={{width:'100%'}} placeholder="Ej: 1500" min="0"/></div>
+            <div className="flex justify-end gap-2">
+              <button className="btn btn-ghost" onClick={()=>{setEditModule(null);setEditAmount('')}}>Cancelar</button>
+              <button className="btn btn-primary" onClick={applyExpense} disabled={!editAmount||Number(editAmount)<=0}>
+                <i className="fas fa-save"></i> Registrar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MAIN APP
+   ═══════════════════════════════════════════ */
+function App(){
+  const [state,dispatch]=useReducer(reducer,initialState);
+
+  // Auto-dismiss notifications
+  useEffect(()=>{
+    if(state.notifications.length>0){
+      const timer=setTimeout(()=>{dispatch({type:'DISMISS_NOTIFICATION',payload:state.notifications[0].id})},4000);
+      return()=>clearTimeout(timer);
+    }
+  },[state.notifications]);
+
+  const renderTab=()=>{
+    switch(state.activeTab){
+      case 'dashboard': return <Dashboard state={state} dispatch={dispatch}/>;
+      case 'tasks': return <TaskManager state={state} dispatch={dispatch}/>;
+      case 'transmedia': return <Transmedia state={state} dispatch={dispatch}/>;
+      case 'auditor': return <Auditor state={state} dispatch={dispatch}/>;
+      case 'versions': return <VersionControl state={state} dispatch={dispatch}/>;
+      case 'persistence': return <Persistence state={state} dispatch={dispatch}/>;
+      case 'agents': return <AgentOSModule state={state} dispatch={dispatch}/>;
+      case 'costs': return <CostShield state={state} dispatch={dispatch}/>;
+      default: return <Dashboard state={state} dispatch={dispatch}/>;
+    }
+  };
+
+  return(
+    <div className="grid-bg" style={{minHeight:'100vh'}}>
+      <Notifications items={state.notifications} dispatch={dispatch}/>
+
+      {/* Mobile Header */}
+      <div className="md:hidden" style={{background:'var(--bg-surface)',borderBottom:'1px solid var(--border)',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:80}}>
+        <button onClick={()=>dispatch({type:'TOGGLE_SIDEBAR'})} style={{background:'none',border:'none',color:'var(--text-1)',cursor:'pointer',fontSize:20}}>
+          <i className="fas fa-bars"></i>
+        </button>
+        <h1 className="font-heading" style={{fontSize:20,fontWeight:700,color:'var(--accent)',margin:0}}>NEXTMED<span style={{color:'var(--text-1)'}}>_IA</span></h1>
+        <span className="font-mono" style={{fontSize:11,color:'var(--text-3)'}}>v1.1</span>
+      </div>
+
+      {/* Mobile overlay */}
+      {state.sidebarOpen&&<div className="sidebar-overlay md:hidden" onClick={()=>dispatch({type:'TOGGLE_SIDEBAR'})}></div>}
+
+      {/* Sidebar */}
+      <Sidebar activeTab={state.activeTab} dispatch={dispatch} open={state.sidebarOpen} layers={state.layers}/>
+
+      {/* Main content */}
+      <main style={{marginLeft:0,padding:16}} className="md:ml-[240px] md:p-6">
+        {renderTab()}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.render(React.createElement(App),document.getElementById('root'));
+</script>
+<script>
+var appSource=document.getElementById('app-code').textContent;
+var compiled=Babel.transform(appSource,{presets:['react']});
+var s=document.createElement('script');
+s.textContent=compiled.code;
+document.body.appendChild(s);
+</script>
+</body>
+</html>
+

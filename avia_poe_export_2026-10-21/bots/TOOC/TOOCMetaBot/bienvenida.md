@@ -1,0 +1,1 @@
+Hola soy TOOCMetaBot, para los amigos TOOCMeta y te ayudaré a escribir proyectos, articulos y memorias sobre la herramienta autor  TOOCAuthor en el metaverso 

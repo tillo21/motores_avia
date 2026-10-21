@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Senior v4.0 | Constelación Autónoma</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{--void:#03050a;--nebula-dark:#0a0e1a;--nebula-mid:#111929;--cosmic-purple:#6c3ce9;--cosmic-blue:#00bfff;--cosmic-cyan:#00f5d4;--cosmic-gold:#ffd700;--cosmic-pink:#ff3864;--nova-white:#f0f4ff;--stellar-gray:#8b98b8}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Rajdhani',sans-serif;background:var(--void);color:var(--nova-white);min-height:100vh;overflow-x:hidden}
+.space-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;background:radial-gradient(ellipse at 20% 80%,rgba(108,60,233,0.15) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,rgba(0,191,255,0.1) 0%,transparent 50%),var(--void)}
+.header{padding:1.5rem 2rem;background:linear-gradient(180deg,rgba(10,14,26,0.95) 0%,transparent 100%);position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.logo{display:flex;align-items:center;gap:1rem}
+.logo-icon{width:50px;height:50px;background:conic-gradient(from 0deg,var(--cosmic-purple),var(--cosmic-blue),var(--cosmic-cyan),var(--cosmic-purple));border-radius:50%;display:flex;align-items:center;justify-content:center;animation:rotate-halo 8s linear infinite;position:relative}
+.logo-icon::before{content:'';position:absolute;inset:3px;background:var(--void);border-radius:50%}
+.logo-icon i{position:relative;z-index:1;font-size:1.2rem;color:var(--cosmic-cyan)}
+@keyframes rotate-halo{to{transform:rotate(360deg)}}
+.logo h1{font-family:'Orbitron',sans-serif;font-size:1.5rem;background:linear-gradient(135deg,var(--cosmic-cyan),var(--cosmic-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo span{font-size:0.7rem;color:var(--stellar-gray);display:block;letter-spacing:3px}
+.btn{padding:0.6rem 1.2rem;border:none;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:600;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:0.5rem}
+.btn-primary{background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));color:white}
+.btn-primary:hover{transform:translateY(-2px)}
+.main-content{padding-top:100px;min-height:100vh}
+.constellation-container{width:100%;height:70vh;position:relative}
+#constellation-map{width:100%;height:100%;background:transparent}
+.node-group{cursor:pointer}
+.node-group:hover{transform:scale(1.1)}
+.info-panel{position:fixed;top:120px;right:20px;width:350px;max-height:calc(100vh - 140px);background:linear-gradient(135deg,rgba(10,14,26,0.95),rgba(26,37,64,0.9));border:1px solid rgba(108,60,233,0.3);border-radius:16px;padding:1.5rem;overflow-y:auto;transform:translateX(400px);transition:transform 0.4s;backdrop-filter:blur(20px);z-index:50}
+.info-panel.active{transform:translateX(0)}
+.bot-icon-large{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:0.5rem}
+.bot-name{font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--cosmic-cyan)}
+.bot-role{font-size:0.9rem;color:var(--stellar-gray)}
+.close-panel{background:rgba(255,255,255,0.1);border:none;width:32px;height:32px;border-radius:8px;color:var(--stellar-gray);cursor:pointer;position:absolute;top:1rem;right:1rem}
+.close-panel:hover{background:rgba(255,56,100,0.2);color:var(--cosmic-pink)}
+.info-section{margin-top:1rem}
+.info-section h4{font-family:'Orbitron',sans-serif;font-size:0.75rem;color:var(--cosmic-purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:0.5rem}
+.info-section p{font-size:0.95rem;line-height:1.6}
+.capability-list{display:flex;flex-wrap:wrap;gap:0.5rem}
+.capability-tag{padding:0.4rem 0.8rem;background:rgba(108,60,233,0.2);border:1px solid rgba(108,60,233,0.3);border-radius:20px;font-size:0.8rem;color:var(--cosmic-cyan)}
+.ontology-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;padding:2rem;max-width:1400px;margin:0 auto}
+.ontology-card{background:linear-gradient(135deg,rgba(26,37,64,0.6),rgba(10,14,26,0.8));border:1px solid rgba(108,60,233,0.2);border-radius:16px;padding:1.5rem;cursor:pointer;transition:all 0.3s}
+.ontology-card:hover{transform:translateY(-4px);border-color:rgba(108,60,233,0.5)}
+.ontology-card::before{content:'';display:block;height:3px;background:linear-gradient(90deg,var(--cosmic-purple),var(--cosmic-cyan));border-radius:2px;margin-bottom:1rem}
+.card-header{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:white}
+.card-title{font-family:'Orbitron',sans-serif;font-size:1rem}
+.card-subtitle{font-size:0.8rem;color:var(--stellar-gray)}
+.card-description{font-size:0.85rem;color:var(--stellar-gray);line-height:1.5}
+.section-title{font-family:'Orbitron',sans-serif;font-size:1.5rem;padding:2rem 2rem 0;display:flex;align-items:center;gap:1rem}
+.section-title i{color:var(--cosmic-purple)}
+.footer{padding:2rem;text-align:center;border-top:1px solid rgba(255,255,255,0.05)}
+.footer p{font-size:0.85rem;color:var(--stellar-gray)}
+.loading{position:fixed;inset:0;background:var(--void);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s}
+.loading.hidden{opacity:0;pointer-events:none}
+.loading-spinner{width:60px;height:60px;border:3px solid transparent;border-top-color:var(--cosmic-cyan);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:1rem;font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--stellar-gray);letter-spacing:3px}
+</style>
+</head>
+<body>
+
+<div class="space-bg"></div>
+
+<div class="loading" id="loading">
+<div class="loading-spinner"></div>
+<div class="loading-text">INICIALIZANDO v4.0</div>
+</div>
+
+<header class="header">
+<div class="logo">
+<div class="logo-icon"><i class="fas fa-satellite-dish"></i></div>
+<div>
+<h1>AVIA SENIOR v4.0</h1>
+<span>Constelación Autónoma</span>
+</div>
+</div>
+<button class="btn btn-primary" onclick="resetView()">
+<i class="fas fa-sync-alt"></i> Reiniciar
+</button>
+</header>
+
+<main class="main-content">
+<div class="constellation-container">
+<svg id="constellation-map"></svg>
+</div>
+
+<div class="info-panel" id="infoPanel">
+<button class="close-panel" onclick="closePanel()"><i class="fas fa-times"></i></button>
+<div class="bot-icon-large" id="botIcon"></div>
+<div class="bot-name" id="botName"></div>
+<div class="bot-role" id="botRole"></div>
+<div class="info-section">
+<h4>Descripción</h4>
+<p id="botDesc"></p>
+</div>
+<div class="info-section">
+<h4>Capacidades</h4>
+<div class="capability-list" id="botCaps"></div>
+</div>
+</div>
+
+<h2 class="section-title"><i class="fas fa-network-wired"></i> Ontología del Sistema</h2>
+<div class="ontology-grid" id="ontologyGrid"></div>
+</main>
+
+<footer class="footer">
+<p>AVIA Senior v4.0 | 22 Bots | © 2025</p>
+</footer>
+
+<script>
+const botsData=[
+{id:1,name:'AVIA-Asst-Senior',shortName:'Senior',icon:'fa-satellite-dish',color:'#6c3ce9',role:'Orquestador Central',description:'Centro neurálgico del sistema. Coordina todas las operaciones.',capabilities:['Orquestación','Gestión de flujos','Coordinación'],dependencies:[],x:0,y:0},
+{id:2,name:'AVIA-Reasoner',shortName:'Reasoner',icon:'fa-brain',color:'#ff3864',role:'Razonamiento Avanzado',description:'Motor de razonamiento lógico y análisis crítico.',capabilities:['Razonamiento lógico','Análisis crítico','Inferencia'],dependencies:[1],x:150,y:-100},
+{id:3,name:'AVIA-Architect',shortName:'Architect',icon:'fa-drafting-compass',color:'#00f5d4',role:'Arquitectura de Sistemas',description:'Diseña arquitecturas de software escalables.',capabilities:['Diseño','Patrones','Escalabilidad'],dependencies:[1],x:250,y:0},
+{id:4,name:'AVIA-Coder-V2',shortName:'Coder',icon:'fa-code',color:'#00bfff',role:'Desarrollo Full-Stack',description:'Desarrollador experto en múltiples lenguajes.',capabilities:['JavaScript','Python','React','APIs'],dependencies:[1,3],x:300,y:100},
+{id:5,name:'AVIA-DataViz',shortName:'DataViz',icon:'fa-chart-line',color:'#ffd700',role:'Visualización de Datos',description:'Transforma datos en visualizaciones interactivas.',capabilities:['D3.js','Chart.js','Dashboards'],dependencies:[1,4],x:250,y:200},
+{id:6,name:'AVIA-Debugger',shortName:'Debugger',icon:'fa-bug',color:'#ff6b35',role:'Depuración Profunda',description:'Detective de código. Identifica bugs.',capabilities:['Análisis de errores','Stack trace','Profiling'],dependencies:[1,4],x:150,y:250},
+{id:7,name:'AVIA-Librarian-V2',shortName:'Librarian',icon:'fa-book',color:'#8e24aa',role:'Gestión del Conocimiento',description:'Administrador del repositorio de conocimiento.',capabilities:['Gestión documental','Búsqueda','Indexación'],dependencies:[1],x:0,y:200},
+{id:8,name:'AVIA-Meta-Analyst',shortName:'Meta',icon:'fa-project-diagram',color:'#e879f9',role:'Metaanálisis',description:'Analiza sistemas desde perspectiva superior.',capabilities:['Análisis alto nivel','Patrones meta'],dependencies:[1,2],x:-150,y:-100},
+{id:9,name:'AVIA-Optimizer',shortName:'Optimizer',icon:'fa-tachometer-alt',color:'#43a047',role:'Optimización',description:'Mejora rendimiento de código y sistemas.',capabilities:['Performance','Profiling','Benchmarking'],dependencies:[1,4,6],x:-200,y:100},
+{id:10,name:'AVIA-Planner',shortName:'Planner',icon:'fa-tasks',color:'#1e88e5',role:'Planificación',description:'Diseña planes de acción detallados.',capabilities:['Project management','Roadmaps','Timelines'],dependencies:[1],x:-250,y:0},
+{id:11,name:'AVIA-ResearchPaper',shortName:'Research',icon:'fa-graduation-cap',color:'#ff9800',role:'Investigación',description:'Investigador académico.',capabilities:['Papers','Metodología','Citations'],dependencies:[1,7],x:-250,y:-150},
+{id:12,name:'AVIA-Scribe',shortName:'Scribe',icon:'fa-pen-fancy',color:'#9c27b0',role:'Redacción',description:'Escritor técnico experto.',capabilities:['Documentación','Manuales','Specs'],dependencies:[1],x:-200,y:200},
+{id:13,name:'AVIA-Mentor',shortName:'Mentor',icon:'fa-chalkboard-teacher',color:'#00bcd4',role:'Tutoría',description:'Tutor pedagógico.',capabilities:['Explicaciones','Tutoriales','Ejercicios'],dependencies:[1],x:-100,y:250},
+{id:14,name:'AVIA-Translator',shortName:'Translator',icon:'fa-language',color:'#4caf50',role:'Traducción',description:'Traductor especializado multilingüe.',capabilities:['Traducción técnica','Localización'],dependencies:[1],x:0,y:300},
+{id:15,name:'AVIA-UIDesigner',shortName:'UIDesigner',icon:'fa-palette',color:'#ec407a',role:'Diseño UI/UX',description:'Diseñador de interfaces.',capabilities:['UI/UX','Prototyping','Accessibility'],dependencies:[1,3],x:100,y:250},
+{id:16,name:'AVIA-BotFactory',shortName:'Factory',icon:'fa-industry',color:'#ffeb3b',role:'Generación de Bots',description:'Fábrica automatizada de bots.',capabilities:['Bot generation','Templates','Auto-config'],dependencies:[1,3,4],x:200,y:-200},
+{id:17,name:'AVIA-QA',shortName:'QA',icon:'fa-check-double',color:'#26c6da',role:'Quality Assurance',description:'Ingeniero QA.',capabilities:['Testing','Unit tests','Quality metrics'],dependencies:[1,4,6],x:150,y:-250},
+{id:18,name:'AVIA-Security',shortName:'Security',icon:'fa-shield-alt',color:'#f44336',role:'Seguridad',description:'Especialista en seguridad.',capabilities:['Security audits','Vulnerabilities','Compliance'],dependencies:[1,4],x:-100,y:-250},
+{id:19,name:'AVIA-Monitor',shortName:'Monitor',icon:'fa-heartbeat',color:'#00e676',role:'Monitoreo',description:'Sistema de monitoreo en tiempo real.',capabilities:['Real-time','Anomaly detection','Alerting'],dependencies:[1,5],x:0,y:-300},
+{id:20,name:'AVIA-CREA+',shortName:'CREA+',icon:'fa-lightbulb',color:'#ff4081',role:'Laboratorio Creativo',description:'Laboratorio creativo transmedia para arte, narrativa y música.',capabilities:['Arte','Narrativa','Música','Transmedia'],dependencies:[1,15],x:50,y:-200},
+{id:21,name:'AVIA-HUMANA',shortName:'HUMANA',icon:'fa-hand-holding-heart',color:'#7c4dff',role:'Humanismo y Tecnología',description:'Humanismo y Tecnología para Accesibilidad.',capabilities:['Accesibilidad','Inclusión','Ética IA'],dependencies:[1,13],x:-50,y:-200},
+{id:22,name:'AVIA-DIVERSIA',shortName:'DIVERSIA',icon:'fa-users',color:'#18ffff',role:'Diversidad e Inclusión',description:'Diversidad e Inclusión con IA.',capabilities:['Diversidad','Inclusión','Equidad'],dependencies:[1,21],x:-150,y:-200}
+];
+
+function initConstellation(){
+const svg=d3.select('#constellation-map');
+const container=document.querySelector('.constellation-container');
+const width=container.clientWidth;
+const height=container.clientHeight;
+const centerX=width/2;
+const centerY=height/2;
+const scale=Math.min(width,height)/800;
+
+svg.selectAll('*').remove();
+svg.attr('width',width).attr('height',height);
+
+botsData.forEach(bot=>{
+bot.px=centerX+bot.x*scale;
+bot.py=centerY+bot.y*scale;
+});
+
+const links=[];
+botsData.forEach(bot=>{
+bot.dependencies.forEach(depId=>{
+const target=botsData.find(b=>b.id===depId);
+if(target)links.push({source:bot,target:target});
+});
+});
+
+svg.append('g').selectAll('line').data(links).enter().append('line')
+.attr('x1',d=>d.source.px).attr('y1',d=>d.source.py)
+.attr('x2',d=>d.target.px).attr('y2',d=>d.target.py)
+.attr('stroke',d=>d.source.color).attr('stroke-width',2).attr('stroke-opacity',0.4);
+
+const nodes=svg.append('g').selectAll('g').data(botsData).enter().append('g')
+.attr('transform',d=>`translate(${d.px},${d.py})`)
+.style('cursor','pointer')
+.on('click',(event,d)=>showBotInfo(d));
+
+nodes.append('circle').attr('r',45).attr('fill','none')
+.attr('stroke',d=>d.color).attr('stroke-width',1).attr('stroke-dasharray','4 4').attr('stroke-opacity',0.3);
+
+nodes.append('circle').attr('r',28).attr('fill',d=>d.color)
+.attr('filter','drop-shadow(0 0 10px currentColor)');
+
+nodes.append('text').text(d=>d.shortName)
+.attr('y',50).attr('text-anchor','middle')
+.attr('fill','white').attr('font-family','Orbitron').attr('font-size','10px');
+}
+
+function showBotInfo(bot){
+document.getElementById('infoPanel').classList.add('active');
+document.getElementById('botIcon').style.background=bot.color;
+document.getElementById('botIcon').innerHTML=`<i class="fas ${bot.icon}" style="color:white"></i>`;
+document.getElementById('botName').textContent=bot.name;
+document.getElementById('botRole').textContent=bot.role;
+document.getElementById('botDesc').textContent=bot.description;
+const caps=document.getElementById('botCaps');
+caps.innerHTML='';
+bot.capabilities.forEach(c=>{
+const tag=document.createElement('span');
+tag.className='capability-tag';
+tag.textContent=c;
+caps.appendChild(tag);
+});
+}
+
+function closePanel(){document.getElementById('infoPanel').classList.remove('active');}
+
+function resetView(){closePanel();initConstellation();}
+
+function generateOntologyGrid(){
+const grid=document.getElementById('ontologyGrid');
+grid.innerHTML='';
+botsData.forEach(bot=>{
+const card=document.createElement('div');
+card.className='ontology-card';
+card.onclick=()=>showBotInfo(bot);
+card.innerHTML=`
+<div class="card-header">
+<div class="card-icon" style="background:${bot.color}"><i class="fas ${bot.icon}"></i></div>
+<div><div class="card-title">${bot.shortName}</div><div class="card-subtitle">${bot.role}</div></div>
+</div>
+<div class="card-description">${bot.description}</div>`;
+grid.appendChild(card);
+});
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+setTimeout(()=>{document.getElementById('loading').classList.add('hidden');},1000);
+initConstellation();
+generateOntologyGrid();
+});
+
+window.addEventListener('resize',initConstellation);
+</script>
+</body>
+</html>

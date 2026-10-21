@@ -1,0 +1,1 @@
+Soy tu asistente virtual para ayudarte a conocer un poco mas sobre las cooperativas en AL y C apoyar la toma de decisiones a nivel de cooperativas agroalimentarias.

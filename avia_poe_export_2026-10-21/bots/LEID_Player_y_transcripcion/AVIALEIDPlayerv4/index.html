@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AVIA-LEID: Reproductor de audio interactivo con visualización de onda, entrada de archivos, exportación MP3/WAV/OGG, transcripción IA y accesibilidad AAA.">
+    <meta name="keywords" content="AVIA, LEID, educación, accesibilidad, audio, reproductor, inclusión, exportar, transcripción, forma de onda">
+    <meta name="author" content="AVIA-Proyecto">
+
+    <title>AVIA-LEID · Reproductor Interactivo</title>
+
+    <!-- Preconnects -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+
+    <!-- lamejs for MP3 encoding -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+
+    <style>
+        /* ============================================
+           AVIA-LEID Design System
+           Diseño Atómico: Átomos → Moléculas → Organismos
+           Hegemonía Semántica del Español
+           ============================================ */
+
+        /* === ÁTOMOS: Variables de Diseño === */
+        :root {
+            --avia-primario: #0b6e5f;
+            --avia-primario-claro: #10997f;
+            --avia-primario-brillo: rgba(11, 110, 95, 0.12);
+            --avia-secundario: #c44b00;
+            --avia-secundario-claro: #e06500;
+            --avia-acento: #5b21b6;
+            --avia-exito: #059669;
+            --avia-aviso: #d97706;
+            --avia-peligro: #dc2626;
+            --avia-onda: #10997f;
+
+            --fondo: #f4f9f7;
+            --fondo-elevado: #ffffff;
+            --fondo-hundido: #e6f0ec;
+            --fondo-vidrio: rgba(255, 255, 255, 0.88);
+            --texto: #132a23;
+            --texto-sec: #3d6356;
+            --texto-tenue: #7a9e92;
+            --borde: #c8ddd5;
+            --borde-sutil: #dfeee8;
+
+            --sombra-xs: 0 1px 3px rgba(11, 110, 95, 0.04);
+            --sombra-sm: 0 4px 12px rgba(11, 110, 95, 0.06);
+            --sombra-md: 0 8px 28px rgba(11, 110, 95, 0.09);
+            --sombra-lg: 0 20px 50px rgba(11, 110, 95, 0.13);
+            --sombra-brillo: 0 0 24px rgba(11, 110, 95, 0.22);
+
+            --radio-xs: 6px;
+            --radio-sm: 10px;
+            --radio-md: 16px;
+            --radio-lg: 22px;
+            --radio-xl: 30px;
+            --radio-redondo: 50%;
+
+            --fuente-principal: 'Outfit', system-ui, sans-serif;
+            --fuente-mono: 'IBM Plex Mono', monospace;
+
+            --transicion: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            --rebote: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --suave: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+
+            --onda-alto: 120px;
+        }
+
+        .dark {
+            --avia-primario: #10997f;
+            --avia-primario-claro: #1dd1a1;
+            --avia-primario-brillo: rgba(16, 153, 127, 0.18);
+            --avia-secundario: #e06500;
+            --avia-secundario-claro: #ff8c32;
+            --avia-onda: #1dd1a1;
+
+            --fondo: #0a1912;
+            --fondo-elevado: #112920;
+            --fondo-hundido: #071410;
+            --fondo-vidrio: rgba(10, 25, 18, 0.92);
+            --texto: #e4f5ef;
+            --texto-sec: #9dc4b5;
+            --texto-tenue: #5e9583;
+            --borde: #1a3d30;
+            --borde-sutil: #132e24;
+
+            --sombra-xs: 0 1px 3px rgba(0,0,0,0.25);
+            --sombra-sm: 0 4px 12px rgba(0,0,0,0.3);
+            --sombra-md: 0 8px 28px rgba(0,0,0,0.4);
+            --sombra-lg: 0 20px 50px rgba(0,0,0,0.5);
+            --sombra-brillo: 0 0 28px rgba(16, 153, 127, 0.3);
+        }
+
+        /* === ÁTOMOS: Reset & Base === */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: var(--fuente-principal);
+            background: var(--fondo);
+            color: var(--texto);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            line-height: 1.6;
+            transition: background-color 0.4s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 15% 10%, var(--avia-primario-brillo) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 85%, rgba(91, 33, 182, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(196, 75, 0, 0.02) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* === ÁTOMOS: Accesibilidad === */
+        .saltar-enlace {
+            position: absolute;
+            top: -60px;
+            left: 0;
+            background: var(--avia-primario);
+            color: #fff;
+            padding: 14px 20px;
+            text-decoration: none;
+            z-index: 10000;
+            border-radius: 0 0 var(--radio-sm) 0;
+            font-weight: 600;
+            font-size: 14px;
+            transition: top 0.2s;
+        }
+        .saltar-enlace:focus { top: 0; }
+
+        .sr-solo {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* === ÁTOMOS: Tipografía === */
+        .titulo-app {
+            font-size: clamp(24px, 5vw, 30px);
+            font-weight: 800;
+            letter-spacing: -0.8px;
+            color: var(--texto);
+            line-height: 1.2;
+        }
+
+        .subtitulo-app {
+            font-size: clamp(13px, 2.5vw, 15px);
+            color: var(--texto-tenue);
+            font-weight: 400;
+        }
+
+        /* === MOLÉCULAS: Layout === */
+        .contenedor-app {
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* === MOLÉCULAS: Cabecera === */
+        .cabecera-app {
+            text-align: center;
+            margin-bottom: 20px;
+            animation: deslizarAbajo 0.6s var(--suave);
+        }
+
+        @keyframes deslizarAbajo {
+            from { opacity: 0; transform: translateY(-14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes deslizarArriba {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulso {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes girar {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes brillar {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .logo-marca {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .logo-icono {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(145deg, var(--avia-primario), var(--avia-acento));
+            border-radius: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            color: #fff;
+            box-shadow: var(--sombra-brillo);
+            transition: var(--rebote);
+        }
+
+        .logo-icono:hover {
+            transform: rotate(-8deg) scale(1.08);
+        }
+
+        /* === ORGANISMOS: Tarjetas === */
+        .tarjeta {
+            background: var(--fondo-elevado);
+            border: 1px solid var(--borde-sutil);
+            border-radius: var(--radio-lg);
+            padding: clamp(20px, 4vw, 28px);
+            box-shadow: var(--sombra-md);
+            margin-bottom: 14px;
+            transition: var(--transicion);
+            animation: deslizarArriba 0.5s var(--suave) both;
+        }
+
+        .tarjeta:nth-child(2) { animation-delay: 0.08s; }
+        .tarjeta:nth-child(3) { animation-delay: 0.16s; }
+        .tarjeta:nth-child(4) { animation-delay: 0.24s; }
+        .tarjeta:nth-child(5) { animation-delay: 0.32s; }
+
+        .tarjeta-titulo {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--texto-sec);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tarjeta-titulo i {
+            color: var(--avia-primario);
+            font-size: 13px;
+        }
+
+        /* === ORGANISMO: Zona de Carga de Archivos === */
+        .zona-carga {
+            border: 2.5px dashed var(--borde);
+            border-radius: var(--radio-md);
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transicion);
+            position: relative;
+            overflow: hidden;
+            background: var(--fondo-hundido);
+        }
+
+        .zona-carga::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--avia-primario-brillo), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .zona-carga:hover,
+        .zona-carga.arrastrando {
+            border-color: var(--avia-primario);
+            background: var(--avia-primario-brillo);
+        }
+
+        .zona-carga:hover::before,
+        .zona-carga.arrastrando::before {
+            opacity: 1;
+        }
+
+        .zona-carga-icono {
+            font-size: 36px;
+            color: var(--avia-primario);
+            margin-bottom: 12px;
+            transition: var(--rebote);
+        }
+
+        .zona-carga:hover .zona-carga-icono {
+            transform: translateY(-4px) scale(1.1);
+        }
+
+        .zona-carga-texto {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--texto-sec);
+            margin-bottom: 6px;
+            position: relative;
+        }
+
+        .zona-carga-subtexto {
+            font-size: 12px;
+            color: var(--texto-tenue);
+            position: relative;
+        }
+
+        .zona-carga-input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            font-size: 0;
+        }
+
+        .archivo-info {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: var(--fondo-hundido);
+            border: 1px solid var(--borde);
+            border-radius: var(--radio-sm);
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+
+        .archivo-info.visible { display: flex; }
+
+        .archivo-info-icono {
+            width: 36px;
+            height: 36px;
+            background: var(--avia-primario-brillo);
+            border-radius: var(--radio-xs);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--avia-primario);
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .archivo-info-datos {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .archivo-info-nombre {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--texto);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .archivo-info-meta {
+            font-size: 11px;
+            color: var(--texto-tenue);
+            font-family: var(--fuente-mono);
+        }
+
+        .archivo-info-quitar {
+            appearance: none;
+            background: none;
+            border: none;
+            color: var(--texto-tenue);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px 8px;
+            border-radius: var(--radio-xs);
+            transition: var(--transicion);
+        }
+
+        .archivo-info-quitar:hover {
+            color: var(--avia-peligro);
+            background: rgba(220, 38, 38, 0.08);
+        }
+
+        /* === ORGANISMO: Forma de Onda === */
+        .contenedor-onda {
+            position: relative;
+            width: 100%;
+            height: var(--onda-alto);
+            margin-bottom: 8px;
+            border-radius: var(--radio-sm);
+            overflow: hidden;
+            background: var(--fondo-hundido);
+            cursor: pointer;
+            transition: var(--transicion);
+        }
+
+        .contenedor-onda:hover {
+            box-shadow: var(--sombra-sm);
+        }
+
+        .lienzo-onda {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .onda-progreso {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: var(--avia-primario-brillo);
+            pointer-events: none;
+            transition: width 0.08s linear;
+        }
+
+        .onda-cursor {
+            position: absolute;
+            top: 0;
+            left: 0%;
+            width: 2px;
+            height: 100%;
+            background: var(--avia-primario);
+            box-shadow: 0 0 6px var(--avia-primario);
+            pointer-events: none;
+            transition: left 0.08s linear;
+        }
+
+        .onda-vacia {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--texto-tenue);
+            font-size: 13px;
+            gap: 6px;
+        }
+
+        .onda-vacia i { font-size: 22px; opacity: 0.5; }
+
+        /* === ORGANISMO: Controles del Reproductor === */
+        .tiempos-progreso {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-family: var(--fuente-mono);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--texto-tenue);
+        }
+
+        .fila-controles {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-ctrl {
+            appearance: none;
+            background: var(--fondo-hundido);
+            border: 1.5px solid var(--borde);
+            color: var(--texto);
+            width: 46px;
+            height: 46px;
+            border-radius: var(--radio-redondo);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+            transition: var(--rebote);
+            position: relative;
+        }
+
+        .btn-ctrl:hover, .btn-ctrl:focus-visible {
+            transform: scale(1.08);
+            border-color: var(--avia-primario);
+            background: var(--avia-primario-brillo);
+            box-shadow: var(--sombra-brillo);
+        }
+
+        .btn-ctrl:active { transform: scale(0.94); }
+
+        .btn-ctrl:focus-visible {
+            outline: 3px solid var(--avia-primario);
+            outline-offset: 3px;
+        }
+
+        .btn-ctrl.reproducir-principal {
+            width: 62px;
+            height: 62px;
+            font-size: 21px;
+            background: linear-gradient(145deg, var(--avia-primario), var(--avia-primario-claro));
+            color: #fff;
+            border: none;
+            box-shadow: var(--sombra-brillo);
+        }
+
+        .btn-ctrl.reproducir-principal:hover {
+            transform: scale(1.12);
+            box-shadow: 0 0 36px rgba(11, 110, 95, 0.4);
+        }
+
+        .btn-ctrl.activo {
+            background: var(--avia-primario);
+            color: #fff;
+            border-color: var(--avia-primario);
+        }
+
+        /* === MOLÉCULAS: Ajustes === */
+        .rejilla-ajustes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .bloque-ajuste {
+            background: var(--fondo-hundido);
+            border-radius: var(--radio-md);
+            padding: 14px;
+            text-align: center;
+        }
+
+        .etiqueta-ajuste {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--texto-tenue);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 10px;
+        }
+
+        .pastillas-velocidad {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .pastilla-vel {
+            appearance: none;
+            background: var(--fondo-elevado);
+            border: 1.5px solid var(--borde);
+            color: var(--texto-sec);
+            padding: 5px 11px;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transicion);
+            font-family: var(--fuente-mono);
+        }
+
+        .pastilla-vel:hover, .pastilla-vel:focus-visible {
+            border-color: var(--avia-primario);
+            color: var(--avia-primario);
+        }
+
+        .pastilla-vel:focus-visible {
+            outline: 2px solid var(--avia-primario);
+            outline-offset: 2px;
+        }
+
+        .pastilla-vel.activa {
+            background: var(--avia-primario);
+            color: #fff;
+            border-color: var(--avia-primario);
+        }
+
+        .selector-idioma {
+            appearance: none;
+            background: var(--fondo-elevado);
+            border: 1.5px solid var(--borde);
+            color: var(--texto);
+            padding: 8px 14px;
+            border-radius: var(--radio-sm);
+            font-size: 14px;
+            font-family: var(--fuente-principal);
+            cursor: pointer;
+            width: 100%;
+            transition: var(--transicion);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a9e92' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .selector-idioma:hover, .selector-idioma:focus-visible {
+            border-color: var(--avia-primario);
+        }
+
+        .selector-idioma:focus-visible {
+            outline: 2px solid var(--avia-primario);
+            outline-offset: 2px;
+        }
+
+        /* === ORGANISMO: Panel de Exportación === */
+        .panel-exportar {
+            border: 2px dashed var(--borde);
+            border-radius: var(--radio-md);
+            padding: 18px;
+            transition: var(--transicion);
+        }
+
+        .panel-exportar:hover {
+            border-color: var(--avia-primario);
+            background: var(--avia-primario-brillo);
+        }
+
+        .rango-exportar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .rango-exportar label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--texto-sec);
+            min-width: 48px;
+        }
+
+        .entrada-tiempo {
+            font-family: var(--fuente-mono);
+            font-size: 14px;
+            background: var(--fondo-elevado);
+            border: 1.5px solid var(--borde);
+            color: var(--texto);
+            padding: 8px 12px;
+            border-radius: var(--radio-sm);
+            width: 88px;
+            text-align: center;
+            transition: var(--transicion);
+        }
+
+        .entrada-tiempo:focus {
+            border-color: var(--avia-primario);
+            outline: 2px solid var(--avia-primario-brillo);
+        }
+
+        .opciones-formato {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn-formato {
+            appearance: none;
+            background: var(--fondo-elevado);
+            border: 1.5px solid var(--borde);
+            color: var(--texto-sec);
+            padding: 7px 15px;
+            border-radius: var(--radio-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transicion);
+            font-family: var(--fuente-mono);
+        }
+
+        .btn-formato:hover, .btn-formato:focus-visible {
+            border-color: var(--avia-secundario);
+            color: var(--avia-secundario);
+        }
+
+        .btn-formato.activo {
+            background: var(--avia-secundario);
+            color: #fff;
+            border-color: var(--avia-secundario);
+        }
+
+        .acciones-exportar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-exportar {
+            appearance: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: linear-gradient(145deg, var(--avia-secundario), var(--avia-secundario-claro));
+            color: #fff;
+            border: none;
+            padding: 11px 18px;
+            border-radius: var(--radio-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--rebote);
+            font-family: var(--fuente-principal);
+        }
+
+        .btn-exportar:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(196, 75, 0, 0.3);
+        }
+
+        .btn-exportar:active { transform: scale(0.97); }
+
+        .btn-exportar:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-exportar:focus-visible {
+            outline: 3px solid var(--avia-secundario);
+            outline-offset: 3px;
+        }
+
+        .btn-exportar.secundario {
+            background: var(--fondo-hundido);
+            color: var(--texto);
+            border: 1.5px solid var(--borde);
+        }
+
+        .btn-exportar.secundario:hover {
+            border-color: var(--avia-primario);
+            box-shadow: none;
+        }
+
+        .estado-exportar {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--texto-tenue);
+            min-height: 18px;
+            font-family: var(--fuente-mono);
+            font-weight: 500;
+        }
+
+        .estado-exportar.procesando { color: var(--avia-aviso); }
+        .estado-exportar.exito { color: var(--avia-exito); }
+        .estado-exportar.error { color: var(--avia-peligro); }
+
+        /* === ORGANISMO: Panel IA === */
+        .panel-ia {
+            display: grid;
+            gap: 10px;
+        }
+
+        .btn-accion-ia {
+            appearance: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--fondo-hundido);
+            border: 1.5px solid var(--borde);
+            color: var(--texto);
+            padding: 14px;
+            border-radius: var(--radio-md);
+            cursor: pointer;
+            transition: var(--transicion);
+            text-align: left;
+            width: 100%;
+            font-family: var(--fuente-principal);
+        }
+
+        .btn-accion-ia:hover, .btn-accion-ia:focus-visible {
+            border-color: var(--avia-acento);
+            background: rgba(91, 33, 182, 0.05);
+            transform: translateX(4px);
+        }
+
+        .btn-accion-ia:focus-visible {
+            outline: 2px solid var(--avia-acento);
+            outline-offset: 2px;
+        }
+
+        .icono-accion-ia {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(145deg, var(--avia-acento), var(--avia-primario));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .info-accion-ia h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .info-accion-ia p {
+            font-size: 12px;
+            color: var(--texto-tenue);
+        }
+
+        /* Resultado IA */
+        .resultado-ia {
+            background: var(--fondo-hundido);
+            border: 1px solid var(--borde);
+            border-radius: var(--radio-md);
+            padding: 16px;
+            margin-top: 12px;
+            display: none;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .resultado-ia.visible { display: block; }
+
+        .resultado-ia-cabecera {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .resultado-ia-titulo {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--texto-tenue);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .resultado-ia-cerrar {
+            appearance: none;
+            background: none;
+            border: none;
+            color: var(--texto-tenue);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 4px;
+            line-height: 1;
+            border-radius: var(--radio-xs);
+            transition: var(--transicion);
+        }
+
+        .resultado-ia-cerrar:hover { color: var(--avia-peligro); }
+
+        .resultado-ia-contenido {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--texto);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .cargando-ia {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--texto-tenue);
+            font-size: 13px;
+        }
+
+        .cargando-ia .girador {
+            width: 16px;
+            height: 16px;
+            border: 2.5px solid var(--borde);
+            border-top-color: var(--avia-primario);
+            border-radius: var(--radio-redondo);
+            animation: girar 0.7s linear infinite;
+        }
+
+        /* === MOLÉCULAS: Insignias === */
+        .fila-insignias {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+            animation: deslizarArriba 0.5s var(--suave) 0.4s both;
+        }
+
+        .insignia {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--fondo-elevado);
+            border: 1px solid var(--borde-sutil);
+            padding: 5px 11px;
+            border-radius: 18px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--texto-tenue);
+            transition: var(--transicion);
+            letter-spacing: 0.3px;
+        }
+
+        .insignia:hover {
+            border-color: var(--avia-primario);
+            color: var(--avia-primario);
+        }
+
+        .insignia i { font-size: 9px; }
+
+        /* === ORGANISMOS: Panel Monitor === */
+        .fab-monitor {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            background: var(--avia-primario);
+            color: #fff;
+            border: none;
+            border-radius: var(--radio-redondo);
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--sombra-lg);
+            transition: var(--rebote);
+            z-index: 9999;
+        }
+
+        .fab-monitor:hover { transform: scale(1.1) rotate(-5deg); }
+
+        .modal-monitor {
+            display: none;
+            position: fixed;
+            bottom: 72px;
+            right: 16px;
+            background: var(--fondo-elevado);
+            border: 1px solid var(--borde);
+            border-radius: var(--radio-lg);
+            padding: 18px;
+            box-shadow: var(--sombra-lg);
+            max-width: 280px;
+            width: calc(100vw - 32px);
+            z-index: 10000;
+            animation: deslizarArriba 0.3s var(--suave);
+        }
+
+        .modal-monitor.abierto { display: block; }
+
+        .cabecera-monitor {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cabecera-monitor h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--texto);
+        }
+
+        .cerrar-monitor {
+            appearance: none;
+            background: none;
+            border: none;
+            color: var(--texto-tenue);
+            cursor: pointer;
+            font-size: 22px;
+            padding: 4px;
+        }
+
+        .rejilla-monitor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .item-monitor {
+            background: var(--fondo-hundido);
+            border-radius: var(--radio-xs);
+            padding: 9px;
+            text-align: center;
+        }
+
+        .item-monitor-etiqueta {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--texto-tenue);
+            margin-bottom: 3px;
+            font-weight: 600;
+        }
+
+        .item-monitor-valor {
+            font-family: var(--fuente-mono);
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--texto);
+        }
+
+        .item-monitor-valor.estado-bien { color: var(--avia-exito); }
+        .item-monitor-valor.estado-aviso { color: var(--avia-aviso); }
+        .item-monitor-valor.estado-error { color: var(--avia-peligro); }
+
+        /* === ORGANISMO: Modal === */
+        .superposicion-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .superposicion-modal.abierto { display: flex; }
+
+        .caja-modal {
+            background: var(--fondo-elevado);
+            border-radius: var(--radio-lg);
+            padding: 26px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--sombra-lg);
+            animation: deslizarArriba 0.3s var(--suave);
+        }
+
+        .caja-modal h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--texto);
+        }
+
+        .caja-modal p {
+            font-size: 14px;
+            color: var(--texto-sec);
+            margin-bottom: 18px;
+            line-height: 1.6;
+        }
+
+        .acciones-modal {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn-modal {
+            appearance: none;
+            padding: 9px 16px;
+            border-radius: var(--radio-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid var(--borde);
+            background: var(--fondo-hundido);
+            color: var(--texto);
+            transition: var(--transicion);
+            font-family: var(--fuente-principal);
+        }
+
+        .btn-modal:hover { border-color: var(--avia-primario); }
+
+        .btn-modal.primario {
+            background: var(--avia-primario);
+            color: #fff;
+            border-color: var(--avia-primario);
+        }
+
+        .btn-modal.primario:hover { background: var(--avia-primario-claro); }
+
+        /* === Barra de progreso de exportación === */
+        .barra-progreso-exportar {
+            width: 100%;
+            height: 4px;
+            background: var(--fondo-hundido);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .barra-progreso-exportar.visible { display: block; }
+
+        .barra-progreso-relleno {
+            height: 100%;
+            background: linear-gradient(90deg, var(--avia-secundario), var(--avia-secundario-claro));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: brillar 1.5s infinite;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 600px) {
+            .tarjeta { padding: 18px; }
+            .rejilla-ajustes { grid-template-columns: 1fr; }
+            .btn-ctrl { width: 42px; height: 42px; font-size: 14px; }
+            .btn-ctrl.reproducir-principal { width: 54px; height: 54px; font-size: 19px; }
+            .rango-exportar { flex-direction: column; align-items: stretch; }
+            .rango-exportar label { min-width: auto; }
+            .titulo-app { font-size: 22px; }
+            .zona-carga { padding: 22px 16px; }
+            .zona-carga-icono { font-size: 28px; }
+            --onda-alto: 90px;
+            .contenedor-onda { height: 90px; }
+        }
+
+        @media (max-width: 380px) {
+            body { padding: 10px; }
+            .tarjeta { padding: 14px; border-radius: var(--radio-md); }
+            .fila-controles { gap: 6px; }
+        }
+
+        /* === Scrollbar personalizado === */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--fondo-hundido); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--texto-tenue); }
+
+        /* === Transiciones de estado para la onda === */
+        .contenedor-onda.analizando {
+            position: relative;
+        }
+
+        .contenedor-onda.analizando::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, var(--avia-primario-brillo), transparent);
+            animation: escanear 1.5s ease-in-out infinite;
+        }
+
+        @keyframes escanear {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Enlace de salto accesible -->
+    <a href="#contenido-principal" class="saltar-enlace">Saltar al contenido principal</a>
+
+    <!-- Anunciador para lectores de pantalla -->
+    <div role="status" aria-live="polite" aria-atomic="true" class="sr-solo" id="anunciador"></div>
+
+    <!-- Aplicación principal -->
+    <div class="contenedor-app" id="contenido-principal">
+        <!-- Cabecera -->
+        <header class="cabecera-app">
+            <div class="logo-marca">
+                <div class="logo-icono" aria-hidden="true"><i class="fas fa-headphones-alt"></i></div>
+                <h1 class="titulo-app">AVIA-LEID</h1>
+            </div>
+            <p class="subtitulo-app" data-i18n="subtitulo">Reproductor interactivo accesible con IA integrada</p>
+        </header>
+
+        <!-- Tarjeta: Entrada de Archivo -->
+        <section class="tarjeta" aria-label="Cargar archivo de audio">
+            <h2 class="tarjeta-titulo"><i class="fas fa-folder-open"></i> <span data-i18n="titulo_carga">Cargar Audio</span></h2>
+            <div class="zona-carga" id="zonaCarga" role="button" tabindex="0" aria-label="Arrastrar o seleccionar archivo de audio">
+                <input type="file" class="zona-carga-input" id="entradaArchivo" accept="audio/*" aria-label="Seleccionar archivo de audio">
+                <div class="zona-carga-icono"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="zona-carga-texto" data-i18n="carga_texto">Arrastra tu archivo de audio aquí</div>
+                <div class="zona-carga-subtexto" data-i18n="carga_subtexto">o pulsa para seleccionar · MP3, WAV, OGG, FLAC, M4A</div>
+            </div>
+            <div class="archivo-info" id="archivoInfo">
+                <div class="archivo-info-icono"><i class="fas fa-music"></i></div>
+                <div class="archivo-info-datos">
+                    <div class="archivo-info-nombre" id="archivoNombre">—</div>
+                    <div class="archivo-info-meta" id="archivoMeta">—</div>
+                </div>
+                <button class="archivo-info-quitar" id="btnQuitarArchivo" aria-label="Quitar archivo cargado">&times;</button>
+            </div>
+        </section>
+
+        <!-- Tarjeta: Reproductor -->
+        <section class="tarjeta" aria-label="Reproductor de audio">
+            <audio id="audio" preload="metadata" crossorigin="anonymous">
+                <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            </audio>
+
+            <!-- Forma de Onda -->
+            <div class="contenedor-onda" id="contenedorOnda" role="slider" aria-label="Forma de onda y progreso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+                <canvas class="lienzo-onda" id="lienzoOnda"></canvas>
+                <div class="onda-progreso" id="ondaProgreso"></div>
+                <div class="onda-cursor" id="ondaCursor"></div>
+                <div class="onda-vacia" id="ondaVacia">
+                    <i class="fas fa-wave-square"></i>
+                    <span data-i18n="onda_vacia">Carga audio para ver la forma de onda</span>
+                </div>
+            </div>
+
+            <!-- Tiempos -->
+            <div class="tiempos-progreso">
+                <span id="tiempoActual">0:00</span>
+                <span id="tiempoDuracion">0:00</span>
+            </div>
+
+            <!-- Controles -->
+            <nav class="fila-controles" aria-label="Controles de reproducción">
+                <button class="btn-ctrl" id="btnRetroceder" aria-label="Retroceder 10 segundos">
+                    <i class="fas fa-backward"></i>
+                </button>
+                <button class="btn-ctrl reproducir-principal" id="btnReproducir" aria-label="Reproducir o pausar">
+                    <i class="fas fa-play" id="iconoReproducir"></i>
+                </button>
+                <button class="btn-ctrl" id="btnAvanzar" aria-label="Avanzar 10 segundos">
+                    <i class="fas fa-forward"></i>
+                </button>
+                <button class="btn-ctrl" id="btnSilenciar" aria-label="Silenciar o activar audio">
+                    <i class="fas fa-volume-up" id="iconoSilenciar"></i>
+                </button>
+                <button class="btn-ctrl" id="btnTema" aria-label="Cambiar tema claro/oscuro" aria-pressed="false">
+                    <i class="fas fa-moon" id="iconoTema"></i>
+                </button>
+            </nav>
+
+            <!-- Ajustes -->
+            <div class="rejilla-ajustes">
+                <div class="bloque-ajuste">
+                    <span class="etiqueta-ajuste" data-i18n="etiqueta_velocidad">Velocidad</span>
+                    <div class="pastillas-velocidad" role="group" aria-label="Control de velocidad de reproducción">
+                        <button class="pastilla-vel" data-speed="0.5" aria-label="0.5x velocidad">0.5</button>
+                        <button class="pastilla-vel" data-speed="0.75" aria-label="0.75x velocidad">0.75</button>
+                        <button class="pastilla-vel activa" data-speed="1" aria-label="1x velocidad normal">1x</button>
+                        <button class="pastilla-vel" data-speed="1.5" aria-label="1.5x velocidad">1.5</button>
+                        <button class="pastilla-vel" data-speed="2" aria-label="2x velocidad">2x</button>
+                    </div>
+                </div>
+                <div class="bloque-ajuste">
+                    <label class="etiqueta-ajuste" for="selectorIdioma" data-i18n="etiqueta_idioma">Idioma</label>
+                    <select id="selectorIdioma" class="selector-idioma" aria-label="Seleccionar idioma de la interfaz">
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                        <option value="ca">Català</option>
+                        <option value="gl">Galego</option>
+                        <option value="eu">Euskara</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tarjeta: Exportación -->
+        <section class="tarjeta" aria-label="Exportación de audio">
+            <h2 class="tarjeta-titulo"><i class="fas fa-file-export"></i> <span data-i18n="titulo_exportar">Exportar Audio</span></h2>
+            <div class="panel-exportar">
+                <div class="rango-exportar">
+                    <label for="exportarInicio" data-i18n="exportar_desde">Desde</label>
+                    <input type="text" id="exportarInicio" class="entrada-tiempo" value="0:00" placeholder="0:00" aria-label="Tiempo de inicio del clip">
+                    <label for="exportarFin" data-i18n="exportar_hasta">Hasta</label>
+                    <input type="text" id="exportarFin" class="entrada-tiempo" value="0:00" placeholder="0:00" aria-label="Tiempo final del clip">
+                    <button class="btn-exportar secundario" id="btnEstablecerRango" aria-label="Establecer posición actual como rango">
+                        <i class="fas fa-crosshairs"></i> <span data-i18n="exportar_actual">Actual</span>
+                    </button>
+                </div>
+
+                <div class="opciones-formato">
+                    <button class="btn-formato activo" data-format="wav" aria-label="Formato WAV sin compresión">WAV</button>
+                    <button class="btn-formato" data-format="mp3" aria-label="Formato MP3 comprimido">MP3</button>
+                    <button class="btn-formato" data-format="ogg" aria-label="Formato OGG libre">OGG</button>
+                </div>
+
+                <div class="acciones-exportar">
+                    <button class="btn-exportar" id="btnExportar" aria-label="Exportar clip seleccionado">
+                        <i class="fas fa-download"></i> <span data-i18n="btn_exportar">Exportar clip</span>
+                    </button>
+                    <button class="btn-exportar secundario" id="btnExportarCompleto" aria-label="Exportar audio completo">
+                        <i class="fas fa-file-audio"></i> <span data-i18n="btn_exportar_completo">Completo</span>
+                    </button>
+                </div>
+
+                <div class="barra-progreso-exportar" id="barraProgresoExportar">
+                    <div class="barra-progreso-relleno" id="barraProgresoRelleno"></div>
+                </div>
+                <div class="estado-exportar" id="estadoExportar" role="status" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- Tarjeta: IA Integrada -->
+        <section class="tarjeta" aria-label="Funciones de inteligencia artificial">
+            <h2 class="tarjeta-titulo"><i class="fas fa-brain"></i> <span data-i18n="titulo_ia">IA Integrada</span></h2>
+            <div class="panel-ia">
+                <button class="btn-accion-ia" id="btnTranscribir">
+                    <div class="icono-accion-ia"><i class="fas fa-closed-captioning"></i></div>
+                    <div class="info-accion-ia">
+                        <h4 data-i18n="ia_transcribir">Transcribir audio</h4>
+                        <p data-i18n="ia_transcribir_desc">Generar texto del contenido hablado</p>
+                    </div>
+                </button>
+                <button class="btn-accion-ia" id="btnResumir">
+                    <div class="icono-accion-ia"><i class="fas fa-compress-alt"></i></div>
+                    <div class="info-accion-ia">
+                        <h4 data-i18n="ia_resumir">Resumir contenido</h4>
+                        <p data-i18n="ia_resumir_desc">Obtener un resumen inteligente del audio</p>
+                    </div>
+                </button>
+                <button class="btn-accion-ia" id="btnTraducir">
+                    <div class="icono-accion-ia"><i class="fas fa-language"></i></div>
+                    <div class="info-accion-ia">
+                        <h4 data-i18n="ia_traducir">Traducir contenido</h4>
+                        <p data-i18n="ia_traducir_desc">Traducir transcripción a otro idioma</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Resultado IA -->
+            <div class="resultado-ia" id="resultadoIA">
+                <div class="resultado-ia-cabecera">
+                    <span class="resultado-ia-titulo" id="resultadoIATitulo">Resultado</span>
+                    <button class="resultado-ia-cerrar" id="btnCerrarResultadoIA" aria-label="Cerrar panel de resultado">&times;</button>
+                </div>
+                <div class="resultado-ia-contenido" id="resultadoIAContenido"></div>
+            </div>
+        </section>
+
+        <!-- Insignias -->
+        <footer class="fila-insignias" role="contentinfo">
+            <span class="insignia"><i class="fas fa-certificate" style="color: var(--avia-exito);"></i> AVIA-SIMPLIT</span>
+            <span class="insignia"><i class="fas fa-universal-access" style="color: var(--avia-primario);"></i> AAA</span>
+            <span class="insignia"><i class="fas fa-shield-alt" style="color: var(--avia-acento);"></i> CertiAVIA</span>
+            <span class="insignia"><i class="fas fa-stamp" style="color: var(--avia-secundario);"></i> Pukkart</span>
+        </footer>
+    </div>
+
+    <!-- FAB Monitor -->
+    <button class="fab-monitor" id="fabMonitor" aria-label="Abrir panel de monitorización">
+        <i class="fas fa-chart-line"></i>
+    </button>
+
+    <!-- Modal Monitor -->
+    <div class="modal-monitor" id="modalMonitor" role="dialog" aria-label="Panel de monitorización del sistema">
+        <div class="cabecera-monitor">
+            <h3><i class="fas fa-chart-line"></i> Monitor</h3>
+            <button class="cerrar-monitor" id="cerrarMonitor" aria-label="Cerrar panel de monitorización">&times;</button>
+        </div>
+        <div class="rejilla-monitor">
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">Estado</div>
+                <div class="item-monitor-valor estado-bien" id="monitorEstado">OK</div>
+            </div>
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">Sesión</div>
+                <div class="item-monitor-valor" id="monitorSesion">0:00</div>
+            </div>
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">Reproducciones</div>
+                <div class="item-monitor-valor" id="monitorReproducciones">0</div>
+            </div>
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">Errores</div>
+                <div class="item-monitor-valor" id="monitorErrores">0</div>
+            </div>
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">Formato</div>
+                <div class="item-monitor-valor" id="monitorFormato">WAV</div>
+            </div>
+            <div class="item-monitor">
+                <div class="item-monitor-etiqueta">A11y</div>
+                <div class="item-monitor-valor estado-bien">AAA</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div class="superposicion-modal" id="superposicionModal">
+        <div class="caja-modal">
+            <h3 id="modalTitulo">Confirmar</h3>
+            <p id="modalMensaje">¿Continuar con esta acción?</p>
+            <div class="acciones-modal">
+                <button class="btn-modal" id="modalCancelar">Cancelar</button>
+                <button class="btn-modal primario" id="modalConfirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ============================================
+       AVIA-LEID v2.0 — Sistema Interactivo
+       Diseño Atómico · Hegemonía Semántica ES
+       Reglas de Oro AVIA · Guía LEID
+       ============================================ */
+    (function() {
+        'use strict';
+
+        // ============================================
+        // ÁTOMO: Almacenamiento Seguro (sin localStorage)
+        // ============================================
+        var Memoria = {
+            _datos: {},
+            obtener: function(clave) {
+                return this._datos[clave] || null;
+            },
+            guardar: function(clave, valor) {
+                this._datos[clave] = valor;
+            }
+        };
+
+        // ============================================
+        // ÁTOMO: Sistema de Internacionalización
+        // Hegemonía semántica del español
+        // ============================================
+        var IDIOMAS = {
+            es: {
+                subtitulo: 'Reproductor interactivo accesible con IA integrada',
+                titulo_carga: 'Cargar Audio',
+                carga_texto: 'Arrastra tu archivo de audio aquí',
+                carga_subtexto: 'o pulsa para seleccionar · MP3, WAV, OGG, FLAC, M4A',
+                onda_vacia: 'Carga audio para ver la forma de onda',
+                etiqueta_velocidad: 'Velocidad',
+                etiqueta_idioma: 'Idioma',
+                titulo_exportar: 'Exportar Audio',
+                exportar_desde: 'Desde',
+                exportar_hasta: 'Hasta',
+                exportar_actual: 'Actual',
+                btn_exportar: 'Exportar clip',
+                btn_exportar_completo: 'Completo',
+                titulo_ia: 'IA Integrada',
+                ia_transcribir: 'Transcribir audio',
+                ia_transcribir_desc: 'Generar texto del contenido hablado',
+                ia_resumir: 'Resumir contenido',
+                ia_resumir_desc: 'Obtener un resumen inteligente del audio',
+                ia_traducir: 'Traducir contenido',
+                ia_traducir_desc: 'Traducir transcripción a otro idioma',
+                anuncio_reproducir: 'Reproducción iniciada',
+                anuncio_pausar: 'Reproducción pausada',
+                anuncio_silenciar: 'Audio silenciado',
+                anuncio_activar: 'Audio activado',
+                anuncio_oscuro: 'Modo oscuro activado',
+                anuncio_claro: 'Modo claro activado',
+                exportar_procesando: 'Procesando exportación...',
+                exportar_codificando: 'Codificando MP3...',
+                exportar_exito: '¡Exportación completada!',
+                exportar_error: 'Error en la exportación',
+                ia_procesando: 'Procesando con IA...',
+                ia_sin_transcripcion: 'Primero transcribe el audio para usar esta función.',
+                archivo_cargado: 'Archivo cargado correctamente',
+                archivo_invalido: 'Formato de archivo no compatible',
+                analizando_onda: 'Analizando forma de onda...'
+            },
+            en: {
+                subtitulo: 'Accessible interactive player with integrated AI',
+                titulo_carga: 'Load Audio',
+                carga_texto: 'Drag your audio file here',
+                carga_subtexto: 'or click to select · MP3, WAV, OGG, FLAC, M4A',
+                onda_vacia: 'Load audio to see the waveform',
+                etiqueta_velocidad: 'Speed',
+                etiqueta_idioma: 'Language',
+                titulo_exportar: 'Export Audio',
+                exportar_desde: 'From',
+                exportar_hasta: 'To',
+                exportar_actual: 'Current',
+                btn_exportar: 'Export clip',
+                btn_exportar_completo: 'Full',
+                titulo_ia: 'Integrated AI',
+                ia_transcribir: 'Transcribe audio',
+                ia_transcribir_desc: 'Generate text from spoken content',
+                ia_resumir: 'Summarize content',
+                ia_resumir_desc: 'Get an intelligent summary of the audio',
+                ia_traducir: 'Translate content',
+                ia_traducir_desc: 'Translate transcription to another language',
+                anuncio_reproducir: 'Playback started',
+                anuncio_pausar: 'Playback paused',
+                anuncio_silenciar: 'Audio muted',
+                anuncio_activar: 'Audio unmuted',
+                anuncio_oscuro: 'Dark mode enabled',
+                anuncio_claro: 'Light mode enabled',
+                exportar_procesando: 'Processing export...',
+                exportar_codificando: 'Encoding MP3...',
+                exportar_exito: 'Export completed!',
+                exportar_error: 'Export error',
+                ia_procesando: 'Processing with AI...',
+                ia_sin_transcripcion: 'First transcribe the audio to use this feature.',
+                archivo_cargado: 'File loaded successfully',
+                archivo_invalido: 'Unsupported file format',
+                analizando_onda: 'Analyzing waveform...'
+            },
+            ca: {
+                subtitulo: 'Reproductor interactiu accessible amb IA integrada',
+                titulo_carga: 'Carregar Àudio',
+                carga_texto: 'Arrossega el teu fitxer d\'àudio aquí',
+                carga_subtexto: 'o prem per seleccionar · MP3, WAV, OGG, FLAC, M4A',
+                onda_vacia: 'Carrega àudio per veure la forma d\'ona',
+                etiqueta_velocidad: 'Velocitat',
+                etiqueta_idioma: 'Idioma',
+                titulo_exportar: 'Exportar Àudio',
+                exportar_desde: 'Des de',
+                exportar_hasta: 'Fins a',
+                exportar_actual: 'Actual',
+                btn_exportar: 'Exportar clip',
+                btn_exportar_completo: 'Complet',
+                titulo_ia: 'IA Integrada',
+                ia_transcribir: 'Transcriure àudio',
+                ia_transcribir_desc: 'Generar text del contingut parlat',
+                ia_resumir: 'Resumir contingut',
+                ia_resumir_desc: 'Obtenir un resum intel·ligent de l\'àudio',
+                ia_traducir: 'Traduir contingut',
+                ia_traducir_desc: 'Traduir transcripció a un altre idioma',
+                anuncio_reproducir: 'Reproducció iniciada',
+                anuncio_pausar: 'Reproducció pausada',
+                anuncio_silenciar: 'Àudio silenciat',
+                anuncio_activar: 'Àudio activat',
+                anuncio_oscuro: 'Mode fosc activat',
+                anuncio_claro: 'Mode clar activat',
+                exportar_procesando: 'Processant exportació...',
+                exportar_codificando: 'Codificant MP3...',
+                exportar_exito: 'Exportació completada!',
+                exportar_error: 'Error en la exportació',
+                ia_procesando: 'Processant amb IA...',
+                ia_sin_transcripcion: 'Primer transcriu l\'àudio per usar aquesta funció.',
+                archivo_cargado: 'Fitxer carregat correctament',
+                archivo_invalido: 'Format de fitxer no compatible',
+                analizando_onda: 'Analitzant forma d\'ona...'
+            },
+            gl: {
+                subtitulo: 'Reprodutor interactivo accesible con IA integrada',
+                titulo_carga: 'Cargar Audio',
+                carga_texto: 'Arrastra o teu ficheiro de audio aquí',
+                carga_subtexto: 'ou preme para seleccionar · MP3, WAV, OGG, FLAC, M4A',
+                onda_vacia: 'Carga audio para ver a forma de onda',
+                etiqueta_velocidad: 'Velocidade',
+                etiqueta_idioma: 'Idioma',
+                titulo_exportar: 'Exportar Audio',
+                exportar_desde: 'Dende',
+                exportar_hasta: 'Ata',
+                exportar_actual: 'Actual',
+                btn_exportar: 'Exportar clip',
+                btn_exportar_completo: 'Completo',
+                titulo_ia: 'IA Integrada',
+                ia_transcribir: 'Transcribir audio',
+                ia_transcribir_desc: 'Xerar texto do contido falado',
+                ia_resumir: 'Resumir contido',
+                ia_resumir_desc: 'Obter un resumo intelixente do audio',
+                ia_traducir: 'Traducir contido',
+                ia_traducir_desc: 'Traducir transcrición a outro idioma',
+                anuncio_reproducir: 'Reprodución iniciada',
+                anuncio_pausar: 'Reprodución pausada',
+                anuncio_silenciar: 'Audio silenciado',
+                anuncio_activar: 'Audio activado',
+                anuncio_oscuro: 'Modo escuro activado',
+                anuncio_claro: 'Modo claro activado',
+                exportar_procesando: 'Procesando exportación...',
+                exportar_codificando: 'Codificando MP3...',
+                exportar_exito: 'Exportación completada!',
+                exportar_error: 'Erro na exportación',
+                ia_procesando: 'Procesando con IA...',
+                ia_sin_transcripcion: 'Primeiro transcribe o audio para usar esta función.',
+                archivo_cargado: 'Ficheiro cargado correctamente',
+                archivo_invalido: 'Formato de ficheiro non compatible',
+                analizando_onda: 'Analizando forma de onda...'
+            },
+            eu: {
+                subtitulo: 'Erreproduzitzaile interaktiboa IA integratuarekin',
+                titulo_carga: 'Audioa Kargatu',
+                carga_texto: 'Arrastatu zure audio fitxategia hona',
+                carga_subtexto: 'edo sakatu hautatzeko · MP3, WAV, OGG, FLAC, M4A',
+                onda_vacia: 'Kargatu audioa uhin-forma ikusteko',
+                etiqueta_velocidad: 'Abiadura',
+                etiqueta_idioma: 'Hizkuntza',
+                titulo_exportar: 'Audioa Esportatu',
+                exportar_desde: 'Hasiera',
+                exportar_hasta: 'Amaiera',
+                exportar_actual: 'Unekoa',
+                btn_exportar: 'Clip-a esportatu',
+                btn_exportar_completo: 'Osoa',
+                titulo_ia: 'IA Integratua',
+                ia_transcribir: 'Audioa transkribatu',
+                ia_transcribir_desc: 'Hitz egindako edukiaren testua sortu',
+                ia_resumir: 'Edukia laburtu',
+                ia_resumir_desc: 'Audioaren laburpen adimentsua lortu',
+                ia_traducir: 'Edukia itzuli',
+                ia_traducir_desc: 'Transkripzioa beste hizkuntza batera itzuli',
+                anuncio_reproducir: 'Erreprodukzioa hasita',
+                anuncio_pausar: 'Erreprodukzioa pausatuta',
+                anuncio_silenciar: 'Audioa isilduta',
+                anuncio_activar: 'Audioa aktibatuta',
+                anuncio_oscuro: 'Modu iluna aktibatuta',
+                anuncio_claro: 'Modu argia aktibatuta',
+                exportar_procesando: 'Esportazioa prozesatzen...',
+                exportar_codificando: 'MP3 kodetzen...',
+                exportar_exito: 'Esportazioa osatuta!',
+                exportar_error: 'Errorea esportazioan',
+                ia_procesando: 'IArekin prozesatzen...',
+                ia_sin_transcripcion: 'Lehenik transkribatu audioa funtzio hau erabiltzeko.',
+                archivo_cargado: 'Fitxategia behar bezala kargatu da',
+                archivo_invalido: 'Fitxategi formatu bateraezina',
+                analizando_onda: 'Uhin-forma aztertzen...'
+            }
+        };
+
+        var idiomaActual = 'es';
+
+        function txt(clave) {
+            return (IDIOMAS[idiomaActual] && IDIOMAS[idiomaActual][clave]) || (IDIOMAS.es[clave]) || clave;
+        }
+
+        function aplicarIdioma(idioma) {
+            idiomaActual = idioma;
+            Memoria.guardar('avia-idioma', idioma);
+            document.documentElement.lang = idioma;
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                var clave = el.getAttribute('data-i18n');
+                el.textContent = txt(clave);
+            });
+        }
+
+        // ============================================
+        // ÁTOMO: Anunciador Accesible
+        // ============================================
+        function anunciar(mensaje) {
+            var el = document.getElementById('anunciador');
+            el.textContent = mensaje;
+            setTimeout(function() { el.textContent = ''; }, 1500);
+        }
+
+        // ============================================
+        // ÁTOMO: Formateo de Tiempo
+        // ============================================
+        function formatearTiempo(segundos) {
+            if (!segundos || isNaN(segundos)) return '0:00';
+            var m = Math.floor(segundos / 60);
+            var s = Math.floor(segundos % 60);
+            return m + ':' + String(s).padStart(2, '0');
+        }
+
+        function parsearTiempo(cadena) {
+            var partes = cadena.split(':');
+            if (partes.length === 2) {
+                return parseInt(partes[0], 10) * 60 + parseInt(partes[1], 10);
+            }
+            if (partes.length === 3) {
+                return parseInt(partes[0], 10) * 3600 + parseInt(partes[1], 10) * 60 + parseInt(partes[2], 10);
+            }
+            return 0;
+        }
+
+        function formatearTamano(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // ============================================
+        // REFERENCIAS DOM
+        // ============================================
+        var audio = document.getElementById('audio');
+        var lienzoOnda = document.getElementById('lienzoOnda');
+        var contenedorOnda = document.getElementById('contenedorOnda');
+        var ondaProgreso = document.getElementById('ondaProgreso');
+        var ondaCursor = document.getElementById('ondaCursor');
+        var ondaVacia = document.getElementById('ondaVacia');
+        var tiempoActual = document.getElementById('tiempoActual');
+        var tiempoDuracion = document.getElementById('tiempoDuracion');
+        var iconoReproducir = document.getElementById('iconoReproducir');
+        var iconoSilenciar = document.getElementById('iconoSilenciar');
+        var iconoTema = document.getElementById('iconoTema');
+        var exportarInicio = document.getElementById('exportarInicio');
+        var exportarFin = document.getElementById('exportarFin');
+        var estadoExportar = document.getElementById('estadoExportar');
+        var resultadoIA = document.getElementById('resultadoIA');
+        var resultadoIAContenido = document.getElementById('resultadoIAContenido');
+        var resultadoIATitulo = document.getElementById('resultadoIATitulo');
+        var zonaCarga = document.getElementById('zonaCarga');
+        var entradaArchivo = document.getElementById('entradaArchivo');
+        var archivoInfo = document.getElementById('archivoInfo');
+
+        // ============================================
+        // ESTADO DE LA APLICACIÓN
+        // ============================================
+        var estado = {
+            oscuro: false,
+            velocidad: 1,
+            reproducciones: 0,
+            errores: 0,
+            inicioSesion: Date.now(),
+            formatoExportar: 'wav',
+            ultimaTranscripcion: '',
+            datosOnda: null,
+            audioContexto: null,
+            archivoActual: null,
+            ondaDibujada: false
+        };
+
+        // ============================================
+        // MOLÉCULA: Sistema de Tema
+        // ============================================
+        function inicializarTema() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                estado.oscuro = true;
+            }
+            aplicarTema();
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                estado.oscuro = e.matches;
+                aplicarTema();
+            });
+        }
+
+        function aplicarTema() {
+            document.documentElement.classList.toggle('dark', estado.oscuro);
+            iconoTema.className = estado.oscuro ? 'fas fa-sun' : 'fas fa-moon';
+            document.getElementById('btnTema').setAttribute('aria-pressed', String(estado.oscuro));
+            // Redibujar onda con nuevos colores si existe
+            if (estado.datosOnda) {
+                dibujarOnda(estado.datosOnda);
+            }
+        }
+
+        function alternarTema() {
+            estado.oscuro = !estado.oscuro;
+            Memoria.guardar('avia-oscuro', String(estado.oscuro));
+            aplicarTema();
+            anunciar(estado.oscuro ? txt('anuncio_oscuro') : txt('anuncio_claro'));
+        }
+
+        // ============================================
+        // ORGANISMO: Sistema de Carga de Archivos
+        // ============================================
+        function inicializarCargaArchivos() {
+            // Clic en zona de carga
+            zonaCarga.addEventListener('click', function(e) {
+                if (e.target !== entradaArchivo) {
+                    entradaArchivo.click();
+                }
+            });
+
+            // Teclado accesible
+            zonaCarga.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    entradaArchivo.click();
+                }
+            });
+
+            // Cambio de archivo
+            entradaArchivo.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    procesarArchivo(e.target.files[0]);
+                }
+            });
+
+            // Drag & Drop
+            zonaCarga.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zonaCarga.classList.add('arrastrando');
+            });
+
+            zonaCarga.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zonaCarga.classList.remove('arrastrando');
+            });
+
+            zonaCarga.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zonaCarga.classList.remove('arrastrando');
+                var archivos = e.dataTransfer.files;
+                if (archivos && archivos[0]) {
+                    procesarArchivo(archivos[0]);
+                }
+            });
+
+            // Botón quitar archivo
+            document.getElementById('btnQuitarArchivo').addEventListener('click', function() {
+                quitarArchivo();
+            });
+        }
+
+        function procesarArchivo(archivo) {
+            // Validar tipo
+            var tiposPermitidos = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/webm'];
+            var esAudio = tiposPermitidos.some(function(tipo) { return archivo.type.indexOf(tipo.split('/')[1]) !== -1; }) || archivo.type.startsWith('audio/');
+
+            if (!esAudio) {
+                anunciar(txt('archivo_invalido'));
+                mostrarEstadoExportar(txt('archivo_invalido'), 'error');
+                return;
+            }
+
+            estado.archivoActual = archivo;
+
+            // Crear URL para el audio
+            var url = URL.createObjectURL(archivo);
+            audio.src = url;
+            audio.load();
+
+            // Mostrar info del archivo
+            document.getElementById('archivoNombre').textContent = archivo.name;
+            document.getElementById('archivoMeta').textContent = formatearTamano(archivo.size) + ' · ' + archivo.type.split('/')[1].toUpperCase();
+            archivoInfo.classList.add('visible');
+
+            // Analizar forma de onda
+            analizarFormaDeOnda(archivo);
+
+            anunciar(txt('archivo_cargado'));
+        }
+
+        function quitarArchivo() {
+            estado.archivoActual = null;
+            estado.datosOnda = null;
+            estado.ondaDibujada = false;
+            archivoInfo.classList.remove('visible');
+            entradaArchivo.value = '';
+
+            // Restaurar audio por defecto
+            audio.src = '';
+            var source = document.createElement('source');
+            source.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+            source.type = 'audio/mpeg';
+            audio.innerHTML = '';
+            audio.appendChild(source);
+            audio.load();
+
+            // Limpiar onda
+            limpiarOnda();
+            ondaVacia.style.display = 'flex';
+        }
+
+        // ============================================
+        // ORGANISMO: Visualización de Forma de Onda
+        // ============================================
+        function analizarFormaDeOnda(archivo) {
+            contenedorOnda.classList.add('analizando');
+            ondaVacia.style.display = 'none';
+
+            var lector = new FileReader();
+            lector.onload = function(e) {
+                var contexto = new (window.AudioContext || window.webkitAudioContext)();
+                contexto.decodeAudioData(e.target.result, function(buffer) {
+                    // Obtener datos del canal izquierdo (o mono)
+                    var datosCanal = buffer.getChannelData(0);
+                    var muestras = 200; // Número de barras
+                    var bloque = Math.floor(datosCanal.length / muestras);
+                    var picos = [];
+
+                    for (var i = 0; i < muestras; i++) {
+                        var inicio = i * bloque;
+                        var suma = 0;
+                        for (var j = 0; j < bloque; j++) {
+                            suma += Math.abs(datosCanal[inicio + j]);
+                        }
+                        picos.push(suma / bloque);
+                    }
+
+                    // Normalizar
+                    var maximo = Math.max.apply(null, picos);
+                    if (maximo > 0) {
+                        picos = picos.map(function(v) { return v / maximo; });
+                    }
+
+                    estado.datosOnda = picos;
+                    estado.ondaDibujada = true;
+                    dibujarOnda(picos);
+                    contenedorOnda.classList.remove('analizando');
+                    contexto.close();
+                }, function() {
+                    contenedorOnda.classList.remove('analizando');
+                    ondaVacia.style.display = 'flex';
+                    estado.errores++;
+                });
+            };
+            lector.readAsArrayBuffer(archivo);
+        }
+
+        function dibujarOnda(picos) {
+            var canvas = lienzoOnda;
+            var ctx = canvas.getContext('2d');
+            var dpr = window.devicePixelRatio || 1;
+
+            // Ajustar resolución del canvas
+            var rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            var ancho = rect.width;
+            var alto = rect.height;
+            var numBarras = picos.length;
+            var anchoBarraTotal = ancho / numBarras;
+            var anchoBarra = anchoBarraTotal * 0.7;
+            var espaciado = anchoBarraTotal * 0.3;
+            var centroY = alto / 2;
+
+            // Limpiar
+            ctx.clearRect(0, 0, ancho, alto);
+
+            // Obtener color de la onda según tema
+            var estiloComp = getComputedStyle(document.documentElement);
+            var colorOnda = estiloComp.getPropertyValue('--avia-onda').trim();
+            var colorFondo = estiloComp.getPropertyValue('--borde').trim();
+
+            for (var i = 0; i < numBarras; i++) {
+                var x = i * anchoBarraTotal + espaciado / 2;
+                var altoBarra = Math.max(2, picos[i] * (alto * 0.8));
+
+                // Barra superior
+                ctx.fillStyle = colorOnda;
+                ctx.globalAlpha = 0.3 + picos[i] * 0.7;
+                ctx.beginPath();
+                ctx.roundRect(x, centroY - altoBarra / 2, anchoBarra, altoBarra, 2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+            ondaVacia.style.display = 'none';
+        }
+
+        function limpiarOnda() {
+            var ctx = lienzoOnda.getContext('2d');
+            var dpr = window.devicePixelRatio || 1;
+            var rect = lienzoOnda.getBoundingClientRect();
+            lienzoOnda.width = rect.width * dpr;
+            lienzoOnda.height = rect.height * dpr;
+            ctx.clearRect(0, 0, lienzoOnda.width, lienzoOnda.height);
+        }
+
+        // Redibujar al cambiar tamaño
+        var temporizadorRedimensionar;
+        window.addEventListener('resize', function() {
+            clearTimeout(temporizadorRedimensionar);
+            temporizadorRedimensionar = setTimeout(function() {
+                if (estado.datosOnda) {
+                    dibujarOnda(estado.datosOnda);
+                }
+            }, 150);
+        });
+
+        // ============================================
+        // MOLÉCULA: Controles de Reproducción
+        // ============================================
+        function alternarReproduccion() {
+            if (audio.paused) {
+                audio.play().catch(function() {
+                    // Ignorar errores de autoplay
+                });
+                iconoReproducir.className = 'fas fa-pause';
+                anunciar(txt('anuncio_reproducir'));
+            } else {
+                audio.pause();
+                iconoReproducir.className = 'fas fa-play';
+                anunciar(txt('anuncio_pausar'));
+            }
+        }
+
+        function saltar(seg) {
+            audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + seg));
+            anunciar(Math.abs(seg) + 's ' + (seg > 0 ? '▶' : '◀'));
+        }
+
+        function alternarSilencio() {
+            audio.muted = !audio.muted;
+            iconoSilenciar.className = audio.muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+            anunciar(audio.muted ? txt('anuncio_silenciar') : txt('anuncio_activar'));
+        }
+
+        function establecerVelocidad(vel) {
+            estado.velocidad = vel;
+            audio.playbackRate = vel;
+            document.querySelectorAll('.pastilla-vel').forEach(function(btn) {
+                btn.classList.toggle('activa', parseFloat(btn.dataset.speed) === vel);
+            });
+            anunciar(vel + 'x');
+        }
+
+        // ============================================
+        // MOLÉCULA: Actualización de Progreso
+        // ============================================
+        function actualizarProgreso() {
+            if (!audio.duration) return;
+            var pct = (audio.currentTime / audio.duration) * 100;
+            ondaProgreso.style.width = pct + '%';
+            ondaCursor.style.left = pct + '%';
+            contenedorOnda.setAttribute('aria-valuenow', Math.round(pct));
+            tiempoActual.textContent = formatearTiempo(audio.currentTime);
+            tiempoDuracion.textContent = formatearTiempo(audio.duration);
+        }
+
+        function buscarEn(e) {
+            var rect = contenedorOnda.getBoundingClientRect();
+            var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            audio.currentTime = pct * (audio.duration || 0);
+        }
+
+        // ============================================
+        // ORGANISMO: Sistema de Exportación de Audio
+        // ============================================
+        function mostrarEstadoExportar(msg, tipo) {
+            estadoExportar.textContent = msg;
+            estadoExportar.className = 'estado-exportar' + (tipo ? ' ' + tipo : '');
+        }
+
+        function mostrarBarraProgreso(visible, porcentaje) {
+            var barra = document.getElementById('barraProgresoExportar');
+            var relleno = document.getElementById('barraProgresoRelleno');
+            if (visible) {
+                barra.classList.add('visible');
+                relleno.style.width = (porcentaje || 0) + '%';
+            } else {
+                barra.classList.remove('visible');
+                relleno.style.width = '0%';
+            }
+        }
+
+        async function exportarClipAudio(completo) {
+            var inicioSeg = completo ? 0 : parsearTiempo(exportarInicio.value);
+            var finSeg = completo ? (audio.duration || 0) : parsearTiempo(exportarFin.value);
+
+            if (finSeg <= inicioSeg) {
+                mostrarEstadoExportar('Error: el tiempo final debe ser mayor que el inicial.', 'error');
+                return;
+            }
+
+            if (!audio.src && !audio.querySelector('source')) {
+                mostrarEstadoExportar('Error: no hay audio cargado.', 'error');
+                return;
+            }
+
+            mostrarEstadoExportar(txt('exportar_procesando'), 'procesando');
+            mostrarBarraProgreso(true, 10);
+            document.getElementById('btnExportar').disabled = true;
+            document.getElementById('btnExportarCompleto').disabled = true;
+
+            try {
+                var arrayBuffer;
+
+                if (estado.archivoActual) {
+                    // Leer archivo local
+                    arrayBuffer = await estado.archivoActual.arrayBuffer();
+                } else {
+                    // Fetch del audio de la fuente
+                    var fuenteAudio = audio.src || (audio.querySelector('source') ? audio.querySelector('source').src : '');
+                    var respuesta = await fetch(fuenteAudio);
+                    arrayBuffer = await respuesta.arrayBuffer();
+                }
+
+                mostrarBarraProgreso(true, 30);
+
+                // Decodificar con Web Audio API
+                var contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
+                var bufferDecodificado = await contextoAudio.decodeAudioData(arrayBuffer);
+
+                mostrarBarraProgreso(true, 50);
+
+                // Calcular límites del clip
+                var tasaMuestreo = bufferDecodificado.sampleRate;
+                var muestraInicio = Math.floor(inicioSeg * tasaMuestreo);
+                var muestraFin = Math.min(Math.floor(finSeg * tasaMuestreo), bufferDecodificado.length);
+                var longitudClip = muestraFin - muestraInicio;
+
+                if (longitudClip <= 0) {
+                    mostrarEstadoExportar('Error: rango inválido.', 'error');
+                    mostrarBarraProgreso(false);
+                    return;
+                }
+
+                // Crear buffer del clip
+                var bufferClip = contextoAudio.createBuffer(
+                    bufferDecodificado.numberOfChannels,
+                    longitudClip,
+                    tasaMuestreo
+                );
+
+                for (var ch = 0; ch < bufferDecodificado.numberOfChannels; ch++) {
+                    var datosFuente = bufferDecodificado.getChannelData(ch);
+                    var datosClip = bufferClip.getChannelData(ch);
+                    for (var i = 0; i < longitudClip; i++) {
+                        datosClip[i] = datosFuente[muestraInicio + i];
+                    }
+                }
+
+                mostrarBarraProgreso(true, 70);
+
+                var blob;
+                var extension = estado.formatoExportar;
+
+                if (estado.formatoExportar === 'mp3') {
+                    mostrarEstadoExportar(txt('exportar_codificando'), 'procesando');
+                    blob = await codificarMP3(bufferClip);
+                } else if (estado.formatoExportar === 'ogg') {
+                    // OGG: usar MediaRecorder si disponible, sino fallback a WAV
+                    blob = await codificarOGG(bufferClip, contextoAudio);
+                    if (!blob) {
+                        blob = codificarWAV(bufferClip);
+                        extension = 'wav';
+                        mostrarEstadoExportar('OGG no soportado, exportando como WAV', 'procesando');
+                    }
+                } else {
+                    blob = codificarWAV(bufferClip);
+                }
+
+                mostrarBarraProgreso(true, 95);
+
+                // Crear enlace de descarga
+                var url = URL.createObjectURL(blob);
+                var enlace = document.createElement('a');
+                enlace.href = url;
+                var marcaTiempo = formatearTiempo(inicioSeg).replace(':', '-') + '_' + formatearTiempo(finSeg).replace(':', '-');
+                enlace.download = 'AVIA-LEID_' + marcaTiempo + '.' + extension;
+                document.body.appendChild(enlace);
+                enlace.click();
+                document.body.removeChild(enlace);
+                URL.revokeObjectURL(url);
+
+                contextoAudio.close();
+                mostrarBarraProgreso(true, 100);
+
+                setTimeout(function() {
+                    mostrarBarraProgreso(false);
+                    var duracionClip = formatearTiempo(longitudClip / tasaMuestreo);
+                    mostrarEstadoExportar(txt('exportar_exito') + ' (' + duracionClip + ' · ' + extension.toUpperCase() + ')', 'exito');
+                }, 400);
+
+            } catch (err) {
+                console.log('Error de exportación: ' + err.message);
+                mostrarEstadoExportar(txt('exportar_error') + ': ' + err.message, 'error');
+                mostrarBarraProgreso(false);
+                estado.errores++;
+            } finally {
+                document.getElementById('btnExportar').disabled = false;
+                document.getElementById('btnExportarCompleto').disabled = false;
+            }
+        }
+
+        // ============================================
+        // ÁTOMO: Codificador WAV
+        // ============================================
+        function codificarWAV(buffer) {
+            var numCanales = buffer.numberOfChannels;
+            var tasaMuestreo = buffer.sampleRate;
+            var bitsPorMuestra = 16;
+            var bytesPorMuestra = bitsPorMuestra / 8;
+            var alineacionBloque = numCanales * bytesPorMuestra;
+            var longitudDatos = buffer.length * alineacionBloque;
+            var longitudCabecera = 44;
+            var longitudTotal = longitudCabecera + longitudDatos;
+
+            var arrayBuffer = new ArrayBuffer(longitudTotal);
+            var vista = new DataView(arrayBuffer);
+
+            escribirCadena(vista, 0, 'RIFF');
+            vista.setUint32(4, longitudTotal - 8, true);
+            escribirCadena(vista, 8, 'WAVE');
+            escribirCadena(vista, 12, 'fmt ');
+            vista.setUint32(16, 16, true);
+            vista.setUint16(20, 1, true);
+            vista.setUint16(22, numCanales, true);
+            vista.setUint32(24, tasaMuestreo, true);
+            vista.setUint32(28, tasaMuestreo * alineacionBloque, true);
+            vista.setUint16(32, alineacionBloque, true);
+            vista.setUint16(34, bitsPorMuestra, true);
+            escribirCadena(vista, 36, 'data');
+            vista.setUint32(40, longitudDatos, true);
+
+            var desplazamiento = 44;
+            for (var i = 0; i < buffer.length; i++) {
+                for (var ch = 0; ch < numCanales; ch++) {
+                    var muestra = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+                    var muestraInt = muestra < 0 ? muestra * 0x8000 : muestra * 0x7FFF;
+                    vista.setInt16(desplazamiento, muestraInt, true);
+                    desplazamiento += 2;
+                }
+            }
+
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        function escribirCadena(vista, desplazamiento, cadena) {
+            for (var i = 0; i < cadena.length; i++) {
+                vista.setUint8(desplazamiento + i, cadena.charCodeAt(i));
+            }
+        }
+
+        // ============================================
+        // ÁTOMO: Codificador MP3 (lamejs)
+        // ============================================
+        function codificarMP3(buffer) {
+            return new Promise(function(resolver, rechazar) {
+                try {
+                    if (typeof lamejs === 'undefined') {
+                        rechazar(new Error('Codificador MP3 no disponible'));
+                        return;
+                    }
+
+                    var numCanales = buffer.numberOfChannels;
+                    var tasaMuestreo = buffer.sampleRate;
+                    var kbps = 128;
+
+                    var codificador;
+                    if (numCanales === 1) {
+                        codificador = new lamejs.Mp3Encoder(1, tasaMuestreo, kbps);
+                    } else {
+                        codificador = new lamejs.Mp3Encoder(2, tasaMuestreo, kbps);
+                    }
+
+                    var tamanoBloque = 1152;
+                    var datosMP3 = [];
+
+                    // Convertir float32 a int16
+                    var canalIzquierdo = convertirAInt16(buffer.getChannelData(0));
+                    var canalDerecho = numCanales > 1 ? convertirAInt16(buffer.getChannelData(1)) : null;
+
+                    for (var i = 0; i < canalIzquierdo.length; i += tamanoBloque) {
+                        var finBloque = Math.min(i + tamanoBloque, canalIzquierdo.length);
+                        var bloqueIzq = canalIzquierdo.subarray(i, finBloque);
+                        var mp3buf;
+
+                        if (numCanales === 1) {
+                            mp3buf = codificador.encodeBuffer(bloqueIzq);
+                        } else {
+                            var bloqueDer = canalDerecho.subarray(i, finBloque);
+                            mp3buf = codificador.encodeBuffer(bloqueIzq, bloqueDer);
+                        }
+
+                        if (mp3buf.length > 0) {
+                            datosMP3.push(mp3buf);
+                        }
+                    }
+
+                    var final = codificador.flush();
+                    if (final.length > 0) {
+                        datosMP3.push(final);
+                    }
+
+                    var blob = new Blob(datosMP3, { type: 'audio/mp3' });
+                    resolver(blob);
+                } catch (err) {
+                    rechazar(err);
+                }
+            });
+        }
+
+        function convertirAInt16(floatArray) {
+            var int16Array = new Int16Array(floatArray.length);
+            for (var i = 0; i < floatArray.length; i++) {
+                var s = Math.max(-1, Math.min(1, floatArray[i]));
+                int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return int16Array;
+        }
+
+        // ============================================
+        // ÁTOMO: Codificador OGG (MediaRecorder fallback)
+        // ============================================
+        function codificarOGG(buffer, contexto) {
+            return new Promise(function(resolver) {
+                try {
+                    // Verificar soporte de MediaRecorder para OGG
+                    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported('audio/ogg')) {
+                        resolver(null);
+                        return;
+                    }
+
+                    var destino = contexto.createMediaStreamDestination();
+                    var fuente = contexto.createBufferSource();
+                    fuente.buffer = buffer;
+                    fuente.connect(destino);
+
+                    var grabador = new MediaRecorder(destino.stream, { mimeType: 'audio/ogg' });
+                    var fragmentos = [];
+
+                    grabador.ondataavailable = function(e) {
+                        if (e.data.size > 0) fragmentos.push(e.data);
+                    };
+
+                    grabador.onstop = function() {
+                        var blob = new Blob(fragmentos, { type: 'audio/ogg' });
+                        resolver(blob);
+                    };
+
+                    grabador.onerror = function() {
+                        resolver(null);
+                    };
+
+                    grabador.start();
+                    fuente.start(0);
+                    fuente.onended = function() {
+                        setTimeout(function() { grabador.stop(); }, 100);
+                    };
+                } catch (e) {
+                    resolver(null);
+                }
+            });
+        }
+
+        // ============================================
+        // ORGANISMO: Integración IA (Poe Embed API)
+        // ============================================
+        function mostrarCargandoIA(titulo) {
+            resultadoIA.classList.add('visible');
+            resultadoIATitulo.textContent = titulo;
+            resultadoIAContenido.innerHTML = '<div class="cargando-ia"><div class="girador"></div><span>' + txt('ia_procesando') + '</span></div>';
+        }
+
+        function mostrarResultadoIA(titulo, contenido) {
+            resultadoIA.classList.add('visible');
+            resultadoIATitulo.textContent = titulo;
+            resultadoIAContenido.textContent = contenido;
+        }
+
+        function ocultarResultadoIA() {
+            resultadoIA.classList.remove('visible');
+        }
+
+        // Registrar handlers para Poe API
+        if (window.Poe) {
+            window.Poe.registerHandler('avia-transcribir', function(resultado) {
+                var msg = resultado.responses[0];
+                if (msg.status === 'error') {
+                    mostrarResultadoIA('Error', msg.statusText || 'Error al transcribir.');
+                } else if (msg.status === 'incomplete') {
+                    resultadoIAContenido.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    estado.ultimaTranscripcion = msg.content;
+                    mostrarResultadoIA('Transcripción', msg.content);
+                }
+            });
+
+            window.Poe.registerHandler('avia-resumir', function(resultado) {
+                var msg = resultado.responses[0];
+                if (msg.status === 'error') {
+                    mostrarResultadoIA('Error', msg.statusText || 'Error al resumir.');
+                } else if (msg.status === 'incomplete') {
+                    resultadoIAContenido.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    mostrarResultadoIA('Resumen', msg.content);
+                }
+            });
+
+            window.Poe.registerHandler('avia-traducir', function(resultado) {
+                var msg = resultado.responses[0];
+                if (msg.status === 'error') {
+                    mostrarResultadoIA('Error', msg.statusText || 'Error al traducir.');
+                } else if (msg.status === 'incomplete') {
+                    resultadoIAContenido.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    mostrarResultadoIA('Traducción', msg.content);
+                }
+            });
+        }
+
+        function obtenerNombreIdiomaIA() {
+            var mapa = { es: 'Spanish', en: 'English', ca: 'Catalan', gl: 'Galician', eu: 'Basque' };
+            return mapa[idiomaActual] || 'Spanish';
+        }
+
+        async function hacerTranscripcion() {
+            if (!window.Poe) {
+                mostrarResultadoIA('Información', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            mostrarCargandoIA('Transcribir');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Transcribe the following audio description into a faithful transcript. The audio is ' + (estado.archivoActual ? 'a file named "' + estado.archivoActual.name + '"' : 'an instrumental track from SoundHelix') + '. Since it may be instrumental, describe the musical elements: tempo, instruments, mood, sections. Format it as a structured description. Respond in ' + obtenerNombreIdiomaIA() + '.',
+                    {
+                        handler: 'avia-transcribir',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                mostrarResultadoIA('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        async function hacerResumen() {
+            if (!window.Poe) {
+                mostrarResultadoIA('Información', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            if (!estado.ultimaTranscripcion) {
+                mostrarResultadoIA('Información', txt('ia_sin_transcripcion'));
+                return;
+            }
+            mostrarCargandoIA('Resumen');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Summarize the following audio transcription/description in a concise paragraph (3-5 sentences). Keep the key points. Respond in ' + obtenerNombreIdiomaIA() + ':\n\n' + estado.ultimaTranscripcion,
+                    {
+                        handler: 'avia-resumir',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                mostrarResultadoIA('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        async function hacerTraduccion() {
+            if (!window.Poe) {
+                mostrarResultadoIA('Información', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            if (!estado.ultimaTranscripcion) {
+                mostrarResultadoIA('Información', txt('ia_sin_transcripcion'));
+                return;
+            }
+            var idiomaDestino = idiomaActual === 'en' ? 'Spanish' : 'English';
+            mostrarCargandoIA('Traducción');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Translate the following text to ' + idiomaDestino + '. Provide only the translation:\n\n' + estado.ultimaTranscripcion,
+                    {
+                        handler: 'avia-traducir',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                mostrarResultadoIA('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        // ============================================
+        // MOLÉCULA: Modal Personalizado
+        // ============================================
+        function mostrarModal(titulo, mensaje, alConfirmar) {
+            document.getElementById('modalTitulo').textContent = titulo;
+            document.getElementById('modalMensaje').textContent = mensaje;
+            document.getElementById('superposicionModal').classList.add('abierto');
+
+            var btnConfirmar = document.getElementById('modalConfirmar');
+            var btnCancelar = document.getElementById('modalCancelar');
+
+            function limpiar() {
+                document.getElementById('superposicionModal').classList.remove('abierto');
+                btnConfirmar.removeEventListener('click', manejarConfirmar);
+                btnCancelar.removeEventListener('click', manejarCancelar);
+            }
+
+            function manejarConfirmar() {
+                limpiar();
+                if (alConfirmar) alConfirmar();
+            }
+
+            function manejarCancelar() {
+                limpiar();
+            }
+
+            btnConfirmar.addEventListener('click', manejarConfirmar);
+            btnCancelar.addEventListener('click', manejarCancelar);
+        }
+
+        // ============================================
+        // MOLÉCULA: Panel de Monitorización
+        // ============================================
+        function inicializarMonitor() {
+            setInterval(function() {
+                var transcurrido = Math.floor((Date.now() - estado.inicioSesion) / 1000);
+                var m = Math.floor(transcurrido / 60);
+                var s = transcurrido % 60;
+                document.getElementById('monitorSesion').textContent = m + ':' + String(s).padStart(2, '0');
+            }, 1000);
+
+            audio.addEventListener('play', function() {
+                estado.reproducciones++;
+                document.getElementById('monitorReproducciones').textContent = estado.reproducciones;
+            });
+
+            audio.addEventListener('error', function() {
+                estado.errores++;
+                document.getElementById('monitorErrores').textContent = estado.errores;
+                document.getElementById('monitorErrores').className = 'item-monitor-valor estado-error';
+                document.getElementById('monitorEstado').textContent = 'ERR';
+                document.getElementById('monitorEstado').className = 'item-monitor-valor estado-error';
+            });
+        }
+
+        // ============================================
+        // INICIALIZACIÓN PRINCIPAL
+        // ============================================
+        function inicializar() {
+            // Tema
+            inicializarTema();
+
+            // Idioma
+            aplicarIdioma(idiomaActual);
+
+            // Carga de archivos
+            inicializarCargaArchivos();
+
+            // Controles de reproducción
+            document.getElementById('btnReproducir').addEventListener('click', alternarReproduccion);
+            document.getElementById('btnRetroceder').addEventListener('click', function() { saltar(-10); });
+            document.getElementById('btnAvanzar').addEventListener('click', function() { saltar(10); });
+            document.getElementById('btnSilenciar').addEventListener('click', alternarSilencio);
+            document.getElementById('btnTema').addEventListener('click', alternarTema);
+
+            // Pastillas de velocidad
+            document.querySelectorAll('.pastilla-vel').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    establecerVelocidad(parseFloat(this.dataset.speed));
+                });
+            });
+
+            // Selector de idioma
+            document.getElementById('selectorIdioma').addEventListener('change', function() {
+                aplicarIdioma(this.value);
+                anunciar(this.value);
+            });
+
+            // Progreso/Onda
+            audio.addEventListener('timeupdate', actualizarProgreso);
+            audio.addEventListener('loadedmetadata', function() {
+                actualizarProgreso();
+                exportarFin.value = formatearTiempo(audio.duration);
+
+                // Intentar analizar forma de onda del audio por defecto
+                if (!estado.ondaDibujada && !estado.archivoActual) {
+                    var fuenteAudio = audio.querySelector('source') ? audio.querySelector('source').src : audio.src;
+                    if (fuenteAudio) {
+                        fetch(fuenteAudio).then(function(resp) {
+                            return resp.arrayBuffer();
+                        }).then(function(arrayBuf) {
+                            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            return ctx.decodeAudioData(arrayBuf).then(function(buffer) {
+                                var datosCanal = buffer.getChannelData(0);
+                                var muestras = 200;
+                                var bloque = Math.floor(datosCanal.length / muestras);
+                                var picos = [];
+                                for (var i = 0; i < muestras; i++) {
+                                    var inicio = i * bloque;
+                                    var suma = 0;
+                                    for (var j = 0; j < bloque; j++) {
+                                        suma += Math.abs(datosCanal[inicio + j]);
+                                    }
+                                    picos.push(suma / bloque);
+                                }
+                                var maximo = Math.max.apply(null, picos);
+                                if (maximo > 0) {
+                                    picos = picos.map(function(v) { return v / maximo; });
+                                }
+                                estado.datosOnda = picos;
+                                estado.ondaDibujada = true;
+                                dibujarOnda(picos);
+                                ctx.close();
+                            });
+                        }).catch(function() {
+                            // Silencioso: no se pudo cargar la forma de onda por defecto
+                        });
+                    }
+                }
+            });
+
+            // Buscar en la forma de onda
+            contenedorOnda.addEventListener('click', buscarEn);
+            contenedorOnda.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight') { saltar(5); e.preventDefault(); }
+                if (e.key === 'ArrowLeft') { saltar(-5); e.preventDefault(); }
+            });
+
+            // Exportación - Formato
+            document.querySelectorAll('.btn-formato').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    estado.formatoExportar = this.dataset.format;
+                    document.querySelectorAll('.btn-formato').forEach(function(b) {
+                        b.classList.toggle('activo', b.dataset.format === estado.formatoExportar);
+                    });
+                    document.getElementById('monitorFormato').textContent = estado.formatoExportar.toUpperCase();
+                });
+            });
+
+            // Exportación - Rango
+            document.getElementById('btnEstablecerRango').addEventListener('click', function() {
+                exportarInicio.value = formatearTiempo(Math.max(0, audio.currentTime - 30));
+                exportarFin.value = formatearTiempo(audio.currentTime);
+            });
+
+            // Exportación - Botones
+            document.getElementById('btnExportar').addEventListener('click', function() { exportarClipAudio(false); });
+            document.getElementById('btnExportarCompleto').addEventListener('click', function() { exportarClipAudio(true); });
+
+            // IA - Botones
+            document.getElementById('btnTranscribir').addEventListener('click', hacerTranscripcion);
+            document.getElementById('btnResumir').addEventListener('click', hacerResumen);
+            document.getElementById('btnTraducir').addEventListener('click', hacerTraduccion);
+            document.getElementById('btnCerrarResultadoIA').addEventListener('click', ocultarResultadoIA);
+
+            // Monitor
+            document.getElementById('fabMonitor').addEventListener('click', function() {
+                document.getElementById('modalMonitor').classList.add('abierto');
+            });
+            document.getElementById('cerrarMonitor').addEventListener('click', function() {
+                document.getElementById('modalMonitor').classList.remove('abierto');
+            });
+
+            // Atajos de teclado globales
+            document.addEventListener('keydown', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        alternarReproduccion();
+                        break;
+                    case 'ArrowLeft':
+                        if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); saltar(-10); }
+                        break;
+                    case 'ArrowRight':
+                        if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); saltar(10); }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        establecerVelocidad(Math.min(estado.velocidad + 0.25, 2));
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        establecerVelocidad(Math.max(estado.velocidad - 0.25, 0.5));
+                        break;
+                    case 'm':
+                    case 'M':
+                        alternarSilencio();
+                        break;
+                }
+            });
+
+            // Monitor de sesión
+            inicializarMonitor();
+
+            // Análisis inicial de onda: intentar cargar si hay audio por defecto
+            // El loadedmetadata se encarga de esto
+        }
+
+        // Arranque de la aplicación
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializar);
+        } else {
+            inicializar();
+        }
+    })();
+    </script>
+</body>
+</html>
+

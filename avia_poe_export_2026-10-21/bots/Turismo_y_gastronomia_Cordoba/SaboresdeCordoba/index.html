@@ -1,0 +1,3009 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Córdoba - Gastronomía en Streaming</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #c41e3a;
+            --primary-dark: #8b1528;
+            --secondary: #d4a574;
+            --gold: #c9a227;
+            --dark: #1a1a1a;
+            --darker: #0d0d0d;
+            --light: #f5f5f5;
+            --gray: #888;
+            --success: #28a745;
+            --warning: #ffc107;
+            --error: #dc3545;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 350px;
+        }
+
+        .toast.success { background: linear-gradient(135deg, var(--success), #20c997); }
+        .toast.error { background: linear-gradient(135deg, var(--error), #e83e8c); }
+        .toast.warning { background: linear-gradient(135deg, var(--warning), #fd7e14); color: #333; }
+        .toast.info { background: linear-gradient(135deg, #17a2b8, #6610f2); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateX(100%); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(13, 13, 13, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo i { 
+            -webkit-text-fill-color: var(--primary);
+            font-size: 2rem;
+        }
+
+        nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        nav button {
+            background: transparent;
+            border: none;
+            color: var(--gray);
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        nav button:hover,
+        nav button.active {
+            color: var(--light);
+            background: rgba(196, 30, 58, 0.2);
+        }
+
+        nav button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 20px 12px 45px;
+            border-radius: 30px;
+            color: var(--light);
+            width: 280px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255,255,255,0.15);
+            width: 320px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 10px;
+            background: var(--dark);
+            border-radius: 12px;
+            padding: 10px 0;
+            min-width: 200px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-avatar:hover .user-dropdown,
+        .user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .user-dropdown a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--light);
+            text-decoration: none;
+            transition: background 0.3s ease;
+        }
+
+        .user-dropdown a:hover {
+            background: rgba(196, 30, 58, 0.2);
+        }
+
+        .user-dropdown a i {
+            width: 20px;
+            color: var(--gray);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(13, 13, 13, 0.98);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .mobile-menu-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--light);
+            font-size: 2rem;
+            cursor: pointer;
+        }
+
+        .mobile-menu button {
+            background: transparent;
+            border: 2px solid transparent;
+            color: var(--light);
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu button:hover {
+            border-color: var(--primary);
+            background: rgba(196, 30, 58, 0.2);
+        }
+
+        /* Main Content */
+        main {
+            padding-top: 80px;
+        }
+
+        section {
+            padding: 60px 30px;
+            scroll-margin-top: 100px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .section-header h2 {
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-header h2 i {
+            color: var(--primary);
+        }
+
+        .section-link {
+            color: var(--secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .section-link:hover {
+            color: var(--gold);
+        }
+
+        /* Hero Section */
+        #inicio {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(196, 30, 58, 0.1), rgba(201, 162, 39, 0.05));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero-text h1 {
+            font-size: 3.5rem;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--light), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-text p {
+            font-size: 1.2rem;
+            color: var(--gray);
+            margin-bottom: 30px;
+            max-width: 500px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 15px 35px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(196, 30, 58, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--secondary);
+            color: var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary);
+            color: var(--dark);
+        }
+
+        .hero-video {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+        }
+
+        .hero-video-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, var(--dark), var(--primary-dark));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .hero-video-placeholder i {
+            font-size: 4rem;
+            color: var(--primary);
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--error);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Categories */
+        #explorar {
+            background: var(--dark);
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .category-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .category-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            background: rgba(196, 30, 58, 0.1);
+        }
+
+        .category-card i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .category-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .category-card span {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Content Cards */
+        .content-scroll {
+            display: flex;
+            gap: 25px;
+            overflow-x: auto;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--dark);
+        }
+
+        .content-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .content-scroll::-webkit-scrollbar-track {
+            background: var(--dark);
+            border-radius: 3px;
+        }
+
+        .content-scroll::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        .content-card {
+            min-width: 320px;
+            background: var(--dark);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .content-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(196, 30, 58, 0.2);
+            border-color: var(--primary);
+        }
+
+        .card-image {
+            position: relative;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary-dark), var(--dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-image i {
+            font-size: 4rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--primary);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .card-duration {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+
+        .card-content {
+            padding: 20px;
+        }
+
+        .card-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Chefs Section */
+        #chefs {
+            background: linear-gradient(180deg, var(--darker), var(--dark));
+        }
+
+        .chefs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .chef-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chef-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--gold);
+        }
+
+        .chef-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--gold));
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .chef-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .chef-specialty {
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+
+        .chef-stars {
+            color: var(--gold);
+            margin-bottom: 15px;
+        }
+
+        .chef-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Live Section */
+        #envivo {
+            background: var(--darker);
+        }
+
+        .live-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .live-card {
+            position: relative;
+            background: var(--dark);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .live-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(196, 30, 58, 0.3);
+        }
+
+        .live-preview {
+            height: 220px;
+            background: linear-gradient(135deg, var(--primary-dark), var(--dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .live-preview i {
+            font-size: 4rem;
+            color: rgba(255,255,255,0.2);
+        }
+
+        .live-indicator {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--error);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .live-indicator::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .viewers-count {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .live-info {
+            padding: 20px;
+        }
+
+        .live-info h3 {
+            margin-bottom: 10px;
+        }
+
+        .live-chef {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--gray);
+        }
+
+        .live-chef-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Recetas Provincia */
+        #recetas {
+            background: var(--dark);
+        }
+
+        /* Plans Section */
+        #planes {
+            background: linear-gradient(180deg, var(--darker), var(--dark));
+            text-align: center;
+        }
+
+        #planes .section-header {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #planes .section-header p {
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .plan-card {
+            background: rgba(255,255,255,0.03);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 40px 30px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .plan-card.featured {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .plan-card.featured::before {
+            content: 'Más Popular';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .plan-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-5px);
+        }
+
+        .plan-card.featured:hover {
+            transform: scale(1.05) translateY(-5px);
+        }
+
+        .plan-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .plan-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .plan-price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .plan-price span {
+            font-size: 1rem;
+            color: var(--gray);
+            font-weight: 400;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--gray);
+        }
+
+        .plan-features li i {
+            color: var(--success);
+        }
+
+        .plan-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--darker);
+            padding: 60px 30px 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1400px;
+            margin: 0 auto 40px;
+        }
+
+        .footer-section h4 {
+            color: var(--light);
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .footer-section a,
+        .footer-section button {
+            display: block;
+            color: var(--gray);
+            text-decoration: none;
+            margin-bottom: 12px;
+            transition: color 0.3s ease;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            text-align: left;
+            padding: 0;
+        }
+
+        .footer-section a:hover,
+        .footer-section button:hover {
+            color: var(--primary);
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 15px;
+        }
+
+        .footer-social a {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--light);
+            transition: all 0.3s ease;
+        }
+
+        .footer-social a:hover {
+            background: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: var(--gray);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--dark);
+            border-radius: 24px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(30px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.open .modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            position: relative;
+        }
+
+        .modal-video {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, var(--primary-dark), var(--dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .modal-video i {
+            font-size: 5rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .video-controls button {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .video-controls button:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 5px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            width: 35%;
+            transition: width 0.1s ease;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .modal-close:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+
+        .modal-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 25px;
+            color: var(--gray);
+        }
+
+        .modal-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-meta i {
+            color: var(--primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--light);
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(196, 30, 58, 0.3);
+        }
+
+        .action-btn.active {
+            background: var(--primary);
+        }
+
+        .modal-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--gray);
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--light);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ingredients-list {
+            list-style: none;
+        }
+
+        .ingredient-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .ingredient-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .ingredient-item input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--primary);
+        }
+
+        .ingredient-item.checked {
+            opacity: 0.6;
+        }
+
+        .ingredient-item.checked .ingredient-name {
+            text-decoration: line-through;
+        }
+
+        .ingredient-origin {
+            margin-left: auto;
+            color: var(--secondary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .steps-list {
+            list-style: none;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            margin-bottom: 8px;
+        }
+
+        .step-content p {
+            color: var(--gray);
+        }
+
+        .comments-section {
+            margin-top: 20px;
+        }
+
+        .comment-input-wrapper {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .comment-input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px 20px;
+            border-radius: 30px;
+            color: var(--light);
+            font-size: 1rem;
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .comment-send {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .comment-send:hover {
+            background: var(--primary-dark);
+        }
+
+        .comment-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .comments-list {
+            list-style: none;
+        }
+
+        .comment-item {
+            display: flex;
+            gap: 15px;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .comment-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .comment-content {
+            flex: 1;
+        }
+
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+        }
+
+        .comment-date {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        .comment-text {
+            color: var(--gray);
+        }
+
+        .buy-ingredients-btn {
+            width: 100%;
+            margin-top: 25px;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--success), #20c997);
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .buy-ingredients-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            nav {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero-text h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-stats {
+                justify-content: center;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .search-box input {
+                width: 200px;
+            }
+
+            .search-box input:focus {
+                width: 220px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding: 40px 20px;
+            }
+
+            .hero-text h1 {
+                font-size: 2rem;
+            }
+
+            .hero-stats {
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .modal-body {
+                padding: 20px;
+            }
+
+            .modal-actions {
+                flex-wrap: wrap;
+            }
+
+            .comment-input-wrapper {
+                flex-direction: column;
+            }
+
+            .plan-card.featured {
+                transform: none;
+            }
+
+            .plan-card.featured:hover {
+                transform: translateY(-5px);
+            }
+
+            .search-box {
+                display: none;
+            }
+        }
+
+        /* Accessibility */
+        *:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <i class="fas fa-utensils"></i>
+            <span>AVIA Córdoba</span>
+        </div>
+        
+        <nav id="mainNav">
+            <button data-section="inicio" class="active">Inicio</button>
+            <button data-section="explorar">Explorar</button>
+            <button data-section="chefs">Chefs</button>
+            <button data-section="envivo">En Vivo</button>
+            <button data-section="planes">Planes</button>
+        </nav>
+
+        <div class="header-right">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar recetas, chefs..." aria-label="Buscar contenido">
+            </div>
+            
+            <div class="user-avatar" tabindex="0" role="button" aria-label="Menú de usuario" aria-haspopup="true">
+                <i class="fas fa-user"></i>
+                <div class="user-dropdown" role="menu">
+                    <a href="#" role="menuitem" data-action="profile"><i class="fas fa-user-circle"></i> Mi Perfil</a>
+                    <a href="#" role="menuitem" data-action="favorites"><i class="fas fa-heart"></i> Favoritos</a>
+                    <a href="#" role="menuitem" data-action="history"><i class="fas fa-history"></i> Historial</a>
+                    <a href="#" role="menuitem" data-action="settings"><i class="fas fa-cog"></i> Configuración</a>
+                    <a href="#" role="menuitem" data-action="logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+                </div>
+            </div>
+
+            <button class="mobile-menu-btn" aria-label="Abrir menú móvil" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="Menú de navegación">
+        <button class="mobile-menu-close" aria-label="Cerrar menú">
+            <i class="fas fa-times"></i>
+        </button>
+        <button data-section="inicio">Inicio</button>
+        <button data-section="explorar">Explorar</button>
+        <button data-section="chefs">Chefs</button>
+        <button data-section="envivo">En Vivo</button>
+        <button data-section="recetas">Recetas</button>
+        <button data-section="planes">Planes</button>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section id="inicio">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>Descubre la Gastronomía de Córdoba</h1>
+                    <p>Aprende recetas tradicionales, conecta con chefs locales y explora los sabores únicos de nuestra tierra a través de streaming en vivo.</p>
+                    
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <div class="stat-number">500+</div>
+                            <div class="stat-label">Recetas</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">50+</div>
+                            <div class="stat-label">Chefs</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">10K+</div>
+                            <div class="stat-label">Usuarios</div>
+                        </div>
+                    </div>
+
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary" id="subscribeBtn">
+                            <i class="fas fa-crown"></i> Suscribirse
+                        </button>
+                        <button class="btn btn-secondary" id="exploreBtn">
+                            <i class="fas fa-play"></i> Explorar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="hero-video">
+                    <div class="hero-video-placeholder">
+                        <i class="fas fa-play-circle"></i>
+                        <span>Video Destacado</span>
+                    </div>
+                    <div class="live-badge">
+                        <i class="fas fa-circle"></i> EN VIVO
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories Section -->
+        <section id="explorar">
+            <div class="section-header">
+                <h2><i class="fas fa-th-large"></i> Categorías</h2>
+                <button class="section-link" data-scroll="explorar">
+                    Ver todas <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="categories-grid">
+                <div class="category-card" data-category="califal" tabindex="0" role="button">
+                    <i class="fas fa-mosque"></i>
+                    <h3>Cocina Califal</h3>
+                    <span>85 recetas</span>
+                </div>
+                <div class="category-card" data-category="tapas" tabindex="0" role="button">
+                    <i class="fas fa-cheese"></i>
+                    <h3>Tapas</h3>
+                    <span>120 recetas</span>
+                </div>
+                <div class="category-card" data-category="carnes" tabindex="0" role="button">
+                    <i class="fas fa-drumstick-bite"></i>
+                    <h3>Carnes</h3>
+                    <span>95 recetas</span>
+                </div>
+                <div class="category-card" data-category="postres" tabindex="0" role="button">
+                    <i class="fas fa-cookie-bite"></i>
+                    <h3>Postres</h3>
+                    <span>75 recetas</span>
+                </div>
+                <div class="category-card" data-category="vinos" tabindex="0" role="button">
+                    <i class="fas fa-wine-glass-alt"></i>
+                    <h3>Vinos y Maridajes</h3>
+                    <span>45 recetas</span>
+                </div>
+                <div class="category-card" data-category="vegetariano" tabindex="0" role="button">
+                    <i class="fas fa-seedling"></i>
+                    <h3>Vegetariano</h3>
+                    <span>60 recetas</span>
+                </div>
+                <div class="category-card" data-category="aceite" tabindex="0" role="button">
+                    <i class="fas fa-oil-can"></i>
+                    <h3>Aceite de Oliva</h3>
+                    <span>35 recetas</span>
+                </div>
+                <div class="category-card" data-category="flamenquines" tabindex="0" role="button">
+                    <i class="fas fa-bacon"></i>
+                    <h3>Flamenquines</h3>
+                    <span>28 recetas</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trending Section -->
+        <section id="trending">
+            <div class="section-header">
+                <h2><i class="fas fa-fire"></i> Tendencias</h2>
+                <button class="section-link" data-scroll="trending">
+                    Ver todo <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="content-scroll">
+                <div class="content-card" data-recipe="salmorejo" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Popular</span>
+                        <span class="card-duration">15 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Salmorejo Cordobés Tradicional</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.9</span>
+                            <span><i class="fas fa-eye"></i> 15K</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="rabo-toro" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Chef</span>
+                        <span class="card-duration">3h 30min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Rabo de Toro a la Cordobesa</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.8</span>
+                            <span><i class="fas fa-eye"></i> 12K</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="flamenquin" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Nuevo</span>
+                        <span class="card-duration">45 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Flamenquín de Jamón Ibérico</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.7</span>
+                            <span><i class="fas fa-eye"></i> 8K</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="mazamorra" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Tradicional</span>
+                        <span class="card-duration">20 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Mazamorra Cordobesa</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.6</span>
+                            <span><i class="fas fa-eye"></i> 6K</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="berenjenas" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Veggie</span>
+                        <span class="card-duration">25 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Berenjenas con Miel de Caña</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.8</span>
+                            <span><i class="fas fa-eye"></i> 9K</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="pastel-cordobes" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Postre</span>
+                        <span class="card-duration">1h 15min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Pastel Cordobés</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.9</span>
+                            <span><i class="fas fa-eye"></i> 11K</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chefs Section -->
+        <section id="chefs">
+            <div class="section-header">
+                <h2><i class="fas fa-user-chef"></i> Chefs Destacados</h2>
+                <button class="section-link" data-scroll="chefs">
+                    Ver todos <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="chefs-grid">
+                <div class="chef-card" data-chef="maria" tabindex="0" role="button">
+                    <div class="chef-avatar">👩‍🍳</div>
+                    <h3>María del Carmen</h3>
+                    <p class="chef-specialty">Cocina Califal</p>
+                    <div class="chef-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="chef-stats">
+                        <span><i class="fas fa-video"></i> 85</span>
+                        <span><i class="fas fa-users"></i> 12K</span>
+                    </div>
+                </div>
+
+                <div class="chef-card" data-chef="antonio" tabindex="0" role="button">
+                    <div class="chef-avatar">👨‍🍳</div>
+                    <h3>Antonio Ruiz</h3>
+                    <p class="chef-specialty">Carnes y Asados</p>
+                    <div class="chef-stars">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="chef-stats">
+                        <span><i class="fas fa-video"></i> 62</span>
+                        <span><i class="fas fa-users"></i> 8K</span>
+                    </div>
+                </div>
+
+                <div class="chef-card" data-chef="carmen" tabindex="0" role="button">
+                    <div class="chef-avatar">👩‍🍳</div>
+                    <h3>Carmen López</h3>
+                    <p class="chef-specialty">Repostería</p>
+                    <div class="chef-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="chef-stats">
+                        <span><i class="fas fa-video"></i> 120</span>
+                        <span><i class="fas fa-users"></i> 25K</span>
+                    </div>
+                </div>
+
+                <div class="chef-card" data-chef="miguel" tabindex="0" role="button">
+                    <div class="chef-avatar">👨‍🍳</div>
+                    <h3>Miguel Fernández</h3>
+                    <p class="chef-specialty">Tapas Modernas</p>
+                    <div class="chef-stars">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="chef-stats">
+                        <span><i class="fas fa-video"></i> 45</span>
+                        <span><i class="fas fa-users"></i> 6K</span>
+                    </div>
+                </div>
+
+                <div class="chef-card" data-chef="isabel" tabindex="0" role="button">
+                    <div class="chef-avatar">👩‍🍳</div>
+                    <h3>Isabel Moreno</h3>
+                    <p class="chef-specialty">Cocina de Mercado</p>
+                    <div class="chef-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="chef-stats">
+                        <span><i class="fas fa-video"></i> 78</span>
+                        <span><i class="fas fa-users"></i> 15K</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Section -->
+        <section id="envivo">
+            <div class="section-header">
+                <h2><i class="fas fa-broadcast-tower"></i> En Vivo Ahora</h2>
+                <button class="section-link" data-scroll="envivo">
+                    Ver todos <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="live-grid">
+                <div class="live-card" data-live="1" tabindex="0" role="button">
+                    <div class="live-preview">
+                        <i class="fas fa-video"></i>
+                        <span class="live-indicator">EN VIVO</span>
+                        <span class="viewers-count"><i class="fas fa-eye"></i> 1.2K</span>
+                    </div>
+                    <div class="live-info">
+                        <h3>Clase Maestra: Salmorejo</h3>
+                        <div class="live-chef">
+                            <div class="live-chef-avatar"><i class="fas fa-user"></i></div>
+                            <span>María del Carmen</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="live-card" data-live="2" tabindex="0" role="button">
+                    <div class="live-preview">
+                        <i class="fas fa-video"></i>
+                        <span class="live-indicator">EN VIVO</span>
+                        <span class="viewers-count"><i class="fas fa-eye"></i> 856</span>
+                    </div>
+                    <div class="live-info">
+                        <h3>Secretos del Rabo de Toro</h3>
+                        <div class="live-chef">
+                            <div class="live-chef-avatar"><i class="fas fa-user"></i></div>
+                            <span>Antonio Ruiz</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="live-card" data-live="3" tabindex="0" role="button">
+                    <div class="live-preview">
+                        <i class="fas fa-video"></i>
+                        <span class="live-indicator">EN VIVO</span>
+                        <span class="viewers-count"><i class="fas fa-eye"></i> 2.1K</span>
+                    </div>
+                    <div class="live-info">
+                        <h3>Postres de Convento</h3>
+                        <div class="live-chef">
+                            <div class="live-chef-avatar"><i class="fas fa-user"></i></div>
+                            <span>Carmen López</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recetas de la Provincia -->
+        <section id="recetas">
+            <div class="section-header">
+                <h2><i class="fas fa-map-marker-alt"></i> Recetas de la Provincia</h2>
+                <button class="section-link" data-scroll="recetas">
+                    Ver todas <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="content-scroll">
+                <div class="content-card" data-recipe="gazpacho-montilla" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Montilla</span>
+                        <span class="card-duration">20 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Gazpacho de Montilla</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.7</span>
+                            <span><i class="fas fa-map-pin"></i> Montilla</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="migas-priego" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Priego</span>
+                        <span class="card-duration">35 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Migas de Priego</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.8</span>
+                            <span><i class="fas fa-map-pin"></i> Priego de Córdoba</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="ajoblanco-lucena" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Lucena</span>
+                        <span class="card-duration">25 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Ajoblanco de Lucena</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.6</span>
+                            <span><i class="fas fa-map-pin"></i> Lucena</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="empanada-cabra" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Cabra</span>
+                        <span class="card-duration">1h</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Empanada de Cabra</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.5</span>
+                            <span><i class="fas fa-map-pin"></i> Cabra</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="olla-baena" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Baena</span>
+                        <span class="card-duration">2h</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Olla de San Antón de Baena</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.9</span>
+                            <span><i class="fas fa-map-pin"></i> Baena</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" data-recipe="pestinos-pozoblanco" tabindex="0" role="button">
+                    <div class="card-image">
+                        <i class="fas fa-utensils"></i>
+                        <span class="card-badge">Pozoblanco</span>
+                        <span class="card-duration">50 min</span>
+                    </div>
+                    <div class="card-content">
+                        <h3>Pestiños de Pozoblanco</h3>
+                        <div class="card-meta">
+                            <span><i class="fas fa-star"></i> 4.7</span>
+                            <span><i class="fas fa-map-pin"></i> Pozoblanco</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Plans Section -->
+        <section id="planes">
+            <div class="section-header">
+                <h2><i class="fas fa-crown"></i> Planes de Suscripción</h2>
+                <p>Elige el plan que mejor se adapte a ti y disfruta de todo el contenido</p>
+            </div>
+
+            <div class="plans-grid">
+                <div class="plan-card" data-plan="basico">
+                    <div class="plan-icon">🌿</div>
+                    <h3>Básico</h3>
+                    <div class="plan-price">Gratis</div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Acceso a recetas básicas</li>
+                        <li><i class="fas fa-check"></i> Ver streams en diferido</li>
+                        <li><i class="fas fa-check"></i> Comunidad limitada</li>
+                    </ul>
+                    <button class="plan-btn btn-secondary">Comenzar Gratis</button>
+                </div>
+
+                <div class="plan-card featured" data-plan="premium">
+                    <div class="plan-icon">⭐</div>
+                    <h3>Premium</h3>
+                    <div class="plan-price">9.99€<span>/mes</span></div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Todas las recetas</li>
+                        <li><i class="fas fa-check"></i> Streams en vivo HD</li>
+                        <li><i class="fas fa-check"></i> Chat con chefs</li>
+                        <li><i class="fas fa-check"></i> Sin publicidad</li>
+                        <li><i class="fas fa-check"></i> Descarga offline</li>
+                    </ul>
+                    <button class="plan-btn btn-primary">Elegir Premium</button>
+                </div>
+
+                <div class="plan-card" data-plan="califal">
+                    <div class="plan-icon">👑</div>
+                    <h3>Califal</h3>
+                    <div class="plan-price">19.99€<span>/mes</span></div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Todo lo de Premium</li>
+                        <li><i class="fas fa-check"></i> Clases privadas</li>
+                        <li><i class="fas fa-check"></i> Descuentos en productos</li>
+                        <li><i class="fas fa-check"></i> Eventos exclusivos</li>
+                        <li><i class="fas fa-check"></i> Libro de recetas mensual</li>
+                        <li><i class="fas fa-check"></i> Acceso anticipado</li>
+                    </ul>
+                    <button class="plan-btn btn-secondary">Elegir Califal</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Categorías</h4>
+                <button data-filter="califal">Cocina Califal</button>
+                <button data-filter="tapas">Tapas Cordobesas</button>
+                <button data-filter="carnes">Carnes y Asados</button>
+                <button data-filter="postres">Postres</button>
+            </div>
+            <div class="footer-section">
+                <h4>Localidades</h4>
+                <button data-filter="cordoba">Córdoba Capital</button>
+                <button data-filter="montilla">Montilla</button>
+                <button data-filter="priego">Priego de Córdoba</button>
+                <button data-filter="lucena">Lucena</button>
+            </div>
+            <div class="footer-section">
+                <h4>Soporte</h4>
+                <button data-page="faq">Preguntas Frecuentes</button>
+                <button data-page="contact">Contacto</button>
+                <button data-page="terms">Términos de Uso</button>
+                <button data-page="privacy">Privacidad</button>
+            </div>
+            <div class="footer-section">
+                <h4>Síguenos</h4>
+                <div class="footer-social">
+                    <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube">
+                        <i class="fab fa-youtube"></i>
+                    </a>
+                    <a href="https://twitter.com" target="_blank" rel="noopener" aria-label="Twitter">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 AVIA Córdoba. Todos los derechos reservados. Hecho con ❤️ en Córdoba</p>
+        </div>
+    </footer>
+
+    <!-- Recipe Modal -->
+    <div class="modal-overlay" id="recipeModal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <button class="modal-close" aria-label="Cerrar modal">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="modal-video">
+                    <i class="fas fa-play-circle" id="videoPlayIcon"></i>
+                    <div class="video-controls">
+                        <button id="playPauseBtn" aria-label="Reproducir/Pausar">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="progress-bar" id="progressBar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <button id="volumeBtn" aria-label="Volumen">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <button id="fullscreenBtn" aria-label="Pantalla completa">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <h2 class="modal-title" id="modalTitle">Salmorejo Cordobés Tradicional</h2>
+                
+                <div class="modal-meta">
+                    <span><i class="fas fa-clock"></i> <span id="recipeDuration">15 min</span></span>
+                    <span><i class="fas fa-signal"></i> <span id="recipeDifficulty">Fácil</span></span>
+                    <span><i class="fas fa-users"></i> <span id="recipeServings">4 porciones</span></span>
+                    <span><i class="fas fa-fire"></i> <span id="recipeCalories">320 kcal</span></span>
+                    <span><i class="fas fa-map-marker-alt"></i> <span id="recipeLocation">Córdoba</span></span>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-btn" id="likeBtn" aria-label="Me gusta">
+                        <i class="far fa-heart"></i> <span>Me gusta</span>
+                    </button>
+                    <button class="action-btn" id="bookmarkBtn" aria-label="Guardar">
+                        <i class="far fa-bookmark"></i> <span>Guardar</span>
+                    </button>
+                    <button class="action-btn" id="shareBtn" aria-label="Compartir">
+                        <i class="fas fa-share-alt"></i> <span>Compartir</span>
+                    </button>
+                    <button class="action-btn" id="downloadBtn" aria-label="Descargar">
+                        <i class="fas fa-download"></i> <span>Descargar</span>
+                    </button>
+                </div>
+
+                <div class="modal-tabs">
+                    <button class="tab-btn active" data-tab="ingredientes">Ingredientes</button>
+                    <button class="tab-btn" data-tab="preparacion">Preparación</button>
+                    <button class="tab-btn" data-tab="comentarios">Comentarios</button>
+                </div>
+
+                <div class="tab-content active" id="ingredientes">
+                    <ul class="ingredients-list" id="ingredientsList">
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing1">
+                            <label for="ing1">
+                                <span class="ingredient-name">1 kg de tomates maduros</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-leaf"></i> Huerta de Córdoba</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing2">
+                            <label for="ing2">
+                                <span class="ingredient-name">200g de pan del día anterior</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-bread-slice"></i> Panadería local</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing3">
+                            <label for="ing3">
+                                <span class="ingredient-name">1 diente de ajo</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-leaf"></i> Montalbán</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing4">
+                            <label for="ing4">
+                                <span class="ingredient-name">150ml de aceite de oliva virgen extra</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-oil-can"></i> Baena D.O.</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing5">
+                            <label for="ing5">
+                                <span class="ingredient-name">30ml de vinagre de Jerez</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-wine-bottle"></i> Montilla-Moriles</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing6">
+                            <label for="ing6">
+                                <span class="ingredient-name">Sal al gusto</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-cube"></i> Salinas de Córdoba</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing7">
+                            <label for="ing7">
+                                <span class="ingredient-name">Jamón ibérico para decorar</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-bacon"></i> Los Pedroches</span>
+                        </li>
+                        <li class="ingredient-item">
+                            <input type="checkbox" id="ing8">
+                            <label for="ing8">
+                                <span class="ingredient-name">Huevo duro para decorar</span>
+                            </label>
+                            <span class="ingredient-origin"><i class="fas fa-egg"></i> Granja local</span>
+                        </li>
+                    </ul>
+                    
+                    <button class="buy-ingredients-btn" id="buyIngredientsBtn">
+                        <i class="fas fa-shopping-cart"></i> Comprar a Productores Locales
+                    </button>
+                </div>
+
+                <div class="tab-content" id="preparacion">
+                    <ul class="steps-list">
+                        <li class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Preparar los tomates</h4>
+                                <p>Lava bien los tomates y córtalos en trozos. No es necesario pelarlos ya que después se triturará todo.</p>
+                            </div>
+                        </li>
+                        <li class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Remojar el pan</h4>
+                                <p>Trocea el pan y remójalo ligeramente en agua. Escúrrelo bien para que no quede demasiado húmedo.</p>
+                            </div>
+                        </li>
+                        <li class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Triturar</h4>
+                                <p>En una batidora potente, añade los tomates, el pan escurrido, el ajo pelado, el vinagre y la sal. Tritura bien.</p>
+                            </div>
+                        </li>
+                        <li class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Emulsionar con aceite</h4>
+                                <p>Con la batidora en marcha, ve añadiendo el aceite de oliva en hilo fino hasta conseguir una textura cremosa.</p>
+                            </div>
+                        </li>
+                        <li class="step-item">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>Enfriar y servir</h4>
+                                <p>Refrigera al menos 2 horas. Sirve bien frío decorado con taquitos de jamón ibérico y huevo duro picado.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="tab-content" id="comentarios">
+                    <div class="comments-section">
+                        <div class="comment-input-wrapper">
+                            <input type="text" class="comment-input" id="commentInput" placeholder="Escribe un comentario...">
+                            <button class="comment-send" id="commentSendBtn">Enviar</button>
+                        </div>
+                        
+                        <ul class="comments-list" id="commentsList">
+                            <li class="comment-item">
+                                <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <span class="comment-author">Ana García</span>
+                                        <span class="comment-date">Hace 2 días</span>
+                                    </div>
+                                    <p class="comment-text">¡Increíble receta! Me quedó espectacular. El secreto está en usar tomates bien maduros.</p>
+                                </div>
+                            </li>
+                            <li class="comment-item">
+                                <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <span class="comment-author">Pedro Martínez</span>
+                                        <span class="comment-date">Hace 5 días</span>
+                                    </div>
+                                    <p class="comment-text">Mi abuela lo hacía igual. Pura tradición cordobesa. ¡Gracias por compartir!</p>
+                                </div>
+                            </li>
+                            <li class="comment-item">
+                                <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                                <div class="comment-content">
+                                    <div class="comment-header">
+                                        <span class="comment-author">Laura Sánchez</span>
+                                        <span class="comment-date">Hace 1 semana</span>
+                                    </div>
+                                    <p class="comment-text">El aceite de Baena hace toda la diferencia. ¡Delicioso!</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // AVIA CÓRDOBA - JAVASCRIPT FUNCIONAL COMPLETO
+        // ============================================
+
+        // Data Storage (Simulated)
+        const appState = {
+            favorites: new Set(),
+            bookmarks: new Set(),
+            comments: {},
+            currentRecipe: null,
+            isPlaying: false,
+            progress: 35
+        };
+
+        // Recipe Data
+        const recipes = {
+            'salmorejo': {
+                title: 'Salmorejo Cordobés Tradicional',
+                duration: '15 min',
+                difficulty: 'Fácil',
+                servings: '4 porciones',
+                calories: '320 kcal',
+                location: 'Córdoba'
+            },
+            'rabo-toro': {
+                title: 'Rabo de Toro a la Cordobesa',
+                duration: '3h 30min',
+                difficulty: 'Alta',
+                servings: '6 porciones',
+                calories: '580 kcal',
+                location: 'Córdoba'
+            },
+            'flamenquin': {
+                title: 'Flamenquín de Jamón Ibérico',
+                duration: '45 min',
+                difficulty: 'Media',
+                servings: '4 porciones',
+                calories: '450 kcal',
+                location: 'Córdoba'
+            },
+            'mazamorra': {
+                title: 'Mazamorra Cordobesa',
+                duration: '20 min',
+                difficulty: 'Fácil',
+                servings: '4 porciones',
+                calories: '280 kcal',
+                location: 'Córdoba'
+            },
+            'berenjenas': {
+                title: 'Berenjenas con Miel de Caña',
+                duration: '25 min',
+                difficulty: 'Fácil',
+                servings: '4 porciones',
+                calories: '220 kcal',
+                location: 'Córdoba'
+            },
+            'pastel-cordobes': {
+                title: 'Pastel Cordobés',
+                duration: '1h 15min',
+                difficulty: 'Media',
+                servings: '8 porciones',
+                calories: '380 kcal',
+                location: 'Córdoba'
+            },
+            'gazpacho-montilla': {
+                title: 'Gazpacho de Montilla',
+                duration: '20 min',
+                difficulty: 'Fácil',
+                servings: '4 porciones',
+                calories: '180 kcal',
+                location: 'Montilla'
+            },
+            'migas-priego': {
+                title: 'Migas de Priego',
+                duration: '35 min',
+                difficulty: 'Media',
+                servings: '4 porciones',
+                calories: '420 kcal',
+                location: 'Priego de Córdoba'
+            },
+            'ajoblanco-lucena': {
+                title: 'Ajoblanco de Lucena',
+                duration: '25 min',
+                difficulty: 'Fácil',
+                servings: '4 porciones',
+                calories: '350 kcal',
+                location: 'Lucena'
+            },
+            'empanada-cabra': {
+                title: 'Empanada de Cabra',
+                duration: '1h',
+                difficulty: 'Media',
+                servings: '6 porciones',
+                calories: '380 kcal',
+                location: 'Cabra'
+            },
+            'olla-baena': {
+                title: 'Olla de San Antón de Baena',
+                duration: '2h',
+                difficulty: 'Alta',
+                servings: '8 porciones',
+                calories: '520 kcal',
+                location: 'Baena'
+            },
+            'pestinos-pozoblanco': {
+                title: 'Pestiños de Pozoblanco',
+                duration: '50 min',
+                difficulty: 'Media',
+                servings: '20 unidades',
+                calories: '180 kcal/ud',
+                location: 'Pozoblanco'
+            }
+        };
+
+        // ============================================
+        // TOAST NOTIFICATIONS
+        // ============================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-times-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            toast.innerHTML = `<i class="fas ${icons[type]}"></i> ${message}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ============================================
+        // NAVIGATION - Desktop & Mobile
+        // ============================================
+        const mainNav = document.getElementById('mainNav');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileMenuClose = document.querySelector('.mobile-menu-close');
+
+        // Desktop Navigation
+        mainNav.addEventListener('click', (e) => {
+            if (e.target.matches('button[data-section]')) {
+                const section = e.target.dataset.section;
+                navigateToSection(section);
+                
+                // Update active state
+                mainNav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+        });
+
+        // Mobile Menu Toggle
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.add('open');
+            mobileMenuBtn.setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+        });
+
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+
+        mobileMenu.addEventListener('click', (e) => {
+            if (e.target.matches('button[data-section]')) {
+                const section = e.target.dataset.section;
+                navigateToSection(section);
+                closeMobileMenu();
+            }
+        });
+
+        function closeMobileMenu() {
+            mobileMenu.classList.remove('open');
+            mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        }
+
+        function navigateToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ============================================
+        // HERO BUTTONS
+        // ============================================
+        document.getElementById('subscribeBtn').addEventListener('click', () => {
+            navigateToSection('planes');
+            showToast('¡Explora nuestros planes de suscripción!', 'info');
+        });
+
+        document.getElementById('exploreBtn').addEventListener('click', () => {
+            navigateToSection('explorar');
+        });
+
+        // ============================================
+        // SEARCH FUNCTIONALITY
+        // ============================================
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length > 2) {
+                searchTimeout = setTimeout(() => {
+                    filterContent(query);
+                }, 300);
+            } else if (query.length === 0) {
+                resetFilters();
+            }
+        });
+
+        function filterContent(query) {
+            const contentCards = document.querySelectorAll('.content-card');
+            let found = 0;
+            
+            contentCards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const matches = title.includes(query.toLowerCase());
+                card.style.display = matches ? '' : 'none';
+                if (matches) found++;
+            });
+            
+            showToast(`${found} resultado${found !== 1 ? 's' : ''} encontrado${found !== 1 ? 's' : ''}`, 'info');
+        }
+
+        function resetFilters() {
+            document.querySelectorAll('.content-card').forEach(card => {
+                card.style.display = '';
+            });
+        }
+
+        // ============================================
+        // CATEGORY CARDS
+        // ============================================
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const category = card.dataset.category;
+                const title = card.querySelector('h3').textContent;
+                showToast(`Explorando: ${title}`, 'info');
+                navigateToSection('trending');
+            });
+
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        // ============================================
+        // CONTENT CARDS - Open Recipe Modal
+        // ============================================
+        document.querySelectorAll('.content-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const recipeId = card.dataset.recipe;
+                openRecipeModal(recipeId);
+            });
+
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        // ============================================
+        // CHEF CARDS
+        // ============================================
+        document.querySelectorAll('.chef-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const chefName = card.querySelector('h3').textContent;
+                const specialty = card.querySelector('.chef-specialty').textContent;
+                showToast(`${chefName} - ${specialty}`, 'info');
+            });
+
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        // ============================================
+        // LIVE CARDS
+        // ============================================
+        document.querySelectorAll('.live-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const title = card.querySelector('h3').textContent;
+                showToast(`Conectando a: ${title}`, 'success');
+            });
+
+            card.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        // ============================================
+        // PLAN CARDS
+        // ============================================
+        document.querySelectorAll('.plan-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const planName = card.querySelector('h3').textContent;
+                const price = card.querySelector('.plan-price').textContent;
+                showToast(`Plan ${planName} seleccionado - ${price}`, 'success');
+            });
+        });
+
+        // ============================================
+        // SECTION LINKS (Ver todas/Ver todo)
+        // ============================================
+        document.querySelectorAll('.section-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.dataset.scroll;
+                navigateToSection(section);
+            });
+        });
+
+        // ============================================
+        // FOOTER NAVIGATION
+        // ============================================
+        document.querySelectorAll('.footer-section button[data-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const filter = btn.dataset.filter;
+                showToast(`Filtrando por: ${btn.textContent}`, 'info');
+                navigateToSection('explorar');
+            });
+        });
+
+        document.querySelectorAll('.footer-section button[data-page]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                showToast(`Página en desarrollo: ${btn.textContent}`, 'warning');
+            });
+        });
+
+        // ============================================
+        // USER DROPDOWN
+        // ============================================
+        document.querySelectorAll('.user-dropdown a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = link.dataset.action;
+                const actions = {
+                    profile: 'Abriendo tu perfil...',
+                    favorites: 'Cargando favoritos...',
+                    history: 'Cargando historial...',
+                    settings: 'Abriendo configuración...',
+                    logout: 'Cerrando sesión...'
+                };
+                showToast(actions[action] || 'Acción ejecutada', 'info');
+            });
+        });
+
+        // ============================================
+        // RECIPE MODAL
+        // ============================================
+        const recipeModal = document.getElementById('recipeModal');
+        const modalClose = document.querySelector('.modal-close');
+
+        function openRecipeModal(recipeId) {
+            const recipe = recipes[recipeId] || recipes['salmorejo'];
+            appState.currentRecipe = recipeId;
+            
+            // Update modal content
+            document.getElementById('modalTitle').textContent = recipe.title;
+            document.getElementById('recipeDuration').textContent = recipe.duration;
+            document.getElementById('recipeDifficulty').textContent = recipe.difficulty;
+            document.getElementById('recipeServings').textContent = recipe.servings;
+            document.getElementById('recipeCalories').textContent = recipe.calories;
+            document.getElementById('recipeLocation').textContent = recipe.location;
+            
+            // Reset states
+            document.getElementById('likeBtn').classList.toggle('active', appState.favorites.has(recipeId));
+            document.getElementById('bookmarkBtn').classList.toggle('active', appState.bookmarks.has(recipeId));
+            
+            // Reset tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelector('.tab-btn[data-tab="ingredientes"]').classList.add('active');
+            document.getElementById('ingredientes').classList.add('active');
+            
+            // Open modal
+            recipeModal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            recipeModal.classList.remove('open');
+            document.body.style.overflow = '';
+            appState.isPlaying = false;
+            updatePlayButton();
+        }
+
+        modalClose.addEventListener('click', closeModal);
+
+        recipeModal.addEventListener('click', (e) => {
+            if (e.target === recipeModal) {
+                closeModal();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (recipeModal.classList.contains('open')) {
+                    closeModal();
+                }
+                if (mobileMenu.classList.contains('open')) {
+                    closeMobileMenu();
+                }
+            }
+        });
+
+        // ============================================
+        // MODAL TABS
+        // ============================================
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+                
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // ============================================
+        // MODAL ACTION BUTTONS
+        // ============================================
+        
+        // Like Button
+        document.getElementById('likeBtn').addEventListener('click', function() {
+            const recipeId = appState.currentRecipe;
+            if (appState.favorites.has(recipeId)) {
+                appState.favorites.delete(recipeId);
+                this.classList.remove('active');
+                this.querySelector('i').className = 'far fa-heart';
+                showToast('Eliminado de favoritos', 'info');
+            } else {
+                appState.favorites.add(recipeId);
+                this.classList.add('active');
+                this.querySelector('i').className = 'fas fa-heart';
+                showToast('¡Añadido a favoritos!', 'success');
+            }
+        });
+
+        // Bookmark Button
+        document.getElementById('bookmarkBtn').addEventListener('click', function() {
+            const recipeId = appState.currentRecipe;
+            if (appState.bookmarks.has(recipeId)) {
+                appState.bookmarks.delete(recipeId);
+                this.classList.remove('active');
+                this.querySelector('i').className = 'far fa-bookmark';
+                showToast('Eliminado de guardados', 'info');
+            } else {
+                appState.bookmarks.add(recipeId);
+                this.classList.add('active');
+                this.querySelector('i').className = 'fas fa-bookmark';
+                showToast('¡Guardado para después!', 'success');
+            }
+        });
+
+        // Share Button - Using Web Share API or Clipboard
+        document.getElementById('shareBtn').addEventListener('click', async function() {
+            const recipe = recipes[appState.currentRecipe];
+            const shareData = {
+                title: recipe.title,
+                text: `Mira esta receta: ${recipe.title}`,
+                url: window.location.href
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                    showToast('¡Compartido correctamente!', 'success');
+                } else if (navigator.clipboard) {
+                    await navigator.clipboard.writeText(`${recipe.title} - ${window.location.href}`);
+                    showToast('¡Enlace copiado al portapapeles!', 'success');
+                } else {
+                    showToast('Compartir no disponible en este navegador', 'warning');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast('Error al compartir', 'error');
+                }
+            }
+        });
+
+        // Download Button
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            const recipe = recipes[appState.currentRecipe];
+            const content = `
+AVIA CÓRDOBA - RECETA
+
+${recipe.title}
+===============================
+
+Duración: ${recipe.duration}
+Dificultad: ${recipe.difficulty}
+Porciones: ${recipe.servings}
+Calorías: ${recipe.calories}
+Origen: ${recipe.location}
+
+INGREDIENTES:
+- 1 kg de tomates maduros (Huerta de Córdoba)
+- 200g de pan del día anterior
+- 1 diente de ajo (Montalbán)
+- 150ml de aceite de oliva virgen extra (Baena D.O.)
+- 30ml de vinagre de Jerez (Montilla-Moriles)
+- Sal al gusto
+- Jamón ibérico para decorar (Los Pedroches)
+- Huevo duro para decorar
+
+PREPARACIÓN:
+1. Preparar los tomates: Lava bien los tomates y córtalos en trozos.
+2. Remojar el pan: Trocea el pan y remójalo ligeramente en agua.
+3. Triturar: Añade todos los ingredientes y tritura bien.
+4. Emulsionar: Añade el aceite en hilo fino hasta conseguir cremosidad.
+5. Enfriar y servir: Refrigera 2 horas y decora con jamón y huevo.
+
+© AVIA Córdoba - www.aviacordoba.es
+            `;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `receta-${appState.currentRecipe}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('¡Receta descargada!', 'success');
+        });
+
+        // ============================================
+        // VIDEO CONTROLS
+        // ============================================
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const videoPlayIcon = document.getElementById('videoPlayIcon');
+
+        function updatePlayButton() {
+            const icon = playPauseBtn.querySelector('i');
+            if (appState.isPlaying) {
+                icon.className = 'fas fa-pause';
+                videoPlayIcon.style.opacity = '0';
+            } else {
+                icon.className = 'fas fa-play';
+                videoPlayIcon.style.opacity = '1';
+            }
+        }
+
+        playPauseBtn.addEventListener('click', () => {
+            appState.isPlaying = !appState.isPlaying;
+            updatePlayButton();
+            showToast(appState.isPlaying ? 'Reproduciendo...' : 'Pausado', 'info');
+        });
+
+        document.querySelector('.modal-video').addEventListener('click', (e) => {
+            if (!e.target.closest('.video-controls')) {
+                appState.isPlaying = !appState.isPlaying;
+                updatePlayButton();
+            }
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            const rect = progressBar.getBoundingClientRect();
+            const percent = ((e.clientX - rect.left) / rect.width) * 100;
+            appState.progress = Math.max(0, Math.min(100, percent));
+            progressFill.style.width = `${appState.progress}%`;
+        });
+
+        document.getElementById('volumeBtn').addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon.classList.contains('fa-volume-up')) {
+                icon.className = 'fas fa-volume-mute';
+                showToast('Silenciado', 'info');
+            } else {
+                icon.className = 'fas fa-volume-up';
+                showToast('Sonido activado', 'info');
+            }
+        });
+
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            showToast('Pantalla completa no disponible en demo', 'warning');
+        });
+
+        // ============================================
+        // INGREDIENTS CHECKBOXES
+        // ============================================
+        document.querySelectorAll('.ingredient-item').forEach(item => {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            
+            item.addEventListener('click', (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                }
+                item.classList.toggle('checked', checkbox.checked);
+            });
+
+            checkbox.addEventListener('change', () => {
+                item.classList.toggle('checked', checkbox.checked);
+            });
+        });
+
+        // Buy Ingredients Button
+        document.getElementById('buyIngredientsBtn').addEventListener('click', () => {
+            const checked = document.querySelectorAll('.ingredient-item input:checked').length;
+            const total = document.querySelectorAll('.ingredient-item').length;
+            showToast(`${checked}/${total} ingredientes seleccionados. Función de compra próximamente.`, 'info');
+        });
+
+        // ============================================
+        // COMMENTS SYSTEM
+        // ============================================
+        const commentInput = document.getElementById('commentInput');
+        const commentSendBtn = document.getElementById('commentSendBtn');
+        const commentsList = document.getElementById('commentsList');
+
+        commentInput.addEventListener('input', () => {
+            commentSendBtn.disabled = commentInput.value.trim().length === 0;
+        });
+
+        commentSendBtn.addEventListener('click', addComment);
+
+        commentInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && commentInput.value.trim()) {
+                addComment();
+            }
+        });
+
+        function addComment() {
+            const text = commentInput.value.trim();
+            if (!text) return;
+
+            const commentHTML = `
+                <li class="comment-item" style="animation: fadeIn 0.3s ease">
+                    <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                    <div class="comment-content">
+                        <div class="comment-header">
+                            <span class="comment-author">Tú</span>
+                            <span class="comment-date">Ahora mismo</span>
+                        </div>
+                        <p class="comment-text">${escapeHtml(text)}</p>
+                    </div>
+                </li>
+            `;
+
+            commentsList.insertAdjacentHTML('afterbegin', commentHTML);
+            commentInput.value = '';
+            commentSendBtn.disabled = true;
+            showToast('¡Comentario publicado!', 'success');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // SCROLL BEHAVIOR - Update Active Nav
+        // ============================================
+        const sections = document.querySelectorAll('section[id]');
+        
+        function updateActiveNav() {
+            const scrollPos = window.scrollY + 150;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                const sectionId = section.id;
+                
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    mainNav.querySelectorAll('button').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.section === sectionId);
+                    });
+                }
+            });
+        }
+
+        window.addEventListener('scroll', updateActiveNav);
+
+        // ============================================
+        // INITIALIZE
+        // ============================================
+        console.log('AVIA Córdoba - Aplicación inicializada correctamente');
+        showToast('¡Bienvenido a AVIA Córdoba!', 'success');
+    </script>
+</body>
+</html>

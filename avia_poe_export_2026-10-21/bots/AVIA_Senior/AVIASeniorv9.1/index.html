@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Senior - Revisión Integral del Sistema v8.1</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2235;
+  --bg-card-hover: #1f2a40;
+  --border: #2a3a52;
+  --border-light: #374357;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-blue-glow: rgba(59, 130, 246, 0.3);
+  --accent-green: #10b981;
+  --accent-green-glow: rgba(16, 185, 129, 0.2);
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+  --accent-pink: #ec4899;
+  --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.dark { /* already dark by default */ }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 16px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+/* ===== LAYOUT ===== */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: white;
+}
+
+.logo-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo-version {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 0.75rem 0.75rem 0.5rem;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-sans);
+}
+
+.nav-item:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.nav-item-icon {
+  font-size: 1.125rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.nav-item-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.badge-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+.badge-blue { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+.badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); }
+
+.sidebar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  min-height: 100vh;
+}
+
+.content-header {
+  padding: 1.5rem 2rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-pill.healthy {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.content-body {
+  padding: 2rem;
+}
+
+/* ===== PANEL SYSTEM ===== */
+.panel {
+  display: none;
+}
+.panel.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-light);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card-badge {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+/* ===== GRID LAYOUTS ===== */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.5rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1rem; }
+
+/* ===== METRIC CARDS ===== */
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+}
+
+.metric-card.blue::after { background: var(--accent-blue); }
+.metric-card.green::after { background: var(--accent-green); }
+.metric-card.amber::after { background: var(--accent-amber); }
+.metric-card.purple::after { background: var(--accent-purple); }
+.metric-card.cyan::after { background: var(--accent-cyan); }
+.metric-card.red::after { background: var(--accent-red); }
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  margin-bottom: 0.25rem;
+}
+
+.metric-change {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.metric-change.up { color: var(--accent-green); }
+.metric-change.down { color: var(--accent-red); }
+.metric-change.neutral { color: var(--text-muted); }
+
+/* ===== TABLES ===== */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th {
+  background: var(--bg-secondary);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg-card-hover); }
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.status-tag.ok { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.status-tag.warn { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+.status-tag.error { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.status-tag.info { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+
+/* ===== CODE BLOCKS ===== */
+.code-block {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  color: #c9d1d9;
+}
+
+.code-block .comment { color: #8b949e; }
+.code-block .keyword { color: #ff7b72; }
+.code-block .string { color: #a5d6ff; }
+.code-block .number { color: #79c0ff; }
+.code-block .function { color: #d2a8ff; }
+
+/* ===== PROGRESS BARS ===== */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.progress-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  min-width: 100px;
+  font-weight: 500;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+
+.progress-fill.blue { background: linear-gradient(90deg, var(--accent-blue), #60a5fa); }
+.progress-fill.green { background: linear-gradient(90deg, var(--accent-green), #34d399); }
+.progress-fill.amber { background: linear-gradient(90deg, var(--accent-amber), #fbbf24); }
+.progress-fill.purple { background: linear-gradient(90deg, var(--accent-purple), #a78bfa); }
+.progress-fill.cyan { background: linear-gradient(90deg, var(--accent-cyan), #22d3ee); }
+
+.progress-value {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-weight: 600;
+  min-width: 45px;
+  text-align: right;
+}
+
+/* ===== CHART CONTAINER ===== */
+.chart-wrapper {
+  position: relative;
+  height: 280px;
+  margin-top: 1rem;
+}
+
+/* ===== ENDPOINT LIST ===== */
+.endpoint-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.endpoint-item:last-child { border-bottom: none; }
+
+.method-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  min-width: 52px;
+  text-align: center;
+}
+
+.method-badge.get { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.method-badge.post { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.method-badge.put { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+.method-badge.delete { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.method-badge.patch { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+
+.endpoint-path {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-weight: 500;
+  flex: 1;
+}
+
+.endpoint-desc {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.endpoint-latency {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+/* ===== DOCS SECTION ===== */
+.doc-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.doc-item:hover { background: var(--bg-card-hover); }
+.doc-item:last-child { border-bottom: none; }
+
+.doc-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.doc-icon-box.arch { background: rgba(59,130,246,0.15); }
+.doc-icon-box.ops { background: rgba(16,185,129,0.15); }
+.doc-icon-box.api { background: rgba(139,92,246,0.15); }
+.doc-icon-box.run { background: rgba(239,68,68,0.15); }
+.doc-icon-box.train { background: rgba(245,158,11,0.15); }
+.doc-icon-box.dash { background: rgba(6,182,212,0.15); }
+
+.doc-info { flex: 1; }
+
+.doc-title-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.doc-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.doc-meta-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* ===== MOBILE ===== */
+.mobile-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .mobile-toggle { display: flex; }
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+  .main-content { margin-left: 0; }
+  .content-body { padding: 1rem; }
+  .content-header { padding: 1rem; padding-left: 4rem; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ===== SECTION TITLE ===== */
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* ===== TABS ===== */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); font-weight: 600; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+
+/* ===== HEALTH INDICATOR ===== */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 0.75rem;
+}
+
+.health-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.health-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.health-item-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.health-dot.ok { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green-glow); }
+.health-dot.warn { background: var(--accent-amber); }
+.health-dot.err { background: var(--accent-red); }
+
+.health-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.health-sub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Log entries */
+.log-entry {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(42,58,82,0.5);
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+}
+
+.log-time { color: var(--text-muted); min-width: 70px; }
+.log-level { min-width: 50px; font-weight: 600; }
+.log-level.info { color: var(--accent-blue); }
+.log-level.ok { color: var(--accent-green); }
+.log-level.warn { color: var(--accent-amber); }
+.log-msg { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<!-- Mobile Toggle -->
+<button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-icon">AS</div>
+        <div>
+          <div class="logo-text">AVIA Senior</div>
+          <div class="logo-version">v8.1 • Enterprise</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">General</div>
+      <button class="nav-item active" onclick="showPanel('overview')">
+        <span class="nav-item-icon">📊</span>
+        Overview
+        <span class="nav-item-badge badge-green">Live</span>
+      </button>
+
+      <div class="nav-section-label">Infraestructura</div>
+      <button class="nav-item" onclick="showPanel('backend')">
+        <span class="nav-item-icon">⚙️</span>
+        Backend
+        <span class="nav-item-badge badge-green">OK</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('frontend')">
+        <span class="nav-item-icon">🎨</span>
+        Frontend / Dashboard
+        <span class="nav-item-badge badge-green">96</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('database')">
+        <span class="nav-item-icon">🗄️</span>
+        Base de Datos
+        <span class="nav-item-badge badge-green">OK</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('infra')">
+        <span class="nav-item-icon">☁️</span>
+        Infraestructura
+        <span class="nav-item-badge badge-blue">247</span>
+      </button>
+
+      <div class="nav-section-label">Interfaces</div>
+      <button class="nav-item" onclick="showPanel('apis')">
+        <span class="nav-item-icon">📡</span>
+        APIs
+        <span class="nav-item-badge badge-blue">234</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('security')">
+        <span class="nav-item-icon">🔒</span>
+        Seguridad
+        <span class="nav-item-badge badge-green">A+</span>
+      </button>
+
+      <div class="nav-section-label">Recursos</div>
+      <button class="nav-item" onclick="showPanel('docs')">
+        <span class="nav-item-icon">📚</span>
+        Documentación
+        <span class="nav-item-badge badge-amber">689p</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('logs')">
+        <span class="nav-item-icon">📋</span>
+        Logs del Sistema
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      Última actualización: 28 Jul 2026 • 14:32 UTC
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <header class="content-header">
+      <h1 class="header-title" id="panelTitle">Overview del Sistema</h1>
+      <div class="header-meta">
+        <span class="status-pill healthy">
+          <span class="status-dot"></span>
+          Todos los sistemas operativos
+        </span>
+      </div>
+    </header>
+
+    <div class="content-body">
+
+      <!-- ===== OVERVIEW PANEL ===== -->
+      <div class="panel active" id="panel-overview">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card blue">
+            <div class="metric-label">Rendimiento p95</div>
+            <div class="metric-value" style="color: var(--accent-blue);">94ms</div>
+            <div class="metric-change up">↓ 75% desde 380ms</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-label">Throughput</div>
+            <div class="metric-value" style="color: var(--accent-green);">134K</div>
+            <div class="metric-change up">↑ 4.8x req/s</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Uptime</div>
+            <div class="metric-value" style="color: var(--accent-purple);">99.99%</div>
+            <div class="metric-change neutral">Zero downtime</div>
+          </div>
+          <div class="metric-card amber">
+            <div class="metric-label">Costo Mensual</div>
+            <div class="metric-value" style="color: var(--accent-amber);">$17.6K</div>
+            <div class="metric-change up">↓ 63% ahorro</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📈 Evolución del Rendimiento</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="overviewPerformanceChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">💰 Reducción de Costos</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="overviewCostChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔍 Estado de Componentes</span>
+            <span class="card-badge" style="background:rgba(16,185,129,0.15);color:var(--accent-green);">All Healthy</span>
+          </div>
+          <div class="health-grid">
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">Frontend</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">96/100</span>
+              <span class="health-sub">Lighthouse Score</span>
+            </div>
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">Backend APIs</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">94ms</span>
+              <span class="health-sub">p95 Latency</span>
+            </div>
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">Database</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">12ms</span>
+              <span class="health-sub">Query p50</span>
+            </div>
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">Redis Cache</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">94.3%</span>
+              <span class="health-sub">Hit Rate</span>
+            </div>
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">CDN</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">97.1%</span>
+              <span class="health-sub">Cache Hit</span>
+            </div>
+            <div class="health-item">
+              <div class="health-item-header">
+                <span class="health-item-name">ML Services</span>
+                <span class="health-dot ok"></span>
+              </div>
+              <span class="health-value">44ms</span>
+              <span class="health-sub">Avg Latency</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BACKEND PANEL ===== -->
+      <div class="panel" id="panel-backend">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card green">
+            <div class="metric-label">APIs Activas</div>
+            <div class="metric-value" style="color:var(--accent-green);">234</div>
+            <div class="metric-change up">100% healthy</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-label">Latencia p95</div>
+            <div class="metric-value" style="color:var(--accent-blue);">94ms</div>
+            <div class="metric-change up">↓ 75% mejora</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Queries Optimizadas</div>
+            <div class="metric-value" style="color:var(--accent-purple);">247</div>
+            <div class="metric-change neutral">SQL refactored</div>
+          </div>
+          <div class="metric-card cyan">
+            <div class="metric-label">Cache Hit Rate</div>
+            <div class="metric-value" style="color:var(--accent-cyan);">94.3%</div>
+            <div class="metric-change up">Redis cluster</div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab(this, 'backend-services')">Servicios</button>
+          <button class="tab-btn" onclick="switchTab(this, 'backend-performance')">Performance</button>
+          <button class="tab-btn" onclick="switchTab(this, 'backend-queries')">Queries</button>
+          <button class="tab-btn" onclick="switchTab(this, 'backend-config')">Configuración</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-backend-services">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Servicios del Backend</span>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Servicio</th>
+                    <th>Estado</th>
+                    <th>Instancias</th>
+                    <th>CPU</th>
+                    <th>Memoria</th>
+                    <th>Latencia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>API Gateway</td><td><span class="status-tag ok">● Healthy</span></td><td>6</td><td>42%</td><td>2.1 GB</td><td>8ms</td></tr>
+                  <tr><td>Auth Service</td><td><span class="status-tag ok">● Healthy</span></td><td>4</td><td>28%</td><td>1.2 GB</td><td>12ms</td></tr>
+                  <tr><td>User Service</td><td><span class="status-tag ok">● Healthy</span></td><td>8</td><td>55%</td><td>3.4 GB</td><td>18ms</td></tr>
+                  <tr><td>Payment Service</td><td><span class="status-tag ok">● Healthy</span></td><td>6</td><td>38%</td><td>2.8 GB</td><td>24ms</td></tr>
+                  <tr><td>Notification Service</td><td><span class="status-tag ok">● Healthy</span></td><td>4</td><td>22%</td><td>0.8 GB</td><td>6ms</td></tr>
+                  <tr><td>Search Engine</td><td><span class="status-tag ok">● Healthy</span></td><td>6</td><td>67%</td><td>4.2 GB</td><td>32ms</td></tr>
+                  <tr><td>ML Recommendation</td><td><span class="status-tag ok">● Healthy</span></td><td>4</td><td>72%</td><td>6.1 GB</td><td>44ms</td></tr>
+                  <tr><td>Analytics Engine</td><td><span class="status-tag ok">● Healthy</span></td><td>3</td><td>48%</td><td>3.6 GB</td><td>28ms</td></tr>
+                  <tr><td>File Storage</td><td><span class="status-tag ok">● Healthy</span></td><td>4</td><td>18%</td><td>1.4 GB</td><td>14ms</td></tr>
+                  <tr><td>Event Bus (Kafka)</td><td><span class="status-tag ok">● Healthy</span></td><td>6</td><td>45%</td><td>5.2 GB</td><td>3ms</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-backend-performance">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Métricas de Rendimiento Backend</span>
+            </div>
+            <div class="chart-wrapper" style="height: 320px;">
+              <canvas id="backendPerfChart"></canvas>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:1.5rem;">
+            <div class="card">
+              <div class="card-title" style="margin-bottom:1rem;">Distribución de Latencia</div>
+              <div class="progress-row"><span class="progress-label">p50</span><div class="progress-bar"><div class="progress-fill green" style="width:12%"></div></div><span class="progress-value">12ms</span></div>
+              <div class="progress-row"><span class="progress-label">p75</span><div class="progress-bar"><div class="progress-fill blue" style="width:34%"></div></div><span class="progress-value">34ms</span></div>
+              <div class="progress-row"><span class="progress-label">p90</span><div class="progress-bar"><div class="progress-fill purple" style="width:68%"></div></div><span class="progress-value">68ms</span></div>
+              <div class="progress-row"><span class="progress-label">p95</span><div class="progress-bar"><div class="progress-fill amber" style="width:94%"></div></div><span class="progress-value">94ms</span></div>
+              <div class="progress-row"><span class="progress-label">p99</span><div class="progress-bar"><div class="progress-fill cyan" style="width:100%"></div></div><span class="progress-value">142ms</span></div>
+            </div>
+            <div class="card">
+              <div class="card-title" style="margin-bottom:1rem;">Connection Pooling</div>
+              <div class="progress-row"><span class="progress-label">Active</span><div class="progress-bar"><div class="progress-fill blue" style="width:47%"></div></div><span class="progress-value">47%</span></div>
+              <div class="progress-row"><span class="progress-label">Idle</span><div class="progress-bar"><div class="progress-fill green" style="width:38%"></div></div><span class="progress-value">38%</span></div>
+              <div class="progress-row"><span class="progress-label">Waiting</span><div class="progress-bar"><div class="progress-fill amber" style="width:12%"></div></div><span class="progress-value">12%</span></div>
+              <div class="progress-row"><span class="progress-label">Exhausted</span><div class="progress-bar"><div class="progress-fill green" style="width:3%"></div></div><span class="progress-value">3%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-backend-queries">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Optimización de Queries SQL</span>
+              <span class="card-badge" style="background:rgba(16,185,129,0.15);color:var(--accent-green);">247 optimizadas</span>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr><th>Query Pattern</th><th>Antes</th><th>Después</th><th>Mejora</th><th>Tipo</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.75rem;">SELECT * FROM users JOIN orders...</td><td>245ms</td><td>12ms</td><td><span class="status-tag ok">-95%</span></td><td>Index + Refactor</td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.75rem;">SELECT COUNT(*) FROM analytics...</td><td>890ms</td><td>3ms</td><td><span class="status-tag ok">-99%</span></td><td>Materialized View</td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.75rem;">UPDATE products SET stock...</td><td>156ms</td><td>8ms</td><td><span class="status-tag ok">-95%</span></td><td>Batch + Index</td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.75rem;">SELECT p.*, r.* FROM products p...</td><td>342ms</td><td>18ms</td><td><span class="status-tag ok">-95%</span></td><td>Denormalization</td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.75rem;">INSERT INTO events VALUES...</td><td>67ms</td><td>2ms</td><td><span class="status-tag ok">-97%</span></td><td>Bulk Insert</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-backend-config">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Configuración del Backend</span></div>
+            <div class="code-block">
+<span class="comment"># backend-config.yaml - Producción</span>
+<span class="keyword">server</span>:
+  <span class="keyword">port</span>: <span class="number">8443</span>
+  <span class="keyword">workers</span>: <span class="number">16</span>
+  <span class="keyword">max_connections</span>: <span class="number">10000</span>
+  <span class="keyword">keep_alive_timeout</span>: <span class="number">65s</span>
+
+<span class="keyword">database</span>:
+  <span class="keyword">pool_size</span>: <span class="number">50</span>
+  <span class="keyword">max_overflow</span>: <span class="number">20</span>
+  <span class="keyword">pool_timeout</span>: <span class="number">30</span>
+  <span class="keyword">pool_recycle</span>: <span class="number">3600</span>
+  <span class="keyword">read_replicas</span>: <span class="number">4</span>
+
+<span class="keyword">cache</span>:
+  <span class="keyword">driver</span>: <span class="string">"redis-cluster"</span>
+  <span class="keyword">nodes</span>: <span class="number">6</span>
+  <span class="keyword">max_memory</span>: <span class="string">"16GB"</span>
+  <span class="keyword">eviction_policy</span>: <span class="string">"allkeys-lfu"</span>
+  <span class="keyword">ttl_default</span>: <span class="number">3600</span>
+
+<span class="keyword">rate_limiting</span>:
+  <span class="keyword">enabled</span>: <span class="number">true</span>
+  <span class="keyword">requests_per_second</span>: <span class="number">1000</span>
+  <span class="keyword">burst</span>: <span class="number">2000</span>
+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== FRONTEND PANEL ===== -->
+      <div class="panel" id="panel-frontend">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card green">
+            <div class="metric-label">Lighthouse</div>
+            <div class="metric-value" style="color:var(--accent-green);">96</div>
+            <div class="metric-change up">↑ desde 67</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-label">LCP</div>
+            <div class="metric-value" style="color:var(--accent-blue);">1.08s</div>
+            <div class="metric-change up">↓ desde 3.2s</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">FID</div>
+            <div class="metric-value" style="color:var(--accent-purple);">21ms</div>
+            <div class="metric-change up">↓ desde 89ms</div>
+          </div>
+          <div class="metric-card cyan">
+            <div class="metric-label">CLS</div>
+            <div class="metric-value" style="color:var(--accent-cyan);">0.039</div>
+            <div class="metric-change up">↓ desde 0.124</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🎯 Web Vitals</span>
+              <span class="card-badge" style="background:rgba(16,185,129,0.15);color:var(--accent-green);">Passing</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="webVitalsChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📦 Bundle Analysis</span>
+            </div>
+            <div style="margin-top:0.5rem;">
+              <div class="progress-row"><span class="progress-label">Main JS</span><div class="progress-bar"><div class="progress-fill blue" style="width:37%"></div></div><span class="progress-value">142KB</span></div>
+              <div class="progress-row"><span class="progress-label">Vendor JS</span><div class="progress-bar"><div class="progress-fill purple" style="width:58%"></div></div><span class="progress-value">224KB</span></div>
+              <div class="progress-row"><span class="progress-label">CSS Total</span><div class="progress-bar"><div class="progress-fill cyan" style="width:22%"></div></div><span class="progress-value">86KB</span></div>
+              <div class="progress-row"><span class="progress-label">Images</span><div class="progress-bar"><div class="progress-fill amber" style="width:45%"></div></div><span class="progress-value">178KB</span></div>
+              <div class="progress-row"><span class="progress-label">Fonts</span><div class="progress-bar"><div class="progress-fill green" style="width:18%"></div></div><span class="progress-value">72KB</span></div>
+            </div>
+            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">
+              <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text-muted);">
+                <span>Total Bundle (gzipped)</span>
+                <span style="font-family:var(--font-mono);font-weight:700;color:var(--accent-green);">702KB</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;">
+                <span>Reducción vs. original</span>
+                <span style="font-family:var(--font-mono);font-weight:700;color:var(--accent-green);">-63%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Optimizaciones Implementadas</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Técnica</th><th>Impacto</th><th>Métrica</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td>Code Splitting (React.lazy)</td><td>Bundle principal -63%</td><td>LCP -66%</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Image Optimization (WebP + AVIF)</td><td>Assets -78%</td><td>LCP -42%</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Service Worker (Workbox)</td><td>96.2% cache hit</td><td>Offline capable</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Critical CSS Inlining</td><td>FCP -54%</td><td>Render blocking 0</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Tree Shaking (Webpack 5)</td><td>Dead code -41%</td><td>Parse time -38%</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Prefetch / Preconnect</td><td>DNS -120ms</td><td>Navigation +22%</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Virtual Scrolling (react-window)</td><td>DOM nodes -94%</td><td>FID -76%</td><td><span class="status-tag ok">● Active</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== DATABASE PANEL ===== -->
+      <div class="panel" id="panel-database">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card green">
+            <div class="metric-label">Query p50</div>
+            <div class="metric-value" style="color:var(--accent-green);">12ms</div>
+            <div class="metric-change up">↓ desde 89ms</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-label">Connections</div>
+            <div class="metric-value" style="color:var(--accent-blue);">247</div>
+            <div class="metric-change neutral">Pool optimizado</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Read Replicas</div>
+            <div class="metric-value" style="color:var(--accent-purple);">4</div>
+            <div class="metric-change up">Active</div>
+          </div>
+          <div class="metric-card cyan">
+            <div class="metric-label">Storage</div>
+            <div class="metric-value" style="color:var(--accent-cyan);">2.4TB</div>
+            <div class="metric-change neutral">68% utilizado</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">🗄️ Métricas de Base de Datos</span></div>
+            <div class="chart-wrapper"><canvas id="dbChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 Distribución de Operaciones</span></div>
+            <div class="chart-wrapper"><canvas id="dbOpsChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Índices y Optimizaciones</span></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Tabla</th><th>Registros</th><th>Índices</th><th>Avg Query</th><th>I/O Wait</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td>users</td><td>12.4M</td><td>8</td><td>4ms</td><td>0.2ms</td><td><span class="status-tag ok">● Optimal</span></td></tr>
+                <tr><td>orders</td><td>89.2M</td><td>12</td><td>8ms</td><td>0.4ms</td><td><span class="status-tag ok">● Optimal</span></td></tr>
+                <tr><td>products</td><td>2.1M</td><td>6</td><td>3ms</td><td>0.1ms</td><td><span class="status-tag ok">● Optimal</span></td></tr>
+                <tr><td>analytics_events</td><td>1.2B</td><td>14</td><td>18ms</td><td>1.2ms</td><td><span class="status-tag ok">● Partitioned</span></td></tr>
+                <tr><td>sessions</td><td>34.7M</td><td>4</td><td>2ms</td><td>0.1ms</td><td><span class="status-tag ok">● Optimal</span></td></tr>
+                <tr><td>notifications</td><td>156M</td><td>7</td><td>6ms</td><td>0.3ms</td><td><span class="status-tag ok">● Archived</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== INFRA PANEL ===== -->
+      <div class="panel" id="panel-infra">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card blue">
+            <div class="metric-label">Pods Kubernetes</div>
+            <div class="metric-value" style="color:var(--accent-blue);">247</div>
+            <div class="metric-change up">0 restarts</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-label">CDN Hit Rate</div>
+            <div class="metric-value" style="color:var(--accent-green);">97.1%</div>
+            <div class="metric-change up">14ms latency</div>
+          </div>
+          <div class="metric-card amber">
+            <div class="metric-label">Auto-Scale Time</div>
+            <div class="metric-value" style="color:var(--accent-amber);">45s</div>
+            <div class="metric-change up">↓ desde 3min</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Costo Mensual</div>
+            <div class="metric-value" style="color:var(--accent-purple);">$17.6K</div>
+            <div class="metric-change up">↓ 63%</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">☁️ Kubernetes Cluster</span></div>
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Namespace</th><th>Pods</th><th>CPU</th><th>Memory</th><th>Estado</th></tr></thead>
+                <tbody>
+                  <tr><td>production</td><td>124</td><td>64%</td><td>72%</td><td><span class="status-tag ok">● Running</span></td></tr>
+                  <tr><td>staging</td><td>42</td><td>28%</td><td>34%</td><td><span class="status-tag ok">● Running</span></td></tr>
+                  <tr><td>monitoring</td><td>18</td><td>45%</td><td>56%</td><td><span class="status-tag ok">● Running</span></td></tr>
+                  <tr><td>ml-services</td><td>36</td><td>72%</td><td>84%</td><td><span class="status-tag ok">● Running</span></td></tr>
+                  <tr><td>data-pipeline</td><td>27</td><td>38%</td><td>42%</td><td><span class="status-tag ok">● Running</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">🌐 CDN & Load Balancing</span></div>
+            <div style="margin-top:0.5rem;">
+              <div class="progress-row"><span class="progress-label">CDN Cache</span><div class="progress-bar"><div class="progress-fill green" style="width:97%"></div></div><span class="progress-value">97.1%</span></div>
+              <div class="progress-row"><span class="progress-label">Edge Nodes</span><div class="progress-bar"><div class="progress-fill blue" style="width:100%"></div></div><span class="progress-value">48</span></div>
+              <div class="progress-row"><span class="progress-label">SSL/TLS</span><div class="progress-bar"><div class="progress-fill purple" style="width:100%"></div></div><span class="progress-value">A+</span></div>
+              <div class="progress-row"><span class="progress-label">HTTP/3</span><div class="progress-bar"><div class="progress-fill cyan" style="width:92%"></div></div><span class="progress-value">92%</span></div>
+              <div class="progress-row"><span class="progress-label">Brotli</span><div class="progress-bar"><div class="progress-fill green" style="width:88%"></div></div><span class="progress-value">88%</span></div>
+            </div>
+            <div style="margin-top:1.5rem;font-size:0.8rem;color:var(--text-muted);">
+              <strong style="color:var(--text-primary);">Load Balancer:</strong> Round-robin con health checks cada 5s. Failover automático &lt;2s.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">💰 Desglose de Costos Mensuales</span></div>
+          <div class="chart-wrapper"><canvas id="infraCostChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ===== APIS PANEL ===== -->
+      <div class="panel" id="panel-apis">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card blue">
+            <div class="metric-label">Total Endpoints</div>
+            <div class="metric-value" style="color:var(--accent-blue);">234</div>
+            <div class="metric-change neutral">REST + GraphQL + WS</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-label">Disponibilidad</div>
+            <div class="metric-value" style="color:var(--accent-green);">100%</div>
+            <div class="metric-change up">Último mes</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Rate Limit</div>
+            <div class="metric-value" style="color:var(--accent-purple);">1K/s</div>
+            <div class="metric-change neutral">Burst: 2K</div>
+          </div>
+          <div class="metric-card amber">
+            <div class="metric-label">Versión Actual</div>
+            <div class="metric-value" style="color:var(--accent-amber);">v3.2</div>
+            <div class="metric-change neutral">Backward compatible</div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab(this, 'api-rest')">REST API</button>
+          <button class="tab-btn" onclick="switchTab(this, 'api-graphql')">GraphQL</button>
+          <button class="tab-btn" onclick="switchTab(this, 'api-websocket')">WebSocket</button>
+          <button class="tab-btn" onclick="switchTab(this, 'api-auth')">Autenticación</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-api-rest">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">REST Endpoints Principales</span>
+              <span class="card-badge" style="background:rgba(59,130,246,0.15);color:var(--accent-blue);">187 endpoints</span>
+            </div>
+            <div class="endpoint-item"><span class="method-badge get">GET</span><span class="endpoint-path">/api/v3/users</span><span class="endpoint-desc">Listar usuarios</span><span class="endpoint-latency">8ms</span></div>
+            <div class="endpoint-item"><span class="method-badge get">GET</span><span class="endpoint-path">/api/v3/users/:id</span><span class="endpoint-desc">Detalle de usuario</span><span class="endpoint-latency">4ms</span></div>
+            <div class="endpoint-item"><span class="method-badge post">POST</span><span class="endpoint-path">/api/v3/users</span><span class="endpoint-desc">Crear usuario</span><span class="endpoint-latency">18ms</span></div>
+            <div class="endpoint-item"><span class="method-badge put">PUT</span><span class="endpoint-path">/api/v3/users/:id</span><span class="endpoint-desc">Actualizar usuario</span><span class="endpoint-latency">12ms</span></div>
+            <div class="endpoint-item"><span class="method-badge delete">DEL</span><span class="endpoint-path">/api/v3/users/:id</span><span class="endpoint-desc">Eliminar usuario</span><span class="endpoint-latency">6ms</span></div>
+            <div class="endpoint-item"><span class="method-badge get">GET</span><span class="endpoint-path">/api/v3/products</span><span class="endpoint-desc">Catálogo de productos</span><span class="endpoint-latency">14ms</span></div>
+            <div class="endpoint-item"><span class="method-badge post">POST</span><span class="endpoint-path">/api/v3/orders</span><span class="endpoint-desc">Crear orden</span><span class="endpoint-latency">24ms</span></div>
+            <div class="endpoint-item"><span class="method-badge get">GET</span><span class="endpoint-path">/api/v3/orders/:id/status</span><span class="endpoint-desc">Estado de orden</span><span class="endpoint-latency">6ms</span></div>
+            <div class="endpoint-item"><span class="method-badge post">POST</span><span class="endpoint-path">/api/v3/payments/process</span><span class="endpoint-desc">Procesar pago</span><span class="endpoint-latency">89ms</span></div>
+            <div class="endpoint-item"><span class="method-badge get">GET</span><span class="endpoint-path">/api/v3/analytics/dashboard</span><span class="endpoint-desc">Métricas dashboard</span><span class="endpoint-latency">32ms</span></div>
+            <div class="endpoint-item"><span class="method-badge post">POST</span><span class="endpoint-path">/api/v3/search</span><span class="endpoint-desc">Búsqueda full-text</span><span class="endpoint-latency">28ms</span></div>
+            <div class="endpoint-item"><span class="method-badge patch">PATCH</span><span class="endpoint-path">/api/v3/notifications/read</span><span class="endpoint-desc">Marcar como leídas</span><span class="endpoint-latency">4ms</span></div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-api-graphql">
+          <div class="card">
+            <div class="card-header"><span class="card-title">GraphQL Schema</span><span class="card-badge" style="background:rgba(139,92,246,0.15);color:var(--accent-purple);">32 types</span></div>
+            <div class="code-block">
+<span class="keyword">type</span> <span class="function">Query</span> {
+  <span class="function">user</span>(id: ID!): User
+  <span class="function">users</span>(filter: UserFilter, page: Int): UserConnection!
+  <span class="function">product</span>(id: ID!): Product
+  <span class="function">products</span>(category: String, limit: Int): [Product!]!
+  <span class="function">order</span>(id: ID!): Order
+  <span class="function">analytics</span>(range: DateRange!): AnalyticsData!
+  <span class="function">search</span>(query: String!, type: SearchType): SearchResult!
+}
+
+<span class="keyword">type</span> <span class="function">Mutation</span> {
+  <span class="function">createUser</span>(input: CreateUserInput!): User!
+  <span class="function">updateUser</span>(id: ID!, input: UpdateUserInput!): User!
+  <span class="function">createOrder</span>(input: OrderInput!): Order!
+  <span class="function">processPayment</span>(orderId: ID!, method: PaymentMethod!): Payment!
+  <span class="function">updateNotification</span>(ids: [ID!]!, status: NotificationStatus!): Int!
+}
+
+<span class="keyword">type</span> <span class="function">Subscription</span> {
+  <span class="function">orderStatusChanged</span>(orderId: ID!): OrderStatus!
+  <span class="function">newNotification</span>(userId: ID!): Notification!
+  <span class="function">analyticsUpdate</span>: AnalyticsEvent!
+}
+</div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-api-websocket">
+          <div class="card">
+            <div class="card-header"><span class="card-title">WebSocket Channels</span><span class="card-badge" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);">15 channels</span></div>
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Channel</th><th>Subscriptions</th><th>Msg/s</th><th>Avg Latency</th><th>Estado</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.8rem;">ws://api/v3/realtime/orders</td><td>12,400</td><td>2,340</td><td>3ms</td><td><span class="status-tag ok">● Active</span></td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.8rem;">ws://api/v3/realtime/notifications</td><td>89,200</td><td>8,900</td><td>2ms</td><td><span class="status-tag ok">● Active</span></td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.8rem;">ws://api/v3/realtime/analytics</td><td>340</td><td>120</td><td>8ms</td><td><span class="status-tag ok">● Active</span></td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.8rem;">ws://api/v3/realtime/chat</td><td>4,600</td><td>1,200</td><td>4ms</td><td><span class="status-tag ok">● Active</span></td></tr>
+                  <tr><td style="font-family:var(--font-mono);font-size:0.8rem;">ws://api/v3/realtime/presence</td><td>34,800</td><td>5,400</td><td>2ms</td><td><span class="status-tag ok">● Active</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="tab-api-auth">
+          <div class="card">
+            <div class="card-header"><span class="card-title">🔑 Flujo de Autenticación</span></div>
+            <div class="code-block">
+<span class="comment">// JWT + OAuth2 + MFA Implementation</span>
+
+<span class="keyword">POST</span> /api/v3/auth/login
+  → Validates credentials (bcrypt + salt)
+  → Checks MFA if enabled (TOTP/SMS/Email)
+  → Issues JWT (RS256, 15min expiry)
+  → Issues Refresh Token (7 days, rotated)
+  → Sets secure HttpOnly cookie
+
+<span class="keyword">POST</span> /api/v3/auth/refresh
+  → Validates refresh token
+  → Checks token rotation (detects replay)
+  → Issues new JWT + new Refresh Token
+  → Revokes old refresh token
+
+<span class="keyword">Supported Providers:</span>
+  • Google OAuth2 (PKCE flow)
+  • Microsoft Azure AD
+  • Apple Sign-In
+  • SAML 2.0 (Enterprise SSO)
+
+<span class="keyword">Security Headers:</span>
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: default-src 'self'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SECURITY PANEL ===== -->
+      <div class="panel" id="panel-security">
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+          <div class="metric-card green">
+            <div class="metric-label">Security Score</div>
+            <div class="metric-value" style="color:var(--accent-green);">A+</div>
+            <div class="metric-change up">Mozilla Observatory</div>
+          </div>
+          <div class="metric-card blue">
+            <div class="metric-label">Vulnerabilidades</div>
+            <div class="metric-value" style="color:var(--accent-blue);">0</div>
+            <div class="metric-change up">Critical/High</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Pen Tests</div>
+            <div class="metric-value" style="color:var(--accent-purple);">Passed</div>
+            <div class="metric-change up">3rd party audit</div>
+          </div>
+          <div class="metric-card cyan">
+            <div class="metric-label">Encryption</div>
+            <div class="metric-value" style="color:var(--accent-cyan);">AES-256</div>
+            <div class="metric-change neutral">At rest + transit</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">🛡️ Security Checklist</span></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Control</th><th>Implementación</th><th>Compliance</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td>TLS 1.3</td><td>Todos los endpoints</td><td>PCI-DSS, SOC2</td><td><span class="status-tag ok">● Compliant</span></td></tr>
+                <tr><td>WAF (Web Application Firewall)</td><td>CloudFlare Enterprise</td><td>OWASP Top 10</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>DDoS Protection</td><td>Multi-layer (L3/L4/L7)</td><td>ISO 27001</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Data Encryption</td><td>AES-256-GCM (rest), TLS 1.3 (transit)</td><td>GDPR, HIPAA</td><td><span class="status-tag ok">● Compliant</span></td></tr>
+                <tr><td>Access Control</td><td>RBAC + ABAC + MFA</td><td>SOC2, ISO 27001</td><td><span class="status-tag ok">● Enforced</span></td></tr>
+                <tr><td>Audit Logging</td><td>Immutable logs, 90-day retention</td><td>SOC2, PCI-DSS</td><td><span class="status-tag ok">● Active</span></td></tr>
+                <tr><td>Secret Management</td><td>HashiCorp Vault + rotation</td><td>SOC2</td><td><span class="status-tag ok">● Automated</span></td></tr>
+                <tr><td>Container Security</td><td>Falco + Trivy scanning</td><td>CIS Benchmarks</td><td><span class="status-tag ok">● Scanned</span></td></tr>
+                <tr><td>Dependency Scanning</td><td>Snyk + Dependabot</td><td>CVE monitoring</td><td><span class="status-tag ok">● 0 Critical</span></td></tr>
+                <tr><td>Penetration Testing</td><td>Quarterly (3rd party)</td><td>PTES Standard</td><td><span class="status-tag ok">● Passed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== DOCS PANEL ===== -->
+      <div class="panel" id="panel-docs">
+        <div class="grid-3" style="margin-bottom: 1.5rem;">
+          <div class="metric-card blue">
+            <div class="metric-label">Total Páginas</div>
+            <div class="metric-value" style="color:var(--accent-blue);">689</div>
+            <div class="metric-change neutral">Documentación técnica</div>
+          </div>
+          <div class="metric-card green">
+            <div class="metric-label">Endpoints Doc</div>
+            <div class="metric-value" style="color:var(--accent-green);">234</div>
+            <div class="metric-change up">100% coverage</div>
+          </div>
+          <div class="metric-card purple">
+            <div class="metric-label">Training Modules</div>
+            <div class="metric-value" style="color:var(--accent-purple);">18</div>
+            <div class="metric-change neutral">+ 12 videos</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">📚 Documentación Disponible</span></div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box arch">🏗️</div>
+            <div class="doc-info">
+              <div class="doc-title-text">Arquitectura del Sistema</div>
+              <div class="doc-desc">Documentación completa de arquitectura de microservicios, patrones de diseño, integraciones, decisiones de diseño (ADRs) y diagramas C4.</div>
+              <div class="doc-meta-row"><span>147 páginas</span><span>34 diagramas</span><span>12 ADRs</span><span>Actualizado: Jul 2026</span></div>
+            </div>
+          </div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box ops">⚙️</div>
+            <div class="doc-info">
+              <div class="doc-title-text">Guías de Operación</div>
+              <div class="doc-desc">Procedimientos de deployment (CI/CD), monitoring, alerting, mantenimiento preventivo, scaling manual y automático, disaster recovery.</div>
+              <div class="doc-meta-row"><span>98 páginas</span><span>23 checklists</span><span>14 playbooks</span><span>Actualizado: Jul 2026</span></div>
+            </div>
+          </div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box api">📡</div>
+            <div class="doc-info">
+              <div class="doc-title-text">API Reference</div>
+              <div class="doc-desc">OpenAPI 3.1 specification, GraphQL schema documentation, WebSocket protocol docs, SDKs (Python, Node.js, Go, Java), ejemplos de uso.</div>
+              <div class="doc-meta-row"><span>234 endpoints</span><span>187 ejemplos</span><span>4 SDKs</span><span>Swagger UI</span></div>
+            </div>
+          </div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box run">🚨</div>
+            <div class="doc-info">
+              <div class="doc-title-text">Runbooks & Incident Response</div>
+              <div class="doc-desc">Scripts automatizados para troubleshooting, respuesta a incidentes, escalation paths, post-mortem templates, y comunicación a stakeholders.</div>
+              <div class="doc-meta-row"><span>76 páginas</span><span>89 scripts</span><span>SLA definitions</span><span>Pagerduty integrado</span></div>
+            </div>
+          </div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box train">🎓</div>
+            <div class="doc-info">
+              <div class="doc-title-text">Training & Onboarding</div>
+              <div class="doc-desc">Módulos de capacitación para nuevos miembros del equipo, videos tutoriales, laboratorios prácticos hands-on, quizzes de validación.</div>
+              <div class="doc-meta-row"><span>18 módulos</span><span>12 videos (8hrs)</span><span>6 labs</span><span>Certificación interna</span></div>
+            </div>
+          </div>
+
+          <div class="doc-item">
+            <div class="doc-icon-box dash">📊</div>
+            <div class="doc-info">
+              <div class="doc-title-text">Dashboards de Monitoreo</div>
+              <div class="doc-desc">5 dashboards preconfigurados (Ejecutivo, Operacional, Desarrollo, Seguridad, Business), 87 widgets, alertas configuradas, SLO tracking.</div>
+              <div class="doc-meta-row"><span>5 dashboards</span><span>87 widgets</span><span>Grafana + Datadog</span><span>Custom alerts</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">📖 Knowledge Transfer Summary</span></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Sesión</th><th>Duración</th><th>Participantes</th><th>Temas</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td>Arquitectura Deep Dive</td><td>3h</td><td>10</td><td>Microservicios, Event-Driven, CQRS</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>DevOps & CI/CD</td><td>2.5h</td><td>8</td><td>GitOps, ArgoCD, Pipeline config</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>Database Operations</td><td>2h</td><td>6</td><td>Migrations, Backups, Replication</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>Security Practices</td><td>2h</td><td>10</td><td>Auth, WAF, Secrets, Compliance</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>Monitoring & Alerting</td><td>1.5h</td><td>8</td><td>Grafana, Datadog, PagerDuty</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>Shadowing (Day 1)</td><td>8h</td><td>4</td><td>Production operations hands-on</td><td><span class="status-tag ok">● Completada</span></td></tr>
+                <tr><td>Shadowing (Day 2)</td><td>8h</td><td>4</td><td>Incident simulation & response</td><td><span class="status-tag ok">● Completada</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== LOGS PANEL ===== -->
+      <div class="panel" id="panel-logs">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 System Logs (Últimas 24h)</span>
+            <span class="card-badge" style="background:rgba(16,185,129,0.15);color:var(--accent-green);">No errors</span>
+          </div>
+          <div style="max-height:500px;overflow-y:auto;padding:0.5rem 0;">
+            <div class="log-entry"><span class="log-time">14:32:01</span><span class="log-level ok">OK</span><span class="log-msg">Health check passed - all 247 pods healthy</span></div>
+            <div class="log-entry"><span class="log-time">14:30:00</span><span class="log-level info">INFO</span><span class="log-msg">Auto-scaler: Maintaining 124 pods in production namespace</span></div>
+            <div class="log-entry"><span class="log-time">14:28:45</span><span class="log-level ok">OK</span><span class="log-msg">CDN cache purge completed - 48 edge nodes updated</span></div>
+            <div class="log-entry"><span class="log-time">14:25:12</span><span class="log-level info">INFO</span><span class="log-msg">Redis cluster: Memory usage 72%, eviction rate 0.01%</span></div>
+            <div class="log-entry"><span class="log-time">14:20:00</span><span class="log-level ok">OK</span><span class="log-msg">Database replication lag: 0ms (all replicas synced)</span></div>
+            <div class="log-entry"><span class="log-time">14:15:33</span><span class="log-level info">INFO</span><span class="log-msg">ML model inference: avg 44ms, p99 98ms, 0 timeouts</span></div>
+            <div class="log-entry"><span class="log-time">14:10:01</span><span class="log-level ok">OK</span><span class="log-msg">SSL certificates: All valid, next renewal in 47 days</span></div>
+            <div class="log-entry"><span class="log-time">14:05:00</span><span class="log-level info">INFO</span><span class="log-msg">Throughput: 98,400 req/s (73% of max capacity)</span></div>
+            <div class="log-entry"><span class="log-time">14:00:00</span><span class="log-level ok">OK</span><span class="log-msg">Hourly backup completed - 2.4TB snapshot stored</span></div>
+            <div class="log-entry"><span class="log-time">13:55:22</span><span class="log-level info">INFO</span><span class="log-msg">Rate limiter: 0 requests throttled in last 5min</span></div>
+            <div class="log-entry"><span class="log-time">13:50:01</span><span class="log-level ok">OK</span><span class="log-msg">WAF: 342 requests blocked (bot traffic), 0 false positives</span></div>
+            <div class="log-entry"><span class="log-time">13:45:00</span><span class="log-level info">INFO</span><span class="log-msg">Event bus (Kafka): 2.4M events/min, consumer lag 0</span></div>
+            <div class="log-entry"><span class="log-time">13:40:15</span><span class="log-level ok">OK</span><span class="log-msg">Dependency scan: 0 critical, 0 high, 2 medium vulnerabilities</span></div>
+            <div class="log-entry"><span class="log-time">13:35:00</span><span class="log-level info">INFO</span><span class="log-msg">Service mesh (Istio): mTLS active on all services</span></div>
+            <div class="log-entry"><span class="log-time">13:30:00</span><span class="log-level ok">OK</span><span class="log-msg">SLO status: 99.99% availability (target: 99.95%)</span></div>
+            <div class="log-entry"><span class="log-time">13:25:44</span><span class="log-level info">INFO</span><span class="log-msg">Auto-scaling prediction: stable load expected for next 4h</span></div>
+            <div class="log-entry"><span class="log-time">13:20:00</span><span class="log-level ok">OK</span><span class="log-msg">DNS resolution: avg 2ms, all records healthy</span></div>
+            <div class="log-entry"><span class="log-time">13:15:30</span><span class="log-level info">INFO</span><span class="log-msg">Garbage collection: avg pause 4ms, no stop-the-world events</span></div>
+            <div class="log-entry"><span class="log-time">13:10:00</span><span class="log-level ok">OK</span><span class="log-msg">Connection pool: 47% active, 38% idle, 3% waiting</span></div>
+            <div class="log-entry"><span class="log-time">13:05:00</span><span class="log-level info">INFO</span><span class="log-msg">Disk I/O: read 1.2GB/s, write 340MB/s, iowait 0.2%</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ===== NAVIGATION =====
+function showPanel(panelId) {
+  // Hide all panels
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  // Show target
+  const target = document.getElementById('panel-' + panelId);
+  if (target) target.classList.add('active');
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  // Update title
+  const titles = {
+    overview: 'Overview del Sistema',
+    backend: 'Backend — Servicios & Performance',
+    frontend: 'Frontend / Dashboard',
+    database: 'Base de Datos',
+    infra: 'Infraestructura Cloud',
+    apis: 'APIs — REST, GraphQL, WebSocket',
+    security: 'Seguridad & Compliance',
+    docs: 'Documentación Técnica',
+    logs: 'Logs del Sistema'
+  };
+  document.getElementById('panelTitle').textContent = titles[panelId] || panelId;
+
+  // Close sidebar on mobile
+  document.getElementById('sidebar').classList.remove('open');
+
+  // Init charts if needed
+  setTimeout(() => initPanelCharts(panelId), 100);
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ===== TABS =====
+function switchTab(btn, tabId) {
+  const tabContainer = btn.closest('.panel');
+  tabContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  tabContainer.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const target = document.getElementById('tab-' + tabId);
+  if (target) target.classList.add('active');
+}
+
+// ===== CHARTS =====
+const chartInstances = {};
+
+function initPanelCharts(panelId) {
+  if (panelId === 'overview') initOverviewCharts();
+  if (panelId === 'backend') initBackendCharts();
+  if (panelId === 'frontend') initFrontendCharts();
+  if (panelId === 'database') initDatabaseCharts();
+  if (panelId === 'infra') initInfraCharts();
+}
+
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#94a3b8', font: { family: "'DM Sans', sans-serif", size: 11 } } }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,58,82,0.3)' } },
+    y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,58,82,0.3)' } }
+  }
+};
+
+function createChart(canvasId, config) {
+  if (chartInstances[canvasId]) return;
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  chartInstances[canvasId] = new Chart(ctx, config);
+}
+
+function initOverviewCharts() {
+  createChart('overviewPerformanceChart', {
+    type: 'line',
+    data: {
+      labels: ['Inicial', 'Backend Opt', 'Frontend Opt', 'Infra Opt', 'Actual'],
+      datasets: [
+        { label: 'Response Time p95 (ms)', data: [380, 210, 124, 98, 94], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, borderWidth: 2 },
+        { label: 'Throughput (K req/s)', data: [28, 45, 67, 98, 134], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4, borderWidth: 2 }
+      ]
+    },
+    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, tooltip: { mode: 'index', intersect: false } } }
+  });
+
+  createChart('overviewCostChart', {
+    type: 'bar',
+    data: {
+      labels: ['Compute', 'Database', 'Storage', 'Network', 'ML/AI', 'Otros'],
+      datasets: [
+        { label: 'Antes ($K)', data: [18.2, 12.4, 6.8, 4.2, 3.8, 2.4], backgroundColor: 'rgba(239,68,68,0.7)', borderRadius: 4 },
+        { label: 'Después ($K)', data: [6.2, 4.8, 2.4, 1.8, 1.6, 0.8], backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 }
+      ]
+    },
+    options: { ...chartDefaults, plugins: { ...chartDefaults.plugins } }
+  });
+}
+
+function initBackendCharts() {
+  createChart('backendPerfChart', {
+    type: 'line',
+    data: {
+      labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+      datasets: [
+        { label: 'p50 (ms)', data: [8, 10, 14, 18, 16, 12, 9], borderColor: '#10b981', borderWidth: 2, tension: 0.4, pointRadius: 3 },
+        { label: 'p95 (ms)', data: [42, 56, 88, 94, 86, 64, 48], borderColor: '#f59e0b', borderWidth: 2, tension: 0.4, pointRadius: 3 },
+        { label: 'p99 (ms)', data: [78, 98, 134, 142, 128, 102, 82], borderColor: '#ef4444', borderWidth: 2, tension: 0.4, pointRadius: 3 }
+      ]
+    },
+    options: chartDefaults
+  });
+}
+
+function initFrontendCharts() {
+  createChart('webVitalsChart', {
+    type: 'radar',
+    data: {
+      labels: ['LCP', 'FID', 'CLS', 'FCP', 'TTFB', 'TBT'],
+      datasets: [
+        { label: 'Antes', data: [32, 89, 62, 45, 58, 72], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2 },
+        { label: 'Después', data: [92, 96, 97, 94, 98, 95], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { ticks: { color: '#64748b' }, grid: { color: 'rgba(42,58,82,0.4)' }, pointLabels: { color: '#94a3b8' } } },
+      plugins: { legend: { labels: { color: '#94a3b8' } } }
+    }
+  });
+}
+
+function initDatabaseCharts() {
+  createChart('dbChart', {
+    type: 'line',
+    data: {
+      labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul'],
+      datasets: [
+        { label: 'Query Latency p50 (ms)', data: [89, 72, 45, 28, 18, 14, 12], borderColor: '#3b82f6', fill: true, backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, borderWidth: 2 },
+        { label: 'Connections Active', data: [180, 195, 210, 228, 235, 240, 247], borderColor: '#8b5cf6', tension: 0.4, borderWidth: 2 }
+      ]
+    },
+    options: chartDefaults
+  });
+
+  createChart('dbOpsChart', {
+    type: 'doughnut',
+    data: {
+      labels: ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'JOIN'],
+      datasets: [{ data: [48, 22, 18, 5, 7], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'], borderColor: '#1a2235', borderWidth: 3 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+  });
+}
+
+function initInfraCharts() {
+  createChart('infraCostChart', {
+    type: 'bar',
+    data: {
+      labels: ['Compute (EKS)', 'Database (RDS)', 'Storage (S3)', 'Network (CF)', 'ML (SageMaker)', 'Monitoring', 'Security', 'Otros'],
+      datasets: [{ label: 'Costo Mensual ($K)', data: [6.2, 4.8, 2.4, 1.8, 1.6, 0.4, 0.2, 0.2], backgroundColor: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#ec4899', '#f59e0b', '#ef4444', '#64748b'], borderRadius: 6 }]
+    },
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+  });
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  initOverviewCharts();
+});
+
+// ===== DARK MODE DETECTION =====
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+  if (event.matches) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+});
+</script>
+</body>
+</html>
+

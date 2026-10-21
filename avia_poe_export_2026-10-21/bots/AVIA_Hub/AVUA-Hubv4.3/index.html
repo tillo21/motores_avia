@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA HUB v42 - Centro de Control</title>
+    <meta name="description" content="Centro de Control AVIA con procesamiento de documentos grandes">
+    <meta name="author" content="AVIA-SIESTA-SIALU Ecosystem">
+    
+    <!-- 
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║  AVIA HUB - REGISTRO DE VERSIONES (VERSION REGISTRY)             ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║  v42 - 2026-02-02                                                 ║
+    ║  ├─ REMOVED: nav-tabs del header (RU-002 aplicada)               ║
+    ║  ├─ REASON: Navegación redundante - dashboard-cards es suficiente║
+    ║  ├─ DIFF: Líneas 108-135 eliminadas (bloque nav-tabs)            ║
+    ║  └─ MANTAINED: Toda funcionalidad JS intacta                     ║
+    ║                                                                   ║
+    ║  v41 - (saltado - consolidación directa v40→v42)                 ║
+    ║                                                                   ║
+    ║  v40 - Base estable con:                                         ║
+    ║  ├─ Sistema de memoria de protocolos                             ║
+    ║  ├─ Protocol Anchor (widget flotante)                            ║
+    ├─ Cards: Resumen, Protocolos, Pipeline, Memoria                 ║
+    ║  └─ Atomic Design structure                                       ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+    -->
+    
+    <!-- PDF.js desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <style>
+        :root {
+            --avia-primary: #2563eb;
+            --avia-secondary: #7c3aed;
+            --avia-success: #10b981;
+            --avia-warning: #f59e0b;
+            --avia-danger: #ef4444;
+            --avia-dark: #1e293b;
+            --avia-light: #f8fafc;
+            --avia-gray: #64748b;
+            --inclusion-color: #ec4899;
+            --ethics-color: #8b5cf6;
+            --wellbeing-color: #10b981;
+            --tech-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: var(--avia-light);
+            line-height: 1.6;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           v42 HEADER - SIMPLIFICADO (sin nav-tabs)
+           Cambio: Eliminado nav-tabs - navegación via dashboard-cards
+           ═══════════════════════════════════════════════════════════ */
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        /* v42: nav-tabs ELIMINADO - navegación centralizada en dashboard-cards */
+        /* Las siguientes clases se mantienen por retrocompatibilidad pero no se usan en header */
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 0.6rem 1.2rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            color: var(--avia-light);
+        }
+
+        .nav-tab:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            border-color: transparent;
+            font-weight: 600;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Sections */
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Dashboard Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border-color: var(--avia-primary);
+        }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-icon.fusion { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .card-icon.validator { background: linear-gradient(135deg, #10b981, #059669); }
+        .card-icon.studio { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .card-icon.metrics { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .card-icon.docs { background: linear-gradient(135deg, #ec4899, #db2777); }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-desc {
+            color: var(--avia-gray);
+            font-size: 0.9rem;
+        }
+
+        /* Tool Panels */
+        .tool-panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tool-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .back-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            color: var(--avia-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Textarea & Inputs */
+        .textarea-container {
+            margin-bottom: 1rem;
+        }
+
+        .textarea-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--avia-gray);
+        }
+
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: var(--avia-light);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: var(--avia-primary);
+        }
+
+        textarea {
+            min-height: 200px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--avia-success), #059669);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--avia-warning), #d97706);
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        /* Results */
+        .result-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Comparison Grid */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .comparison-panel {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .comparison-panel h4 {
+            margin-bottom: 0.75rem;
+            color: var(--avia-primary);
+        }
+
+        .diff-added {
+            background: rgba(16, 185, 129, 0.2);
+            border-left: 3px solid var(--avia-success);
+            padding: 0.25rem 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .diff-removed {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 3px solid var(--avia-danger);
+            padding: 0.25rem 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        /* Studio Modes */
+        .studio-modes {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            color: var(--avia-light);
+        }
+
+        .mode-btn:hover {
+            border-color: var(--avia-primary);
+        }
+
+        .mode-btn.active {
+            background: rgba(37, 99, 235, 0.2);
+            border-color: var(--avia-primary);
+        }
+
+        .mode-btn h4 {
+            margin-bottom: 0.25rem;
+        }
+
+        .mode-btn p {
+            font-size: 0.8rem;
+            color: var(--avia-gray);
+        }
+
+        /* Constellation Grid */
+        .constellation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .agent-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .agent-card.selected {
+            border-color: var(--avia-success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .agent-card.inclusion { border-color: var(--inclusion-color); }
+        .agent-card.inclusion.selected { background: rgba(236, 72, 153, 0.2); }
+
+        .agent-card.ethics { border-color: var(--ethics-color); }
+        .agent-card.ethics.selected { background: rgba(139, 92, 246, 0.2); }
+
+        .agent-card.wellbeing { border-color: var(--wellbeing-color); }
+        .agent-card.wellbeing.selected { background: rgba(16, 185, 129, 0.2); }
+
+        .agent-card.tech { border-color: var(--tech-color); }
+        .agent-card.tech.selected { background: rgba(59, 130, 246, 0.2); }
+
+        .agent-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .agent-desc {
+            font-size: 0.7rem;
+            color: var(--avia-gray);
+            margin-top: 0.25rem;
+        }
+
+        /* Category Labels */
+        .category-label {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .category-label.inclusion { background: var(--inclusion-color); }
+        .category-label.ethics { background: var(--ethics-color); }
+        .category-label.wellbeing { background: var(--wellbeing-color); }
+        .category-label.tech { background: var(--tech-color); }
+
+        /* Config Sections */
+        .config-section {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-section h4 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Profile Cards */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .profile-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .profile-card:hover {
+            border-color: var(--avia-secondary);
+        }
+
+        .profile-card.selected {
+            border-color: var(--avia-secondary);
+            background: rgba(124, 58, 237, 0.2);
+        }
+
+        .profile-card .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .profile-card .name {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        /* Metrics Dashboard */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--avia-primary);
+        }
+
+        .metric-label {
+            color: var(--avia-gray);
+            font-size: 0.85rem;
+        }
+
+        .metric-change {
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+
+        .metric-change.positive { color: var(--avia-success); }
+        .metric-change.negative { color: var(--avia-danger); }
+
+        /* Vigilance Sources */
+        .sources-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .source-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--avia-light);
+        }
+
+        .source-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
+        }
+
+        .source-icon {
+            font-size: 2rem;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        .source-info h5 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .source-info p {
+            font-size: 0.75rem;
+            color: var(--avia-gray);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+            height: 150px;
+            padding: 1rem;
+        }
+
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--avia-primary), var(--avia-secondary));
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            transition: height 0.5s ease;
+        }
+
+        .chart-bar::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: var(--avia-gray);
+            white-space: nowrap;
+        }
+
+        /* File Upload */
+        .file-upload {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .file-upload:hover {
+            border-color: var(--avia-primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .file-upload.dragover {
+            border-color: var(--avia-success);
+            background: rgba(16, 185, 129, 0.1);
+            transform: scale(1.02);
+        }
+
+        .file-upload.has-file {
+            border-style: solid;
+            border-color: var(--avia-success);
+        }
+
+        .file-upload.processing {
+            border-color: var(--avia-warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .file-upload .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .file-upload .upload-text {
+            font-weight: 600;
+            color: var(--avia-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-upload .upload-hint {
+            font-size: 0.875rem;
+            color: var(--avia-gray);
+            line-height: 1.5;
+        }
+
+        .file-upload .formats {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .file-upload .format-badge {
+            padding: 0.25rem 0.625rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--avia-gray);
+        }
+
+        .file-upload .format-badge.recommended {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--avia-success);
+        }
+
+        .file-upload .format-badge.supported {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--tech-color);
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        /* File Info */
+        .file-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .file-info.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-info .filename {
+            font-weight: 700;
+            color: var(--avia-success);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .file-info .remove-file {
+            background: none;
+            border: none;
+            color: var(--avia-gray);
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: color 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .file-info .remove-file:hover {
+            color: var(--avia-danger);
+        }
+
+        .file-info .meta {
+            color: var(--avia-gray);
+            font-size: 0.875rem;
+        }
+
+        .file-info .extraction-status {
+            margin-top: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            color: var(--avia-success);
+        }
+
+        /* Processing Stats */
+        .processing-stats {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--tech-color);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .processing-stats.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .processing-stats h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9375rem;
+            color: var(--tech-color);
+            margin-bottom: 0.75rem;
+        }
+
+        .processing-stats .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 1rem;
+        }
+
+        .processing-stats .stat {
+            text-align: center;
+        }
+
+        .processing-stats .stat .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--avia-light);
+        }
+
+        .processing-stats .stat .label {
+            font-size: 0.7rem;
+            color: var(--avia-gray);
+            text-transform: uppercase;
+        }
+
+        /* Chunks Progress */
+        .chunks-progress {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .chunks-progress.visible {
+            display: block;
+        }
+
+        .chunks-progress .chunk-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .chunks-progress .chunk-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .chunks-progress .chunk-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--avia-primary), var(--avia-success));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .chunks-progress .chunk-details {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--avia-gray);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 0.9375rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-bar.hidden {
+            display: none;
+        }
+
+        .status-bar.info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--tech-color);
+            color: var(--tech-color);
+        }
+
+        .status-bar.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--avia-success);
+            color: var(--avia-success);
+        }
+
+        .status-bar.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--avia-danger);
+            color: var(--avia-danger);
+        }
+
+        .status-bar.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--avia-warning);
+            color: var(--avia-warning);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--avia-success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Version Badge */
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Toast Container */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            padding: 1rem 1.5rem;
+            background: var(--avia-dark);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border-left: 4px solid var(--avia-primary);
+            max-width: 400px;
+        }
+
+        .toast.visible {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-color: var(--avia-success); }
+        .toast.error { border-color: var(--avia-danger); }
+        .toast.warning { border-color: var(--avia-warning); }
+
+        .toast .toast-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .toast .toast-message {
+            font-size: 0.9375rem;
+            line-height: 1.4;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--avia-dark);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+            z-index: 2000;
+            border: 1px solid var(--avia-primary);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            font-size: 1.25rem;
+            color: var(--avia-warning);
+        }
+
+        .modal-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal-content li {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .modal-content li:last-child {
+            border-bottom: none;
+        }
+
+        .modal-content li .icon {
+            flex-shrink: 0;
+            font-size: 1.25rem;
+        }
+
+        .modal-footer {
+            margin-top: 1.5rem;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           HTML 40 - ESTILOS (Atomic Design) - MANTENIDOS EN v42
+           ═══════════════════════════════════════════════════════════ */
+
+        .dashboard-card.span-2 {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-card.span-2 {
+                grid-column: span 1;
+            }
+        }
+
+        .resumen-card {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.1), rgba(34, 197, 94, 0.05));
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+
+        .resumen-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .resumen-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .resumen-stat {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .resumen-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4ade80;
+        }
+
+        .resumen-stat-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+        }
+
+        .protocols-card {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05));
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .protocol-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .protocol-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .protocol-badge .status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            flex-shrink: 0;
+        }
+
+        .protocol-badge.inactive .status {
+            background: #6b7280;
+        }
+
+        .pipeline-card {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.05));
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .pipeline-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-item {
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pipeline-item.completed {
+            background: rgba(74, 222, 128, 0.3);
+            border: 1px solid #4ade80;
+        }
+
+        .pipeline-item.current {
+            background: rgba(245, 158, 11, 0.4);
+            border: 1px solid #f59e0b;
+            animation: pulse 2s infinite;
+        }
+
+        .pipeline-arrow {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+
+        .atomic-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .atomic-layer {
+            margin-bottom: 0.75rem;
+        }
+
+        .atomic-title {
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .atomic-items {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.6);
+            padding-left: 1rem;
+        }
+
+        .memory-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(34, 211, 238, 0.05));
+            border-color: rgba(6, 182, 212, 0.3);
+        }
+
+        .memory-list {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .memory-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .memory-item:last-child {
+            border-bottom: none;
+        }
+
+        .memory-item .value {
+            color: #4ade80;
+        }
+
+        .memory-item .value.warning {
+            color: #f59e0b;
+        }
+
+        /* Protocol Anchor (Fixed) */
+        .protocol-anchor {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            border-radius: 12px;
+            z-index: 1500;
+            min-width: 240px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .anchor-toggle {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-radius: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .anchor-toggle:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .anchor-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .anchor-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .anchor-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .anchor-content.active {
+            max-height: 350px;
+            padding: 0 16px 16px;
+        }
+
+        .anchor-section {
+            margin-bottom: 0.75rem;
+        }
+
+        .anchor-section-title {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .anchor-item {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: rgba(102, 126, 234, 0.15);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .anchor-item .item-status {
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .anchor-item small {
+            display: block;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.65rem;
+            margin-top: 2px;
+        }
+
+        .anchor-footer {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .main-container {
+                padding: 1rem;
+            }
+
+            .studio-modes {
+                flex-direction: column;
+            }
+
+            .constellation-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .toast-container {
+                left: 1rem;
+                right: 1rem;
+                bottom: 1rem;
+            }
+
+            .toast {
+                max-width: none;
+            }
+
+            .protocol-anchor {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--avia-gray);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--avia-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════
+         v42 HEADER - SIMPLIFICADO
+         CAMBIO: Eliminado nav-tabs - navegación via dashboard-cards
+         ═══════════════════════════════════════════════════════════ -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🛡️</div>
+            <span>AVIA HUB</span>
+            <span class="version-badge">v42</span>
+        </div>
+        <!-- v42: nav-tabs ELIMINADO - La navegación se realiza exclusivamente via dashboard-cards -->
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Sistema Activo</span>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section active">
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.75rem;">Centro de Control AVIA</h2>
+            
+            <!-- Grid de herramientas -->
+            <div class="dashboard-grid">
+                <div class="dashboard-card" onclick="showSection('fusion')">
+                    <div class="card-icon fusion">🔀</div>
+                    <h3 class="card-title">AVIA Fusion</h3>
+                    <p class="card-desc">Fusiona múltiples archivos HTML en uno solo, combinando estilos y scripts de forma inteligente.</p>
+                </div>
+                <div class="dashboard-card" onclick="showSection('validator')">
+                    <div class="card-icon validator">✅</div>
+                    <h3 class="card-title">AVIA Validator</h3>
+                    <p class="card-desc">Compara versiones de código y detecta diferencias, cambios y conflictos entre archivos.</p>
+                </div>
+                <div class="dashboard-card" onclick="showSection('docs')">
+                    <div class="card-icon docs">📄</div>
+                    <h3 class="card-title">AVIA Docs</h3>
+                    <p class="card-desc">Procesador de documentos grandes con PDF.js y sistema de chunks. Hasta 50MB.</p>
+                </div>
+                <div class="dashboard-card" onclick="showSection('studio')">
+                    <div class="card-icon studio">🎨</div>
+                    <h3 class="card-title">AVIA Studio</h3>
+                    <p class="card-desc">Construye asistentes IA personalizados con la constelación de 12 agentes AVIA.</p>
+                </div>
+                <div class="dashboard-card" onclick="showSection('metrics')">
+                    <div class="card-icon metrics">📊</div>
+                    <h3 class="card-title">AVIA Metrics</h3>
+                    <p class="card-desc">Visualiza métricas del ecosistema y accede a fuentes de vigilancia científica.</p>
+                </div>
+
+                <!-- CARD: Resumen del Sistema -->
+                <div class="dashboard-card resumen-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #4ade80, #22c55e);">📊</div>
+                    <h3 class="card-title">Resumen del Sistema</h3>
+                    <p class="card-desc">Estado global de AVIA HUB</p>
+                    <div class="resumen-stats">
+                        <div class="resumen-stat">
+                            <div class="resumen-stat-value">5</div>
+                            <div class="resumen-stat-label">Módulos</div>
+                        </div>
+                        <div class="resumen-stat">
+                            <div class="resumen-stat-value">42</div>
+                            <div class="resumen-stat-label">Versión</div>
+                        </div>
+                        <div class="resumen-stat">
+                            <div class="resumen-stat-value">3</div>
+                            <div class="resumen-stat-label">Protocolos</div>
+                        </div>
+                        <div class="resumen-stat">
+                            <div class="resumen-stat-value" style="color: #4ade80;">●</div>
+                            <div class="resumen-stat-label">Activo</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: Protocolos Activos -->
+                <div class="dashboard-card protocols-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📚</div>
+                    <h3 class="card-title">Protocolos Activos</h3>
+                    <p class="card-desc">Documentos en memoria</p>
+                    <div class="protocol-list">
+                        <div class="protocol-badge">
+                            <span class="status"></span>
+                            <span>Libro Blanco AVIA v3</span>
+                        </div>
+                        <div class="protocol-badge">
+                            <span class="status"></span>
+                            <span>Guidelines Fusión</span>
+                        </div>
+                        <div class="protocol-badge">
+                            <span class="status"></span>
+                            <span>Atomic Design Rules</span>
+                        </div>
+                        <div class="protocol-badge inactive">
+                            <span class="status"></span>
+                            <span>API Specifications</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: Plan de Tareas / Pipeline (span 2) -->
+                <div class="dashboard-card pipeline-card span-2">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">📋</div>
+                    <h3 class="card-title">Plan de Tareas - Atomic Pipeline</h3>
+                    <p class="card-desc">Evolución del sistema con Design Atómico</p>
+                    
+                    <!-- Pipeline Visual - ACTUALIZADO v42 -->
+                    <div class="pipeline-visual">
+                        <span class="pipeline-item completed">HTML 35</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">HTML 36</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">HTML 39</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">HTML 40</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item current">HTML 42</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item">HTML 50</span>
+                    </div>
+                    
+                    <!-- Estructura Atomic Design -->
+                    <div class="atomic-section">
+                        <div class="atomic-layer">
+                            <div class="atomic-title" style="color: #f59e0b;">⚛️ ÁTOMOS</div>
+                            <div class="atomic-items">buttons, badges, status-dots, icons, inputs</div>
+                        </div>
+                        <div class="atomic-layer">
+                            <div class="atomic-title" style="color: #667eea;">🧬 MOLÉCULAS</div>
+                            <div class="atomic-items">nav-card, stat-item, protocol-badge, file-upload</div>
+                        </div>
+                        <div class="atomic-layer">
+                            <div class="atomic-title" style="color: #8b5cf6;">🦠 ORGANISMOS</div>
+                            <div class="atomic-items">dashboard-grid, tool-panel, protocol-anchor, modal</div>
+                        </div>
+                        <div class="atomic-layer">
+                            <div class="atomic-title" style="color: #ec4899;">📄 TEMPLATES</div>
+                            <div class="atomic-items">Dashboard, Section View, Full Tool Page</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: Memoria Activa -->
+                <div class="dashboard-card memory-card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">🧠</div>
+                    <h3 class="card-title">Memoria Activa</h3>
+                    <p class="card-desc">Contexto persistente de sesión</p>
+                    <div class="memory-list">
+                        <div class="memory-item">
+                            <span>localStorage</span>
+                            <span class="value">● Activo</span>
+                        </div>
+                        <div class="memory-item">
+                            <span>Protocolos cargados</span>
+                            <span class="value">3/4</span>
+                        </div>
+                        <div class="memory-item">
+                            <span>Sesión actual</span>
+                            <span class="value" id="sessionCount">1</span>
+                        </div>
+                        <div class="memory-item">
+                            <span>Última sync</span>
+                            <span class="value warning" id="lastSync">Ahora</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="tool-panel">
+                <h3 style="margin-bottom: 1rem;">📈 Estadísticas de Uso</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="stat-fusions">0</div>
+                        <div class="metric-label">Fusiones Realizadas</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="stat-validations">0</div>
+                        <div class="metric-label">Validaciones</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="stat-docs">0</div>
+                        <div class="metric-label">Docs Procesados</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="stat-assistants">0</div>
+                        <div class="metric-label">Asistentes Creados</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">12</div>
+                        <div class="metric-label">Agentes Disponibles</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fusion Section -->
+        <section id="fusion" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">🔀 AVIA Fusion</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    Fusiona múltiples archivos HTML en uno solo. Los estilos CSS y scripts JavaScript se combinarán automáticamente.
+                </p>
+
+                <div class="comparison-grid">
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 HTML Documento 1</label>
+                        <textarea id="fusion-input1" placeholder="Pega aquí el primer HTML..."></textarea>
+                    </div>
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 HTML Documento 2</label>
+                        <textarea id="fusion-input2" placeholder="Pega aquí el segundo HTML..."></textarea>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="performFusion()">🔀 Fusionar Documentos</button>
+                    <button class="btn btn-warning" onclick="clearFusion()">🗑️ Limpiar</button>
+                    <button class="btn btn-success" onclick="downloadFusion()">💾 Descargar Resultado</button>
+                </div>
+
+                <div class="result-box" id="fusion-result" style="display: none;">
+                    <h4 style="margin-bottom: 1rem; color: var(--avia-success);">✅ Resultado de la Fusión</h4>
+                    <pre id="fusion-output"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Validator Section -->
+        <section id="validator" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">✅ AVIA Validator</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    Compara dos versiones de código para detectar diferencias, adiciones y eliminaciones.
+                </p>
+
+                <div class="comparison-grid">
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 Versión Original</label>
+                        <textarea id="validator-input1" placeholder="Pega aquí la versión original..."></textarea>
+                    </div>
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 Versión Nueva</label>
+                        <textarea id="validator-input2" placeholder="Pega aquí la versión nueva..."></textarea>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="performValidation()">🔍 Comparar Versiones</button>
+                    <button class="btn btn-warning" onclick="clearValidator()">🗑️ Limpiar</button>
+                </div>
+
+                <div id="validator-result" style="display: none; margin-top: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem;">📊 Resultado de la Comparación</h4>
+                    <div class="metrics-grid" style="margin-bottom: 1rem;">
+                        <div class="metric-card">
+                            <div class="metric-value" id="diff-added" style="color: var(--avia-success);">0</div>
+                            <div class="metric-label">Líneas Añadidas</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="diff-removed" style="color: var(--avia-danger);">0</div>
+                            <div class="metric-label">Líneas Eliminadas</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="diff-unchanged">0</div>
+                            <div class="metric-label">Sin Cambios</div>
+                        </div>
+                    </div>
+                    <div class="comparison-grid">
+                        <div class="comparison-panel">
+                            <h4>➖ Eliminado</h4>
+                            <div id="diff-removed-list"></div>
+                        </div>
+                        <div class="comparison-panel">
+                            <h4>➕ Añadido</h4>
+                            <div id="diff-added-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Docs Section -->
+        <section id="docs" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">📄 AVIA Docs - Procesador de Documentos Grandes</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    Procesa documentos grandes con PDF.js integrado y sistema de chunks. Soporta archivos hasta 50MB.
+                </p>
+
+                <!-- File Upload -->
+                <div class="file-upload" id="fileUpload">
+                    <span class="upload-icon">📁</span>
+                    <p class="upload-text">Arrastra archivos aquí o haz clic para seleccionar</p>
+                    <p class="upload-hint">
+                        <strong>PDF.js integrado</strong> para extracción real de texto.<br>
+                        Sistema de chunks para documentos hasta <strong>50MB</strong>.
+                    </p>
+                    <div class="formats">
+                        <span class="format-badge recommended">TXT ✓✓</span>
+                        <span class="format-badge recommended">MD ✓✓</span>
+                        <span class="format-badge supported">PDF ✓</span>
+                        <span class="format-badge supported">JSON ✓</span>
+                    </div>
+                    <input type="file" id="fileInput" accept=".txt,.md,.json,.pdf">
+                </div>
+
+                <!-- File Info -->
+                <div class="file-info" id="fileInfo">
+                    <div class="file-info-header">
+                        <span class="filename" id="fileName">
+                            <span>📎</span>
+                            <span id="fileNameText">-</span>
+                        </span>
+                        <button class="remove-file" id="removeFile" title="Eliminar archivo">✕</button>
+                    </div>
+                    <div class="meta" id="fileMeta">-</div>
+                    <div class="extraction-status" id="extractionStatus"></div>
+                </div>
+
+                <!-- Chunks Progress -->
+                <div class="chunks-progress" id="chunksProgress">
+                    <div class="chunk-header">
+                        <span id="chunkStatus">Procesando...</span>
+                        <span id="chunkPercent">0%</span>
+                    </div>
+                    <div class="chunk-bar">
+                        <div class="chunk-fill" id="chunkFill"></div>
+                    </div>
+                    <div class="chunk-details" id="chunkDetails">
+                        Chunk 0 de 0 | 0 caracteres extraídos
+                    </div>
+                </div>
+
+                <!-- Processing Stats -->
+                <div class="processing-stats" id="processingStats">
+                    <h4>📊 Estadísticas de Extracción</h4>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <div class="value" id="statPages">0</div>
+                            <div class="label">Páginas</div>
+                        </div>
+                        <div class="stat">
+                            <div class="value" id="statCharsExtracted">0</div>
+                            <div class="label">Caracteres</div>
+                        </div>
+                        <div class="stat">
+                            <div class="value" id="statChunks">0</div>
+                            <div class="label">Chunks</div>
+                        </div>
+                        <div class="stat">
+                            <div class="value" id="statTime">0s</div>
+                            <div class="label">Tiempo</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Bar -->
+                <div class="status-bar hidden" id="statusBar">
+                    <span class="spinner"></span>
+                    <span id="statusText">Procesando...</span>
+                </div>
+
+                <!-- Output Area -->
+                <div class="textarea-container" style="margin-top: 1.5rem;">
+                    <label class="textarea-label">📝 Contenido Extraído</label>
+                    <textarea id="docs-output" placeholder="El contenido extraído aparecerá aquí..." style="min-height: 300px;"></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="copyDocsContent()">📋 Copiar Contenido</button>
+                    <button class="btn btn-success" onclick="downloadDocsContent()">💾 Descargar TXT</button>
+                    <button class="btn btn-warning" onclick="clearDocs()">🗑️ Limpiar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Studio Section -->
+        <section id="studio" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">🎨 AVIA Studio</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+
+                <!-- Studio Modes -->
+                <div class="studio-modes">
+                    <button class="mode-btn active" id="mode-assistant" onclick="setStudioMode('assistant')">
+                        <h4>🤖 Constructor de Asistentes</h4>
+                        <p>Crea asistentes IA con la constelación AVIA</p>
+                    </button>
+                    <button class="mode-btn" id="mode-components" onclick="setStudioMode('components')">
+                        <h4>🧩 Editor de Componentes</h4>
+                        <p>Arrastra y suelta componentes UI</p>
+                    </button>
+                </div>
+
+                <!-- Assistant Builder Mode -->
+                <div id="assistant-mode">
+                    <!-- Constellation Selection -->
+                    <div class="config-section">
+                        <h4>🌟 Selecciona Agentes Base (Constelación AVIA)</h4>
+                        
+                        <span class="category-label inclusion">Inclusión y Accesibilidad</span>
+                        <div class="constellation-grid" style="margin-bottom: 1.5rem;">
+                            <div class="agent-card inclusion" data-agent="cuida" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🤗</div>
+                                <div class="agent-name">CUIDA</div>
+                                <div class="agent-desc">Cuidadores y dependencia</div>
+                            </div>
+                            <div class="agent-card inclusion" data-agent="humana" onclick="toggleAgent(this)">
+                                <div class="agent-icon">💚</div>
+                                <div class="agent-name">HUMANA</div>
+                                <div class="agent-desc">Humanización tecnológica</div>
+                            </div>
+                            <div class="agent-card inclusion" data-agent="diversia" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🌈</div>
+                                <div class="agent-name">DIVERSIA</div>
+                                <div class="agent-desc">Neurodivergencias</div>
+                            </div>
+                        </div>
+
+                        <span class="category-label ethics">Ética y Ciudadanía</span>
+                        <div class="constellation-grid" style="margin-bottom: 1.5rem;">
+                            <div class="agent-card ethics" data-agent="semia" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🔣</div>
+                                <div class="agent-name">SEMIA</div>
+                                <div class="agent-desc">Semiótica y signos</div>
+                            </div>
+                            <div class="agent-card ethics" data-agent="ethica" onclick="toggleAgent(this)">
+                                <div class="agent-icon">⚖️</div>
+                                <div class="agent-name">ETHICA</div>
+                                <div class="agent-desc">Ética IA</div>
+                            </div>
+                            <div class="agent-card ethics" data-agent="creativa" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🎨</div>
+                                <div class="agent-name">CREATIVA</div>
+                                <div class="agent-desc">Creatividad inclusiva</div>
+                            </div>
+                        </div>
+
+                        <span class="category-label wellbeing">Bienestar Emocional</span>
+                        <div class="constellation-grid" style="margin-bottom: 1.5rem;">
+                            <div class="agent-card wellbeing" data-agent="espejo" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🪞</div>
+                                <div class="agent-name">ESPEJO</div>
+                                <div class="agent-desc">Introspección emocional</div>
+                            </div>
+                            <div class="agent-card wellbeing" data-agent="camino" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🛤️</div>
+                                <div class="agent-name">CAMINO</div>
+                                <div class="agent-desc">Planificador vital</div>
+                            </div>
+                            <div class="agent-card wellbeing" data-agent="sanador" onclick="toggleAgent(this)">
+                                <div class="agent-icon">💆</div>
+                                <div class="agent-name">SANADOR</div>
+                                <div class="agent-desc">Bienestar integral</div>
+                            </div>
+                        </div>
+
+                        <span class="category-label tech">Tecnología Inclusiva (SIESTA)</span>
+                        <div class="constellation-grid">
+                            <div class="agent-card tech" data-agent="nomada" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🎒</div>
+                                <div class="agent-name">NÓMADA</div>
+                                <div class="agent-desc">Offline y rural</div>
+                            </div>
+                            <div class="agent-card tech" data-agent="universal" onclick="toggleAgent(this)">
+                                <div class="agent-icon">🌍</div>
+                                <div class="agent-name">UNIVERSAL</div>
+                                <div class="agent-desc">API abierta global</div>
+                            </div>
+                            <div class="agent-card tech" data-agent="memoria" onclick="toggleAgent(this)">
+                                <div class="agent-icon">📚</div>
+                                <div class="agent-name">MEMORIA</div>
+                                <div class="agent-desc">Patrimonio oral</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Selection -->
+                    <div class="config-section">
+                        <h4>💜 Perfil Afectivo</h4>
+                        <div class="profile-grid">
+                            <div class="profile-card" data-profile="empatico" onclick="selectProfile(this)">
+                                <div class="icon">🤗</div>
+                                <div class="name">Empático</div>
+                            </div>
+                            <div class="profile-card" data-profile="mentor" onclick="selectProfile(this)">
+                                <div class="icon">🎓</div>
+                                <div class="name">Mentor</div>
+                            </div>
+                            <div class="profile-card" data-profile="ludico" onclick="selectProfile(this)">
+                                <div class="icon">🎮</div>
+                                <div class="name">Lúdico</div>
+                            </div>
+                            <div class="profile-card" data-profile="profesional" onclick="selectProfile(this)">
+                                <div class="icon">💼</div>
+                                <div class="name">Profesional</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Domain Selection -->
+                    <div class="config-section">
+                        <h4>🎯 Dominio</h4>
+                        <div class="profile-grid">
+                            <div class="profile-card" data-domain="educacion" onclick="selectDomain(this)">
+                                <div class="icon">📚</div>
+                                <div class="name">Educación</div>
+                            </div>
+                            <div class="profile-card" data-domain="salud" onclick="selectDomain(this)">
+                                <div class="icon">🏥</div>
+                                <div class="name">Salud</div>
+                            </div>
+                            <div class="profile-card" data-domain="accesibilidad" onclick="selectDomain(this)">
+                                <div class="icon">♿</div>
+                                <div class="name">Accesibilidad</div>
+                            </div>
+                            <div class="profile-card" data-domain="cultura" onclick="selectDomain(this)">
+                                <div class="icon">🎭</div>
+                                <div class="name">Cultura</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target Audience -->
+                    <div class="config-section">
+                        <h4>👥 Público Objetivo</h4>
+                        <select id="target-audience">
+                            <option value="">Selecciona público objetivo...</option>
+                            <option value="adultos-mayores">Adultos Mayores</option>
+                            <option value="neurodivergentes">Personas Neurodivergentes</option>
+                            <option value="rurales">Comunidades Rurales</option>
+                            <option value="cuidadores">Cuidadores</option>
+                            <option value="estudiantes">Estudiantes</option>
+                            <option value="profesionales">Profesionales de Salud</option>
+                            <option value="general">Público General</option>
+                        </select>
+                    </div>
+
+                    <!-- Assistant Name -->
+                    <div class="config-section">
+                        <h4>✏️ Nombre del Asistente</h4>
+                        <input type="text" id="assistant-name" placeholder="Ej: AVIA Companion, Guía Digital, etc.">
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generateAssistant()">🚀 Generar Asistente</button>
+                        <button class="btn btn-warning" onclick="resetAssistantBuilder()">🔄 Reiniciar</button>
+                    </div>
+
+                    <!-- Export Preview -->
+                    <div class="result-box" id="assistant-preview" style="display: none;">
+                        <h4 style="margin-bottom: 1rem; color: var(--avia-success);">📋 Configuración del Asistente Generado</h4>
+                        <pre id="assistant-config"></pre>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="downloadAssistantConfig()">💾 Descargar JSON</button>
+                            <button class="btn btn-primary" onclick="copyAssistantConfig()">📋 Copiar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Components Mode -->
+                <div id="components-mode" style="display: none;">
+                    <div class="config-section">
+                        <h4>🧩 Paleta de Componentes</h4>
+                        <div class="profile-grid">
+                            <div class="profile-card" draggable="true" data-component="button" ondragstart="dragComponent(event)">
+                                <div class="icon">🔘</div>
+                                <div class="name">Botón</div>
+                            </div>
+                            <div class="profile-card" draggable="true" data-component="card" ondragstart="dragComponent(event)">
+                                <div class="icon">🃏</div>
+                                <div class="name">Card</div>
+                            </div>
+                            <div class="profile-card" draggable="true" data-component="input" ondragstart="dragComponent(event)">
+                                <div class="icon">📝</div>
+                                <div class="name">Input</div>
+                            </div>
+                            <div class="profile-card" draggable="true" data-component="header" ondragstart="dragComponent(event)">
+                                <div class="icon">📰</div>
+                                <div class="name">Header</div>
+                            </div>
+                            <div class="profile-card" draggable="true" data-component="image" ondragstart="dragComponent(event)">
+                                <div class="icon">🖼️</div>
+                                <div class="name">Imagen</div>
+                            </div>
+                            <div class="profile-card" draggable="true" data-component="list" ondragstart="dragComponent(event)">
+                                <div class="icon">📋</div>
+                                <div class="name">Lista</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h4>🎨 Área de Diseño</h4>
+                        <div class="file-upload" id="design-canvas" ondrop="dropComponent(event)" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" style="min-height: 200px;">
+                            <p style="color: var(--avia-gray); padding: 2rem;">
+                                Arrastra componentes aquí para diseñar tu interfaz
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="exportComponentDesign()">💾 Exportar HTML</button>
+                        <button class="btn btn-warning" onclick="clearCanvas()">🗑️ Limpiar Canvas</button>
+                    </div>
+
+                    <div class="result-box" id="component-preview" style="display: none;">
+                        <h4 style="margin-bottom: 1rem; color: var(--avia-success);">📄 HTML Generado</h4>
+                        <pre id="component-html"></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Metrics Section -->
+        <section id="metrics" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">📊 AVIA Metrics</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+
+                <!-- Metrics Overview -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-fusions">0</div>
+                        <div class="metric-label">Fusiones Totales</div>
+                        <div class="metric-change positive">↑ Última sesión</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-validations">0</div>
+                        <div class="metric-label">Validaciones</div>
+                        <div class="metric-change positive">↑ Última sesión</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-docs">0</div>
+                        <div class="metric-label">Docs Procesados</div>
+                        <div class="metric-change positive">↑ Última sesión</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-assistants">0</div>
+                        <div class="metric-label">Asistentes Creados</div>
+                        <div class="metric-change positive">↑ Última sesión</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="metric-sessions">1</div>
+                        <div class="metric-label">Sesiones Totales</div>
+                        <div class="metric-change positive">↑ Activa</div>
+                    </div>
+                </div>
+
+                <!-- Activity Chart -->
+                <div class="chart-container">
+                    <h4 style="margin-bottom: 1rem;">📈 Actividad por Herramienta</h4>
+                    <div class="chart-bars" id="activity-chart">
+                        <div class="chart-bar" style="height: 30%;" data-label="Fusion"></div>
+                        <div class="chart-bar" style="height: 20%;" data-label="Validator"></div>
+                        <div class="chart-bar" style="height: 40%;" data-label="Docs"></div>
+                        <div class="chart-bar" style="height: 50%;" data-label="Studio"></div>
+                        <div class="chart-bar" style="height: 35%;" data-label="Metrics"></div>
+                    </div>
+                </div>
+
+                <!-- Vigilance Sources -->
+                <div class="config-section">
+                    <h4>🔬 Fuentes de Vigilancia Científica</h4>
+                    <p style="color: var(--avia-gray); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Fuentes académicas y científicas para mantener actualizado el ecosistema AVIA.
+                    </p>
+                    <div class="sources-grid">
+                        <a href="https://www.nature.com/nathumbehav/" target="_blank" class="source-card">
+                            <div class="source-icon">🧬</div>
+                            <div class="source-info">
+                                <h5>Nature Human Behaviour</h5>
+                                <p>Investigación en comportamiento humano</p>
+                            </div>
+                        </a>
+                        <a href="https://hai.stanford.edu/" target="_blank" class="source-card">
+                            <div class="source-icon">🎓</div>
+                            <div class="source-info">
+                                <h5>Stanford HAI</h5>
+                                <p>Human-Centered AI Institute</p>
+                            </div>
+                        </a>
+                        <a href="https://www.media.mit.edu/" target="_blank" class="source-card">
+                            <div class="source-icon">🔬</div>
+                            <div class="source-info">
+                                <h5>MIT Media Lab</h5>
+                                <p>Investigación interdisciplinaria</p>
+                            </div>
+                        </a>
+                        <a href="https://www.unesco.org/" target="_blank" class="source-card">
+                            <div class="source-icon">🌍</div>
+                            <div class="source-info">
+                                <h5>UNESCO Digital Health</h5>
+                                <p>Salud digital global</p>
+                            </div>
+                        </a>
+                        <a href="https://www.oecd.org/digital/" target="_blank" class="source-card">
+                            <div class="source-icon">📈</div>
+                            <div class="source-info">
+                                <h5>OECD Digital Well-being</h5>
+                                <p>Bienestar digital internacional</p>
+                            </div>
+                        </a>
+                        <a href="https://www.digitalwellnessinstitute.com/" target="_blank" class="source-card">
+                            <div class="source-icon">💚</div>
+                            <div class="source-info">
+                                <h5>Digital Wellness Institute</h5>
+                                <p>Bienestar en la era digital</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Export Stats -->
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="exportMetrics()">📊 Exportar Estadísticas</button>
+                    <button class="btn btn-warning" onclick="resetMetrics()">🔄 Reiniciar Métricas</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal" id="suggestionsModal">
+        <div class="modal-header">
+            <span style="font-size: 1.5rem;">💡</span>
+            <h3>Información</h3>
+        </div>
+        <div class="modal-content">
+            <ul id="suggestionsList"></ul>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="hideModal()">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Protocol Anchor (Fixed Position) -->
+    <div class="protocol-anchor" id="protocolAnchor">
+        <div class="anchor-toggle" onclick="toggleProtocolAnchor()">
+            <span>📋 Protocolos</span>
+            <span class="anchor-indicator">
+                <span class="anchor-dot"></span>
+                <span style="font-size: 0.7rem;">3 activos</span>
+            </span>
+        </div>
+        <div class="anchor-content" id="anchorContent">
+            <div class="anchor-section">
+                <div class="anchor-section-title">Documentos Cargados</div>
+                <div class="anchor-item">
+                    <span class="item-status"></span>
+                    <div>
+                        <strong>Libro Blanco v3</strong>
+                        <small>Cargado • 24KB</small>
+                    </div>
+                </div>
+                <div class="anchor-item">
+                    <span class="item-status"></span>
+                    <div>
+                        <strong>Reglas de Fusión</strong>
+                        <small>Cargado • 8KB</small>
+                    </div>
+                </div>
+                <div class="anchor-item">
+                    <span class="item-status"></span>
+                    <div>
+                        <strong>Atomic Guidelines</strong>
+                        <small>Cargado • 12KB</small>
+                    </div>
+                </div>
+            </div>
+            <div class="anchor-footer">
+                <span>Última sync: <span id="anchorLastSync">ahora</span></span>
+                <span>v42</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // AVIA HUB v42 - SISTEMA CONSOLIDADO
+        // Cambio principal: Eliminado nav-tabs del header
+        // ========================================
+
+        'use strict';
+
+        // Configurar PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // ========================================
+        // CONFIGURACIÓN - ACTUALIZADA v42
+        // ========================================
+
+        const CONFIG = {
+            VERSION: '42.0.0',
+            MAX_FILE_SIZE: 50 * 1024 * 1024,
+            CHUNK_SIZE: 100 * 1024,
+            STORAGE_KEY: 'avia_hub_v42_state',
+            // v42: Registro de cambios para trazabilidad
+            CHANGELOG: [
+                { version: '42.0.0', date: '2026-02-02', changes: ['Eliminado nav-tabs del header', 'Navegación exclusiva via dashboard-cards'] },
+                { version: '40.0.0', date: '2026-01-xx', changes: ['Sistema de memoria de protocolos', 'Protocol Anchor', 'Cards nuevas'] }
+            ]
+        };
+
+        // ========================================
+        // SISTEMA DE PERSISTENCIA
+        // ========================================
+
+        const AVIAStorage = {
+            memoryFallback: {},
+            
+            isLocalStorageAvailable() {
+                try {
+                    const test = '__avia_test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            },
+
+            save(key, value) {
+                const data = JSON.stringify(value);
+                if (this.isLocalStorageAvailable()) {
+                    try {
+                        localStorage.setItem('avia_' + key, data);
+                    } catch (e) {
+                        this.memoryFallback[key] = data;
+                    }
+                } else {
+                    this.memoryFallback[key] = data;
+                }
+            },
+
+            load(key, defaultValue = null) {
+                let data = null;
+                if (this.isLocalStorageAvailable()) {
+                    data = localStorage.getItem('avia_' + key);
+                }
+                if (!data) {
+                    data = this.memoryFallback[key];
+                }
+                return data ? JSON.parse(data) : defaultValue;
+            },
+
+            remove(key) {
+                if (this.isLocalStorageAvailable()) {
+                    localStorage.removeItem('avia_' + key);
+                }
+                delete this.memoryFallback[key];
+            }
+        };
+
+        // ========================================
+        // SISTEMA DE MEMORIA DE PROTOCOLOS
+        // ========================================
+
+        const AVIA_MEMORY = {
+            protocols: AVIAStorage.load('protocols', {
+                libroBlanco: { loaded: true, version: 'v3', size: '24KB' },
+                fusionRules: { loaded: true, version: 'v1', size: '8KB' },
+                atomicGuidelines: { loaded: true, version: 'v1', size: '12KB' },
+                apiSpecs: { loaded: false, version: null, size: null }
+            }),
+            lastSync: Date.now(),
+            
+            save() {
+                AVIAStorage.save('protocols', this.protocols);
+                this.lastSync = Date.now();
+            },
+            
+            getActiveCount() {
+                return Object.values(this.protocols).filter(p => p.loaded).length;
+            },
+            
+            updateUI() {
+                const countEl = document.querySelector('.anchor-indicator span:last-child');
+                if (countEl) {
+                    countEl.textContent = `${this.getActiveCount()} activos`;
+                }
+                const syncEl = document.getElementById('anchorLastSync');
+                if (syncEl) {
+                    syncEl.textContent = 'ahora';
+                }
+                const sessionEl = document.getElementById('sessionCount');
+                if (sessionEl) {
+                    sessionEl.textContent = metrics.sessions;
+                }
+            }
+        };
+
+        function toggleProtocolAnchor() {
+            const content = document.getElementById('anchorContent');
+            content.classList.toggle('active');
+        }
+
+        // ========================================
+        // SISTEMA AVIA-CLEAN-003
+        // ========================================
+
+        const AVIA_CLEAN = {
+            version: '3.1',
+            
+            CORRUPT_PATTERNS: [
+                /%PDF-[\d.]+/gi,
+                /%%EOF/gi,
+                /\d+\s+\d+\s+obj[\s\S]{0,500}?endobj/gi,
+                /stream[\s\S]{0,1000}?endstream/gi,
+                /xref[\s\S]{0,500}?trailer/gi,
+                /startxref\s*\d+/gi,
+                /<<[^>]{0,200}>>/g,
+                /\/Filter\s*\/\w+/gi,
+                /\/Length\s*\d+/gi,
+                /\/Type\s*\/\w+/gi,
+                /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]+/g
+            ],
+            
+            CORRUPT_SIGNATURES: ['%PDF-', 'endobj', 'endstream', '/Filter', '/FlateDecode', 'startxref'],
+            
+            stats: { corrections: 0, blocksRemoved: 0, method: null },
+            
+            reset() {
+                this.stats = { corrections: 0, blocksRemoved: 0, method: null };
+            },
+            
+            isCorrupt(text) {
+                if (!text || typeof text !== 'string') return true;
+                for (const sig of this.CORRUPT_SIGNATURES) {
+                    if (text.includes(sig)) return true;
+                }
+                const readable = text.match(/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ0-9\s.,;:!?¿¡'"()\-]/g);
+                return !readable || (readable.length / text.length) < 0.5;
+            },
+            
+            clean(text) {
+                if (!text) return '';
+                let cleaned = text;
+                
+                for (const pattern of this.CORRUPT_PATTERNS) {
+                    const before = cleaned.length;
+                    cleaned = cleaned.replace(pattern, ' ');
+                    if (cleaned.length < before) this.stats.corrections++;
+                }
+                
+                cleaned = cleaned
+                    .replace(/\n{4,}/g, '\n\n')
+                    .replace(/ {3,}/g, ' ')
+                    .replace(/^\s*\n/gm, '')
+                    .trim();
+                
+                return cleaned;
+            },
+            
+            isUsable(text) {
+                if (!text || text.length < 50) return false;
+                if (this.isCorrupt(text)) return false;
+                const words = text.match(/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]{3,}/gi);
+                return words && words.length >= 10;
+            }
+        };
+
+        // ========================================
+        // MÉTRICAS DEL SISTEMA
+        // ========================================
+
+        let metrics = AVIAStorage.load('metrics', {
+            fusions: 0,
+            validations: 0,
+            docs: 0,
+            assistants: 0,
+            sessions: 0
+        });
+
+        metrics.sessions++;
+        AVIAStorage.save('metrics', metrics);
+
+        function updateMetricsDisplay() {
+            const el = id => document.getElementById(id);
+            
+            if (el('stat-fusions')) el('stat-fusions').textContent = metrics.fusions;
+            if (el('stat-validations')) el('stat-validations').textContent = metrics.validations;
+            if (el('stat-docs')) el('stat-docs').textContent = metrics.docs;
+            if (el('stat-assistants')) el('stat-assistants').textContent = metrics.assistants;
+            if (el('metric-fusions')) el('metric-fusions').textContent = metrics.fusions;
+            if (el('metric-validations')) el('metric-validations').textContent = metrics.validations;
+            if (el('metric-docs')) el('metric-docs').textContent = metrics.docs;
+            if (el('metric-assistants')) el('metric-assistants').textContent = metrics.assistants;
+            if (el('metric-sessions')) el('metric-sessions').textContent = metrics.sessions;
+
+            const maxVal = Math.max(metrics.fusions, metrics.validations, metrics.docs, metrics.assistants, 1);
+            const bars = document.querySelectorAll('.chart-bar');
+            if (bars.length >= 5) {
+                bars[0].style.height = Math.max((metrics.fusions / maxVal) * 100, 10) + '%';
+                bars[1].style.height = Math.max((metrics.validations / maxVal) * 100, 10) + '%';
+                bars[2].style.height = Math.max((metrics.docs / maxVal) * 100, 10) + '%';
+                bars[3].style.height = Math.max((metrics.assistants / maxVal) * 100, 10) + '%';
+                bars[4].style.height = '30%';
+            }
+            
+            AVIA_MEMORY.updateUI();
+        }
+
+        // ========================================
+        // NAVEGACIÓN
+        // ========================================
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+        }
+
+        // ========================================
+        // TOAST NOTIFICATIONS
+        // ========================================
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-message">${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('visible'));
+            setTimeout(() => {
+                toast.classList.remove('visible');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // ========================================
+        // MODAL
+        // ========================================
+
+        function showModal(items) {
+            document.getElementById('suggestionsList').innerHTML = items.map(i => 
+                `<li><span class="icon">${i.icon || '💡'}</span><span>${i.text}</span></li>`
+            ).join('');
+            document.getElementById('modalOverlay').classList.add('visible');
+            document.getElementById('suggestionsModal').classList.add('visible');
+        }
+
+        function hideModal() {
+            document.getElementById('modalOverlay').classList.remove('visible');
+            document.getElementById('suggestionsModal').classList.remove('visible');
+        }
+
+        // ========================================
+        // AVIA FUSION
+        // ========================================
+
+        let fusionResult = '';
+
+        function performFusion() {
+            const html1 = document.getElementById('fusion-input1').value.trim();
+            const html2 = document.getElementById('fusion-input2').value.trim();
+
+            if (!html1 || !html2) {
+                showToast('Por favor, introduce ambos documentos HTML para fusionar.', 'warning');
+                return;
+            }
+
+            const extractSection = (html, regex) => {
+                const match = html.match(regex);
+                return match ? match[1].trim() : '';
+            };
+
+            const styles1 = extractSection(html1, /<style[^>]*>([\s\S]*?)<\/style>/gi) || '';
+            const styles2 = extractSection(html2, /<style[^>]*>([\s\S]*?)<\/style>/gi) || '';
+            
+            const scripts1 = extractSection(html1, /<script[^>]*>([\s\S]*?)<\/script>/gi) || '';
+            const scripts2 = extractSection(html2, /<script[^>]*>([\s\S]*?)<\/script>/gi) || '';
+
+            const body1 = extractSection(html1, /<body[^>]*>([\s\S]*?)<\/body>/i) || html1;
+            const body2 = extractSection(html2, /<body[^>]*>([\s\S]*?)<\/body>/i) || html2;
+
+            const cleanBody = (body) => {
+                return body
+                    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+                    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+                    .trim();
+            };
+
+            fusionResult = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Fusion Result</title>
+    <style>
+/* === Estilos del Documento 1 === */
+${styles1}
+
+/* === Estilos del Documento 2 === */
+${styles2}
+    </style>
+</head>
+<body>
+<!-- === Contenido del Documento 1 === -->
+${cleanBody(body1)}
+
+<!-- === Contenido del Documento 2 === -->
+${cleanBody(body2)}
+
+<script>
+// === Scripts del Documento 1 ===
+${scripts1}
+
+// === Scripts del Documento 2 ===
+${scripts2}
+<\/script>
+</body>
+</html>`;
+
+            document.getElementById('fusion-output').textContent = fusionResult;
+            document.getElementById('fusion-result').style.display = 'block';
+
+            metrics.fusions++;
+            AVIAStorage.save('metrics', metrics);
+            updateMetricsDisplay();
+            showToast('Fusión completada exitosamente', 'success');
+        }
+
+        function clearFusion() {
+            document.getElementById('fusion-input1').value = '';
+            document.getElementById('fusion-input2').value = '';
+            document.getElementById('fusion-result').style.display = 'none';
+            fusionResult = '';
+        }
+
+        function downloadFusion() {
+            if (!fusionResult) {
+                showToast('No hay resultado para descargar. Realiza una fusión primero.', 'warning');
+                return;
+            }
+            const blob = new Blob([fusionResult], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'avia-fusion-result.html';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Archivo descargado', 'success');
+        }
+
+        // ========================================
+        // AVIA VALIDATOR
+        // ========================================
+
+        function performValidation() {
+            const text1 = document.getElementById('validator-input1').value;
+            const text2 = document.getElementById('validator-input2').value;
+
+            if (!text1 || !text2) {
+                showToast('Por favor, introduce ambas versiones para comparar.', 'warning');
+                return;
+            }
+
+            const lines1 = text1.split('\n');
+            const lines2 = text2.split('\n');
+
+            const set1 = new Set(lines1.map(l => l.trim()).filter(l => l));
+            const set2 = new Set(lines2.map(l => l.trim()).filter(l => l));
+
+            const added = [...set2].filter(line => !set1.has(line));
+            const removed = [...set1].filter(line => !set2.has(line));
+            const unchanged = [...set1].filter(line => set2.has(line));
+
+            document.getElementById('diff-added').textContent = added.length;
+            document.getElementById('diff-removed').textContent = removed.length;
+            document.getElementById('diff-unchanged').textContent = unchanged.length;
+
+            const escapeHtml = (text) => {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+
+            document.getElementById('diff-added-list').innerHTML = added.length > 0 
+                ? added.slice(0, 20).map(line => `<div class="diff-added">${escapeHtml(line.substring(0, 100))}</div>`).join('')
+                : '<p style="color: var(--avia-gray);">Sin adiciones</p>';
+
+            document.getElementById('diff-removed-list').innerHTML = removed.length > 0
+                ? removed.slice(0, 20).map(line => `<div class="diff-removed">${escapeHtml(line.substring(0, 100))}</div>`).join('')
+                : '<p style="color: var(--avia-gray);">Sin eliminaciones</p>';
+
+            document.getElementById('validator-result').style.display = 'block';
+
+            metrics.validations++;
+            AVIAStorage.save('metrics', metrics);
+            updateMetricsDisplay();
+            showToast('Comparación completada', 'success');
+        }
+
+        function clearValidator() {
+            document.getElementById('validator-input1').value = '';
+            document.getElementById('validator-input2').value = '';
+            document.getElementById('validator-result').style.display = 'none';
+        }
+
+        // ========================================
+        // AVIA DOCS - PROCESADOR DE DOCUMENTOS
+        // ========================================
+
+        let docsState = {
+            fileContent: '',
+            fileName: '',
+            fileSize: 0,
+            isProcessing: false,
+            stats: { pages: 0, chars: 0, chunks: 0, timeMs: 0, method: '' }
+        };
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function showStatus(type, message) {
+            const bar = document.getElementById('statusBar');
+            bar.classList.remove('hidden', 'info', 'success', 'error', 'warning');
+            bar.classList.add(type);
+            document.getElementById('statusText').textContent = message;
+        }
+
+        function hideStatus() {
+            document.getElementById('statusBar').classList.add('hidden');
+        }
+
+        function updateChunkProgress(current, total, chars) {
+            const progress = document.getElementById('chunksProgress');
+            progress.classList.add('visible');
+            
+            const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+            document.getElementById('chunkStatus').textContent = current === total ? 'Completado' : 'Procesando...';
+            document.getElementById('chunkPercent').textContent = `${percent}%`;
+            document.getElementById('chunkFill').style.width = `${percent}%`;
+            document.getElementById('chunkDetails').textContent = `Chunk ${current} de ${total} | ${chars.toLocaleString()} caracteres extraídos`;
+        }
+
+        function hideChunkProgress() {
+            document.getElementById('chunksProgress').classList.remove('visible');
+        }
+
+        function showProcessingStats(stats) {
+            const panel = document.getElementById('processingStats');
+            panel.classList.add('visible');
+            document.getElementById('statPages').textContent = stats.pages;
+            document.getElementById('statCharsExtracted').textContent = stats.chars.toLocaleString();
+            document.getElementById('statChunks').textContent = stats.chunks;
+            document.getElementById('statTime').textContent = `${(stats.timeMs / 1000).toFixed(1)}s`;
+        }
+
+        async function extractPDFWithPDFjs(file) {
+            if (typeof pdfjsLib === 'undefined') {
+                throw new Error('PDF.js no está disponible. Usa un archivo TXT.');
+            }
+            
+            const startTime = Date.now();
+            const arrayBuffer = await file.arrayBuffer();
+            
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdf = await loadingTask.promise;
+            
+            const numPages = pdf.numPages;
+            let fullText = '';
+            const chunks = [];
+            let currentChunk = '';
+            
+            for (let i = 1; i <= numPages; i++) {
+                updateChunkProgress(i, numPages, fullText.length);
+                
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items
+                    .map(item => item.str)
+                    .join(' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                
+                fullText += pageText + '\n\n';
+                currentChunk += pageText + '\n';
+                
+                if (currentChunk.length >= CONFIG.CHUNK_SIZE) {
+                    chunks.push(currentChunk);
+                    currentChunk = '';
+                }
+                
+                if (i % 5 === 0) {
+                    await new Promise(r => setTimeout(r, 10));
+                }
+            }
+            
+            if (currentChunk.length > 0) {
+                chunks.push(currentChunk);
+            }
+            
+            return {
+                text: fullText,
+                chunks: chunks,
+                stats: {
+                    pages: numPages,
+                    chars: fullText.length,
+                    chunks: chunks.length,
+                    timeMs: Date.now() - startTime,
+                    method: 'PDF.js'
+                }
+            };
+        }
+
+        async function processFile(file) {
+            if (docsState.isProcessing) return;
+            
+            if (file.size > CONFIG.MAX_FILE_SIZE) {
+                showToast(`Archivo muy grande. Máximo: ${formatSize(CONFIG.MAX_FILE_SIZE)}`, 'error');
+                return;
+            }
+            
+            docsState.isProcessing = true;
+            docsState.fileName = file.name;
+            docsState.fileSize = file.size;
+            
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            
+            showStatus('info', 'Iniciando procesamiento...');
+            document.getElementById('fileUpload').classList.add('processing');
+            
+            AVIA_CLEAN.reset();
+            
+            try {
+                let result;
+                const startTime = Date.now();
+                
+                if (ext === '.pdf') {
+                    result = await extractPDFWithPDFjs(file);
+                } else if (ext === '.txt' || ext === '.md') {
+                    const text = await file.text();
+                    const chunks = [];
+                    for (let i = 0; i < text.length; i += CONFIG.CHUNK_SIZE) {
+                        chunks.push(text.substring(i, i + CONFIG.CHUNK_SIZE));
+                    }
+                    result = {
+                        text: text,
+                        chunks: chunks,
+                        stats: {
+                            pages: 1,
+                            chars: text.length,
+                            chunks: chunks.length,
+                            timeMs: Date.now() - startTime,
+                            method: 'TextDirect'
+                        }
+                    };
+                } else if (ext === '.json') {
+                    const text = await file.text();
+                    const parsed = JSON.parse(text);
+                    const formatted = JSON.stringify(parsed, null, 2);
+                    result = {
+                        text: formatted,
+                        chunks: [formatted],
+                        stats: {
+                            pages: 1,
+                            chars: formatted.length,
+                            chunks: 1,
+                            timeMs: Date.now() - startTime,
+                            method: 'JSONParse'
+                        }
+                    };
+                } else {
+                    throw new Error(`Formato ${ext} no soportado`);
+                }
+                
+                let cleanedText = result.text;
+                if (AVIA_CLEAN.isCorrupt(cleanedText)) {
+                    cleanedText = AVIA_CLEAN.clean(cleanedText);
+                }
+                
+                docsState.fileContent = cleanedText;
+                docsState.stats = result.stats;
+                
+                hideChunkProgress();
+                
+                document.getElementById('fileInfo').classList.add('visible');
+                document.getElementById('fileNameText').textContent = file.name;
+                document.getElementById('fileMeta').textContent = `${formatSize(file.size)} | ${result.stats.pages} páginas | ${result.stats.chars.toLocaleString()} chars`;
+                document.getElementById('extractionStatus').textContent = `✅ Extracción exitosa (${result.stats.method})`;
+                document.getElementById('extractionStatus').style.display = 'block';
+                
+                showProcessingStats(result.stats);
+                
+                document.getElementById('docs-output').value = cleanedText;
+                
+                hideStatus();
+                document.getElementById('fileUpload').classList.remove('processing');
+                document.getElementById('fileUpload').classList.add('has-file');
+                
+                metrics.docs++;
+                AVIAStorage.save('metrics', metrics);
+                updateMetricsDisplay();
+                
+                showToast(`✅ Extraídos ${result.stats.chars.toLocaleString()} caracteres`, 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideStatus();
+                hideChunkProgress();
+                document.getElementById('fileUpload').classList.remove('processing');
+                
+                showToast(`Error: ${error.message}`, 'error');
+                
+                showModal([
+                    { icon: '📋', text: 'Copia el texto del documento y pégalo directamente' },
+                    { icon: '🔗', text: 'Usa un conversor online como ilovepdf.com/pdf_to_txt' },
+                    { icon: '📄', text: 'Guarda el documento como .TXT y súbelo de nuevo' }
+                ]);
+            }
+            
+            docsState.isProcessing = false;
+        }
+
+        function removeFile() {
+            docsState.fileContent = '';
+            docsState.fileName = '';
+            docsState.fileSize = 0;
+            docsState.stats = { pages: 0, chars: 0, chunks: 0, timeMs: 0, method: '' };
+            
+            document.getElementById('fileInfo').classList.remove('visible');
+            document.getElementById('fileUpload').classList.remove('has-file', 'processing');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('processingStats').classList.remove('visible');
+            document.getElementById('docs-output').value = '';
+            hideChunkProgress();
+            
+            showToast('Archivo eliminado', 'info');
+        }
+
+        function copyDocsContent() {
+            const content = document.getElementById('docs-output').value;
+            if (!content) {
+                showToast('No hay contenido para copiar', 'warning');
+                return;
+            }
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('Contenido copiado al portapapeles', 'success');
+            }).catch(() => {
+                showToast('Error al copiar', 'error');
+            });
+        }
+
+        function downloadDocsContent() {
+            const content = document.getElementById('docs-output').value;
+            if (!content) {
+                showToast('No hay contenido para descargar', 'warning');
+                return;
+            }
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (docsState.fileName || 'documento') + '_extracted.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Archivo descargado', 'success');
+        }
+
+        function clearDocs() {
+            removeFile();
+        }
+
+        // ========================================
+        // AVIA STUDIO - ASSISTANT BUILDER
+        // ========================================
+
+        let selectedAgents = [];
+        let selectedProfile = null;
+        let selectedDomain = null;
+        let generatedConfig = null;
+
+        function setStudioMode(mode) {
+            document.getElementById('mode-assistant').classList.toggle('active', mode === 'assistant');
+            document.getElementById('mode-components').classList.toggle('active', mode === 'components');
+            document.getElementById('assistant-mode').style.display = mode === 'assistant' ? 'block' : 'none';
+            document.getElementById('components-mode').style.display = mode === 'components' ? 'block' : 'none';
+        }
+
+        function toggleAgent(element) {
+            const agentId = element.dataset.agent;
+            element.classList.toggle('selected');
+            
+            if (element.classList.contains('selected')) {
+                if (!selectedAgents.includes(agentId)) {
+                    selectedAgents.push(agentId);
+                }
+            } else {
+                selectedAgents = selectedAgents.filter(a => a !== agentId);
+            }
+        }
+
+        function selectProfile(element) {
+            document.querySelectorAll('[data-profile]').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedProfile = element.dataset.profile;
+        }
+
+        function selectDomain(element) {
+            document.querySelectorAll('[data-domain]').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedDomain = element.dataset.domain;
+        }
+
+        const agentData = {
+            cuida: { name: 'CUIDA', icon: '🤗', category: 'inclusion', description: 'Asistente especializado en cuidadores y dependencia' },
+            humana: { name: 'HUMANA', icon: '💚', category: 'inclusion', description: 'Humanización de la tecnología' },
+            diversia: { name: 'DIVERSIA', icon: '🌈', category: 'inclusion', description: 'Apoyo a neurodivergencias' },
+            semia: { name: 'SEMIA', icon: '🔣', category: 'ethics', description: 'Análisis semiótico y de signos' },
+            ethica: { name: 'ETHICA', icon: '⚖️', category: 'ethics', description: 'Ética en inteligencia artificial' },
+            creativa: { name: 'CREATIVA', icon: '🎨', category: 'ethics', description: 'Creatividad inclusiva' },
+            espejo: { name: 'ESPEJO', icon: '🪞', category: 'wellbeing', description: 'Introspección emocional' },
+            camino: { name: 'CAMINO', icon: '🛤️', category: 'wellbeing', description: 'Planificación vital' },
+            sanador: { name: 'SANADOR', icon: '💆', category: 'wellbeing', description: 'Bienestar integral' },
+            nomada: { name: 'NÓMADA', icon: '🎒', category: 'tech', description: 'Funcionamiento offline y rural' },
+            universal: { name: 'UNIVERSAL', icon: '🌍', category: 'tech', description: 'API abierta global' },
+            memoria: { name: 'MEMORIA', icon: '📚', category: 'tech', description: 'Preservación del patrimonio oral' }
+        };
+
+        function generateAssistant() {
+            const name = document.getElementById('assistant-name').value.trim() || 'AVIA Assistant';
+            const audience = document.getElementById('target-audience').value;
+
+            if (selectedAgents.length === 0) {
+                showToast('Selecciona al menos un agente de la constelación.', 'warning');
+                return;
+            }
+
+            if (!selectedProfile) {
+                showToast('Selecciona un perfil afectivo.', 'warning');
+                return;
+            }
+
+            if (!selectedDomain) {
+                showToast('Selecciona un dominio.', 'warning');
+                return;
+            }
+
+            const getProfileCharacteristics = (profile) => {
+                const profiles = {
+                    empatico: ['Escucha activa', 'Validación emocional', 'Lenguaje cálido', 'Paciencia'],
+                    mentor: ['Orientación experta', 'Retroalimentación constructiva', 'Estructura clara', 'Motivación'],
+                    ludico: ['Gamificación', 'Humor apropiado', 'Interactividad', 'Recompensas'],
+                    profesional: ['Precisión', 'Formalidad', 'Eficiencia', 'Objetividad']
+                };
+                return profiles[profile] || [];
+            };
+
+            const getDomainFocus = (domain) => {
+                const domains = {
+                    educacion: 'Aprendizaje adaptativo, evaluación formativa, recursos pedagógicos',
+                    salud: 'Bienestar físico y mental, acompañamiento terapéutico, hábitos saludables',
+                    accesibilidad: 'Diseño universal, tecnología asistiva, inclusión digital',
+                    cultura: 'Patrimonio, expresión artística, identidad cultural'
+                };
+                return domains[domain] || '';
+            };
+
+            generatedConfig = {
+                name: name,
+                version: '1.0.0',
+                createdAt: new Date().toISOString(),
+                methodology: 'AVIA SIESTA / SIALU',
+                constellation: selectedAgents.map(id => ({
+                    id: id,
+                    ...agentData[id]
+                })),
+                profile: {
+                    type: selectedProfile,
+                    characteristics: getProfileCharacteristics(selectedProfile)
+                },
+                domain: {
+                    type: selectedDomain,
+                    focus: getDomainFocus(selectedDomain)
+                },
+                targetAudience: audience || 'general',
+                systemPrompt: `Eres ${name}, un asistente IA del ecosistema AVIA.
+
+Integras las capacidades de los siguientes agentes: ${selectedAgents.map(id => agentData[id].name).join(', ')}.
+
+Tu perfil afectivo es ${selectedProfile}, lo que significa que debes ${getProfileCharacteristics(selectedProfile).join(', ').toLowerCase()}.
+
+Te especializas en el dominio de ${selectedDomain}: ${getDomainFocus(selectedDomain)}.
+
+Tu público objetivo son: ${audience || 'usuarios generales'}.
+
+Siempre actúas siguiendo los principios AVIA:
+- Accesibilidad universal
+- Inclusión digital
+- Ética en IA
+- Bienestar del usuario`
+            };
+
+            document.getElementById('assistant-config').textContent = JSON.stringify(generatedConfig, null, 2);
+            document.getElementById('assistant-preview').style.display = 'block';
+
+            metrics.assistants++;
+            AVIAStorage.save('metrics', metrics);
+            updateMetricsDisplay();
+            showToast('Asistente generado exitosamente', 'success');
+        }
+
+        function resetAssistantBuilder() {
+            selectedAgents = [];
+            selectedProfile = null;
+            selectedDomain = null;
+            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('selected'));
+            document.getElementById('assistant-name').value = '';
+            document.getElementById('target-audience').value = '';
+            document.getElementById('assistant-preview').style.display = 'none';
+            generatedConfig = null;
+        }
+
+        function downloadAssistantConfig() {
+            if (!generatedConfig) return;
+            const blob = new Blob([JSON.stringify(generatedConfig, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${generatedConfig.name.replace(/\s+/g, '-').toLowerCase()}-config.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Configuración descargada', 'success');
+        }
+
+        function copyAssistantConfig() {
+            if (!generatedConfig) return;
+            navigator.clipboard.writeText(JSON.stringify(generatedConfig, null, 2))
+                .then(() => showToast('Configuración copiada al portapapeles', 'success'))
+                .catch(() => showToast('Error al copiar', 'error'));
+        }
+
+        // ========================================
+        // COMPONENT BUILDER
+        // ========================================
+
+        let canvasComponents = [];
+
+        function dragComponent(event) {
+            event.dataTransfer.setData('component', event.target.dataset.component);
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+            document.getElementById('design-canvas').classList.add('dragover');
+        }
+
+        function leaveDrop(event) {
+            document.getElementById('design-canvas').classList.remove('dragover');
+        }
+
+        function dropComponent(event) {
+            event.preventDefault();
+            document.getElementById('design-canvas').classList.remove('dragover');
+            
+            const componentType = event.dataTransfer.getData('component');
+            if (!componentType) return;
+
+            canvasComponents.push({ id: Date.now(), type: componentType });
+            renderCanvas();
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('design-canvas');
+            
+            if (canvasComponents.length === 0) {
+                canvas.innerHTML = '<p style="color: var(--avia-gray); padding: 2rem; text-align: center;">Arrastra componentes aquí para diseñar tu interfaz</p>';
+                return;
+            }
+
+            const labels = {
+                button: '🔘 Botón',
+                card: '🃏 Card',
+                input: '📝 Input',
+                header: '📰 Header',
+                image: '🖼️ Imagen',
+                list: '📋 Lista'
+            };
+
+            canvas.innerHTML = canvasComponents.map(comp => 
+                `<div style="background: rgba(255,255,255,0.1); padding: 0.75rem; margin: 0.5rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>${labels[comp.type] || comp.type}</span>
+                    <button onclick="removeComponent(${comp.id})" style="background: var(--avia-danger); border: none; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer;">×</button>
+                </div>`
+            ).join('');
+        }
+
+        function removeComponent(id) {
+            canvasComponents = canvasComponents.filter(c => c.id !== id);
+            renderCanvas();
+        }
+
+        function clearCanvas() {
+            canvasComponents = [];
+            renderCanvas();
+            document.getElementById('component-preview').style.display = 'none';
+        }
+
+        function exportComponentDesign() {
+            if (canvasComponents.length === 0) {
+                showToast('No hay componentes para exportar.', 'warning');
+                return;
+            }
+
+            const templates = {
+                button: '<button class="avia-btn">Botón AVIA</button>',
+                card: '<div class="avia-card"><h3>Título</h3><p>Contenido</p></div>',
+                input: '<input type="text" class="avia-input" placeholder="Escribe aquí...">',
+                header: '<header class="avia-header"><h1>Encabezado</h1></header>',
+                image: '<div class="avia-image">🖼️ Imagen</div>',
+                list: '<ul class="avia-list"><li>Item 1</li><li>Item 2</li></ul>'
+            };
+
+            const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>AVIA Component Design</title>
+    <style>
+        body { font-family: system-ui; padding: 2rem; background: #f8fafc; }
+        .avia-btn { padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 0.5rem; }
+        .avia-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 0.5rem 0; }
+        .avia-input { padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; max-width: 300px; margin: 0.5rem 0; }
+        .avia-header { background: #1e293b; color: white; padding: 1rem 2rem; border-radius: 8px; margin: 0.5rem 0; }
+        .avia-image { background: #e2e8f0; padding: 3rem; text-align: center; border-radius: 8px; margin: 0.5rem 0; }
+        .avia-list { background: white; border-radius: 8px; padding: 1rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 0.5rem 0; }
+    </style>
+</head>
+<body>
+    ${canvasComponents.map(c => templates[c.type] || '').join('\n    ')}
+</body>
+</html>`;
+
+            document.getElementById('component-html').textContent = html;
+            document.getElementById('component-preview').style.display = 'block';
+            showToast('HTML generado', 'success');
+        }
+
+        // ========================================
+        // METRICS
+        // ========================================
+
+        function exportMetrics() {
+            const data = {
+                exportedAt: new Date().toISOString(),
+                version: CONFIG.VERSION,
+                metrics: metrics
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'avia-hub-metrics.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Métricas exportadas', 'success');
+        }
+
+        function resetMetrics() {
+            if (confirm('¿Estás seguro de que quieres reiniciar todas las métricas?')) {
+                metrics = { fusions: 0, validations: 0, docs: 0, assistants: 0, sessions: 1 };
+                AVIAStorage.save('metrics', metrics);
+                updateMetricsDisplay();
+                showToast('Métricas reiniciadas', 'info');
+            }
+        }
+
+        // ========================================
+        // INICIALIZACIÓN
+        // ========================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log(`🛡️ AVIA HUB v${CONFIG.VERSION} - Sistema Consolidado`);
+            console.log('📄 PDF.js disponible:', typeof pdfjsLib !== 'undefined');
+            console.log('🧠 Sistema de Memoria:', AVIA_MEMORY.getActiveCount(), 'protocolos activos');
+            console.log('📝 v42 Cambio: nav-tabs eliminado del header');
+            
+            updateMetricsDisplay();
+            
+            AVIA_MEMORY.save();
+
+            const fileUpload = document.getElementById('fileUpload');
+            const fileInput = document.getElementById('fileInput');
+
+            fileUpload.addEventListener('click', (e) => {
+                if (!e.target.closest('.remove-file')) {
+                    fileInput.click();
+                }
+            });
+
+            fileUpload.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUpload.classList.add('dragover');
+            });
+
+            fileUpload.addEventListener('dragleave', () => {
+                fileUpload.classList.remove('dragover');
+            });
+
+            fileUpload.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUpload.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    processFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    processFile(e.target.files[0]);
+                }
+            });
+
+            document.getElementById('removeFile').addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeFile();
+            });
+
+            document.getElementById('modalOverlay').addEventListener('click', hideModal);
+
+            console.log('✅ AVIA HUB v42 inicializado correctamente');
+        });
+    </script>
+</body>
+</html>

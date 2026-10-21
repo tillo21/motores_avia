@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoLocInteligente v3.1.1 | AVIA-Proyecto (FIXED)</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <style>
+    :root {
+      --primary: #409cff;
+      --primary-hover: #3a8de8;
+      --secondary: #67c23a;
+      --danger: #f56c6c;
+      --warning: #e6a23c;
+      --info: #909399;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f7fa;
+      --card-bg: #ffffff;
+      --text-primary: #303133;
+      --text-secondary: #606266;
+      --border-color: #dcdfe6;
+      --hover-bg: #f5f7fa;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+      --radius: 8px;
+      --radius-sm: 4px;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    
+    [data-theme="dark"] {
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #252525;
+      --card-bg: #2a2a2a;
+      --text-primary: #e4e7ed;
+      --text-secondary: #c0c4cc;
+      --border-color: #4c4d4f;
+      --hover-bg: #363636;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      transition: background 0.3s, color 0.3s;
+    }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); }
+    
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+    }
+    
+    .logo { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+    
+    .version {
+      display: inline-block;
+      background: var(--secondary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-left: var(--spacing-sm);
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      margin-bottom: var(--spacing-lg);
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    
+    .card-header {
+      padding: var(--spacing-md);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    
+    .card-icon { font-size: 1.5rem; }
+    .card-title { font-size: 1.1rem; font-weight: 600; }
+    
+    .upload-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius);
+      padding: var(--spacing-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: var(--bg-secondary);
+    }
+    
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(64, 156, 255, 0.05);
+      transform: scale(1.01);
+    }
+    
+    .upload-icon { font-size: 4rem; margin-bottom: var(--spacing-md); }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      text-decoration: none;
+    }
+    
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background: var(--hover-bg); }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-weight: 500; color: var(--text-secondary); }
+    .info-value { color: var(--text-primary); font-weight: 600; }
+    
+    .alert {
+      padding: var(--spacing-md);
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      margin: 15px;
+    }
+    
+    .alert-success { background: rgba(103, 194, 58, 0.1); border: 1px solid var(--secondary); color: var(--secondary); }
+    .alert-warning { background: rgba(230, 162, 60, 0.1); border: 1px solid var(--warning); color: var(--warning); }
+    .alert-error { background: rgba(245, 108, 108, 0.1); border: 1px solid var(--danger); color: var(--danger); }
+    
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    
+    .toast {
+      background: var(--card-bg);
+      padding: var(--spacing-md);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      margin-bottom: var(--spacing-sm);
+      min-width: 300px;
+      animation: slideIn 0.3s ease-out;
+      border-left: 4px solid var(--primary);
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    #leaflet-map { height: 450px; z-index: 1; }
+    
+    .leaflet-popup-content-wrapper {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .leaflet-popup-tip { background: var(--card-bg); }
+    
+    .leaflet-control-zoom a {
+      background: var(--card-bg) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--border-color) !important;
+    }
+    
+    .custom-marker {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ff4444;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    
+    .debug-panel {
+      background: #1a1a1a;
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      padding: var(--spacing-md);
+      margin: var(--spacing-md);
+      border-radius: var(--radius-sm);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    @media (max-width: 768px) {
+      .container { padding: var(--spacing-md); }
+      .header-content { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-content">
+      <div>
+        <span class="logo">🌍 GeoLocInteligente</span>
+        <span class="version">v3.1.1-FIXED</span>
+      </div>
+      <div>
+        <button class="btn btn-secondary" onclick="toggleTheme()">
+          🌓 Tema
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📤</span>
+        <span class="card-title">Cargar Imagen</span>
+      </div>
+      
+      <div style="padding: var(--spacing-lg);">
+        <div class="upload-zone" id="upload-zone">
+          <div class="upload-icon">📸</div>
+          <h3>Arrastra tu imagen aquí</h3>
+          <p style="color: var(--text-secondary); margin: var(--spacing-md) 0;">
+            o haz clic para seleccionar
+          </p>
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+          <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+            📂 Seleccionar archivo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="results" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-icon">🖼️</span>
+          <span class="card-title">Vista Previa</span>
+        </div>
+        <div id="image-preview" style="padding: var(--spacing-lg); text-align: center;"></div>
+      </div>
+
+      <div id="debug-info" class="card" style="display: none;">
+        <div class="card-header">
+          <span class="card-icon">🐛</span>
+          <span class="card-title">Debug GPS</span>
+        </div>
+        <pre id="debug-console" class="debug-panel"></pre>
+      </div>
+
+      <div id="image-info"></div>
+      <div id="address-container"></div>
+
+      <div class="card" id="map-card" style="display: none;">
+        <div class="card-header">
+          <span class="card-icon">🗺️</span>
+          <span class="card-title">Ubicación en Mapa</span>
+        </div>
+        
+        <div id="leaflet-map"></div>
+        
+        <div style="padding: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="centerMapOnMarker()">📍 Centrar</button>
+          <a id="google-maps-link" href="#" target="_blank" class="btn btn-primary">🌐 Google Maps</a>
+          <button class="btn btn-secondary" onclick="toggleDebug()">🐛 Debug</button>
+        </div>
+      </div>
+
+      <div id="ai-analysis-container" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🤖</span>
+            <span class="card-title">Análisis IA (Próximamente)</span>
+          </div>
+          <div style="padding: var(--spacing-lg);">
+            <p style="color: var(--text-secondary);">
+              Esta imagen no contiene GPS. El análisis por IA estará disponible en Sprint 2.1
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@4/dist/full.umd.js"></script>
+
+  <script>
+    // ============================================
+    // GeoLocInteligente v3.1.1-FIXED
+    // Correcciones: localStorage safe + GPS debug
+    // ============================================
+
+    const appState = {
+      currentFile: null,
+      currentEXIF: null,
+      mapInstance: null,
+      currentMarker: null,
+      debugMode: false,
+      debugLog: []
+    };
+
+    const elements = {
+      uploadZone: document.getElementById('upload-zone'),
+      fileInput: document.getElementById('file-input'),
+      results: document.getElementById('results'),
+      imagePreview: document.getElementById('image-preview'),
+      imageInfo: document.getElementById('image-info'),
+      addressContainer: document.getElementById('address-container'),
+      mapCard: document.getElementById('map-card'),
+      aiContainer: document.getElementById('ai-analysis-container'),
+      toastContainer: document.getElementById('toast-container'),
+      debugInfo: document.getElementById('debug-info'),
+      debugConsole: document.getElementById('debug-console')
+    };
+
+    // ============================================
+    // SAFE STORAGE (fix localStorage sandboxed)
+    // ============================================
+    
+    const SafeStorage = {
+      _memory: {},
+      
+      setItem(key, value) {
+        try {
+          localStorage.setItem(key, value);
+          return true;
+        } catch (e) {
+          this._memory[key] = value;
+          return false;
+        }
+      },
+      
+      getItem(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (e) {
+          return this._memory[key] || null;
+        }
+      },
+      
+      isAvailable() {
+        try {
+          const test = '__test__';
+          localStorage.setItem(test, test);
+          localStorage.removeItem(test);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+    };
+
+    // ============================================
+    // DEBUG SYSTEM
+    // ============================================
+    
+    function debugLog(message, data = null) {
+      const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+      const logEntry = `[${timestamp}] ${message}`;
+      appState.debugLog.push(logEntry);
+      console.log(message, data || '');
+      
+      if (appState.debugMode && elements.debugConsole) {
+        elements.debugConsole.textContent = appState.debugLog.slice(-20).join('\n');
+      }
+    }
+    
+    function toggleDebug() {
+      appState.debugMode = !appState.debugMode;
+      elements.debugInfo.style.display = appState.debugMode ? 'block' : 'none';
+      
+      if (appState.debugMode) {
+        elements.debugConsole.textContent = appState.debugLog.slice(-20).join('\n');
+        showNotification('🐛 Modo debug activado', 'info');
+      } else {
+        showNotification('🐛 Modo debug desactivado', 'info');
+      }
+    }
+
+    // ============================================
+    // NOTIFICATIONS
+    // ============================================
+    
+    function showNotification(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      
+      const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+      
+      toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.5rem;">${icons[type] || icons.info}</span>
+          <span>${message}</span>
+        </div>
+      `;
+      
+      elements.toastContainer.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // ============================================
+    // THEME TOGGLE
+    // ============================================
+    
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const newTheme = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      SafeStorage.setItem('theme', newTheme);
+      showNotification(`Tema ${newTheme === 'dark' ? 'oscuro' : 'claro'}`, 'success');
+    }
+
+    const savedTheme = SafeStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    // ============================================
+    // GPS VALIDATION (FIXED)
+    // ============================================
+    
+    function validateAndNormalizeGPS(lat, lon, source = 'unknown') {
+      debugLog(`🔍 Validando GPS desde: ${source}`);
+      debugLog(`   Raw: lat=${lat} (${typeof lat}), lon=${lon} (${typeof lon})`);
+      
+      lat = typeof lat === 'string' ? parseFloat(lat) : lat;
+      lon = typeof lon === 'string' ? parseFloat(lon) : lon;
+      
+      if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+        debugLog('❌ Coordenadas inválidas (no numérico o NaN)');
+        return null;
+      }
+      
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        debugLog(`❌ Fuera de rango: lat=${lat} lon=${lon}`);
+        return null;
+      }
+      
+      if (lat === 0 && lon === 0) {
+        debugLog('⚠️ Coordenadas (0,0) rechazadas');
+        return null;
+      }
+      
+      // Detectar inversión lat/lon (heurística España)
+      // Latitud España: 36-44°N, Longitud: -9 a 3°E
+      const likelySpain = (lat >= 36 && lat <= 44) && (lon >= -9 && lon <= 3);
+      const invertedSpain = (lon >= 36 && lon <= 44) && (lat >= -9 && lat <= 3);
+      
+      if (!likelySpain && invertedSpain) {
+        debugLog('⚠️ POSIBLE INVERSIÓN LAT/LON DETECTADA');
+        debugLog(`   Original: lat=${lat}, lon=${lon}`);
+        debugLog(`   Sugerido: lat=${lon}, lon=${lat}`);
+        
+        // Auto-swap sin confirmación (puede añadirse confirm() para interactivo)
+        const temp = lat;
+        lat = lon;
+        lon = temp;
+        debugLog('✅ Coordenadas intercambiadas automáticamente');
+      }
+      
+      debugLog(`✅ GPS válido: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+      return { lat, lon };
+    }
+
+    // ============================================
+    // DMS to DD CONVERTER
+    // ============================================
+    
+    function convertDMSToDD(dms, ref) {
+      if (!Array.isArray(dms) || dms.length !== 3) {
+        debugLog('❌ Formato DMS inválido');
+        return null;
+      }
+      
+      const [degrees, minutes, seconds] = dms;
+      let dd = degrees + (minutes / 60) + (seconds / 3600);
+      
+      if (ref === 'S' || ref === 'W') dd = -dd;
+      
+      debugLog(`DMS→DD: ${dms.join(',')} ${ref} → ${dd.toFixed(6)}°`);
+      return dd;
+    }
+
+    // ============================================
+    // EXIF EXTRACTION (FIXED)
+    // ============================================
+    
+    async function extractRealEXIF(file) {
+      try {
+        showNotification('📡 Extrayendo EXIF...', 'info');
+        debugLog('📷 Iniciando extracción EXIF');
+        debugLog(`   Archivo: ${file.name} (${(file.size/1024).toFixed(2)}KB)`);
+        
+        const exifData = await exifr.parse(file, {
+          gps: true,
+          ifd0: true,
+          exif: true,
+          xmp: true,
+          iptc: true,
+          translateKeys: true,
+          translateValues: true,
+          reviveValues: true,
+          sanitize: true
+        });
+
+        if (!exifData) {
+          debugLog('⚠️ No se encontró EXIF');
+          showNotification('⚠️ Sin EXIF', 'warning');
+          return null;
+        }
+        
+        debugLog('📦 EXIF raw extraído');
+        
+        // Extraer GPS con múltiples métodos
+        let latitude = null;
+        let longitude = null;
+        
+        // Método 1: Propiedades directas (preferido)
+        if (exifData.latitude !== undefined && exifData.longitude !== undefined) {
+          latitude = exifData.latitude;
+          longitude = exifData.longitude;
+          debugLog(`GPS Método 1: ${latitude}, ${longitude}`);
+        }
+        // Método 2: Conversión DMS
+        else if (exifData.GPSLatitude && exifData.GPSLongitude) {
+          latitude = convertDMSToDD(exifData.GPSLatitude, exifData.GPSLatitudeRef || 'N');
+          longitude = convertDMSToDD(exifData.GPSLongitude, exifData.GPSLongitudeRef || 'E');
+          debugLog(`GPS Método 2 (DMS): ${latitude}, ${longitude}`);
+        }
+        // Método 3: Anidado
+        else if (exifData.gps) {
+          latitude = exifData.gps.latitude || exifData.gps.Latitude;
+          longitude = exifData.gps.longitude || exifData.gps.Longitude;
+          debugLog(`GPS Método 3 (anidado): ${latitude}, ${longitude}`);
+        }
+        
+        // Validar GPS
+        let gpsData = null;
+        if (latitude !== null && longitude !== null) {
+          gpsData = validateAndNormalizeGPS(latitude, longitude, 'EXIF');
+        }
+        
+        const normalized = {
+          hasGPS: !!gpsData,
+          latitude: gpsData?.lat || null,
+          longitude: gpsData?.lon || null,
+          altitude: exifData.GPSAltitude || null,
+          make: exifData.Make || 'Desconocida',
+          model: exifData.Model || 'Desconocido',
+          software: exifData.Software || null,
+          dateTime: exifData.DateTimeOriginal || exifData.DateTime || null,
+          fNumber: exifData.FNumber || null,
+          exposureTime: exifData.ExposureTime || null,
+          iso: exifData.ISO || null,
+          focalLength: exifData.FocalLength || null,
+          width: exifData.ExifImageWidth || exifData.ImageWidth || null,
+          height: exifData.ExifImageHeight || exifData.ImageHeight || null,
+          orientation: exifData.Orientation || 1,
+          _raw: exifData
+        };
+
+        if (normalized.dateTime) {
+          try {
+            const date = normalized.dateTime instanceof Date ? normalized.dateTime : 
+                         new Date(String(normalized.dateTime).replace(/:/g, '-').replace(/-/, ':').replace(/-/, ':'));
+            
+            if (!isNaN(date.getTime())) {
+              normalized.dateTimeFormatted = date.toLocaleString('es-ES', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              });
+            }
+          } catch (e) {
+            debugLog('⚠️ Error formateando fecha');
+          }
+        }
+
+        debugLog('✅ EXIF normalizado correctamente');
+        showNotification('✅ EXIF extraído', 'success');
+        return normalized;
+
+      } catch (error) {
+        debugLog(`❌ Error EXIF: ${error.message}`);
+        showNotification('❌ Error EXIF', 'error');
+        return null;
+      }
+    }
+
+    // ============================================
+    // DISPLAY EXIF
+    // ============================================
+    
+    function displayEXIFData(exif) {
+      if (!exif) {
+        elements.imageInfo.innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-icon">⚠️</span>
+              <span class="card-title">Sin EXIF</span>
+            </div>
+            <div style="padding: var(--spacing-lg);">
+              <p style="color: var(--text-secondary);">
+                No se encontraron metadatos. Usa análisis IA (próximamente).
+              </p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      elements.imageInfo.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">📷</span>
+            <span class="card-title">Información EXIF</span>
+          </div>
+          
+          ${exif.hasGPS ? `
+            <div class="alert alert-success">
+              <strong>✅ GPS Detectado</strong><br>
+              Coordenadas: ${exif.latitude.toFixed(6)}°, ${exif.longitude.toFixed(6)}°
+            </div>
+          ` : `
+            <div class="alert alert-warning">
+              <strong>⚠️ Sin GPS</strong>
+            </div>
+          `}
+          
+          <div class="info-row">
+            <span class="info-label">Cámara:</span>
+            <span class="info-value">${exif.make} ${exif.model}</span>
+          </div>
+          
+          ${exif.dateTimeFormatted ? `
+            <div class="info-row">
+              <span class="info-label">Fecha:</span>
+              <span class="info-value">${exif.dateTimeFormatted}</span>
+            </div>
+          ` : ''}
+          
+          ${exif.fNumber ? `
+            <div class="info-row">
+              <span class="info-label">Apertura:</span>
+              <span class="info-value">f/${exif.fNumber}</span>
+            </div>
+          ` : ''}
+          
+          ${exif.iso ? `
+            <div class="info-row">
+              <span class="info-label">ISO:</span>
+              <span class="info-value">${exif.iso}</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // ============================================
+    // GEOCODING
+    // ============================================
+    
+    async function fetchAddressFromCoordinates(lat, lon) {
+      const validated = validateAndNormalizeGPS(lat, lon, 'geocoding');
+      if (!validated) return null;
+      
+      lat = validated.lat;
+      lon = validated.lon;
+
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+      
+      try {
+        showNotification('🔍 Buscando dirección...', 'info');
+        debugLog('🌐 Consultando Nominatim');
+        
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'GeoLocInteligente-AVIA/3.1.1',
+            'Accept-Language': 'es-ES,es;q=0.9'
+          }
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        const addressData = {
+          displayName: data.display_name,
+          address: {
+            road: data.address.road || null,
+            houseNumber: data.address.house_number || null,
+            suburb: data.address.suburb || null,
+            city: data.address.city || data.address.town || null,
+            state: data.address.state || null,
+            postcode: data.address.postcode || null,
+            country: data.address.country || null
+          }
+        };
+
+        debugLog(`✅ Dirección: ${addressData.displayName}`);
+        displayAddress(addressData);
+        showNotification('✅ Dirección encontrada', 'success');
+        return addressData;
+
+      } catch (error) {
+        debugLog(`❌ Error geocoding: ${error.message}`);
+        showNotification('⚠️ Error obteniendo dirección', 'warning');
+        return null;
+      }
+    }
+
+    function displayAddress(addressData) {
+      const addr = addressData.address;
+      
+      elements.addressContainer.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🏠</span>
+            <span class="card-title">Dirección</span>
+          </div>
+          
+          <div style="padding: 15px;">
+            <p style="font-size: 0.95em; color: var(--text-secondary); margin-bottom: 15px;">
+              ${addressData.displayName}
+            </p>
+            
+            ${addr.city ? `
+              <div class="info-row">
+                <span class="info-label">Ciudad:</span>
+                <span class="info-value">${addr.city}</span>
+              </div>
+            ` : ''}
+            
+            ${addr.state ? `
+              <div class="info-row">
+                <span class="info-label">Provincia:</span>
+                <span class="info-value">${addr.state}</span>
+              </div>
+            ` : ''}
+            
+            <div class="info-row">
+              <span class="info-label">País:</span>
+              <span class="info-value">${addr.country || 'Desconocido'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================
+    // MAP DISPLAY
+    // ============================================
+    
+    function getApproximateLocation(lat, lon) {
+      // España
+      if (lat >= 36 && lat <= 43.8 && lon >= -9.3 && lon <= 3.3) {
+        // Cádiz/Chipiona
+        if (lat >= 36.5 && lat <= 37 && lon >= -6.5 && lon <= -6) {
+          return { name: 'Costa de Cádiz', region: 'Andalucía, España' };
+        }
+        // Madrid
+        if (lat >= 40.3 && lat <= 40.6 && lon >= -3.9 && lon <= -3.5) {
+          return { name: 'Madrid', region: 'Comunidad de Madrid, España' };
+        }
+        return { name: 'España', region: 'Europa' };
+      }
+      
+      return { name: 'Ubicación Detectada', region: 'Verificar en mapa' };
+    }
+    
+    function displayLocationOnMap(lat, lon, options = {}) {
+      const { zoom = 14 } = options;
+
+      const validated = validateAndNormalizeGPS(lat, lon, 'displayMap');
+      if (!validated) {
+        showNotification('❌ GPS inválido', 'error');
+        return;
+      }
+      
+      lat = validated.lat;
+      lon = validated.lon;
+
+      elements.mapCard.style.display = 'block';
+      
+      if (appState.mapInstance) {
+        appState.mapInstance.setView([lat, lon], zoom);
+        if (appState.currentMarker) appState.mapInstance.removeLayer(appState.currentMarker);
+      } else {
+        appState.mapInstance = L.map('leaflet-map').setView([lat, lon], zoom);
+        
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap',
+          maxZoom: 19
+        });
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '© Esri',
+          maxZoom: 18
+        });
+        
+        osmLayer.addTo(appState.mapInstance);
+        
+        L.control.layers({
+          "🗺️ Mapa": osmLayer,
+          "🛰️ Satélite": satelliteLayer
+        }).addTo(appState.mapInstance);
+      }
+
+      const markerIcon = L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background: #ff4444; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      
+      appState.currentMarker = L.marker([lat, lon], { icon: markerIcon }).addTo(appState.mapInstance);
+      
+      const location = getApproximateLocation(lat, lon);
+      
+      const popup = `
+        <div style="text-align: center; min-width: 200px;">
+          <strong style="font-size: 1.1em;">📍 ${location.name}</strong><br>
+          <small style="color: #666;">${location.region}</small><br>
+          <code style="font-size: 0.85em; color: #666; display: block; margin: 8px 0;">
+            ${lat.toFixed(6)}°, ${lon.toFixed(6)}°
+          </code>
+          <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" 
+             style="color: #409cff; text-decoration: none;">
+            🌐 Google Maps →
+          </a>
+        </div>
+      `;
+      appState.currentMarker.bindPopup(popup, { maxWidth: 300 }).openPopup();
+      
+      document.getElementById('google-maps-link').href = `https://www.google.com/maps?q=${lat},${lon}`;
+      
+      L.circle([lat, lon], {
+        radius: 50,
+        color: '#409cff',
+        fillColor: '#409cff',
+        fillOpacity: 0.15,
+        weight: 2
+      }).addTo(appState.mapInstance);
+
+      debugLog(`✅ Mapa centrado en ${location.name}`);
+      showNotification(`✅ ${location.name}`, 'success');
+    }
+
+    function centerMapOnMarker() {
+      if (appState.mapInstance && appState.currentMarker) {
+        appState.mapInstance.setView(appState.currentMarker.getLatLng(), 15);
+        appState.currentMarker.openPopup();
+      }
+    }
+
+    // ============================================
+    // FILE HANDLING
+    // ============================================
+    
+    elements.uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      elements.uploadZone.classList.add('drag-over');
+    });
+
+    elements.uploadZone.addEventListener('dragleave', () => {
+      elements.uploadZone.classList.remove('drag-over');
+    });
+
+    elements.uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      elements.uploadZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    elements.fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    async function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showNotification('❌ Archivo inválido', 'error');
+        return;
+      }
+
+      debugLog(`📁 Archivo cargado: ${file.name}`);
+      appState.currentFile = file;
+      elements.results.style.display = 'block';
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        elements.imagePreview.innerHTML = `
+          <img src="${e.target.result}" alt="Preview" 
+               style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: var(--shadow-md);">
+        `;
+      };
+      reader.readAsDataURL(file);
+
+      const exifData = await extractRealEXIF(file);
+      appState.currentEXIF = exifData;
+      
+      displayEXIFData(exifData);
+      
+      if (exifData && exifData.hasGPS) {
+        displayLocationOnMap(exifData.latitude, exifData.longitude);
+        await fetchAddressFromCoordinates(exifData.latitude, exifData.longitude);
+        elements.aiContainer.style.display = 'none';
+      } else {
+        elements.mapCard.style.display = 'none';
+        elements.addressContainer.innerHTML = '';
+        elements.aiContainer.style.display = 'block';
+      }
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+    
+    console.log('%c🌍 GeoLocInteligente v3.1.1-FIXED', 'color: #409cff; font-size: 20px; font-weight: bold;');
+    console.log('%c✅ Correcciones: localStorage safe + GPS debug', 'color: #67c23a;');
+    
+    debugLog('🚀 Sistema inicializado');
+    debugLog(`   localStorage: ${SafeStorage.isAvailable() ? 'OK' : 'Fallback'}`);
+    
+    showNotification('✅ Sistema listo', 'success');
+    
+    // Auto-test en modo debug
+    if (window.location.search.includes('debug')) {
+      appState.debugMode = true;
+      elements.debugInfo.style.display = 'block';
+      debugLog('🐛 Modo debug automático activado');
+    }
+  </script>
+</body>
+</html>

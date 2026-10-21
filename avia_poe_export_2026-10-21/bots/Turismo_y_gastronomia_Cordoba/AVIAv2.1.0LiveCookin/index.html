@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA v2.1.0 — Live Cooking & Real-time Sync</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @keyframes pulse-live  { 0%,100%{opacity:1} 50%{opacity:.25} }
+  @keyframes slide-in    { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes float-up    { 0%{transform:translateY(0) scale(1);opacity:1} 100%{transform:translateY(-70px) scale(.5);opacity:0} }
+  @keyframes glow-pulse  { 0%,100%{filter:drop-shadow(0 0 4px currentColor);opacity:.15} 50%{filter:drop-shadow(0 0 14px currentColor);opacity:.35} }
+  @keyframes fade-in     { from{opacity:0} to{opacity:1} }
+  .live-dot    { animation: pulse-live 1.2s ease-in-out infinite; }
+  .slide-in    { animation: slide-in .28s ease-out; }
+  .float-emoji { animation: float-up 1.6s ease-out forwards; position:absolute; pointer-events:none; font-size:26px; }
+  .glow-node   { animation: glow-pulse 2.2s ease-in-out infinite; }
+  .fade-in     { animation: fade-in .3s ease-out; }
+  body         { font-family: system-ui,-apple-system,sans-serif; background:#030712; }
+  .sb          { scrollbar-width:none; -ms-overflow-style:none; }
+  .sb::-webkit-scrollbar { display:none; }
+</style>
+</head>
+<body class="bg-gray-950 min-h-screen flex justify-center items-start">
+
+<!-- ╔══════════════════════════════════════════════════╗
+     ║  AVIA v2.1.0 · Phone Container                  ║
+     ╚══════════════════════════════════════════════════╝ -->
+<div id="app" class="w-full bg-gray-950 flex flex-col relative overflow-hidden" style="max-width:430px;min-height:100svh">
+
+  <!-- ── STATUS BAR ── -->
+  <div class="flex items-center justify-between px-4 pt-2 pb-1 shrink-0">
+    <span class="text-white font-bold text-xs">9:41</span>
+    <div class="flex items-center gap-2">
+      <span id="ws-badge" class="font-mono text-xs text-gray-600">WS○</span>
+      <span id="hdr-livecount" class="text-red-400 font-mono text-xs font-bold"></span>
+    </div>
+  </div>
+
+  <!-- ── APP HEADER ── -->
+  <div class="px-4 py-2 border-b border-gray-800 flex items-center gap-3 shrink-0">
+    <div class="flex items-center gap-2 flex-1 min-w-0">
+      <span class="text-2xl shrink-0">👨‍🍳</span>
+      <div class="min-w-0">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="font-black text-white text-xl tracking-tight">AVIA</span>
+          <span class="bg-violet-950 border border-violet-700 text-violet-300 font-mono font-black rounded-full px-2 py-0.5" style="font-size:9px">v2.1.0</span>
+          <span class="bg-gray-900 border border-gray-700 text-gray-500 font-mono rounded-full px-2 py-0.5" style="font-size:9px">build·l3m4n5o</span>
+        </div>
+        <div class="text-gray-600 text-xs">Live Cooking & Real-time Sync</div>
+      </div>
+    </div>
+    <div id="hdr-presence" class="flex -space-x-1.5 shrink-0"></div>
+  </div>
+
+  <!-- ── MAIN PAGE ── -->
+  <div id="page" class="flex-1 overflow-y-auto sb"></div>
+
+  <!-- ── BOTTOM NAV ── -->
+  <div class="shrink-0 flex border-t border-gray-800 bg-gray-950">
+    <button class="nav-btn flex-1 flex flex-col items-center py-2.5 gap-0.5" data-p="feed"          onclick="nav('feed')">
+      <span class="text-xl">📡</span><span class="text-xs font-semibold text-gray-500">Feed</span>
+    </button>
+    <button class="nav-btn flex-1 flex flex-col items-center py-2.5 gap-0.5" data-p="live"          onclick="nav('live')">
+      <span class="text-xl">🎬</span><span class="text-xs font-semibold text-gray-500">En Vivo</span>
+    </button>
+    <button class="nav-btn flex-1 flex flex-col items-center py-2.5 gap-0.5" data-p="graph"         onclick="nav('graph')">
+      <span class="text-xl">🕸</span><span class="text-xs font-semibold text-gray-500">Grafo</span>
+    </button>
+    <button class="nav-btn flex-1 flex flex-col items-center py-2.5 gap-0.5" data-p="constellation" onclick="nav('constellation')">
+      <span class="text-xl">⚡</span><span class="text-xs font-semibold text-gray-500">Consenso</span>
+    </button>
+  </div>
+
+  <!-- ── WS TOAST ── -->
+  <div id="toast" class="absolute left-3 right-3 z-50 pointer-events-none" style="top:54px;opacity:0;transition:opacity .25s">
+    <div class="bg-gray-900 border border-violet-800 rounded-xl px-3 py-2 flex items-center gap-2 shadow-2xl">
+      <span class="w-2 h-2 rounded-full bg-violet-400 shrink-0 live-dot"></span>
+      <span id="toast-msg" class="text-xs font-mono text-violet-200 flex-1 truncate"></span>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  AVIA v2.1.0 · Complete Application
+//  Sprint: Live Cooking & Real-time Sync
+//  8 Módulos · LB-01·03·04·06·07·08 verified
+// ════════════════════════════════════════════════════════════
+
+// ── DATA ─────────────────────────────────────────────────────
+const CHEFS = {
+  yamada:   { name:'Kenji Yamada',   em:'👨‍🍳', color:'#8b5cf6', spec:'Umami & Técnica',    followers:12400, match:94 },
+  vega:     { name:'Sofia Vega',     em:'👩‍🍳', color:'#10b981', spec:'Mediterráneo',        followers:9800,  match:88 },
+  dubois:   { name:'Pierre Dubois',  em:'🧑‍🍳', color:'#3b82f6', spec:'Clásico Francés',     followers:8200,  match:82 },
+  nakamura: { name:'Hana Nakamura',  em:'👩‍🍳', color:'#f59e0b', spec:'Fusion Moderna',      followers:7100,  match:79 },
+  kim:      { name:'Ji-ho Kim',      em:'👨‍🍳', color:'#ef4444', spec:'Korean BBQ',          followers:6300,  match:76 },
+  morales:  { name:'Carlos Morales', em:'👨‍🍳', color:'#f97316', spec:'Cocina Creativa',     followers:5400,  match:71 },
+};
+
+const SESSIONS = [
+  { id:'ls1', chef:'yamada',  recipe:'Ramen Tonkotsu Profundo',    em:'🍜',
+    viewers:1247, step:4, steps:8, stepName:'Extracción colágeno 12h',
+    tags:['Técnica','Umami','Caldos'],       dur:'1h 23min', score:4.8, color:'#8b5cf6' },
+  { id:'ls2', chef:'vega',    recipe:'Paella Valenciana Auténtica', em:'🥘',
+    viewers:892,  step:6, steps:9, stepName:'Socarrat perfecto',
+    tags:['Tradicional','Mariscos','Arroz'], dur:'2h 05min', score:4.9, color:'#10b981' },
+  { id:'ls3', chef:'kim',     recipe:'Korean BBQ Galbi',            em:'🥩',
+    viewers:634,  step:2, steps:6, stepName:'Marinado con pera asiática',
+    tags:['BBQ','Korean','Fermentado'],      dur:'0h 45min', score:4.7, color:'#ef4444' },
+];
+
+// Pre-computed social graph layout
+const GRAPH = (()=>{
+  const W=340,H=300,cx=170,cy=145,R=108;
+  const keys=Object.keys(CHEFS);
+  const nodes=keys.map((k,i)=>{
+    const a=(i/keys.length)*Math.PI*2 - Math.PI/2;
+    return { key:k, x:cx+R*Math.cos(a), y:cy+R*Math.sin(a) };
+  });
+  const pairs=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,3],[1,4],[2,5],[0,2]];
+  const edges=pairs.map(([a,b])=>({from:nodes[a],to:nodes[b]}));
+  return {W,H,cx,cy,nodes,edges};
+})();
+
+// ── CRDT STATE ────────────────────────────────────────────────
+let CRDT = {
+  items:[
+    {id:'i1',name:'Huesos de cerdo 2kg',done:false,clock:{A:1,B:0},ts:Date.now()-5000,owner:'A'},
+    {id:'i2',name:'Miso rojo 200g',     done:false,clock:{A:1,B:0},ts:Date.now()-4000,owner:'A'},
+    {id:'i3',name:'Ramen noodles 400g', done:true, clock:{A:2,B:0},ts:Date.now()-3000,owner:'A'},
+    {id:'i4',name:'Cebollino fresco',   done:false,clock:{A:1,B:1},ts:Date.now()-2000,owner:'B'},
+    {id:'i5',name:'Huevos maduros x6',  done:false,clock:{A:0,B:2},ts:Date.now()-1000,owner:'B'},
+  ],
+  vc:{A:2,B:2}
+};
+
+// ── PRESENCE ─────────────────────────────────────────────────
+let PRESENCE=[
+  {id:'u1',name:'Tú',    em:'👤',color:'#8b5cf6',online:true },
+  {id:'u2',name:'María', em:'👩',color:'#10b981',online:true },
+  {id:'u3',name:'Carlos',em:'🧑',color:'#3b82f6',online:true },
+  {id:'u4',name:'Akira', em:'👨',color:'#f59e0b',online:false},
+  {id:'u5',name:'Sofia', em:'👩',color:'#ef4444',online:true },
+  {id:'u6',name:'Omar',  em:'👨',color:'#06b6d4',online:false},
+];
+
+// ── COMMENTS ─────────────────────────────────────────────────
+let COMMENTS=[
+  {id:'c1',user:'María', em:'👩',text:'¡Increíble técnica! 🔥',                         ts:Date.now()-42000,color:'#10b981'},
+  {id:'c2',user:'Carlos',em:'🧑',text:'Llevo 3 horas replicando esto en casa 😅',         ts:Date.now()-28000,color:'#3b82f6'},
+  {id:'c3',user:'Akira', em:'👨',text:'¿Temperatura exacta del caldo?',                  ts:Date.now()-14000,color:'#f59e0b'},
+  {id:'c4',user:'Yamada',em:'👨‍🍳',text:'95°C exactos. Nunca hirviendo. La proteína cambia completamente.',ts:Date.now()-6000,color:'#8b5cf6',chef:true},
+];
+
+// ── CONSTELLATION NODES ───────────────────────────────────────
+let NODES=[
+  {id:'dna',label:'Taste DNA',  em:'🧬',stake:40,score:4.80,votes:0,color:'#8b5cf6'},
+  {id:'emb',label:'Embeddings', em:'📐',stake:20,score:4.60,votes:0,color:'#3b82f6'},
+  {id:'cf', label:'CF Social',  em:'👥',stake:15,score:4.90,votes:0,color:'#10b981'},
+  {id:'ctx',label:'Contexto',   em:'🕐',stake:10,score:4.50,votes:0,color:'#f59e0b'},
+  {id:'prd',label:'Predictor',  em:'🎯',stake:10,score:4.70,votes:0,color:'#ef4444'},
+  {id:'div',label:'Diversidad', em:'🔀',stake: 5,score:4.40,votes:0,color:'#06b6d4'},
+];
+let TOTAL_VOTES=0;
+
+// ── APP STATE ─────────────────────────────────────────────────
+let PAGE='feed', ACTIVE_SESSION=SESSIONS[0], LIVE_TAB='live';
+let WS_ON=false, wsTimer=null, constTimer=null, toastTimer=null;
+let radarInst=null;
+
+const calcCS=()=>NODES.reduce((s,n)=>s+n.score*(n.stake/100),0);
+const fmtTime=ts=>{ const d=new Date(ts); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); };
+const fmtN=n=>n.toLocaleString('es-ES');
+
+// ════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════════
+function nav(page){
+  PAGE=page;
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    const on=b.dataset.p===page;
+    b.querySelector('span:last-child').className=`text-xs font-semibold ${on?'text-violet-400':'text-gray-500'}`;
+  });
+  render();
+}
+function render(){
+  const pg=document.getElementById('page');
+  pg.classList.remove('fade-in');
+  void pg.offsetWidth;
+  pg.classList.add('fade-in');
+  switch(PAGE){
+    case 'feed':          pg.innerHTML=pageFeed(); break;
+    case 'live':          pg.innerHTML=pageLive(); postLive(); break;
+    case 'graph':         pg.innerHTML=pageGraph(); break;
+    case 'constellation': pg.innerHTML=pageConst(); postConst(); break;
+  }
+  drawHeaderPresence();
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGE: FEED  (Módulo 1: Live Sessions Feed)
+// ════════════════════════════════════════════════════════════
+function pageFeed(){
+  const totalV=SESSIONS.reduce((a,s)=>a+s.viewers,0);
+  return `
+<div class="px-4 py-4 pb-6">
+  <!-- Live banner -->
+  <div class="flex items-center gap-2 mb-4">
+    <span class="w-2 h-2 rounded-full bg-red-500 shrink-0 live-dot"></span>
+    <span class="font-bold text-white">En Directo Ahora</span>
+    <span class="ml-auto text-gray-500 text-xs">${fmtN(totalV)} viewers</span>
+  </div>
+
+  ${SESSIONS.map(s=>cardSession(s)).join('')}
+
+  <!-- Módulo 2: WebSocket Simulation panel -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-3 mb-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span id="ws-dot2" class="w-2 h-2 rounded-full bg-gray-700 shrink-0"></span>
+      <span class="text-xs font-bold font-mono text-gray-400">Módulo WS · WebSocket Sim · Δt=2.2s</span>
+    </div>
+    <div id="ws-log" class="space-y-0.5 max-h-20 overflow-y-auto sb">
+      <div class="text-gray-600 text-xs font-mono">Iniciando conexión simulada...</div>
+    </div>
+  </div>
+
+  <!-- Protocolo AVIA compliance -->
+  <div class="bg-gray-900 border border-violet-900 rounded-2xl p-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span>📖</span>
+      <span class="text-violet-400 font-bold text-xs">Protocolo AVIA v2.1.0 · Libro Blanco</span>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      ${['LB-01 Transparencia','LB-03 Consenso','LB-04 Confianza','LB-06 Evolución','LB-07 Auditada','LB-08 AutoCorrec.'].map(l=>`
+        <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 font-mono">✓ ${l}</span>
+      `).join('')}
+      ${['LB-02 → v2.2','LB-05 → v2.3'].map(l=>`
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-900 border border-gray-800 text-gray-600 font-mono">⏳ ${l}</span>
+      `).join('')}
+    </div>
+  </div>
+</div>`;
+}
+
+function cardSession(s){
+  const ch=CHEFS[s.chef], pct=(s.step/s.steps)*100;
+  return `
+<div class="bg-gray-900 rounded-2xl border overflow-hidden mb-3 cursor-pointer active:scale-99 transition-transform" style="border-color:${s.color}40" onclick="openSess('${s.id}')">
+  <div class="relative h-24 flex items-center justify-center" style="background:linear-gradient(135deg,${s.color}18,${s.color}06)">
+    <span style="font-size:48px">${s.em}</span>
+    <div class="absolute top-2 left-2 flex items-center gap-1 bg-red-700 rounded-full px-2 py-0.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-white live-dot"></span>
+      <span class="text-white text-xs font-bold">EN VIVO</span>
+    </div>
+    <div class="absolute top-2 right-2 bg-black bg-opacity-75 rounded-full px-2 py-0.5 text-white text-xs font-bold">👁 ${fmtN(s.viewers)}</div>
+    <div class="absolute bottom-2 right-2 bg-black bg-opacity-75 rounded-full px-2 py-0.5 text-white text-xs">${s.dur}</div>
+  </div>
+  <div class="p-3">
+    <div class="flex items-center gap-2 mb-2">
+      <div class="w-8 h-8 rounded-full border shrink-0 flex items-center justify-center" style="background:${ch.color}15;border-color:${ch.color}50;font-size:16px">${ch.em}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-white font-bold text-sm truncate">${s.recipe}</div>
+        <div class="text-gray-400 text-xs">${ch.name} · ${ch.spec}</div>
+      </div>
+      <div class="text-yellow-400 font-bold text-sm shrink-0">⭐${s.score}</div>
+    </div>
+    <div class="bg-gray-800 rounded-xl px-3 py-2 mb-2">
+      <div class="flex justify-between text-xs mb-1">
+        <span class="text-gray-500">Paso ${s.step}/${s.steps}</span>
+        <span class="font-mono font-bold" style="color:${s.color}">${pct.toFixed(0)}%</span>
+      </div>
+      <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden mb-1.5">
+        <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${s.color}"></div>
+      </div>
+      <div class="text-xs text-gray-300 flex items-center gap-1.5">
+        <span class="w-1.5 h-1.5 rounded-full shrink-0 live-dot" style="background:${s.color}"></span>
+        ${s.stepName}
+      </div>
+    </div>
+    <div class="flex gap-1.5 flex-wrap">
+      ${s.tags.map(t=>`<span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 border border-gray-700 text-gray-400">${t}</span>`).join('')}
+    </div>
+  </div>
+</div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGE: LIVE SESSION  (Módulo 7: Live Session Page)
+// ════════════════════════════════════════════════════════════
+function pageLive(){
+  const s=ACTIVE_SESSION, ch=CHEFS[s.chef];
+  return `
+<div class="flex flex-col" style="height:calc(100svh - 128px)">
+  <!-- Session header -->
+  <div class="px-4 py-2.5 border-b border-gray-800 shrink-0" style="background:linear-gradient(180deg,${s.color}14,transparent)">
+    <div class="flex items-center gap-2 mb-1.5">
+      <button onclick="nav('feed')" class="text-gray-500 text-sm shrink-0 font-bold">←</button>
+      <span class="text-lg">${s.em}</span>
+      <div class="flex-1 min-w-0">
+        <div class="text-white font-bold text-sm truncate">${s.recipe}</div>
+        <div class="text-gray-400 text-xs">${ch.name}</div>
+      </div>
+      <div class="flex items-center gap-1 bg-red-950 border border-red-900 rounded-full px-2 py-0.5 shrink-0">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 live-dot"></span>
+        <span id="sess-viewers" class="text-red-400 text-xs font-bold">${fmtN(s.viewers)}</span>
+      </div>
+    </div>
+    <div class="flex gap-0.5 mb-1">
+      ${Array.from({length:s.steps},(_,i)=>`<div class="flex-1 h-1 rounded-full" style="background:${i<s.step?s.color:'#374151'}"></div>`).join('')}
+    </div>
+    <div class="text-gray-500 text-xs">Paso ${s.step}/${s.steps}: ${s.stepName}</div>
+  </div>
+  <!-- Tabs -->
+  <div class="flex border-b border-gray-800 shrink-0">
+    ${[['live','📡 En Vivo'],['crdt','🛒 Lista CRDT'],['cons','⚡ Consenso']].map(([t,l])=>`
+      <button onclick="setTab('${t}')" data-tab="${t}"
+        class="tab-btn flex-1 py-2.5 text-xs font-bold border-b-2 transition-all ${LIVE_TAB===t?'border-violet-500 text-violet-400':'border-transparent text-gray-500'}">${l}</button>
+    `).join('')}
+  </div>
+  <!-- Content -->
+  <div id="tab-cnt" class="flex-1 overflow-y-auto sb min-h-0">${renderTab(LIVE_TAB)}</div>
+</div>`;
+}
+
+function postLive(){
+  setTimeout(()=>{
+    const f=document.getElementById('comment-feed');
+    if(f) f.scrollTop=f.scrollHeight;
+    if(LIVE_TAB==='crdt') drawCRDT();
+  },60);
+}
+
+function setTab(t){
+  LIVE_TAB=t;
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const on=b.dataset.tab===t;
+    b.className=`tab-btn flex-1 py-2.5 text-xs font-bold border-b-2 transition-all ${on?'border-violet-500 text-violet-400':'border-transparent text-gray-500'}`;
+  });
+  const c=document.getElementById('tab-cnt');
+  if(c){
+    c.innerHTML=renderTab(t);
+    if(t==='live'){ const f=document.getElementById('comment-feed'); if(f) f.scrollTop=f.scrollHeight; }
+    if(t==='crdt'){ setTimeout(drawCRDT,40); }
+  }
+}
+
+function renderTab(t){
+  switch(t){
+    case 'live': return tabLive();
+    case 'crdt': return tabCRDT();
+    case 'cons': return tabCons();
+  }
+  return '';
+}
+
+// ── Tab: En Vivo  (Módulos 5+8: Presence + Comment Feed WS)
+function tabLive(){
+  return `
+<div class="flex flex-col h-full">
+  <!-- Módulo 5: Presence System -->
+  <div class="px-4 py-2 border-b border-gray-800 shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="text-gray-500 text-xs shrink-0">Online:</span>
+      <div id="live-pres-bar" class="flex -space-x-1.5">
+        ${PRESENCE.filter(p=>p.online).map(p=>`
+          <div class="w-6 h-6 rounded-full border flex items-center justify-center" style="background:${p.color}20;border-color:${p.color}50;font-size:11px;border-width:1.5px" title="${p.name}">${p.em}</div>
+        `).join('')}
+      </div>
+      <span id="pres-count" class="text-emerald-400 text-xs font-bold">${PRESENCE.filter(p=>p.online).length}</span>
+      <span id="pres-event" class="ml-auto text-xs text-gray-600 font-mono transition-all"></span>
+    </div>
+  </div>
+
+  <!-- Módulo 8: Comment Feed WS -->
+  <div id="comment-feed" class="flex-1 overflow-y-auto sb px-4 py-3 space-y-2.5 min-h-0">
+    ${COMMENTS.map(c=>bubbleHTML(c)).join('')}
+  </div>
+
+  <!-- Float reactions area -->
+  <div class="relative shrink-0" style="height:4px">
+    <div id="float-zone" class="pointer-events-none absolute bottom-0 right-4" style="overflow:visible;width:50px;height:10px"></div>
+  </div>
+
+  <!-- Input bar -->
+  <div class="px-4 pb-4 pt-2 border-t border-gray-800 shrink-0 bg-gray-950">
+    <div class="flex gap-1.5 mb-2">
+      ${['🔥','❤️','😍','👏','🤤','🙌'].map(e=>`
+        <button onclick="sendReact('${e}')" class="flex-1 h-9 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center hover:border-violet-700 active:scale-90 transition-all">${e}</button>
+      `).join('')}
+    </div>
+    <div class="flex gap-2">
+      <input id="msg-in" type="text" placeholder="Escribe un comentario..."
+             class="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none focus:border-violet-700 transition-colors"
+             onkeydown="if(event.key==='Enter')sendMsg()">
+      <button onclick="sendMsg()" class="w-11 h-10 bg-violet-600 rounded-xl font-bold text-white active:scale-90 transition-transform shrink-0 text-lg">↑</button>
+    </div>
+  </div>
+</div>`;
+}
+
+function bubbleHTML(c){
+  return `<div class="flex items-start gap-2 slide-in ${c.chef?'bg-gray-900 border border-gray-800 rounded-xl p-2.5':''}">
+    <div class="w-7 h-7 rounded-full border flex items-center justify-center shrink-0" style="background:${c.color}15;border-color:${c.color}40;font-size:13px">${c.em}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+        <span class="font-bold text-xs" style="color:${c.color}">${c.user}</span>
+        ${c.chef?'<span class="text-violet-400 bg-violet-950 border border-violet-800 rounded-full px-1.5 font-mono font-bold" style="font-size:9px">CHEF</span>':''}
+        <span class="text-gray-700 text-xs">${fmtTime(c.ts)}</span>
+      </div>
+      <p class="text-gray-300 text-sm leading-relaxed">${c.text}</p>
+    </div>
+  </div>`;
+}
+
+// ── Tab: Lista CRDT  (Módulo 3: CRDT Shopping List)
+function tabCRDT(){
+  return `
+<div class="px-4 py-3">
+  <!-- CRDT Header -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-3 mb-3">
+    <div class="text-orange-400 font-bold text-xs mb-2">🛒 Módulo CRDT · LWW-Register + Vector Clocks</div>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="bg-gray-800 rounded-xl p-2">
+        <div class="text-gray-500 text-xs">Vector Clock</div>
+        <div id="vc-disp" class="text-amber-400 font-mono font-bold text-xs">A:${CRDT.vc.A} B:${CRDT.vc.B}</div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-2">
+        <div class="text-gray-500 text-xs">Total Items</div>
+        <div id="crdt-total" class="text-amber-400 font-mono font-bold text-xs">${CRDT.items.length}</div>
+      </div>
+      <div class="bg-gray-800 rounded-xl p-2">
+        <div class="text-gray-500 text-xs">Completados</div>
+        <div id="crdt-done" class="text-emerald-400 font-mono font-bold text-xs">${CRDT.items.filter(i=>i.done).length}/${CRDT.items.length}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two users side-by-side -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <div class="bg-violet-950 border border-violet-800 rounded-2xl p-2.5">
+      <div class="flex items-center gap-1.5 mb-2">
+        <div class="w-5 h-5 rounded-full bg-violet-700 flex items-center justify-center text-white font-bold" style="font-size:11px">A</div>
+        <span class="text-violet-300 font-bold text-xs">Tú</span>
+        <span class="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      </div>
+      <input id="inp-a" type="text" placeholder="Añadir ítem..."
+             class="w-full bg-violet-900 border border-violet-700 rounded-xl px-2 py-1.5 text-xs text-white placeholder-violet-600 outline-none mb-1.5"
+             onkeydown="if(event.key==='Enter')crdtAdd('A')">
+      <button onclick="crdtAdd('A')" class="w-full bg-violet-700 rounded-xl py-1 text-xs font-bold text-white active:scale-95 transition-transform">+ Añadir</button>
+    </div>
+    <div class="bg-blue-950 border border-blue-800 rounded-2xl p-2.5">
+      <div class="flex items-center gap-1.5 mb-2">
+        <div class="w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold" style="font-size:11px">B</div>
+        <span class="text-blue-300 font-bold text-xs">María</span>
+        <span class="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      </div>
+      <input id="inp-b" type="text" placeholder="Añadir ítem..."
+             class="w-full bg-blue-900 border border-blue-700 rounded-xl px-2 py-1.5 text-xs text-white placeholder-blue-600 outline-none mb-1.5"
+             onkeydown="if(event.key==='Enter')crdtAdd('B')">
+      <button onclick="crdtAdd('B')" class="w-full bg-blue-700 rounded-xl py-1 text-xs font-bold text-white active:scale-95 transition-transform">+ Añadir</button>
+    </div>
+  </div>
+
+  <!-- Conflict simulation button -->
+  <button onclick="crdtConflict()" class="w-full py-2.5 mb-3 rounded-2xl border border-orange-700 bg-orange-950 text-orange-400 text-xs font-bold active:scale-95 transition-transform flex items-center justify-center gap-2">
+    ⚡ Simular Edición Concurrente — Conflicto LWW
+  </button>
+
+  <!-- Merged list (LWW result) -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mb-3">
+    <div class="flex items-center gap-2 px-3 py-2.5 border-b border-gray-800">
+      <span class="text-gray-200 font-bold text-xs">Lista Mergeada</span>
+      <span class="ml-auto text-gray-600 text-xs font-mono">LWW — Last Write Wins</span>
+    </div>
+    <div id="crdt-list"></div>
+  </div>
+
+  <!-- CRDT event log -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-3">
+    <div class="text-gray-500 text-xs font-bold font-mono mb-2">CRDT Event Log</div>
+    <div id="crdt-log" class="space-y-0.5 max-h-28 overflow-y-auto sb">
+      <div class="text-emerald-400 text-xs font-mono">Sistema inicializado · VC A:${CRDT.vc.A} B:${CRDT.vc.B}</div>
+      <div class="text-gray-600 text-xs font-mono">LWW-Register activo</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function crdtItemHTML(item){
+  return `<div class="flex items-center gap-2.5 px-3 py-2.5 border-b border-gray-800 last:border-0 ${item.done?'opacity-50':''}">
+    <button onclick="crdtToggle('${item.id}')" class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all ${item.done?'bg-emerald-600 border-emerald-600':'border-gray-600 hover:border-emerald-500'}">
+      ${item.done?'<span style="font-size:10px;color:white;font-weight:bold">✓</span>':''}
+    </button>
+    <span class="flex-1 text-sm text-gray-300 ${item.done?'line-through':''}">${item.name}</span>
+    <span class="text-xs px-1.5 py-0.5 rounded font-mono font-bold ${item.owner==='A'?'text-violet-400 bg-violet-950':'text-blue-400 bg-blue-950'}">${item.owner}</span>
+    <span class="text-gray-700 font-mono" style="font-size:9px">A:${item.clock.A} B:${item.clock.B}</span>
+    <button onclick="crdtDel('${item.id}')" class="text-gray-700 hover:text-red-400 transition-colors ml-1">✕</button>
+  </div>`;
+}
+
+function drawCRDT(){
+  const el=document.getElementById('crdt-list');
+  if(el) el.innerHTML=CRDT.items.map(crdtItemHTML).join('');
+  const vc=document.getElementById('vc-disp');    if(vc) vc.textContent=`A:${CRDT.vc.A} B:${CRDT.vc.B}`;
+  const ct=document.getElementById('crdt-total'); if(ct) ct.textContent=CRDT.items.length;
+  const cd=document.getElementById('crdt-done');  if(cd) cd.textContent=`${CRDT.items.filter(i=>i.done).length}/${CRDT.items.length}`;
+}
+
+// ── Tab: Consenso  (Módulo 6: Live Constellation in session)
+function tabCons(){
+  const cs=calcCS();
+  return `
+<div class="px-4 py-3">
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-3 text-center">
+    <div class="text-gray-500 text-xs mb-1">Consenso Ponderado · 6 Nodos · LB-03</div>
+    <div id="tc-score" class="font-black text-5xl text-violet-400 mb-1">${cs.toFixed(2)}</div>
+    <div class="text-gray-500 text-xs">de 5.00 · <span id="tc-votes">${TOTAL_VOTES}</span> votos</div>
+    <div class="mt-2 bg-gray-800 rounded-xl p-2">
+      <div class="text-gray-600 text-xs font-mono">Σ(scoreᵢ × stakeᵢ/100) — LB-04 Confianza</div>
+    </div>
+  </div>
+  <div class="space-y-1.5 mb-3">
+    ${NODES.map(n=>`
+      <div class="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2.5">
+        <div class="flex items-center gap-2 mb-1">
+          <span>${n.em}</span>
+          <span class="flex-1 text-gray-300 text-xs font-semibold">${n.label}</span>
+          <span id="tcs-${n.id}" class="font-bold font-mono text-xs" style="color:${n.color}">${n.score.toFixed(2)}</span>
+          <span class="text-gray-700 text-xs font-mono">${n.stake}%</span>
+        </div>
+        <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div id="tcb-${n.id}" class="h-full rounded-full transition-all duration-500" style="width:${(n.score/5)*100}%;background:${n.color}"></div>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+  <button onclick="castVote()" class="w-full py-3 rounded-2xl font-bold text-white mb-3 active:scale-95 transition-transform" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
+    🗳️ Votar Esta Receta
+  </button>
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-violet-400 live-dot"></span>
+      <span class="text-gray-400 text-xs font-bold font-mono">Live Vote Stream</span>
+    </div>
+    <div id="tc-vfeed" class="space-y-0.5 max-h-28 overflow-y-auto sb">
+      <div class="text-gray-600 text-xs font-mono">Escuchando consenso...</div>
+    </div>
+  </div>
+</div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGE: SOCIAL GRAPH  (Módulo 4: Social Graph SVG)
+// ════════════════════════════════════════════════════════════
+function pageGraph(){
+  const {W,H,cx,cy,nodes,edges}=GRAPH;
+  return `
+<div class="px-4 py-4 pb-6">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="font-bold text-white">🕸 Grafo Social · AVIA Chefs</span>
+    <span class="ml-auto text-gray-600 text-xs">${nodes.length} nodos · ${edges.length} vínculos</span>
+  </div>
+
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden mb-3">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px">
+      <defs>
+        <radialGradient id="svgbg" cx="50%" cy="50%">
+          <stop offset="0%"   stop-color="#1a0f2e"/>
+          <stop offset="100%" stop-color="#060610"/>
+        </radialGradient>
+        <filter id="blur-soft"><feGaussianBlur stdDeviation="2"/></filter>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#svgbg)"/>
+
+      <!-- Rings -->
+      <circle cx="${cx}" cy="${cy}" r="55"  fill="none" stroke="#8b5cf6" stroke-width="0.5" opacity="0.2"/>
+      <circle cx="${cx}" cy="${cy}" r="${GRAPH.R||108}" fill="none" stroke="#8b5cf6" stroke-width="0.4" opacity="0.1"/>
+
+      <!-- Edges -->
+      ${edges.map((e,i)=>`
+        <line x1="${e.from.x.toFixed(1)}" y1="${e.from.y.toFixed(1)}"
+              x2="${e.to.x.toFixed(1)}"   y2="${e.to.y.toFixed(1)}"
+              stroke="${CHEFS[e.from.key].color}" stroke-width="0.8" opacity="0.22" stroke-dasharray="5 7"/>
+      `).join('')}
+
+      <!-- Animated particles on edges (Módulo 4) -->
+      ${edges.slice(0,7).map((e,i)=>{
+        const col=CHEFS[e.from.key].color;
+        const dur=(1.6+i*0.35).toFixed(2);
+        return `
+        <path id="ep${i}" d="M${e.from.x.toFixed(1)},${e.from.y.toFixed(1)} L${e.to.x.toFixed(1)},${e.to.y.toFixed(1)}" fill="none" visibility="hidden"/>
+        <circle r="2.5" fill="${col}" opacity="0.85">
+          <animateMotion dur="${dur}s" repeatCount="indefinite"><mpath href="#ep${i}"/></animateMotion>
+        </circle>`;
+      }).join('')}
+
+      <!-- Lines to center -->
+      ${nodes.map(n=>`
+        <line x1="${n.x.toFixed(1)}" y1="${n.y.toFixed(1)}" x2="${cx}" y2="${cy}"
+              stroke="${CHEFS[n.key].color}" stroke-width="0.4" opacity="0.08"/>
+      `).join('')}
+
+      <!-- Chef nodes -->
+      ${nodes.map(n=>{
+        const ch=CHEFS[n.key];
+        return `
+        <g onclick="pickChef('${n.key}')" style="cursor:pointer">
+          <circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="28" fill="${ch.color}" opacity="0.07" class="glow-node">
+            <animate attributeName="r"       values="22;30;22" dur="${2+Math.abs(n.x%1)*1.5}s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.10;0.03;0.10" dur="${2+Math.abs(n.x%1)*1.5}s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="18" fill="#13101e" stroke="${ch.color}" stroke-width="1.5"/>
+          <text   x="${n.x.toFixed(1)}"  y="${(n.y+5).toFixed(1)}"  text-anchor="middle" font-size="14">${ch.em}</text>
+          <text   x="${n.x.toFixed(1)}"  y="${(n.y+30).toFixed(1)}" text-anchor="middle" fill="${ch.color}" font-size="7.5" font-weight="bold">${ch.name.split(' ')[1]}</text>
+          <text   x="${n.x.toFixed(1)}"  y="${(n.y+40).toFixed(1)}" text-anchor="middle" fill="${ch.color}" font-size="6.5" opacity="0.7">${ch.match}%</text>
+        </g>`;
+      }).join('')}
+
+      <!-- Center node: Tú -->
+      <circle cx="${cx}" cy="${cy}" r="20" fill="#12082a" stroke="#8b5cf6" stroke-width="1.5"/>
+      <circle cx="${cx}" cy="${cy}" r="26" fill="none" stroke="#8b5cf6" stroke-width="0.8">
+        <animate attributeName="r"       values="20;30;20" dur="2.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.5;0;0.5"  dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <text x="${cx}" y="${cy+4}"  text-anchor="middle" fill="#a78bfa" font-size="10" font-weight="bold">Tú</text>
+      <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#6b7280" font-size="7">ForYou ✨</text>
+    </svg>
+  </div>
+
+  <!-- Chef info panel -->
+  <div id="chef-info" class="bg-gray-900 border border-gray-800 rounded-2xl p-3 mb-3 transition-all">
+    <div class="text-gray-500 text-xs text-center py-1">Toca un nodo chef para ver su perfil</div>
+  </div>
+
+  <!-- Chef grid legend -->
+  <div class="grid grid-cols-2 gap-2">
+    ${Object.entries(CHEFS).map(([k,v])=>`
+      <div onclick="pickChef('${k}')" class="bg-gray-900 border border-gray-800 rounded-2xl p-2.5 flex items-center gap-2 cursor-pointer hover:border-gray-700 active:scale-95 transition-all">
+        <span style="font-size:18px">${v.em}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-xs truncate" style="color:${v.color}">${v.name}</div>
+          <div class="text-gray-600 text-xs truncate">${v.spec}</div>
+        </div>
+        <div class="shrink-0 text-right">
+          <div class="text-emerald-400 font-bold font-mono text-xs">${v.match}%</div>
+          <div class="text-gray-700 font-mono" style="font-size:9px">match</div>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+</div>`;
+}
+
+function pickChef(key){
+  const ch=CHEFS[key], panel=document.getElementById('chef-info');
+  if(!panel) return;
+  panel.style.borderColor=ch.color+'50';
+  panel.innerHTML=`
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-full border-2 flex items-center justify-center text-2xl shrink-0" style="background:${ch.color}15;border-color:${ch.color}">${ch.em}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-black text-sm" style="color:${ch.color}">${ch.name}</div>
+        <div class="text-gray-400 text-xs">${ch.spec}</div>
+        <div class="flex items-center gap-3 mt-1">
+          <span class="text-gray-500 text-xs">${fmtN(ch.followers)} seguidores</span>
+          <span class="text-emerald-400 font-bold text-xs">${ch.match}% DNA match</span>
+        </div>
+      </div>
+      <button onclick="ACTIVE_SESSION=SESSIONS.find(s=>s.chef==='${key}')||SESSIONS[0];nav('live')"
+              class="px-3 py-2 rounded-xl text-white text-xs font-bold shrink-0 active:scale-95 transition-transform" style="background:${ch.color}">
+        Live →
+      </button>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGE: CONSTELLATION  (Módulo 6: Live Constellation full)
+// ════════════════════════════════════════════════════════════
+function pageConst(){
+  const cs=calcCS();
+  return `
+<div class="px-4 py-4 pb-6">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="font-bold text-white">⚡ Constelación Económica · Live</span>
+    <div class="ml-auto flex items-center gap-1.5 bg-violet-950 border border-violet-800 rounded-full px-2 py-0.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-violet-400 live-dot"></span>
+      <span class="text-violet-300 text-xs font-bold font-mono">Δt=1.8s</span>
+    </div>
+  </div>
+
+  <!-- Big consensus score -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-3 text-center">
+    <div class="text-gray-500 text-xs mb-1">Consenso Ponderado AVIA · LB-03 + LB-04</div>
+    <div id="pc-score" class="font-black text-6xl mb-1" style="color:#8b5cf6">${cs.toFixed(2)}</div>
+    <div class="text-gray-500 text-xs">de 5.00 · <span id="pc-votes">${TOTAL_VOTES}</span> votos totales</div>
+    <div class="mt-3 bg-gray-800 rounded-xl p-2.5 text-left">
+      <div class="text-gray-600 text-xs font-mono mb-1">Fórmula — Σ(scoreᵢ × stakeᵢ/100)</div>
+      <div id="pc-formula" class="text-violet-400 text-xs font-mono leading-relaxed">${formulaStr()}</div>
+    </div>
+  </div>
+
+  <!-- Radar Chart -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-3">
+    <div class="text-gray-400 text-xs font-bold mb-2">Radar de Nodos · Score por Dimensión</div>
+    <canvas id="radar-cv" height="210"></canvas>
+  </div>
+
+  <!-- Individual nodes -->
+  <div class="space-y-2 mb-3">
+    ${NODES.map(n=>`
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl px-3 py-2.5 transition-all" id="pn-${n.id}">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span>${n.em}</span>
+          <span class="flex-1 text-gray-300 text-xs font-semibold">${n.label}</span>
+          <span id="ps-${n.id}" class="font-black font-mono text-xs" style="color:${n.color}">${n.score.toFixed(2)}</span>
+          <span class="text-gray-700 text-xs font-mono">${n.stake}%</span>
+          <span class="text-gray-600 text-xs font-mono">→ <span id="pw-${n.id}">${((n.stake/100)*n.score).toFixed(3)}</span></span>
+        </div>
+        <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div id="pb-${n.id}" class="h-full rounded-full transition-all duration-500" style="width:${(n.score/5)*100}%;background:${n.color}"></div>
+        </div>
+        <div id="pv-${n.id}" class="text-gray-700 text-xs font-mono mt-0.5">${n.votes} votos recibidos</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <button onclick="castVoteMain()" class="w-full py-3 rounded-2xl font-bold text-white mb-3 active:scale-95 transition-transform" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">
+    🗳️ Registrar Mi Voto
+  </button>
+
+  <!-- Live vote stream -->
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-violet-400 live-dot"></span>
+      <span class="text-gray-400 text-xs font-bold font-mono">Live Vote Stream · LB-01 Transparencia</span>
+    </div>
+    <div id="pc-vfeed" class="space-y-1 max-h-40 overflow-y-auto sb">
+      <div class="text-gray-600 text-xs font-mono">Iniciando stream de votos...</div>
+    </div>
+  </div>
+</div>`;
+}
+
+function postConst(){
+  setTimeout(()=>{
+    const cv=document.getElementById('radar-cv');
+    if(!cv||!window.Chart) return;
+    if(radarInst){ try{radarInst.destroy();}catch(e){} radarInst=null; }
+    radarInst=new Chart(cv,{
+      type:'radar',
+      data:{
+        labels:NODES.map(n=>n.label),
+        datasets:[{
+          label:'Score', data:NODES.map(n=>n.score),
+          backgroundColor:'rgba(139,92,246,0.12)',
+          borderColor:'#8b5cf6', borderWidth:2,
+          pointBackgroundColor:NODES.map(n=>n.color),
+          pointBorderColor:'#1f2937', pointRadius:5,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        scales:{r:{
+          min:3.5,max:5.0,
+          grid:{color:'#374151'}, angleLines:{color:'#374151'},
+          ticks:{color:'#6b7280',font:{size:9},backdropColor:'transparent'},
+          pointLabels:{color:'#9ca3af',font:{size:9}}
+        }},
+        plugins:{legend:{display:false}},
+        animation:{duration:300}
+      }
+    });
+  },80);
+}
+
+const formulaStr=()=>NODES.map(n=>`${n.score.toFixed(1)}×${(n.stake/100).toFixed(2)}`).join(' + ');
+
+// ════════════════════════════════════════════════════════════
+//  WEBSOCKET SIMULATION  (Módulo 2)
+// ════════════════════════════════════════════════════════════
+const BOT_U=[
+  {user:'Ana',  em:'👩',color:'#f59e0b'},{user:'Diego',em:'🧑',color:'#3b82f6'},
+  {user:'Luna', em:'👩',color:'#ec4899'},{user:'Omar', em:'👨',color:'#10b981'},
+  {user:'Hiro', em:'👨',color:'#06b6d4'},{user:'Leila',em:'👩',color:'#f97316'},
+];
+const BOT_M=[
+  '¡Qué técnica tan increíble! 🔥','¿Cuánto tiempo a fuego lento?','Tomando notas 📝',
+  '¡Eso se ve delicioso! 🤤','Primera vez que hago esto','¡Gracias chef! 🙏',
+  '¿Temperatura exacta?','Lo estoy haciendo en casa 🏠','¡Perfecto el timing! ⏱️',
+  'La textura es increíble 😍','¿Puedo sustituir el dashi?','¡Qué color tiene! ✨'
+];
+
+function startWS(){
+  if(WS_ON) return;
+  WS_ON=true;
+  const b=document.getElementById('ws-badge');
+  if(b){ b.textContent='WS●'; b.className='font-mono text-xs text-emerald-400'; }
+  const d2=document.getElementById('ws-dot2');
+  if(d2){ d2.classList.remove('bg-gray-700'); d2.classList.add('bg-emerald-400','live-dot'); }
+  wsTimer=setInterval(wsTick,2200);
+}
+
+function wsTick(){
+  const r=Math.random();
+  if(r<0.32)      wsViewers();
+  else if(r<0.58) wsComment();
+  else if(r<0.74) wsPresence();
+  else if(r<0.87) wsStep();
+  else             wsScore();
+}
+
+function wsViewers(){
+  const d=Math.floor(Math.random()*22)-9;
+  ACTIVE_SESSION.viewers=Math.max(300,ACTIVE_SESSION.viewers+d);
+  SESSIONS.forEach(s=>{ s.viewers=Math.max(200,s.viewers+Math.floor(Math.random()*12)-5); });
+  const el=document.getElementById('sess-viewers');
+  if(el) el.textContent=fmtN(ACTIVE_SESSION.viewers);
+  const hd=document.getElementById('hdr-livecount');
+  if(hd) hd.textContent='👁 '+fmtN(ACTIVE_SESSION.viewers);
+  wsLogEntry(`viewer_update → ${fmtN(ACTIVE_SESSION.viewers)} (${d>0?'+':''}${d})`);
+  showToast(`👁 ${fmtN(ACTIVE_SESSION.viewers)} viewers`);
+}
+
+function wsComment(){
+  const u=BOT_U[Math.floor(Math.random()*BOT_U.length)];
+  const m=BOT_M[Math.floor(Math.random()*BOT_M.length)];
+  const c={id:'c'+Date.now(),user:u.user,em:u.em,text:m,ts:Date.now(),color:u.color};
+  COMMENTS.push(c);
+  if(COMMENTS.length>30) COMMENTS.shift();
+  const feed=document.getElementById('comment-feed');
+  if(feed){
+    const d=document.createElement('div');
+    d.innerHTML=bubbleHTML(c);
+    feed.appendChild(d.firstChild);
+    feed.scrollTop=feed.scrollHeight;
+  }
+  wsLogEntry(`new_comment → ${u.user}: "${m.substring(0,28)}"`);
+}
+
+function wsPresence(){
+  const off=PRESENCE.filter(p=>!p.online&&p.id!=='u1');
+  const on=PRESENCE.filter(p=>p.online&&p.id!=='u1');
+  let ev='';
+  if(Math.random()>0.5&&off.length>0){
+    const u=off[Math.floor(Math.random()*off.length)];
+    u.online=true; ev=`${u.name} se unió 👋`;
+  } else if(on.length>1){
+    const u=on[Math.floor(Math.random()*on.length)];
+    u.online=false; ev=`${u.name} salió`;
+  }
+  if(!ev) return;
+  redrawPresence();
+  wsLogEntry(`presence → ${ev}`);
+  showToast(`👥 ${ev}`);
+  const pe=document.getElementById('pres-event');
+  if(pe){ pe.textContent=ev; setTimeout(()=>{if(pe)pe.textContent='';},3000); }
+}
+
+function wsStep(){
+  wsLogEntry(`step_progress → paso ${ACTIVE_SESSION.step}/${ACTIVE_SESSION.steps} · ${ACTIVE_SESSION.stepName}`);
+}
+function wsScore(){
+  const d=(Math.random()*0.08-0.04);
+  ACTIVE_SESSION.score=Math.max(4.0,Math.min(5.0,ACTIVE_SESSION.score+d));
+  wsLogEntry(`score_update → ${ACTIVE_SESSION.score.toFixed(2)} (Δ${d.toFixed(3)})`);
+}
+
+function wsLogEntry(msg){
+  const log=document.getElementById('ws-log');
+  if(!log) return;
+  const d=document.createElement('div');
+  d.className='text-emerald-400 text-xs font-mono slide-in';
+  d.textContent='▶ '+msg;
+  log.insertBefore(d,log.firstChild);
+  if(log.children.length>8) log.removeChild(log.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONSTELLATION VOTING  (Módulo 6 — Δt=1.8s)
+// ════════════════════════════════════════════════════════════
+const VOTE_NAMES=['María','Carlos','Akira','Sofia','Omar','Ana','Diego','Hiro','Luna','Leila'];
+
+function startConst(){
+  if(constTimer) return;
+  constTimer=setInterval(constTick,1800);
+}
+
+function constTick(){
+  const n=NODES[Math.floor(Math.random()*NODES.length)];
+  const d=(Math.random()*0.12-0.05);
+  n.score=Math.max(4.0,Math.min(5.0,n.score+d));
+  n.votes++;
+  TOTAL_VOTES++;
+  refreshConstUI(n,d);
+}
+
+function refreshConstUI(n,d){
+  const cs=calcCS();
+  // Tab consenso (in live session)
+  const tc=document.getElementById('tc-score');   if(tc) tc.textContent=cs.toFixed(2);
+  const tv=document.getElementById('tc-votes');   if(tv) tv.textContent=TOTAL_VOTES;
+  const tb=document.getElementById(`tcb-${n.id}`);if(tb) tb.style.width=`${(n.score/5)*100}%`;
+  const ts=document.getElementById(`tcs-${n.id}`);if(ts) ts.textContent=n.score.toFixed(2);
+  addVoteRow('tc-vfeed',n,d);
+
+  // Full constellation page
+  const pc=document.getElementById('pc-score');  if(pc) pc.textContent=cs.toFixed(2);
+  const pv=document.getElementById('pc-votes');  if(pv) pv.textContent=TOTAL_VOTES;
+  const pf=document.getElementById('pc-formula');if(pf) pf.textContent=formulaStr();
+  const pb=document.getElementById(`pb-${n.id}`);if(pb) pb.style.width=`${(n.score/5)*100}%`;
+  const ps=document.getElementById(`ps-${n.id}`);if(ps) ps.textContent=n.score.toFixed(2);
+  const pw=document.getElementById(`pw-${n.id}`);if(pw) pw.textContent=((n.stake/100)*n.score).toFixed(3);
+  const pvv=document.getElementById(`pv-${n.id}`);if(pvv) pvv.textContent=`${n.votes} votos recibidos`;
+  addVoteRow('pc-vfeed',n,d);
+
+  // Update radar
+  if(radarInst){ radarInst.data.datasets[0].data=NODES.map(x=>x.score); radarInst.update('none'); }
+}
+
+function addVoteRow(feedId,n,d){
+  const feed=document.getElementById(feedId);
+  if(!feed) return;
+  const voter=VOTE_NAMES[Math.floor(Math.random()*VOTE_NAMES.length)];
+  const div=document.createElement('div');
+  div.className='text-xs font-mono slide-in flex items-center gap-1.5';
+  div.innerHTML=`<span style="color:${n.color};font-size:8px">●</span><span class="text-gray-400">${voter} → ${n.em} ${n.label}: ${n.score.toFixed(2)} (${d>0?'+':''}${d.toFixed(2)})</span>`;
+  feed.insertBefore(div,feed.firstChild);
+  if(feed.children.length>18) feed.removeChild(feed.lastChild);
+}
+
+function castVote(){
+  const n=NODES[Math.floor(Math.random()*NODES.length)];
+  n.score=Math.min(5.0,n.score+0.09);
+  n.votes++; TOTAL_VOTES++;
+  refreshConstUI(n,0.09);
+  showToast(`✓ Voto en ${n.em} ${n.label} registrado — LB-03`);
+}
+function castVoteMain(){
+  const n=NODES[Math.floor(Math.random()*NODES.length)];
+  n.score=Math.min(5.0,n.score+0.09);
+  n.votes++; TOTAL_VOTES++;
+  refreshConstUI(n,0.09);
+  showToast(`✓ Voto en ${n.em} ${n.label} registrado — LB-03`);
+}
+
+// ════════════════════════════════════════════════════════════
+//  CRDT OPERATIONS  (Módulo 3)
+// ════════════════════════════════════════════════════════════
+function crdtAdd(user){
+  const inp=document.getElementById(`inp-${user.toLowerCase()}`);
+  if(!inp||!inp.value.trim()) return;
+  CRDT.vc[user]++;
+  CRDT.items.push({id:'i'+Date.now(),name:inp.value.trim(),done:false,clock:{...CRDT.vc},ts:Date.now(),owner:user});
+  crdtLog(`[${user}] ADD "${inp.value.trim()}" · VC A:${CRDT.vc.A} B:${CRDT.vc.B}`);
+  inp.value='';
+  drawCRDT();
+  showToast(`CRDT: "${CRDT.items[CRDT.items.length-1].name}" añadido por ${user}`);
+}
+
+function crdtToggle(id){
+  const item=CRDT.items.find(i=>i.id===id);
+  if(!item) return;
+  item.done=!item.done; item.ts=Date.now();
+  CRDT.vc.A++;
+  item.clock.A=CRDT.vc.A;
+  crdtLog(`[A] TOGGLE "${item.name}" → ${item.done?'DONE ✓':'UNDO ○'} · LWW ts:${item.ts}`);
+  drawCRDT();
+}
+
+function crdtDel(id){
+  const item=CRDT.items.find(i=>i.id===id);
+  if(!item) return;
+  crdtLog(`[?] DEL "${item.name}" · tombstone`);
+  CRDT.items=CRDT.items.filter(i=>i.id!==id);
+  drawCRDT();
+}
+
+function crdtConflict(){
+  if(CRDT.items.length===0){ showToast('Añade items primero'); return; }
+  const target=CRDT.items[0];
+  CRDT.vc.A++; const tsA=Date.now();
+  CRDT.vc.B++; const tsB=tsA+2; // B siempre gana (ts posterior)
+  CRDT.items.unshift({
+    id:'ic'+Date.now(),
+    name:`⚡ "${target.name}" [edit-concurrente-B]`,
+    done:false,
+    clock:{A:CRDT.vc.A,B:CRDT.vc.B},
+    ts:tsB, owner:'B'
+  });
+  crdtLog(`⚡ CONFLICTO DETECTADO`);
+  crdtLog(`  A edit ts:${tsA} vs B edit ts:${tsB}`);
+  crdtLog(`  LWW → B GANA (ts posterior)`);
+  crdtLog(`  Merge: max(A:${CRDT.vc.A}, B:${CRDT.vc.B}) OK`);
+  drawCRDT();
+  showToast('⚡ Conflicto CRDT resuelto: B gana (LWW)');
+}
+
+function crdtLog(text){
+  const log=document.getElementById('crdt-log');
+  if(!log) return;
+  const d=document.createElement('div');
+  d.className='text-emerald-400 text-xs font-mono slide-in';
+  d.textContent=text;
+  log.insertBefore(d,log.firstChild);
+  if(log.children.length>14) log.removeChild(log.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════
+//  COMMENTS & REACTIONS
+// ════════════════════════════════════════════════════════════
+function sendMsg(){
+  const inp=document.getElementById('msg-in');
+  if(!inp||!inp.value.trim()) return;
+  const c={id:'c'+Date.now(),user:'Tú',em:'👤',text:inp.value.trim(),ts:Date.now(),color:'#8b5cf6'};
+  COMMENTS.push(c);
+  inp.value='';
+  const feed=document.getElementById('comment-feed');
+  if(feed){
+    const d=document.createElement('div');
+    d.innerHTML=bubbleHTML(c);
+    feed.appendChild(d.firstChild);
+    feed.scrollTop=feed.scrollHeight;
+  }
+  showToast('Mensaje enviado vía WS (sim) ✓');
+}
+
+function sendReact(emoji){
+  const zone=document.getElementById('float-zone');
+  if(!zone) return;
+  const d=document.createElement('div');
+  d.className='float-emoji';
+  d.style.right=(Math.random()*20)+'px';
+  d.style.bottom='0px';
+  d.textContent=emoji;
+  zone.appendChild(d);
+  setTimeout(()=>d.remove(),1700);
+  showToast(`Reacción ${emoji} enviada`);
+}
+
+// ════════════════════════════════════════════════════════════
+//  PRESENCE SYSTEM  (Módulo 5)
+// ════════════════════════════════════════════════════════════
+function redrawPresence(){
+  drawHeaderPresence();
+  // Live session bar
+  const bar=document.getElementById('live-pres-bar');
+  if(bar) bar.innerHTML=PRESENCE.filter(p=>p.online).map(p=>`
+    <div class="w-6 h-6 rounded-full border flex items-center justify-center transition-all" style="background:${p.color}20;border-color:${p.color}50;font-size:11px;border-width:1.5px" title="${p.name}">${p.em}</div>
+  `).join('');
+  const cnt=document.getElementById('pres-count');
+  if(cnt) cnt.textContent=PRESENCE.filter(p=>p.online).length;
+}
+
+function drawHeaderPresence(){
+  const bar=document.getElementById('hdr-presence');
+  if(!bar) return;
+  bar.innerHTML=PRESENCE.filter(p=>p.online).slice(0,5).map(p=>`
+    <div class="w-6 h-6 rounded-full border-2 border-gray-950 flex items-center justify-center transition-all" style="background:${p.color}28;border-color:${p.color}55;font-size:11px">${p.em}</div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('toast');
+  const m=document.getElementById('toast-msg');
+  if(!t||!m) return;
+  m.textContent=msg;
+  t.style.opacity='1';
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ if(t) t.style.opacity='0'; },2200);
+}
+
+function openSess(id){
+  ACTIVE_SESSION=SESSIONS.find(s=>s.id===id)||SESSIONS[0];
+  LIVE_TAB='live';
+  nav('live');
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOOT SEQUENCE
+// ════════════════════════════════════════════════════════════
+nav('feed');
+document.querySelector('[data-p="feed"] span:last-child').className='text-xs font-semibold text-violet-400';
+setTimeout(startWS,    1400);
+setTimeout(startConst, 700);
+drawHeaderPresence();
+console.log('%c AVIA v2.1.0 · build l3m4n5o · 8 módulos OK ', 'background:#8b5cf6;color:white;font-weight:bold;padding:4px 8px;border-radius:4px');
+</script>
+</body>
+</html>

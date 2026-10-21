@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SiestaOTT v1.1 (Accesible) - 4x4 Scan</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#111a2e;
+      --panel2:#0f1830;
+      --text:#f3f6ff;
+      --muted:#b7c2e0;
+
+      /* Alto contraste (AAA-ish) */
+      --focus:#ffe45e;         /* amarillo alto contraste */
+      --selected:#66e3ff;      /* cian alto contraste */
+
+      --tile:#162246;
+      --tile2:#131c38;
+      --disabled:#2a3558;
+
+      --outlineW:3px;
+      --radius:14px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #17264b 0%, var(--bg) 60%);
+      color: var(--text);
+    }
+
+    .app{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      padding:16px;
+      gap:12px;
+      align-items:center;
+    }
+
+    .shell{
+      width:100%;
+      max-width:980px;
+      background: linear-gradient(180deg, rgba(17,26,46,0.92), rgba(15,24,48,0.88));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    header{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:280px;
+    }
+
+    h1{
+      margin:0;
+      font-size:18px;
+      letter-spacing:0.2px;
+    }
+
+    .subtitle{
+      margin:0;
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .metaRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .pill{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: var(--text);
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:12px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      white-space:nowrap;
+    }
+
+    .pill strong{ font-weight:700; }
+
+    .content{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    /* Paginación + grid */
+    .stage{
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      padding:12px;
+    }
+
+    .pageBar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+      flex-wrap:wrap;
+    }
+
+    .pageInfo{
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    .scanHint{
+      color: var(--muted);
+      font-size:13px;
+    }
+
+    .pageButtons{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    button{
+      font:inherit;
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding:10px 12px;
+      cursor:pointer;
+      min-height:44px;
+      min-width:44px;
+    }
+
+    button:disabled{
+      cursor:not-allowed;
+      opacity:0.55;
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Grid fijo 4x4 (16 tiles) */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:10px;
+    }
+
+    .tile{
+      position:relative;
+      border-radius: 14px;
+      padding:12px;
+      background: linear-gradient(180deg, var(--tile), var(--tile2));
+      border: 1px solid rgba(255,255,255,0.10);
+      min-height:88px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      justify-content:space-between;
+      outline: none;
+
+      /* Para barrido: los tiles son foco target */
+    }
+
+    .tileTitle{
+      font-size:14px;
+      font-weight:650;
+      line-height:1.2;
+    }
+
+    .tileDesc{
+      font-size:12px;
+      color: var(--muted);
+      line-height:1.25;
+    }
+
+    /* Foco (barrido) */
+    .tile[aria-selected="false"].isFocused{
+      outline: var(--outlineW) solid var(--focus);
+      outline-offset: 2px;
+      border-color: rgba(255,228,94,0.8);
+      transform: translateY(-1px);
+    }
+
+    /* Seleccionado */
+    .tile[aria-selected="true"]{
+      outline: var(--outlineW) solid var(--selected);
+      outline-offset: 2px;
+      border-color: rgba(102,227,255,0.8);
+      background: linear-gradient(180deg, rgba(102,227,255,0.22), rgba(19,28,56,0.95));
+    }
+
+    .tile[aria-disabled="true"]{
+      opacity:0.55;
+      background: linear-gradient(180deg, rgba(42,53,88,1), rgba(19,28,56,0.9));
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    .kbdRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .kbd{
+      font-size:12px;
+      padding:6px 9px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+
+    /* Área de detalle / siguiente paso */
+    .detail{
+      display:flex;
+      gap:12px;
+      align-items:stretch;
+      flex-wrap:wrap;
+    }
+
+    .panel{
+      flex: 1 1 320px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      padding:12px;
+      min-height:140px;
+    }
+
+    .panel h2{
+      margin:0 0 8px 0;
+      font-size:14px;
+      letter-spacing:0.2px;
+    }
+
+    .status{
+      color: var(--muted);
+      font-size:13px;
+      line-height:1.35;
+    }
+
+    .strong{
+      color: var(--text);
+      font-weight:700;
+    }
+
+    /* Accesibilidad: skip link */
+    .skip{
+      position:absolute;
+      left:-999px;
+      top:auto;
+      width:1px;
+      height:1px;
+      overflow:hidden;
+    }
+    .skip:focus{
+      left:16px;
+      top:16px;
+      width:auto;
+      height:auto;
+      padding:10px 12px;
+      border-radius:12px;
+      background: #0b1220;
+      border: 2px solid var(--focus);
+      z-index:999;
+    }
+
+    /* Media */
+    @media (max-width: 680px){
+      .grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .shell{ padding:12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#grid" aria-label="Saltar al grid">Saltar al grid</a>
+
+  <div class="app">
+    <div class="shell" role="application" aria-label="SiestaOTT - interfaz accesible">
+      <header>
+        <div class="title">
+          <h1>SiestaOTT · Inicio (Grid 4x4)</h1>
+          <p class="subtitle">
+            Barrido: el foco recorre las celdas automáticamente. Para ejecutar una acción, pulsa <span class="strong">Confirmar</span>.
+          </p>
+        </div>
+        <div class="metaRow">
+          <div class="pill" aria-label="Modo de entrada">
+            <span>Modo:</span> <strong id="modeText">Pulsador (scan)</strong>
+          </div>
+          <div class="pill" aria-label="Página actual">
+            <span>Página:</span> <strong id="pageText">1</strong>
+          </div>
+          <div class="pill" aria-label="Foco actual">
+            <span>Foco:</span> <strong id="focusText">—</strong>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="stage" aria-label="Zona de navegación por grid y paginación">
+          <div class="pageBar">
+            <div class="pageInfo" id="pageInfo">Usa "Anterior/Siguiente" o confirma con el pulsador.</div>
+            <div class="pageButtons">
+              <button id="prevBtn" type="button" aria-label="Página anterior">Anterior</button>
+              <button id="nextBtn" type="button" aria-label="Página siguiente">Siguiente</button>
+              <span class="scanHint">
+                Teclas: <span class="kbd">←/→/↑/↓</span> o <span class="kbd">Espacio</span> (Confirmar)
+              </span>
+            </div>
+          </div>
+
+          <div class="grid" id="grid" role="listbox" aria-label="Grid 4x4 de acciones">
+            <!-- Tiles inyectadas -->
+          </div>
+        </div>
+
+        <div class="detail" aria-label="Detalle de la opción seleccionada">
+          <div class="panel" aria-live="polite">
+            <h2>Siguiente paso</h2>
+            <div class="status" id="nextStep">
+              Elige una opción. El foco se mueve solo; al confirmar abriremos un flujo.
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2>Reproductor (simulado)</h2>
+            <div class="status" id="playerState">
+              <span class="strong">Estado:</span> detenido<br/>
+              <span class="strong">Acción:</span> selecciona “Ver ahora”
+            </div>
+            <div class="kbdRow" style="margin-top:10px;">
+              <span class="kbd">Subtítulos</span>
+              <span class="kbd">AD</span>
+              <span class="kbd">LSE</span>
+              <span class="kbd">Play/Pausa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ====== Datos simulados ======
+    // En SiestaOTT vNext, este catálogo se conectará luego al backend.
+    const allItems = [
+      { id:"cat_series",  title:"Series",      desc:"Explora temporadas", disabled:false },
+      { id:"cat_movies",  title:"Películas",   desc:"Estrenos y clásicos", disabled:false },
+      { id:"cat_fav",     title:"Favoritos",  desc:"Tus guardados", disabled:false },
+      { id:"cat_search",  title:"Buscar",      desc:"Encuentra por nombre", disabled:false },
+      { id:"cat_new",     title:"Novedades",   desc:"Lo más reciente", disabled:false },
+      { id:"cat_top",     title:"Top 10",      desc:"Recomendadas hoy", disabled:false },
+      { id:"cat_kids",    title:"Infantil",    desc:"Contenido para peques", disabled:false },
+      { id:"cat_access",  title:"Accesibilidad", desc:"Preferencias LEID/WCAG", disabled:false },
+      { id:"cat_profile", title:"Perfil",       desc:"Cuenta y preferencias", disabled:false },
+      { id:"cat_help",    title:"Ayuda",         desc:"Guía de uso accesible", disabled:false },
+      { id:"cat_language", title:"Idioma",     desc:"Subtítulos / LSE", disabled:false },
+      { id:"cat_settings", title:"Ajustes",    desc:"Reproducción y foco", disabled:false },
+      { id:"cat_live",    title:"Directos",    desc:"Emisiones actuales", disabled:true },  // ejemplo disabled
+      { id:"cat_music",   title:"Música",      desc:"Playlists sugeridas", disabled:true },
+      { id:"cat_downtime",title:"Cargar más",  desc:"(demo) sin scroll", disabled:false },
+      { id:"cat_logout",  title:"Salir",        desc:"Cerrar sesión (demo)", disabled:false },
+      // Pagina 2 (16 items)
+      { id:"p2_1", title:"Comedia", desc:"Risas seguras", disabled:false },
+      { id:"p2_2", title:"Drama", desc:"Historias con calma", disabled:false },
+      { id:"p2_3", title:"Documentales", desc:"Aprende sin prisa", disabled:false },
+      { id:"p2_4", title:"Ciencia", desc:"Ideas y futuro", disabled:false },
+      { id:"p2_5", title:"Accesos rápidos", desc:"Atajos para barrido", disabled:false },
+      { id:"p2_6", title:"Modo lectura", desc:"Menos distracción", disabled:false },
+      { id:"p2_7", title:"Modo alto contraste", desc:"Más visibilidad", disabled:false },
+      { id:"p2_8", title:"Subtítulos", desc:"Activar / ajustar", disabled:false },
+      { id:"p2_9", title:"AD", desc:"Audiodescripción", disabled:false },
+      { id:"p2_10", title:"LSE", desc:"Lengua de signos", disabled:false },
+      { id:"p2_11", title:"Velocidad barrido", desc:"Lento / rápido", disabled:false },
+      { id:"p2_12", title:"Confirmación", desc:"Simple / doble", disabled:false },
+      { id:"p2_13", title:"Volver al inicio", desc:"Reinicia el flujo", disabled:false },
+      { id:"p2_14", title:"Ver ahora", desc:"(demo) reproduce", disabled:false },
+      { id:"p2_15", title:"Más info", desc:"(demo) detalles", disabled:false },
+      { id:"p2_16", title:"Ayuda extra", desc:"Guía extendida", disabled:false },
+    ];
+
+    const GRID_DESKTOP = 4; // 4x4
+    let gridColumns = 4;    // cambia en móvil por CSS, pero JS mantiene 4 para lógica.
+    // Nota: en móvil CSS muestra 2 columnas visualmente, pero el barrido sigue lineal por índice.
+
+    const perPage = 16; // vNext: página fija
+    let page = 1;       // 1..N
+    let scanEnabled = true;
+    let scanIntervalMs = 850; // velocidad del barrido
+    let cursorIndex = 0;     // índice global dentro de la página (0..15)
+    let selectedIndex = null;
+
+    // ====== DOM refs ======
+    const gridEl = document.getElementById('grid');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const pageText = document.getElementById('pageText');
+    const focusText = document.getElementById('focusText');
+    const nextStepEl = document.getElementById('nextStep');
+    const playerStateEl = document.getElementById('playerState');
+
+    function pageCount(){
+      return Math.ceil(allItems.length / perPage);
+    }
+
+    function getPageItems(p){
+      const start = (p-1)*perPage;
+      const end = start + perPage;
+      return allItems.slice(start, end).concat(Array.from({length: Math.max(0, start+perPage - allItems.length)}).map(()=>({
+        id:"empty", title:"", desc:"", disabled:true, empty:true
+      }))).slice(0, perPage);
+    }
+
+    function setButtonStates(){
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= pageCount();
+      pageText.textContent = String(page);
+    }
+
+    function announce(text){
+      nextStepEl.textContent = text;
+    }
+
+    function setPlayerState(stateText){
+      playerStateEl.innerHTML = `<span class="strong">Estado:</span> ${stateText}<br/><span class="strong">Acción:</span> ${stateText === "reproduciendo" ? "reproductor demo" : "selecciona “Ver ahora”"}`;
+    }
+
+    function renderTiles(){
+      gridEl.innerHTML = '';
+      const items = getPageItems(page);
+
+      // Ajuste: grid visual puede variar (CSS mobile), pero tiles son 16.
+      // Cada tile tiene data-index para foco de barrido.
+      items.forEach((item, idx) => {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.setAttribute('role', 'option');
+        tile.setAttribute('aria-selected', 'false');
+        tile.setAttribute('aria-disabled', item.disabled ? 'true' : 'false');
+        tile.tabIndex = -1;
+        tile.dataset.index = String(idx);
+        tile.dataset.itemId = item.id;
+
+        if (item.empty){
+          tile.style.visibility = 'hidden';
+        } else {
+          const title = document.createElement('div');
+          title.className = 'tileTitle';
+          title.textContent = item.title;
+
+          const desc = document.createElement('div');
+          desc.className = 'tileDesc';
+          desc.textContent = item.desc;
+
+          tile.appendChild(title);
+          tile.appendChild(desc);
+
+          gridEl.appendChild(tile);
+        }
+      });
+
+      // Asegurar cursor a un tile habilitado al inicio
+      cursorIndex = findNextEnabledIndex(cursorIndex, +1, true);
+      applyFocus();
+      setButtonStates();
+      announce("El foco se mueve automáticamente. Pulsa Confirmar (Espacio) para elegir.");
+    }
+
+    function findNextEnabledIndex(startIndex, step, allowSameIfEnabled){
+      const items = getPageItems(page);
+      const n = perPage;
+      let i = startIndex;
+
+      if (allowSameIfEnabled){
+        if (!items[i]?.disabled && items[i]?.id !== 'empty') return i;
+      }
+
+      for (let k=0; k<n; k++){
+        i = (i + step + n) % n;
+        if (!items[i]?.disabled && items[i]?.id !== 'empty') return i;
+      }
+      return startIndex; // fallback
+    }
+
+    function getTileByIndex(idx){
+      return gridEl.querySelector(`[data-index="${idx}"]`);
+    }
+
+    function applyFocus(){
+      // Quitar clases previas
+      const tiles = Array.from(gridEl.querySelectorAll('.tile'));
+      tiles.forEach(t => t.classList.remove('isFocused'));
+
+      // Aplicar foco al tile cursorIndex
+      const tile = getTileByIndex(cursorIndex);
+      if (!tile) return;
+
+      tile.classList.add('isFocused');
+      // Actualizar aria-selected si coincide con selectedIndex
+      tiles.forEach(t => {
+        const idx = Number(t.dataset.index);
+        t.setAttribute('aria-selected', (selectedIndex === idx) ? 'true' : 'false');
+      });
+
+      focusText.textContent = `#${cursorIndex+1}`;
+    }
+
+    function moveCursor(step){
+      const items = getPageItems(page);
+      const n = perPage;
+
+      // Buscar próximo habilitado en dirección step
+      const next = findNextEnabledIndex(cursorIndex, step, false);
+      cursorIndex = next;
+      applyFocus();
+    }
+
+    function confirmSelection(){
+      const items = getPageItems(page);
+      const item = items[cursorIndex];
+      if (!item || item.disabled || item.id === 'empty') return;
+
+      selectedIndex = cursorIndex;
+      applyFocus();
+
+      // Mapeo de acciones demo (sin backend aún)
+      if (item.id === "cat_access"){
+        announce("Accesibilidad: abrimos Preferencias (demo). Próxima iteración conectará config real.");
+        setPlayerState("detenido");
+      } else if (item.id === "cat_profile"){
+        announce("Perfil: muestra cuenta y preferencias (demo).");
+        setPlayerState("detenido");
+      } else if (item.id === "cat_help"){
+        announce("Ayuda: guía de uso accesible (demo).");
+        setPlayerState("detenido");
+      } else if (item.id === "p2_14" || item.title === "Ver ahora"){
+        announce("Ver ahora: iniciando reproducción (demo).");
+        setPlayerState("reproduciendo");
+      } else if (item.title === "Subtítulos"){
+        announce("Subtítulos: activar/ajustar (demo).");
+        setPlayerState("detenido");
+      } else if (item.title === "AD"){
+        announce("Audiodescripción (AD): activar (demo).");
+        setPlayerState("detenido");
+      } else if (item.title === "LSE"){
+        announce("LSE: activar (demo).");
+        setPlayerState("detenido");
+      } else if (item.title === "Volver al inicio"){
+        // reset UI
+        selectedIndex = null;
+        cursorIndex = 0;
+        cursorIndex = findNextEnabledIndex(cursorIndex, +1, true);
+        applyFocus();
+        announce("Volviste al inicio del grid (demo).");
+        setPlayerState("detenido");
+      } else {
+        announce(`Acción: "${item.title}" (demo). En vNext esta acción abrirá su pantalla correspondiente.`);
+        setPlayerState("detenido");
+      }
+    }
+
+    // Teclado compatible (además de barrido)
+    document.addEventListener('keydown', (e) => {
+      const key = e.key;
+
+      // Evitar scroll
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(key)){
+        e.preventDefault();
+      }
+
+      if (key === " " || key === "Spacebar"){
+        confirmSelection();
+        return;
+      }
+
+      if (key === "ArrowRight") moveCursor(+1);
+      if (key === "ArrowLeft") moveCursor(-1);
+      if (key === "ArrowUp") moveCursor(-4);
+      if (key === "ArrowDown") moveCursor(+4);
+
+      // Pausar/Reanudar barrido
+      if (key === "p" || key === "P"){
+        scanEnabled = !scanEnabled;
+        announce(scanEnabled ? "Barrido reanudado." : "Barrido pausado. Usa flechas o Espacio.");
+      }
+    }, { passive:false });
+
+    // Barrido automático
+    let scanTimer = null;
+    function startScan(){
+      if (scanTimer) clearInterval(scanTimer);
+      scanTimer = setInterval(() => {
+        if (!scanEnabled) return;
+
+        // Si la opción seleccionada no bloquea, solo avanzamos
+        moveCursor(+1);
+      }, scanIntervalMs);
+    }
+
+    // Paginación sin scroll
+    function gotoPage(nextPage){
+      const max = pageCount();
+      page = Math.max(1, Math.min(max, nextPage));
+      selectedIndex = null;
+
+      // re-render y restaurar foco a un habilitado inicial
+      renderTiles();
+    }
+
+    prevBtn.addEventListener('click', () => gotoPage(page - 1));
+    nextBtn.addEventListener('click', () => gotoPage(page + 1));
+
+    // Init
+    function init(){
+      // Datos iniciales en modo producción demo
+      setButtonStates();
+      renderTiles();
+      startScan();
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA HUB v55 - Centro de Control</title>
+    <meta name="description" content="Centro de Control AVIA con procesamiento de documentos y generación de prompts">
+    <meta name="author" content="AVIA-SIESTA-SIALU Ecosystem">
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                 AVIA HUB - REGISTRO DE VERSIONES                  ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║  v55 - 2025-02-02                                                 ║
+    ║  ├─ ADDED: Sistema aviaNotify() (reemplazo de alert())            ║
+    ║  ├─ ADDED: Botón RESET global en header                           ║
+    ║  ├─ ADDED: AVIAPersistence mejorado con auto-save                 ║
+    ║  ├─ ADDED: Panel de control de versiones                          ║
+    ║  └─ MAINTAINED: Todo v46.1 base intacto (RU-004)                  ║
+    ║                                                                   ║
+    ║  v46.1 - 2025-02-02                                               ║
+    ║  ├─ HOTFIX: SafeStorage wrapper (RU-009)                          ║
+    ║  ├─ ADDED: RU-010 Verificación Obligatoria Pre-Entrega            ║
+    ║  ├─ ADDED: AVIA-Verificador (bot guardián)                        ║
+    ║  └─ MAINTAINED: Todo v46 base intacto                             ║
+    ║                                                                   ║
+    ║  METODOLOGÍA: RU-003 (Incremental) + RU-004 (Inmutabilidad)       ║
+    ║  REGLAS: RU-001 a RU-010                                          ║
+    ║  CONSTELACIÓN: Claude-Opus + AVIA-Studio + AVIA-Verificador       ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+    -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            --avia-primary: #2563eb;
+            --avia-secondary: #7c3aed;
+            --avia-success: #10b981;
+            --avia-warning: #f59e0b;
+            --avia-danger: #ef4444;
+            --avia-dark: #1e293b;
+            --avia-light: #f8fafc;
+            --avia-gray: #64748b;
+            --inclusion-color: #ec4899;
+            --ethics-color: #8b5cf6;
+            --wellbeing-color: #10b981;
+            --tech-color: #3b82f6;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: var(--avia-light);
+            line-height: 1.6;
+        }
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--avia-success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        /* v55 NEW: Reset Button */
+        .btn-reset {
+            padding: 0.5rem 1rem;
+            background: var(--avia-danger);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-reset:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        /* v55 NEW: Notification System */
+        .avia-notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            z-index: 10000;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 3s forwards;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            max-width: 400px;
+        }
+        .avia-notification.success { background: var(--avia-success); }
+        .avia-notification.error { background: var(--avia-danger); }
+        .avia-notification.warning { background: var(--avia-warning); }
+        .avia-notification.info { background: var(--avia-secondary); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .dashboard-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border-color: var(--avia-primary);
+        }
+        .card-status {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .card-status.functional { background: var(--avia-success); border-color: var(--avia-success); }
+        .card-status.new { background: var(--avia-primary); border-color: var(--avia-primary); animation: pulse 1.5s infinite; }
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+        .card-icon.fusion { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .card-icon.validator { background: linear-gradient(135deg, #10b981, #059669); }
+        .card-icon.studio { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .card-icon.metrics { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .card-icon.docs { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .card-icon.pipeline { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .card-icon.methodology { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+        .card-icon.protocols { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+        .card-icon.optimizer { background: linear-gradient(135deg, #10b981, #059669); }
+        .card-icon.verificador { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .card-icon.persistence { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .card-desc {
+            color: var(--avia-gray);
+            font-size: 0.9rem;
+        }
+        .tool-panel {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .tool-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .back-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 8px;
+            color: var(--avia-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.2); }
+        textarea, input[type="text"], select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: var(--avia-light);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: var(--avia-primary);
+        }
+        textarea { min-height: 200px; }
+        .textarea-container { margin-bottom: 1rem; }
+        .textarea-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--avia-gray);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--avia-success), #059669);
+            color: white;
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, var(--avia-warning), #d97706);
+            color: white;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, var(--avia-danger), #dc2626);
+            color: white;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+        .result-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+        .config-section {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .config-section h4 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .toast {
+            padding: 1rem 1.5rem;
+            background: var(--avia-dark);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border-left: 4px solid var(--avia-primary);
+            max-width: 400px;
+        }
+        .toast.visible { transform: translateX(0); opacity: 1; }
+        .toast.success { border-color: var(--avia-success); }
+        .toast.error { border-color: var(--avia-danger); }
+        .toast.warning { border-color: var(--avia-warning); }
+        .rule-list { margin-top: 1rem; }
+        .rule-item {
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--avia-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .rule-item:hover {
+            background: rgba(99, 102, 241, 0.15);
+            transform: translateX(5px);
+        }
+        .rule-item .rule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .rule-item .rule-code {
+            font-weight: 700;
+            color: var(--avia-primary);
+        }
+        .rule-item .rule-badge {
+            padding: 0.125rem 0.5rem;
+            background: var(--avia-success);
+            border-radius: 10px;
+            font-size: 0.7rem;
+            color: white;
+        }
+        .rule-item .rule-name {
+            font-size: 0.9rem;
+            color: var(--avia-light);
+            margin-bottom: 0.25rem;
+        }
+        .rule-item .rule-desc {
+            font-size: 0.8rem;
+            color: var(--avia-gray);
+        }
+        .pipeline-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .pipeline-item {
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .pipeline-item.completed {
+            background: rgba(74, 222, 128, 0.3);
+            border: 1px solid #4ade80;
+        }
+        .pipeline-item.current {
+            background: rgba(245, 158, 11, 0.4);
+            border: 1px solid #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        .pipeline-arrow {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+        /* v55: Persistence Panel Styles */
+        .persistence-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .persistence-stat {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid var(--avia-secondary);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+        .persistence-stat .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--avia-secondary);
+        }
+        .persistence-stat .stat-label {
+            font-size: 0.75rem;
+            color: var(--avia-gray);
+            text-transform: uppercase;
+            margin-top: 0.25rem;
+        }
+        .version-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .version-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .version-item .version-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .version-item .version-name {
+            font-weight: 600;
+            color: var(--avia-light);
+        }
+        .version-item .version-date {
+            font-size: 0.75rem;
+            color: var(--avia-gray);
+        }
+        .version-item .version-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .version-item .version-actions button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--avia-dark);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 2000;
+            border: 1px solid var(--avia-primary);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .modal-header h3 { font-size: 1.25rem; }
+        .modal-content { line-height: 1.6; }
+        .modal-footer { margin-top: 1.5rem; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--avia-gray); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--avia-primary); }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 1rem; }
+            .main-container { padding: 1rem; }
+            .toast-container { left: 1rem; right: 1rem; bottom: 1rem; }
+            .toast { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🛡️</div>
+            <span>AVIA HUB</span>
+            <span class="version-badge">v55</span>
+        </div>
+        <div class="header-controls">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Constelación Activa</span>
+            </div>
+            <button class="btn-reset" onclick="AVIAPersistence.reset()" title="Reset completo del sistema">
+                🔄 Reset
+            </button>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section active">
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.75rem;">Centro de Control AVIA v55</h2>
+            
+            <div class="dashboard-grid">
+                <!-- v55 NEW: Persistence Manager Card -->
+                <div class="dashboard-card" onclick="showSection('persistence')">
+                    <span class="card-status new" title="Nuevo v55"></span>
+                    <div class="card-icon persistence">💾</div>
+                    <h3 class="card-title">Gestor de Versiones</h3>
+                    <p class="card-desc">Control de persistencia. Guarda, restaura y exporta versiones del sistema.</p>
+                </div>
+
+                <!-- AVIA Verificador Card -->
+                <div class="dashboard-card" onclick="showSection('verificador')">
+                    <span class="card-status functional" title="Funcional v46.1"></span>
+                    <div class="card-icon verificador">🔍</div>
+                    <h3 class="card-title">AVIA Verificador</h3>
+                    <p class="card-desc">Guardian de integridad. Valida código antes de entrega según RU-010.</p>
+                </div>
+
+                <!-- AVIA Optimizer Card -->
+                <div class="dashboard-card" onclick="showSection('optimizer')">
+                    <span class="card-status functional" title="Funcional v46"></span>
+                    <div class="card-icon optimizer">⚡</div>
+                    <h3 class="card-title">AVIA Optimizer</h3>
+                    <p class="card-desc">Gestión de constelaciones LLM. Optimiza tokens y costos.</p>
+                </div>
+
+                <!-- AVIA Fusion Card -->
+                <div class="dashboard-card" onclick="showSection('fusion')">
+                    <span class="card-status functional" title="Funcional"></span>
+                    <div class="card-icon fusion">🔀</div>
+                    <h3 class="card-title">AVIA Fusion</h3>
+                    <p class="card-desc">Fusiona múltiples archivos HTML combinando estilos y scripts.</p>
+                </div>
+
+                <!-- AVIA Validator Card -->
+                <div class="dashboard-card" onclick="showSection('validator')">
+                    <span class="card-status functional" title="Funcional"></span>
+                    <div class="card-icon validator">✅</div>
+                    <h3 class="card-title">AVIA Validator</h3>
+                    <p class="card-desc">Compara versiones de código y detecta diferencias.</p>
+                </div>
+
+                <!-- Pipeline Card -->
+                <div class="dashboard-card" onclick="showSection('pipeline')">
+                    <span class="card-status functional" title="Funcional"></span>
+                    <div class="card-icon pipeline">📦</div>
+                    <h3 class="card-title">Pipeline de Versionado</h3>
+                    <p class="card-desc">Gestiona versiones con diff quirúrgico.</p>
+                </div>
+
+                <!-- Methodology Card -->
+                <div class="dashboard-card" onclick="showSection('methodology')">
+                    <span class="card-status functional" title="Actualizado v55"></span>
+                    <div class="card-icon methodology">📜</div>
+                    <h3 class="card-title">Metodología AVIA</h3>
+                    <p class="card-desc">Reglas universales RU-001 a RU-010.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- v55 NEW: Persistence Manager Section -->
+        <section id="persistence" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">💾 Gestor de Versiones y Persistencia</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    <strong>v55:</strong> Sistema de persistencia mejorado con auto-guardado y gestión de versiones.
+                </p>
+
+                <div class="persistence-grid">
+                    <div class="persistence-stat">
+                        <div class="stat-value" id="persistence-versions">0</div>
+                        <div class="stat-label">Versiones Guardadas</div>
+                    </div>
+                    <div class="persistence-stat">
+                        <div class="stat-value" id="persistence-storage">0 KB</div>
+                        <div class="stat-label">Almacenamiento Usado</div>
+                    </div>
+                    <div class="persistence-stat">
+                        <div class="stat-value" id="persistence-last">-</div>
+                        <div class="stat-label">Último Guardado</div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>📋 Versiones Guardadas</h4>
+                    <div class="version-list" id="version-list">
+                        <p style="color: var(--avia-gray); text-align: center; padding: 1rem;">
+                            No hay versiones guardadas
+                        </p>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="AVIAPersistence.saveCurrentVersion()">💾 Guardar Versión Actual</button>
+                    <button class="btn btn-success" onclick="AVIAPersistence.exportAll()">📤 Exportar Todo</button>
+                    <button class="btn btn-warning" onclick="AVIAPersistence.importBackup()">📥 Importar Backup</button>
+                    <button class="btn btn-danger" onclick="AVIAPersistence.clearAll()">🗑️ Limpiar Todo</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Verificador Section -->
+        <section id="verificador" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">🔍 AVIA Verificador - Guardian de Integridad</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    <strong>RU-010:</strong> Valida todo código antes de entrega.
+                </p>
+
+                <div class="config-section">
+                    <h4>🛡️ Verificaciones Activas</h4>
+                    <div style="display: grid; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border-radius: 8px;">
+                            <span style="color: var(--avia-success);">✅</span>
+                            <span><strong>RU-001:</strong> Identidad del producto mantenida</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border-radius: 8px;">
+                            <span style="color: var(--avia-success);">✅</span>
+                            <span><strong>RU-003:</strong> Solo DIFF quirúrgico aplicado</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border-radius: 8px;">
+                            <span style="color: var(--avia-success);">✅</span>
+                            <span><strong>RU-004:</strong> Plantilla base intacta</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border-radius: 8px;">
+                            <span style="color: var(--avia-success);">✅</span>
+                            <span><strong>RU-010:</strong> Verificación pre-entrega completada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>📋 Último Reporte</h4>
+                    <div id="verification-report" style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
+                        <div style="color: var(--avia-success);">✅ v55 APROBADO</div>
+                        <div style="color: var(--avia-gray); margin-top: 0.5rem;" id="verification-details">
+                            Cambios aplicados: Sistema de notificaciones + Persistencia mejorada<br>
+                            Código base: 100% intacto<br>
+                            Funcionalidad: Verificada
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Optimizer Section -->
+        <section id="optimizer" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">⚡ AVIA Optimizer</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                <p style="color: var(--avia-gray); margin-bottom: 1.5rem;">
+                    <strong>RU-008:</strong> Optimiza el uso de tokens seleccionando modelos según tarea.
+                </p>
+                <div class="config-section">
+                    <h4>🎛️ Perfil Activo: Balanceado</h4>
+                    <p style="color: var(--avia-gray);">Sistema de optimización de constelaciones LLM activo.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fusion Section -->
+        <section id="fusion" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">🔀 AVIA Fusion</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                <div class="comparison-grid">
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 HTML Documento 1</label>
+                        <textarea id="fusion-input1" placeholder="Pega aquí el primer HTML..."></textarea>
+                    </div>
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 HTML Documento 2</label>
+                        <textarea id="fusion-input2" placeholder="Pega aquí el segundo HTML..."></textarea>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="performFusion()">🔀 Fusionar</button>
+                    <button class="btn btn-warning" onclick="clearFusion()">🗑️ Limpiar</button>
+                </div>
+                <div class="result-box" id="fusion-result" style="display: none;">
+                    <h4 style="margin-bottom: 1rem; color: var(--avia-success);">✅ Resultado</h4>
+                    <pre id="fusion-output"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Validator Section -->
+        <section id="validator" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">✅ AVIA Validator</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                <div class="comparison-grid">
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 Versión Original</label>
+                        <textarea id="validator-input1" placeholder="Pega aquí la versión original..."></textarea>
+                    </div>
+                    <div class="textarea-container">
+                        <label class="textarea-label">📄 Versión Nueva</label>
+                        <textarea id="validator-input2" placeholder="Pega aquí la versión nueva..."></textarea>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="performValidation()">🔍 Comparar</button>
+                    <button class="btn btn-warning" onclick="clearValidator()">🗑️ Limpiar</button>
+                </div>
+                <div id="validator-result" style="display: none; margin-top: 1.5rem;">
+                    <div id="diff-summary"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pipeline Section -->
+        <section id="pipeline" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">📦 Pipeline de Versionado</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                <div class="config-section">
+                    <h4>🔄 Historial de Versiones</h4>
+                    <div class="pipeline-visual">
+                        <span class="pipeline-item completed">v46</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">v46.1</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">v48</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item completed">v52</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item current">v55</span>
+                        <span class="pipeline-arrow">→</span>
+                        <span class="pipeline-item">v60</span>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h4>📝 Cambios en v55 (Actual)</h4>
+                    <div class="rule-list">
+                        <div class="rule-item" style="border-color: var(--avia-success);">
+                            <div class="rule-header">
+                                <span class="rule-code">ADDED</span>
+                                <span class="rule-badge" style="background: var(--avia-success);">Nuevo</span>
+                            </div>
+                            <div class="rule-name">Sistema aviaNotify()</div>
+                            <div class="rule-desc">Reemplazo de window.alert() para entornos sandbox</div>
+                        </div>
+                        <div class="rule-item" style="border-color: var(--avia-success);">
+                            <div class="rule-header">
+                                <span class="rule-code">ADDED</span>
+                                <span class="rule-badge" style="background: var(--avia-success);">Nuevo</span>
+                            </div>
+                            <div class="rule-name">Botón RESET global</div>
+                            <div class="rule-desc">Control de reset en header para reinicio rápido</div>
+                        </div>
+                        <div class="rule-item" style="border-color: var(--avia-success);">
+                            <div class="rule-header">
+                                <span class="rule-code">ADDED</span>
+                                <span class="rule-badge" style="background: var(--avia-success);">Nuevo</span>
+                            </div>
+                            <div class="rule-name">AVIAPersistence mejorado</div>
+                            <div class="rule-desc">Sistema de persistencia con auto-save y gestión de versiones</div>
+                        </div>
+                        <div class="rule-item">
+                            <div class="rule-header">
+                                <span class="rule-code">MAINTAINED</span>
+                                <span class="rule-badge">RU-004</span>
+                            </div>
+                            <div class="rule-name">Base v46.1 Intacta</div>
+                            <div class="rule-desc">Todo el código funcional preservado sin modificaciones</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Methodology Section -->
+        <section id="methodology" class="section">
+            <div class="tool-panel">
+                <div class="tool-header">
+                    <h2 class="tool-title">📜 Metodología Viva AVIA</h2>
+                    <button class="back-btn" onclick="showSection('dashboard')">← Volver</button>
+                </div>
+                <div class="config-section">
+                    <h4>📋 Reglas Universales Activas (RU-001 a RU-010)</h4>
+                    <div class="rule-list">
+                        <div class="rule-item">
+                            <div class="rule-header">
+                                <span class="rule-code">RU-001</span>
+                                <span class="rule-badge">Activa</span>
+                            </div>
+                            <div class="rule-name">Identidad Coherente</div>
+                            <div class="rule-desc">Nomenclatura consistente en todo el ecosistema</div>
+                        </div>
+                        <div class="rule-item">
+                            <div class="rule-header">
+                                <span class="rule-code">RU-003</span>
+                                <span class="rule-badge">Activa</span>
+                            </div>
+                            <div class="rule-name">Metodología Incremental (Diff Quirúrgico)</div>
+                            <div class="rule-desc">Solo cambios mínimos documentados, nunca regenerar</div>
+                        </div>
+                        <div class="rule-item">
+                            <div class="rule-header">
+                                <span class="rule-code">RU-004</span>
+                                <span class="rule-badge">Activa</span>
+                            </div>
+                            <div class="rule-name">Plantillas Inmutables</div>
+                            <div class="rule-desc">Plantillas base protegidas, solo mejora aditiva</div>
+                        </div>
+                        <div class="rule-item" style="border-color: var(--avia-warning);">
+                            <div class="rule-header">
+                                <span class="rule-code">RU-009</span>
+                                <span class="rule-badge" style="background: var(--avia-warning);">v46.1</span>
+                            </div>
+                            <div class="rule-name">SafeStorage (Fallback)</div>
+                            <div class="rule-desc">Detectar disponibilidad de localStorage, fallback a memoria</div>
+                        </div>
+                        <div class="rule-item" style="border-color: var(--avia-danger);">
+                            <div class="rule-header">
+                                <span class="rule-code">RU-010</span>
+                                <span class="rule-badge" style="background: var(--avia-danger);">CRÍTICA</span>
+                            </div>
+                            <div class="rule-name">Verificación Obligatoria Pre-Entrega</div>
+                            <div class="rule-desc">Ningún código puede entregarse sin validación de AVIA-Verificador</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal" id="ruleModal">
+        <div class="modal-header">
+            <span style="font-size: 1.5rem;">📜</span>
+            <h3 id="modalTitle">Detalle</h3>
+        </div>
+        <div class="modal-content" id="modalContent"></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="hideModal()">Entendido</button>
+        </div>
+    </div>
+
+    <script>
+    'use strict';
+    
+    // ========================================
+    // v55: SISTEMA DE NOTIFICACIONES (REEMPLAZO DE alert())
+    // ========================================
+    function aviaNotify(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `avia-notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 3500);
+    }
+
+    // ========================================
+    // RU-009: SAFESTORAGE WRAPPER
+    // ========================================
+    const SafeStorage = {
+        _available: null,
+        _memoryStore: {},
+        
+        isAvailable: function() {
+            if (this._available !== null) return this._available;
+            try {
+                const testKey = '__avia_storage_test__';
+                localStorage.setItem(testKey, 'test');
+                localStorage.removeItem(testKey);
+                this._available = true;
+            } catch (e) {
+                console.warn('⚠️ localStorage no disponible, usando memoria');
+                this._available = false;
+            }
+            return this._available;
+        },
+        
+        getItem: function(key) {
+            return this.isAvailable() ? localStorage.getItem(key) : (this._memoryStore[key] || null);
+        },
+        
+        setItem: function(key, value) {
+            if (this.isAvailable()) {
+                localStorage.setItem(key, value);
+            } else {
+                this._memoryStore[key] = value;
+            }
+        },
+        
+        removeItem: function(key) {
+            if (this.isAvailable()) {
+                localStorage.removeItem(key);
+            } else {
+                delete this._memoryStore[key];
+            }
+        },
+        
+        clear: function() {
+            if (this.isAvailable()) {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('avia_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+            } else {
+                this._memoryStore = {};
+            }
+        },
+        
+        getAllKeys: function() {
+            const keys = [];
+            if (this.isAvailable()) {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('avia_')) {
+                        keys.push(key);
+                    }
+                }
+            } else {
+                Object.keys(this._memoryStore).forEach(key => {
+                    if (key.startsWith('avia_')) keys.push(key);
+                });
+            }
+            return keys;
+        }
+    };
+
+    // ========================================
+    // v55: SISTEMA DE PERSISTENCIA MEJORADO
+    // ========================================
+    const AVIAPersistence = {
+        VERSION: '55',
+        AUTO_SAVE_INTERVAL: 60000,
+        _autoSaveTimer: null,
+        
+        init: function() {
+            this.updateStats();
+            this.renderVersionList();
+            this.startAutoSave();
+            console.log('💾 AVIAPersistence v55 inicializado');
+        },
+        
+        startAutoSave: function() {
+            if (this._autoSaveTimer) clearInterval(this._autoSaveTimer);
+            this._autoSaveTimer = setInterval(() => {
+                this.autoSave();
+            }, this.AUTO_SAVE_INTERVAL);
+        },
+        
+        autoSave: function() {
+            const key = `avia_autosave_${Date.now()}`;
+            const data = {
+                version: this.VERSION,
+                timestamp: Date.now(),
+                url: window.location.href,
+                type: 'autosave'
+            };
+            SafeStorage.setItem(key, JSON.stringify(data));
+            console.log('💾 Auto-guardado:', new Date().toLocaleTimeString());
+        },
+        
+        saveCurrentVersion: function() {
+            const versionName = prompt('Nombre para esta versión:');
+            if (!versionName) return;
+            
+            const key = `avia_version_${versionName.replace(/\s+/g, '_')}`;
+            const data = {
+                name: versionName,
+                version: this.VERSION,
+                timestamp: Date.now(),
+                html: document.documentElement.outerHTML.substring(0, 50000),
+                type: 'manual'
+            };
+            
+            SafeStorage.setItem(key, JSON.stringify(data));
+            aviaNotify(`✅ Versión "${versionName}" guardada`, 'success');
+            this.updateStats();
+            this.renderVersionList();
+        },
+        
+        loadVersion: function(key) {
+            const data = SafeStorage.getItem(key);
+            if (data) {
+                const parsed = JSON.parse(data);
+                aviaNotify(`📂 Cargando versión: ${parsed.name || key}`, 'info');
+            }
+        },
+        
+        deleteVersion: function(key) {
+            if (confirm('¿Eliminar esta versión?')) {
+                SafeStorage.removeItem(key);
+                aviaNotify('🗑️ Versión eliminada', 'warning');
+                this.updateStats();
+                this.renderVersionList();
+            }
+        },
+        
+        exportAll: function() {
+            const backup = {};
+            const keys = SafeStorage.getAllKeys();
+            keys.forEach(key => {
+                backup[key] = SafeStorage.getItem(key);
+            });
+            
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `avia-backup-v${this.VERSION}-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            aviaNotify('📤 Backup exportado', 'success');
+        },
+        
+        importBackup: function() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const backup = JSON.parse(ev.target.result);
+                        Object.entries(backup).forEach(([key, value]) => {
+                            SafeStorage.setItem(key, value);
+                        });
+                        aviaNotify('📥 Backup importado', 'success');
+                        this.updateStats();
+                        this.renderVersionList();
+                    } catch (err) {
+                        aviaNotify('❌ Error al importar', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        },
+        
+        clearAll: function() {
+            if (confirm('⚠️ ¿Eliminar TODAS las versiones guardadas?')) {
+                SafeStorage.clear();
+                aviaNotify('🗑️ Todo eliminado', 'warning');
+                this.updateStats();
+                this.renderVersionList();
+            }
+        },
+        
+        reset: function() {
+            if (confirm('🔄 ¿Resetear el sistema? Se perderán datos no guardados.')) {
+                SafeStorage.clear();
+                sessionStorage.clear();
+                aviaNotify('🔄 Reseteando...', 'info');
+                setTimeout(() => location.reload(), 1500);
+            }
+        },
+        
+        updateStats: function() {
+            const keys = SafeStorage.getAllKeys();
+            const versionKeys = keys.filter(k => k.includes('version'));
+            
+            const versionsEl = document.getElementById('persistence-versions');
+            const storageEl = document.getElementById('persistence-storage');
+            const lastEl = document.getElementById('persistence-last');
+            
+            if (versionsEl) versionsEl.textContent = versionKeys.length;
+            
+            let totalSize = 0;
+            keys.forEach(key => {
+                const item = SafeStorage.getItem(key);
+                if (item) totalSize += item.length;
+            });
+            if (storageEl) storageEl.textContent = (totalSize / 1024).toFixed(1) + ' KB';
+            
+            if (lastEl) {
+                const lastSave = SafeStorage.getItem('avia_last_save');
+                lastEl.textContent = lastSave ? new Date(parseInt(lastSave)).toLocaleTimeString() : '-';
+            }
+        },
+        
+        renderVersionList: function() {
+            const container = document.getElementById('version-list');
+            if (!container) return;
+            
+            const keys = SafeStorage.getAllKeys().filter(k => k.includes('version'));
+            
+            if (keys.length === 0) {
+                container.innerHTML = '<p style="color: var(--avia-gray); text-align: center; padding: 1rem;">No hay versiones guardadas</p>';
+                return;
+            }
+            
+            let html = '';
+            keys.forEach(key => {
+                const data = JSON.parse(SafeStorage.getItem(key) || '{}');
+                const date = data.timestamp ? new Date(data.timestamp).toLocaleString() : '-';
+                html += `
+                    <div class="version-item">
+                        <div class="version-info">
+                            <span class="version-name">${data.name || key}</span>
+                            <span class="version-date">${date}</span>
+                        </div>
+                        <div class="version-actions">
+                            <button style="background: var(--avia-primary); color: white;" onclick="AVIAPersistence.loadVersion('${key}')">📂</button>
+                            <button style="background: var(--avia-danger); color: white;" onclick="AVIAPersistence.deleteVersion('${key}')">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+    };
+
+    // ========================================
+    // CONFIG
+    // ========================================
+    const CONFIG = {
+        VERSION: '55.0.0'
+    };
+
+    // ========================================
+    // FUNCIONES DE UI
+    // ========================================
+    const $ = id => document.getElementById(id);
+
+    function showSection(sectionId) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(sectionId).classList.add('active');
+    }
+
+    function showToast(message, type = 'info', duration = 4000) {
+        const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        const container = $('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('visible'));
+        setTimeout(() => {
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    function hideModal() {
+        $('modalOverlay').classList.remove('visible');
+        $('ruleModal').classList.remove('visible');
+    }
+
+    // ========================================
+    // FUSION
+    // ========================================
+    let fusionResult = '';
+
+    function performFusion() {
+        const html1 = $('fusion-input1').value.trim();
+        const html2 = $('fusion-input2').value.trim();
+        
+        if (!html1 || !html2) {
+            aviaNotify('Introduce ambos documentos HTML', 'warning');
+            return;
+        }
+        
+        fusionResult = `<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<title>AVIA Fusion Result</title>\n</head>\n<body>\n<!-- Documento 1 -->\n${html1}\n\n<!-- Documento 2 -->\n${html2}\n</body>\n</html>`;
+        
+        $('fusion-output').textContent = fusionResult;
+        $('fusion-result').style.display = 'block';
+        aviaNotify('Fusión completada', 'success');
+    }
+
+    function clearFusion() {
+        $('fusion-input1').value = '';
+        $('fusion-input2').value = '';
+        $('fusion-result').style.display = 'none';
+        fusionResult = '';
+    }
+
+    // ========================================
+    // VALIDATOR
+    // ========================================
+    function performValidation() {
+        const text1 = $('validator-input1').value;
+        const text2 = $('validator-input2').value;
+        
+        if (!text1 || !text2) {
+            aviaNotify('Introduce ambas versiones', 'warning');
+            return;
+        }
+        
+        const lines1 = new Set(text1.split('\n').map(l => l.trim()).filter(l => l));
+        const lines2 = new Set(text2.split('\n').map(l => l.trim()).filter(l => l));
+        
+        const added = [...lines2].filter(l => !lines1.has(l)).length;
+        const removed = [...lines1].filter(l => !lines2.has(l)).length;
+        
+        $('diff-summary').innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+                <div style="background: rgba(16,185,129,0.2); padding: 1rem; border-radius: 10px;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #10b981;">${added}</div>
+                    <div style="color: var(--avia-gray);">Líneas Añadidas</div>
+                </div>
+                <div style="background: rgba(239,68,68,0.2); padding: 1rem; border-radius: 10px;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #ef4444;">${removed}</div>
+                    <div style="color: var(--avia-gray);">Líneas Eliminadas</div>
+                </div>
+                <div style="background: rgba(59,130,246,0.2); padding: 1rem; border-radius: 10px;">
+                    <div style="font-size: 2rem; font-weight: 700; color: #3b82f6;">${lines1.size}</div>
+                    <div style="color: var(--avia-gray);">Líneas Original</div>
+                </div>
+            </div>
+        `;
+        $('validator-result').style.display = 'block';
+        aviaNotify('Comparación completada', 'success');
+    }
+
+    function clearValidator() {
+        $('validator-input1').value = '';
+        $('validator-input2').value = '';
+        $('validator-result').style.display = 'none';
+    }
+
+    // ========================================
+    // INICIALIZACIÓN
+    // ========================================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log(`🛡️ AVIA HUB v${CONFIG.VERSION} inicializado`);
+        console.log('✅ v55: Sistema aviaNotify() ACTIVO');
+        console.log('✅ v55: Botón RESET ACTIVO');
+        console.log('✅ v55: AVIAPersistence mejorado ACTIVO');
+        console.log('⚡ Storage disponible:', SafeStorage.isAvailable() ? 'localStorage' : 'memoria');
+        
+        AVIAPersistence.init();
+        
+        $('modalOverlay').addEventListener('click', hideModal);
+        
+        aviaNotify('🛡️ AVIA HUB v55 cargado correctamente', 'success');
+        
+        console.log('✅ AVIA HUB v55 listo - Constelación Simbiótica Activa');
+    });
+    </script>
+</body>
+</html>

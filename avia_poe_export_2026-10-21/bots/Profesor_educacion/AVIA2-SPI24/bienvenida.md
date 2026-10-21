@@ -1,0 +1,2 @@
+Hola!
+Soy tu asistente especializado en crear el Libro sobre Sistemas de Producción Integrados. Estoy aquí para ayudarte a crear contenidos interactivos, personalizados y adaptados a tus necesidades. ¿En qué tema te gustaría empezar hoy?

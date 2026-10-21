@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Emotions Dashboard - Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --avia-primary: #667eea;
+            --avia-primary-dark: #5568d3;
+            --avia-secondary: #764ba2;
+            --emotion-happy: #4CAF50;
+            --emotion-motivated: #9C27B0;
+            --emotion-neutral: #9E9E9E;
+            --emotion-confused: #2196F3;
+            --emotion-stressed: #FF9800;
+            --emotion-frustrated: #F44336;
+            --alert-critical: #e74c3c;
+            --alert-high: #f39c12;
+            --alert-medium: #f1c40f;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--avia-primary) 0%, var(--avia-secondary) 100%);
+            padding: 2rem;
+            border-radius: 1rem;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .header-subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: 0.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-group select, .btn {
+            background: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-group select:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--avia-primary);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .kpi-card.alert {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+            border: 2px solid var(--alert-critical);
+        }
+
+        .kpi-icon {
+            font-size: 3rem;
+        }
+
+        .kpi-content h3 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .kpi-content p {
+            color: var(--gray-600);
+            margin: 0.25rem 0 0 0;
+            font-size: 0.9rem;
+        }
+
+        /* Alerts Section */
+        .section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .section-header h3 {
+            font-size: 1.5rem;
+            color: var(--gray-900);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-danger {
+            background: var(--alert-critical);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--alert-high);
+            color: white;
+        }
+
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--gray-200);
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .alert-item:hover {
+            background: var(--gray-100);
+            transform: translateX(4px);
+        }
+
+        .alert-item.critical {
+            border-left-color: var(--alert-critical);
+            background: #fff5f5;
+        }
+
+        .alert-item.high {
+            border-left-color: var(--alert-high);
+            background: #fffbf0;
+        }
+
+        .alert-student {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .student-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: var(--gray-900);
+            text-decoration: none;
+        }
+
+        .student-name:hover {
+            color: var(--avia-primary);
+        }
+
+        .text-muted {
+            color: var(--gray-600);
+            font-size: 0.85rem;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .chart-header h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+        }
+
+        .chart-body {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Students Grid */
+        .students-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .student-card {
+            background: var(--gray-50);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 2px solid var(--gray-200);
+            transition: all 0.2s;
+        }
+
+        .student-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .student-card.risk-high {
+            border-color: var(--alert-critical);
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+        }
+
+        .student-card.risk-medium {
+            border-color: var(--alert-high);
+            background: linear-gradient(135deg, #fffbf0 0%, #fff3e0 100%);
+        }
+
+        .student-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+
+        .student-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--avia-primary) 0%, var(--avia-secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .student-details h5 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+        }
+
+        .student-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: space-around;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+        }
+
+        .btn-block {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, var(--avia-primary) 0%, var(--avia-secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-block:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .students-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>📊 Dashboard Emocional del Curso</h1>
+                <p class="header-subtitle">Análisis en tiempo real | Curso: Programación Avanzada</p>
+            </div>
+            <div class="filter-group">
+                <select id="timeFilter">
+                    <option value="7">Últimos 7 días</option>
+                    <option value="30" selected>Últimos 30 días</option>
+                    <option value="90">Últimos 90 días</option>
+                </select>
+                <button class="btn btn-primary" onclick="exportData()">📥 Exportar</button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">👥</div>
+                <div class="kpi-content">
+                    <h3>87</h3>
+                    <p>Estudiantes Totales</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⚡</div>
+                <div class="kpi-content">
+                    <h3>42</h3>
+                    <p>Activos Hoy</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📈</div>
+                <div class="kpi-content">
+                    <h3>78%</h3>
+                    <p>Tasa de Participación</p>
+                </div>
+            </div>
+            <div class="kpi-card alert">
+                <div class="kpi-icon">⚠️</div>
+                <div class="kpi-content">
+                    <h3>12</h3>
+                    <p>Alertas Activas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="section">
+            <div class="section-header">
+                <h3>🚨 Alertas Recientes</h3>
+                <span class="badge badge-danger">12 activas</span>
+            </div>
+            <div class="alerts-list">
+                <div class="alert-item critical">
+                    <div class="alert-student">
+                        <div class="kpi-icon">😰</div>
+                        <div class="student-info">
+                            <a href="#" class="student-name">María González</a>
+                            <span class="text-muted">5 mensajes con frustración alta</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge badge-danger">CRÍTICA</span>
+                        <span class="text-muted">Hace 15 min</span>
+                    </div>
+                </div>
+                <div class="alert-item high">
+                    <div class="alert-student">
+                        <div class="kpi-icon">😕</div>
+                        <div class="student-info">
+                            <a href="#" class="student-name">Carlos Ramírez</a>
+                            <span class="text-muted">Confusión persistente en Actividad 3</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge badge-warning">ALTA</span>
+                        <span class="text-muted">Hace 1 hora</span>
+                    </div>
+                </div>
+                <div class="alert-item high">
+                    <div class="alert-student">
+                        <div class="kpi-icon">😓</div>
+                        <div class="student-info">
+                            <a href="#" class="student-name">Ana Martínez</a>
+                            <span class="text-muted">Estrés sostenido durante 3 días</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge badge-warning">ALTA</span>
+                        <span class="text-muted">Hace 2 horas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <div class="chart-card full-width">
+                <div class="chart-header">
+                    <h4>📈 Evolución Emocional del Curso</h4>
+                    <p class="text-muted">Distribución de emociones en los últimos 30 días</p>
+                </div>
+                <div class="chart-body">
+                    <canvas id="emotionTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h4>🎨 Distribución Emocional</h4>
+                    <p class="text-muted">Emociones predominantes</p>
+                </div>
+                <div class="chart-body">
+                    <canvas id="emotionPieChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h4>📊 Participación Diaria</h4>
+                    <p class="text-muted">Mensajes por día</p>
+                </div>
+                <div class="chart-body">
+                    <canvas id="participationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- At-Risk Students -->
+        <div class="section">
+            <div class="section-header">
+                <h3>👤 Estudiantes que Requieren Atención</h3>
+                <span class="badge badge-warning">5 estudiantes</span>
+            </div>
+            <div class="students-grid">
+                <div class="student-card risk-high">
+                    <div class="student-header">
+                        <div class="student-avatar">M</div>
+                        <div class="student-details">
+                            <h5>María González</h5>
+                            <span class="badge badge-danger">RIESGO ALTO</span>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-value">23</span>
+                            <span class="stat-label">Mensajes</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">5</span>
+                            <span class="stat-label">Alertas</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: var(--alert-critical);">😰</span>
+                            <span class="stat-label">Frustrado</span>
+                        </div>
+                    </div>
+                    <button class="btn-block">Ver Perfil Completo</button>
+                </div>
+
+                <div class="student-card risk-high">
+                    <div class="student-header">
+                        <div class="student-avatar">C</div>
+                        <div class="student-details">
+                            <h5>Carlos Ramírez</h5>
+                            <span class="badge badge-danger">RIESGO ALTO</span>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-value">18</span>
+                            <span class="stat-label">Mensajes</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">4</span>
+                            <span class="stat-label">Alertas</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: var(--emotion-confused);">😕</span>
+                            <span class="stat-label">Confundido</span>
+                        </div>
+                    </div>
+                    <button class="btn-block">Ver Perfil Completo</button>
+                </div>
+
+                <div class="student-card risk-medium">
+                    <div class="student-header">
+                        <div class="student-avatar">A</div>
+                        <div class="student-details">
+                            <h5>Ana Martínez</h5>
+                            <span class="badge badge-warning">RIESGO MEDIO</span>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-value">31</span>
+                            <span class="stat-label">Mensajes</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">2</span>
+                            <span class="stat-label">Alertas</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: var(--emotion-stressed);">😓</span>
+                            <span class="stat-label">Estresado</span>
+                        </div>
+                    </div>
+                    <button class="btn-block">Ver Perfil Completo</button>
+                </div>
+
+                <div class="student-card risk-medium">
+                    <div class="student-header">
+                        <div class="student-avatar">J</div>
+                        <div class="student-details">
+                            <h5>José López</h5>
+                            <span class="badge badge-warning">RIESGO MEDIO</span>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-value">15</span>
+                            <span class="stat-label">Mensajes</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">2</span>
+                            <span class="stat-label">Alertas</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: var(--emotion-neutral);">😐</span>
+                            <span class="stat-label">Neutral</span>
+                        </div>
+                    </div>
+                    <button class="btn-block">Ver Perfil Completo</button>
+                </div>
+
+                <div class="student-card risk-medium">
+                    <div class="student-header">
+                        <div class="student-avatar">L</div>
+                        <div class="student-details">
+                            <h5>Laura Fernández</h5>
+                            <span class="badge badge-warning">RIESGO MEDIO</span>
+                        </div>
+                    </div>
+                    <div class="student-stats">
+                        <div class="stat">
+                            <span class="stat-value">27</span>
+                            <span class="stat-label">Mensajes</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">1</span>
+                            <span class="stat-label">Alertas</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" style="color: var(--emotion-confused);">😕</span>
+                            <span class="stat-label">Confundido</span>
+                        </div>
+                    </div>
+                    <button class="btn-block">Ver Perfil Completo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Emotion Trend Chart
+        const emotionTrendCtx = document.getElementById('emotionTrendChart').getContext('2d');
+        new Chart(emotionTrendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                datasets: [
+                    {
+                        label: 'Feliz',
+                        data: [45, 52, 48, 55],
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Neutral',
+                        data: [30, 28, 32, 25],
+                        borderColor: '#9E9E9E',
+                        backgroundColor: 'rgba(158, 158, 158, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Estresado',
+                        data: [15, 12, 10, 8],
+                        borderColor: '#FF9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Frustrado',
+                        data: [10, 8, 10, 12],
+                        borderColor: '#F44336',
+                        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Emotion Pie Chart
+        const emotionPieCtx = document.getElementById('emotionPieChart').getContext('2d');
+        new Chart(emotionPieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Feliz', 'Motivado', 'Neutral', 'Confundido', 'Estresado', 'Frustrado'],
+                datasets: [{
+                    data: [35, 20, 25, 8, 7, 5],
+                    backgroundColor: [
+                        '#4CAF50',
+                        '#9C27B0',
+                        '#9E9E9E',
+                        '#2196F3',
+                        '#FF9800',
+                        '#F44336'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Participation Chart
+        const participationCtx = document.getElementById('participationChart').getContext('2d');
+        new Chart(participationCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [{
+                    label: 'Mensajes',
+                    data: [145, 178, 165, 192, 156, 89, 67],
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function exportData() {
+            alert('📥 Exportando datos del reporte...\n\nEn producción, esto generaría un archivo CSV o PDF con todos los datos del dashboard.');
+        }
+    </script>
+</body>
+</html>

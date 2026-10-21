@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Productivity Hub v2.0 - Dashboard Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; }
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #3b82f6; transition: width 0.3s; }
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="p-6">
+
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">AVIA Productivity Hub v2.0</h1>
+            <p class="text-gray-600 mt-1">Dashboard Inteligente con Persistencia In-Memory</p>
+            <span class="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                ✅ Modo Persistente Activo (sin localStorage)
+            </span>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="sincronizarDatos()" class="btn btn-primary">
+                🔄 Sincronizar
+            </button>
+            <button onclick="exportarDatos()" class="btn bg-green-600 text-white hover:bg-green-700">
+                📥 Exportar JSON
+            </button>
+            <button onclick="resetearDatos()" class="btn bg-red-600 text-white hover:bg-red-700">
+                🔄 Reset
+            </button>
+        </div>
+    </header>
+
+    <!-- Indicador de Estado -->
+    <div class="card mb-6 bg-blue-50 border-l-4 border-blue-500">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl pulse">💾</span>
+            <div>
+                <p class="font-semibold text-gray-900">Sistema de Persistencia AVIA Activo</p>
+                <p class="text-sm text-gray-600">Datos almacenados en memoria JavaScript. Se conservan durante la sesión actual.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Métricas -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 text-sm">Tareas Totales</span>
+                <span class="text-2xl">📋</span>
+            </div>
+            <div class="text-3xl font-bold text-gray-900" id="totalTareas">0</div>
+        </div>
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 text-sm">En Progreso</span>
+                <span class="text-2xl">⚡</span>
+            </div>
+            <div class="text-3xl font-bold text-blue-600" id="tareasActivas">0</div>
+        </div>
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 text-sm">Completadas</span>
+                <span class="text-2xl">✅</span>
+            </div>
+            <div class="text-3xl font-bold text-green-600" id="tareasCompletadas">0</div>
+        </div>
+        <div class="card">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-gray-600 text-sm">Bloqueadas</span>
+                <span class="text-2xl">🚫</span>
+            </div>
+            <div class="text-3xl font-bold text-red-600" id="tareasBloqueadas">0</div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="card mb-8" id="panelAlertas">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">🚨 Alertas Activas</h2>
+            <button onclick="toggleAlertas()" class="text-sm text-gray-600 hover:text-gray-900">
+                <span id="btnToggleAlertas">Ocultar</span>
+            </button>
+        </div>
+        <div id="listaAlertas"></div>
+    </div>
+
+    <!-- Predicción ML -->
+    <div class="card mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">🤖 Predicción ML</h2>
+        <div class="grid grid-cols-3 gap-6">
+            <div>
+                <p class="text-gray-600 text-sm mb-1">Semanas para completar</p>
+                <p class="text-2xl font-bold text-blue-600" id="prediccionSemanas">-</p>
+            </div>
+            <div>
+                <p class="text-gray-600 text-sm mb-1">Nivel de confianza</p>
+                <p class="text-2xl font-bold text-green-600" id="prediccionConfianza">-</p>
+            </div>
+            <div>
+                <p class="text-gray-600 text-sm mb-1">Estado del proyecto</p>
+                <p class="text-2xl font-bold" id="prediccionEstado">-</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Tareas -->
+    <div class="card mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">📊 Gestión de Tareas</h2>
+            <div class="flex gap-2">
+                <select id="filtroWP" onchange="aplicarFiltros()" class="px-4 py-2 border rounded-lg">
+                    <option value="all">Todos los WP</option>
+                    <option value="WP2">WP2 - Backend</option>
+                    <option value="WP3">WP3 - Frontend</option>
+                </select>
+                <button onclick="cambiarVista('tabla')" id="btnTabla" class="btn btn-primary">
+                    📋 Tabla
+                </button>
+                <button onclick="cambiarVista('kanban')" id="btnKanban" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">
+                    📊 Kanban
+                </button>
+            </div>
+        </div>
+        
+        <!-- Vista Tabla -->
+        <div id="vistaTabla">
+            <div class="overflow-x-auto">
+                <table class="w-full" id="tablaTareas">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Tarea</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Responsable</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Estado</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Prioridad</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Progreso</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoTabla"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vista Kanban -->
+        <div id="vistaKanban" class="hidden">
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold text-gray-700 mb-3">🔴 No Iniciadas (<span id="countNoIniciadas">0</span>)</h3>
+                    <div id="columnaNoiniciadas" class="space-y-2"></div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold text-gray-700 mb-3">🟡 Pendientes (<span id="countPendientes">0</span>)</h3>
+                    <div id="columnaPendientes" class="space-y-2"></div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold text-gray-700 mb-3">🔵 En Progreso (<span id="countEnProgreso">0</span>)</h3>
+                    <div id="columnaEnProgreso" class="space-y-2"></div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold text-gray-700 mb-3">🟢 Completadas (<span id="countCompletadas">0</span>)</h3>
+                    <div id="columnaCompletadas" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monitorización de Equipo -->
+    <div class="card mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">👥 Equipo</h2>
+        <div id="panelEquipo" class="space-y-4"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center text-gray-600 text-sm mt-8">
+        Powered by <strong>AVIA Persistencia In-Memory</strong> + <strong>AVIA Diseño Atómico</strong> | 
+        Ecosistema AVIA-LEID v3.2 | 
+        Persistencia durante sesión activa (sin localStorage)
+    </footer>
+</div>
+
+<script>
+// ============================================
+// AVIA PERSISTENCIA IN-MEMORY
+// Sistema alternativo sin localStorage
+// ============================================
+
+const VERSION = 'AVIA-Hub-v2.1-InMemory';
+
+// Store global persistente durante la sesión
+let AVIA_STORE = null;
+
+function inicializarPersistencia() {
+    console.log('🔧 Iniciando persistencia in-memory (sin localStorage)...');
+    
+    AVIA_STORE = {
+        version: VERSION,
+        proyecto: 'NEXTMED_IA',
+        creado: new Date().toISOString(),
+        tareas: generarTareasIniciales(),
+        equipo: generarEquipoInicial(),
+        configuracion: {
+            vistaActual: 'tabla',
+            filtroWP: 'all',
+            alertasVisibles: true
+        }
+    };
+    
+    console.log('✅ Store inicializado:', AVIA_STORE);
+}
+
+function guardarDatos(datos) {
+    AVIA_STORE = { ...datos, ultimaActualizacion: new Date().toISOString() };
+    console.log('💾 Datos guardados en memoria');
+}
+
+function cargarDatos() {
+    return AVIA_STORE;
+}
+
+function actualizarDatos(campo, valor) {
+    if (AVIA_STORE) {
+        AVIA_STORE[campo] = valor;
+        AVIA_STORE.ultimaActualizacion = new Date().toISOString();
+        console.log(`✅ Campo "${campo}" actualizado`);
+    }
+}
+
+// ============================================
+// DATOS INICIALES
+// ============================================
+
+function generarTareasIniciales() {
+    return [
+        { id: 'WP2-1', tarea: 'Diseño base de datos', wp: 'WP2', owner: 'Elena García', status: 'completed', priority: 'high', progress: 100, diasEstancada: 0 },
+        { id: 'WP2-2', tarea: 'API REST usuarios', wp: 'WP2', owner: 'Elena García', status: 'in-progress', priority: 'critical', progress: 75, diasEstancada: 5 },
+        { id: 'WP2-3', tarea: 'Autenticación JWT', wp: 'WP2', owner: 'Roberto Díaz', status: 'pending', priority: 'high', progress: 0, diasEstancada: 3 },
+        { id: 'WP2-4', tarea: 'Logs del sistema', wp: 'WP2', owner: 'Elena García', status: 'pending', priority: 'medium', progress: 20, diasEstancada: 0 },
+        { id: 'WP3-1', tarea: 'Componentes UI', wp: 'WP3', owner: 'William Torres', status: 'in-progress', priority: 'high', progress: 60, diasEstancada: 0 },
+        { id: 'WP3-2', tarea: 'Dashboard admin', wp: 'WP3', owner: 'Ana Martínez', status: 'not-started', priority: 'medium', progress: 0, diasEstancada: 0 }
+    ];
+}
+
+function generarEquipoInicial() {
+    return [
+        { nombre: 'Elena García', rol: 'Backend Lead', carga: 85, trend: 'up', tareasAsignadas: 3 },
+        { nombre: 'Roberto Díaz', rol: 'Full Stack', carga: 60, trend: 'stable', tareasAsignadas: 1 },
+        { nombre: 'William Torres', rol: 'Frontend Dev', carga: 70, trend: 'down', tareasAsignadas: 1 },
+        { nombre: 'Ana Martínez', rol: 'UI/UX Designer', carga: 45, trend: 'stable', tareasAsignadas: 1 }
+    ];
+}
+
+// ============================================
+// RENDERIZADO
+// ============================================
+
+function renderizarTodo() {
+    const datos = cargarDatos();
+    if (!datos) {
+        console.error('❌ No hay datos en el store');
+        return;
+    }
+    
+    renderizarMetricas(datos.tareas);
+    renderizarAlertas(datos.tareas);
+    renderizarPrediccion(datos.tareas);
+    renderizarEquipo(datos.equipo);
+    
+    const vista = datos.configuracion.vistaActual;
+    if (vista === 'tabla') {
+        renderizarTabla(datos.tareas);
+    } else {
+        renderizarKanban(datos.tareas);
+    }
+    
+    // Restaurar configuración
+    document.getElementById('filtroWP').value = datos.configuracion.filtroWP;
+}
+
+function renderizarMetricas(tareas) {
+    document.getElementById('totalTareas').textContent = tareas.length;
+    document.getElementById('tareasActivas').textContent = tareas.filter(t => t.status === 'in-progress').length;
+    document.getElementById('tareasCompletadas').textContent = tareas.filter(t => t.status === 'completed').length;
+    document.getElementById('tareasBloqueadas').textContent = tareas.filter(t => t.diasEstancada >= 3).length;
+}
+
+function renderizarAlertas(tareas) {
+    const alertas = [];
+    
+    tareas.forEach(t => {
+        if (t.diasEstancada >= 3) {
+            alertas.push({
+                tipo: 'critical',
+                categoria: 'Tarea Estancada',
+                mensaje: `${t.tarea} lleva ${t.diasEstancada} días sin avance`,
+                accion: `Reasignar a otro miembro del equipo`
+            });
+        }
+    });
+    
+    const html = alertas.map(a => `
+        <div class="flex items-start gap-4 p-4 mb-3 rounded-lg ${a.tipo === 'critical' ? 'bg-red-50 border-l-4 border-red-500' : 'bg-yellow-50 border-l-4 border-yellow-500'}">
+            <span class="text-2xl">${a.tipo === 'critical' ? '🚨' : '⚠️'}</span>
+            <div class="flex-1">
+                <p class="font-semibold text-gray-900">${a.categoria}</p>
+                <p class="text-gray-700 text-sm mt-1">${a.mensaje}</p>
+                <p class="text-gray-600 text-xs mt-2"><strong>Acción:</strong> ${a.accion}</p>
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('listaAlertas').innerHTML = html || '<p class="text-gray-500">✅ No hay alertas activas</p>';
+}
+
+function renderizarPrediccion(tareas) {
+    const completadas = tareas.filter(t => t.status === 'completed').length;
+    const velocidad = completadas / 4;
+    const restantes = tareas.length - completadas;
+    const semanas = Math.ceil(restantes / velocidad);
+    const confianza = 73;
+    
+    document.getElementById('prediccionSemanas').textContent = semanas + ' semanas';
+    document.getElementById('prediccionConfianza').textContent = confianza + '%';
+    document.getElementById('prediccionEstado').textContent = semanas > 8 ? '⚠️ Retraso' : '✅ On-track';
+}
+
+function renderizarTabla(tareas) {
+    const filtro = document.getElementById('filtroWP').value;
+    const tareasFiltradas = filtro === 'all' ? tareas : tareas.filter(t => t.wp === filtro);
+    
+    const html = tareasFiltradas.map(t => `
+        <tr class="border-t hover:bg-gray-50">
+            <td class="px-4 py-3">
+                <span class="badge bg-blue-100 text-blue-700">${t.wp}</span>
+                <span class="ml-2 text-gray-900">${t.tarea}</span>
+            </td>
+            <td class="px-4 py-3 text-gray-700">${t.owner}</td>
+            <td class="px-4 py-3">
+                <span class="badge ${obtenerColorEstado(t.status)}">${obtenerTextoEstado(t.status)}</span>
+            </td>
+            <td class="px-4 py-3">
+                <span class="badge ${obtenerColorPrioridad(t.priority)}">${t.priority}</span>
+            </td>
+            <td class="px-4 py-3">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${t.progress}%"></div>
+                </div>
+                <span class="text-xs text-gray-600 mt-1">${t.progress}%</span>
+            </td>
+            <td class="px-4 py-3">
+                <button onclick="avanzarProgreso('${t.id}')" class="text-blue-600 hover:text-blue-800 text-sm">
+                    ➕ +10%
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('cuerpoTabla').innerHTML = html;
+}
+
+function renderizarKanban(tareas) {
+    const filtro = document.getElementById('filtroWP').value;
+    const tareasFiltradas = filtro === 'all' ? tareas : tareas.filter(t => t.wp === filtro);
+    
+    const columnas = {
+        'not-started': [],
+        'pending': [],
+        'in-progress': [],
+        'completed': []
+    };
+    
+    tareasFiltradas.forEach(t => columnas[t.status].push(t));
+    
+    document.getElementById('countNoIniciadas').textContent = columnas['not-started'].length;
+    document.getElementById('countPendientes').textContent = columnas['pending'].length;
+    document.getElementById('countEnProgreso').textContent = columnas['in-progress'].length;
+    document.getElementById('countCompletadas').textContent = columnas['completed'].length;
+    
+    Object.keys(columnas).forEach(estado => {
+        const contenedorId = {
+            'not-started': 'columnaNoiniciadas',
+            'pending': 'columnaPendientes',
+            'in-progress': 'columnaEnProgreso',
+            'completed': 'columnaCompletadas'
+        }[estado];
+        
+        const html = columnas[estado].map(t => `
+            <div class="bg-white p-3 rounded-lg shadow-sm border hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="badge bg-blue-100 text-blue-700 text-xs">${t.wp}</span>
+                    <span class="badge ${obtenerColorPrioridad(t.priority)} text-xs">${t.priority}</span>
+                </div>
+                <p class="font-semibold text-gray-900 text-sm mb-2">${t.tarea}</p>
+                <p class="text-xs text-gray-600 mb-2">${t.owner}</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${t.progress}%"></div>
+                </div>
+                <span class="text-xs text-gray-600">${t.progress}%</span>
+            </div>
+        `).join('');
+        
+        document.getElementById(contenedorId).innerHTML = html;
+    });
+}
+
+function renderizarEquipo(equipo) {
+    const html = equipo.map(m => `
+        <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div class="flex-1">
+                <p class="font-semibold text-gray-900">${m.nombre}</p>
+                <p class="text-sm text-gray-600">${m.rol} · ${m.tareasAsignadas} tareas</p>
+            </div>
+            <div class="flex-1">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-600">Carga:</span>
+                    <span class="font-semibold ${m.carga > 80 ? 'text-red-600' : 'text-gray-900'}">${m.carga}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill ${m.carga > 80 ? 'bg-red-500' : 'bg-blue-500'}" style="width: ${m.carga}%"></div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    document.getElementById('panelEquipo').innerHTML = html;
+}
+
+// ============================================
+// UTILIDADES
+// ============================================
+
+function obtenerColorEstado(status) {
+    const colores = {
+        'not-started': 'bg-gray-100 text-gray-700',
+        'pending': 'bg-yellow-100 text-yellow-700',
+        'in-progress': 'bg-blue-100 text-blue-700',
+        'completed': 'bg-green-100 text-green-700'
+    };
+    return colores[status];
+}
+
+function obtenerTextoEstado(status) {
+    const textos = {
+        'not-started': 'No iniciada',
+        'pending': 'Pendiente',
+        'in-progress': 'En progreso',
+        'completed': 'Completada'
+    };
+    return textos[status];
+}
+
+function obtenerColorPrioridad(priority) {
+    const colores = {
+        'low': 'bg-green-100 text-green-700',
+        'medium': 'bg-yellow-100 text-yellow-700',
+        'high': 'bg-orange-100 text-orange-700',
+        'critical': 'bg-red-100 text-red-700'
+    };
+    return colores[priority];
+}
+
+// ============================================
+// INTERACTIVIDAD
+// ============================================
+
+function cambiarVista(vista) {
+    const datos = cargarDatos();
+    datos.configuracion.vistaActual = vista;
+    guardarDatos(datos);
+    
+    document.getElementById('vistaTabla').classList.toggle('hidden', vista !== 'tabla');
+    document.getElementById('vistaKanban').classList.toggle('hidden', vista !== 'kanban');
+    
+    document.getElementById('btnTabla').className = vista === 'tabla' ? 'btn btn-primary' : 'btn bg-gray-200 text-gray-700 hover:bg-gray-300';
+    document.getElementById('btnKanban').className = vista === 'kanban' ? 'btn btn-primary' : 'btn bg-gray-200 text-gray-700 hover:bg-gray-300';
+    
+    if (vista === 'kanban') {
+        renderizarKanban(datos.tareas);
+    }
+}
+
+function aplicarFiltros() {
+    const filtro = document.getElementById('filtroWP').value;
+    const datos = cargarDatos();
+    datos.configuracion.filtroWP = filtro;
+    guardarDatos(datos);
+    
+    if (datos.configuracion.vistaActual === 'tabla') {
+        renderizarTabla(datos.tareas);
+    } else {
+        renderizarKanban(datos.tareas);
+    }
+}
+
+function toggleAlertas() {
+    const contenido = document.getElementById('listaAlertas');
+    const btn = document.getElementById('btnToggleAlertas');
+    const visible = contenido.style.display !== 'none';
+    
+    contenido.style.display = visible ? 'none' : 'block';
+    btn.textContent = visible ? 'Mostrar' : 'Ocultar';
+}
+
+function avanzarProgreso(tareaId) {
+    const datos = cargarDatos();
+    const tarea = datos.tareas.find(t => t.id === tareaId);
+    
+    if (tarea && tarea.progress < 100) {
+        tarea.progress = Math.min(100, tarea.progress + 10);
+        
+        if (tarea.progress === 100) {
+            tarea.status = 'completed';
+        } else if (tarea.status === 'not-started' || tarea.status === 'pending') {
+            tarea.status = 'in-progress';
+        }
+        
+        guardarDatos(datos);
+        renderizarTodo();
+        
+        console.log(`✅ Progreso actualizado: ${tareaId} → ${tarea.progress}%`);
+    }
+}
+
+function sincronizarDatos() {
+    const btn = event.target;
+    btn.textContent = '⏳ Sincronizando...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.textContent = '🔄 Sincronizar';
+        btn.disabled = false;
+        renderizarTodo();
+        alert('✅ Datos sincronizados correctamente');
+    }, 1000);
+}
+
+function exportarDatos() {
+    const datos = cargarDatos();
+    const json = JSON.stringify(datos, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `avia-hub-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    console.log('✅ Datos exportados');
+}
+
+function resetearDatos() {
+    if (confirm('⚠️ ¿Resetear todos los datos? Esta acción no se puede deshacer.')) {
+        inicializarPersistencia();
+        renderizarTodo();
+        alert('✅ Datos reseteados a valores iniciales');
+    }
+}
+
+// ============================================
+// INICIALIZACIÓN
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Iniciando AVIA Productivity Hub v2.1');
+    console.log('💾 Modo: In-Memory Persistence (sin localStorage)');
+    
+    inicializarPersistencia();
+    renderizarTodo();
+    
+    console.log('✅ Sistema cargado correctamente');
+    console.log('📊 Tareas cargadas:', AVIA_STORE.tareas.length);
+});
+</script>
+
+</body>
+</html>

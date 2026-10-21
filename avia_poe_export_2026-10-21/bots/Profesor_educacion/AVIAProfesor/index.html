@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVIA Dashboard — Profesores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <style>
+    /* ========== THEME VARIABLES ========== */
+    :root {
+      --bg: #f2f3fa;
+      --bg-alt: #e9ebf5;
+      --surface: #ffffff;
+      --surface-hover: #f7f8fc;
+      --border: #dde0ef;
+      --text: #1a1e36;
+      --text-secondary: #6b7194;
+      --primary: #6d4aff;
+      --primary-hover: #5b38e8;
+      --primary-soft: rgba(109,74,255,0.08);
+      --success: #10b981;
+      --success-soft: rgba(16,185,129,0.08);
+      --warning: #f59e0b;
+      --warning-soft: rgba(245,158,11,0.08);
+      --danger: #ef4444;
+      --danger-soft: rgba(239,68,68,0.08);
+      --shadow: 0 2px 16px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --sidebar-w: 250px;
+      --mobile-bar-h: 58px;
+    }
+    html.dark {
+      --bg: #0c0e1a;
+      --bg-alt: #101320;
+      --surface: #171b2e;
+      --surface-hover: #1e2340;
+      --border: #272d4a;
+      --text: #e4e7f1;
+      --text-secondary: #8b92b3;
+      --primary: #7c5cff;
+      --primary-hover: #6a48e8;
+      --primary-soft: rgba(124,92,255,0.12);
+      --success: #34d399;
+      --success-soft: rgba(52,211,153,0.12);
+      --warning: #fbbf24;
+      --warning-soft: rgba(251,191,36,0.12);
+      --danger: #f87171;
+      --danger-soft: rgba(248,113,113,0.12);
+      --shadow: 0 2px 16px rgba(0,0,0,0.30);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.40);
+    }
+
+    /* ========== RESET & BASE ========== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 15% 85%, var(--primary-soft) 0%, transparent 55%),
+                  radial-gradient(ellipse at 85% 15%, var(--success-soft) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+
+    /* ========== LAYOUT ========== */
+    .dashboard {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ========== SIDEBAR ========== */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 28px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 50;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      margin-bottom: 36px;
+    }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--primary), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #fff;
+    }
+    .logo-text {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--primary), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 0 16px;
+      margin: 20px 0 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 16px;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 14.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      user-select: none;
+    }
+    .nav-item i { width: 20px; text-align: center; font-size: 15px; }
+    .nav-item:hover { background: var(--primary-soft); color: var(--text); }
+    .nav-item.active {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(109,74,255,0.3);
+    }
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--danger);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 100px;
+      min-width: 20px;
+      text-align: center;
+    }
+    .nav-item.active .badge { background: rgba(255,255,255,0.25); }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar-footer .avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #a78bfa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .sidebar-footer .user-info { flex: 1; }
+    .sidebar-footer .user-name { font-size: 13.5px; font-weight: 600; }
+    .sidebar-footer .user-role { font-size: 11.5px; color: var(--text-secondary); }
+
+    /* ========== MOBILE NAVIGATION ========== */
+    .mobile-bar {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--mobile-bar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 200;
+      padding: 0 16px;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger {
+      width: 40px; height: 40px;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .hamburger:hover { background: var(--primary-soft); }
+    .mobile-title { font-size: 17px; font-weight: 700; flex: 1; }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 150;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .sidebar-overlay.open { display: block; opacity: 1; }
+
+    /* ========== MAIN CONTENT ========== */
+    .main {
+      padding: 32px 36px;
+      overflow-y: auto;
+      min-height: 100vh;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+    .page-header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .course-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: var(--bg-alt);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    /* ========== VIEW CONTAINERS ========== */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ========== STAT CARDS ========== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .stat-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .stat-card-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .stat-card h3 { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .stat-card .value { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
+    .stat-card .change { font-size: 12.5px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+    .stat-card .change.up { color: var(--success); }
+    .stat-card .change.down { color: var(--danger); }
+    .sparkline { display: flex; align-items: flex-end; gap: 3px; height: 36px; margin-top: 12px; }
+    .spark-bar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      transition: height 0.4s ease;
+      min-width: 0;
+    }
+
+    /* ========== SECTIONS ========== */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    /* ========== ALERT ITEMS ========== */
+    .alert-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .alert-item:hover { transform: translateX(4px); background: var(--bg-alt); }
+    .alert-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .alert-info { flex: 1; min-width: 0; }
+    .alert-name { font-weight: 600; font-size: 14.5px; margin-bottom: 2px; }
+    .alert-detail { font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .alert-badge {
+      padding: 5px 12px;
+      border-radius: 100px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .alert-badge.high { background: var(--danger-soft); color: var(--danger); }
+    .alert-badge.medium { background: var(--warning-soft); color: var(--warning); }
+    .alert-badge.low { background: var(--success-soft); color: var(--success); }
+    .alert-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* ========== EMOTION CARDS ========== */
+    .emotion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .emotion-card {
+      padding: 16px 12px;
+      background: var(--bg);
+      border-radius: 12px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .emotion-card:hover { transform: translateY(-2px); }
+    .emotion-emoji { font-size: 28px; margin-bottom: 6px; }
+    .emotion-label { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+    .emotion-value { font-size: 22px; font-weight: 700; }
+
+    /* ========== STUDENTS TABLE ========== */
+    .table-container { overflow-x: auto; }
+    .data-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .data-table th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { transition: background 0.15s; cursor: pointer; }
+    .data-table tbody tr:hover { background: var(--primary-soft); }
+    .student-cell { display: flex; align-items: center; gap: 12px; }
+    .student-cell .avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.ok { background: var(--success); }
+    .status-dot.warning { background: var(--warning); }
+    .status-dot.at-risk { background: var(--danger); }
+    .wellbeing-bar {
+      width: 60px; height: 6px;
+      background: var(--bg-alt);
+      border-radius: 3px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+    .wellbeing-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+    /* ========== FILTER / SEARCH BAR ========== */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px 10px 40px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--primary); }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .filter-select {
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+      min-width: 140px;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+    input, select, textarea { font-size: 16px; }
+
+    /* ========== BUTTONS ========== */
+    .btn {
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 16px rgba(109,74,255,0.3); }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { background: var(--primary-soft); border-color: var(--primary); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { opacity: 0.9; }
+    .btn-danger { background: var(--danger-soft); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12.5px; }
+    .btn-icon {
+      width: 36px; height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ========== MODAL ========== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.open { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--surface);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 22px 24px 0;
+    }
+    .modal-header h2 { font-size: 19px; font-weight: 700; }
+    .modal-close {
+      width: 34px; height: 34px;
+      background: var(--bg);
+      border: none;
+      border-radius: 50%;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close:hover { background: var(--danger-soft); color: var(--danger); }
+    .modal-body { padding: 20px 24px 24px; }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 24px 22px;
+    }
+    .modal.wide { max-width: 700px; }
+
+    /* ========== FORM ELEMENTS ========== */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--primary); }
+    .form-textarea { resize: vertical; min-height: 100px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 14px; }
+    .toggle-label small { display: block; color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+    .toggle {
+      width: 44px; height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--primary); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ========== TOAST ========== */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      transform: translateX(120%);
+      transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 360px;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: var(--success); color: #fff; }
+    .toast.error { background: var(--danger); color: #fff; }
+    .toast.info { background: var(--primary); color: #fff; }
+
+    /* ========== CHART AREA ========== */
+    .chart-wrap { position: relative; height: 260px; }
+    .chart-wrap canvas { max-height: 260px; }
+
+    /* ========== REPORT OUTPUT ========== */
+    .report-output {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 24px;
+      min-height: 200px;
+      font-size: 14.5px;
+      line-height: 1.7;
+    }
+    .report-output h1, .report-output h2, .report-output h3 { margin: 18px 0 8px; font-weight: 700; }
+    .report-output h1 { font-size: 20px; }
+    .report-output h2 { font-size: 17px; }
+    .report-output h3 { font-size: 15px; }
+    .report-output p { margin-bottom: 10px; }
+    .report-output ul, .report-output ol { margin: 8px 0; padding-left: 24px; }
+    .report-output li { margin-bottom: 4px; }
+    .report-output strong { font-weight: 700; }
+    .report-output code {
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    /* ========== LOADING ========== */
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.4s infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg) 25%, var(--surface-hover) 50%, var(--bg) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ========== CONFIRM DIALOG ========== */
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+    /* ========== PROFILE CARD ========== */
+    .profile-hero {
+      text-align: center;
+      padding: 24px 0 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .profile-hero .avatar-lg {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .profile-hero h3 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+    .profile-hero p { font-size: 13px; color: var(--text-secondary); }
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .profile-stat {
+      text-align: center;
+      padding: 14px;
+      background: var(--bg);
+      border-radius: 10px;
+    }
+    .profile-stat .val { font-size: 22px; font-weight: 700; }
+    .profile-stat .lbl { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+    .timeline-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .timeline-text { font-size: 13.5px; }
+    .timeline-date { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* ========== SETTINGS ========== */
+    .settings-section { margin-bottom: 28px; }
+    .settings-section h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .threshold-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .threshold-card {
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 12px;
+    }
+    .threshold-card label { font-size: 13px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 8px; }
+    .threshold-card input {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    /* ========== ANIMATIONS ========== */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .anim-in {
+      opacity: 0;
+      animation: fadeSlideUp 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    .anim-d1 { animation-delay: 0.04s; }
+    .anim-d2 { animation-delay: 0.08s; }
+    .anim-d3 { animation-delay: 0.12s; }
+    .anim-d4 { animation-delay: 0.16s; }
+    .anim-d5 { animation-delay: 0.20s; }
+    .anim-d6 { animation-delay: 0.24s; }
+    .anim-d7 { animation-delay: 0.28s; }
+    .anim-d8 { animation-delay: 0.32s; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+
+    /* ========== UTILITIES ========== */
+    .hidden { display: none !important; }
+    .text-success { color: var(--success); }
+    .text-warning { color: var(--warning); }
+    .text-danger { color: var(--danger); }
+    .text-primary { color: var(--primary); }
+    .text-muted { color: var(--text-secondary); }
+    .mt-2 { margin-top: 16px; }
+    .mb-2 { margin-bottom: 16px; }
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-secondary);
+    }
+    .empty-state i { font-size: 40px; margin-bottom: 12px; display: block; opacity: 0.4; }
+    .empty-state p { font-size: 15px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg); border-radius: 10px; padding: 4px; }
+    .tab {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      background: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0; bottom: 0;
+        width: 260px;
+        z-index: 160;
+        transition: left 0.3s cubic-bezier(0.22,1,0.36,1);
+      }
+      .sidebar.open { left: 0; }
+      .mobile-bar { display: flex; }
+      .main { padding: 16px; padding-top: calc(var(--mobile-bar-h) + 16px); }
+      .page-header h1 { font-size: 21px; }
+      .grid-2col { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .stat-card { padding: 16px; }
+      .stat-card .value { font-size: 24px; }
+      .alert-actions { display: none; }
+      .section { padding: 18px; }
+      .form-row { grid-template-columns: 1fr; }
+      .profile-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .data-table th, .data-table td { padding: 10px 12px; font-size: 13px; }
+      .toast-container { top: 70px; right: 12px; left: 12px; }
+      .toast { max-width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .emotion-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Top Bar -->
+  <div class="mobile-bar">
+    <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú"><i class="fa-solid fa-bars"></i></button>
+    <span class="mobile-title" id="mobileTitle">Dashboard</span>
+  </div>
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Dashboard Layout -->
+  <div class="dashboard">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Navegación principal">
+      <div class="logo">
+        <div class="logo-icon"><i class="fa-solid fa-robot"></i></div>
+        <div class="logo-text">AVIA</div>
+      </div>
+      <div class="nav-section-label">Principal</div>
+      <nav id="mainNav">
+        <div class="nav-item active" data-view="overview"><i class="fa-solid fa-chart-pie"></i> Resumen</div>
+        <div class="nav-item" data-view="alerts"><i class="fa-solid fa-triangle-exclamation"></i> Alertas <span class="badge" id="alertBadge">8</span></div>
+        <div class="nav-item" data-view="students"><i class="fa-solid fa-users"></i> Estudiantes</div>
+        <div class="nav-item" data-view="emotions"><i class="fa-solid fa-heart-pulse"></i> Emociones</div>
+      </nav>
+      <div class="nav-section-label">Herramientas</div>
+      <nav>
+        <div class="nav-item" data-view="reports"><i class="fa-solid fa-file-lines"></i> Reportes</div>
+        <div class="nav-item" data-view="settings"><i class="fa-solid fa-gear"></i> Configuración</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="avatar">PR</div>
+        <div class="user-info">
+          <div class="user-name">Prof. Ramírez</div>
+          <div class="user-role">Introducción a IA</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main">
+
+      <!-- Dynamic Header -->
+      <div class="page-header" id="pageHeader">
+        <h1 id="pageTitle">Dashboard del Profesor</h1>
+        <div class="page-header-actions" id="pageActions"></div>
+      </div>
+
+      <!-- ===== VIEW: OVERVIEW ===== -->
+      <div class="view active" id="view-overview">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="grid-2col">
+          <div class="section anim-in anim-d5">
+            <div class="section-header">
+              <h2 class="section-title"><i class="fa-solid fa-triangle-exclamation text-danger"></i> Alertas Prioritarias</h2>
+              <button class="btn btn-secondary btn-sm" id="btnViewAllAlerts">Ver todas</button>
+            </div>
+            <div id="overviewAlerts"></div>
+          </div>
+          <div class="section anim-in anim-d6">
+            <div class="section-header">
+              <h2 class="section-title"><i class="fa-solid fa-heart-pulse text-primary"></i> Distribución Emocional</h2>
+            </div>
+            <div class="emotion-grid" id="overviewEmotions"></div>
+          </div>
+        </div>
+        <div class="section anim-in anim-d7">
+          <div class="section-header">
+            <h2 class="section-title"><i class="fa-solid fa-chart-line text-primary"></i> Actividad Semanal</h2>
+          </div>
+          <div class="chart-wrap"><canvas id="activityChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: ALERTS ===== -->
+      <div class="view" id="view-alerts">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="search-input" id="alertSearch" placeholder="Buscar alertas...">
+          </div>
+          <select class="filter-select" id="alertFilter">
+            <option value="all">Todas las alertas</option>
+            <option value="high">Alto Riesgo</option>
+            <option value="medium">Riesgo Medio</option>
+            <option value="low">Bajo Riesgo</option>
+          </select>
+          <select class="filter-select" id="alertStatusFilter">
+            <option value="active">Activas</option>
+            <option value="resolved">Resueltas</option>
+            <option value="all">Todas</option>
+          </select>
+        </div>
+        <div id="alertsFullList"></div>
+      </div>
+
+      <!-- ===== VIEW: STUDENTS ===== -->
+      <div class="view" id="view-students">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="search-input" id="studentSearch" placeholder="Buscar estudiantes...">
+          </div>
+          <select class="filter-select" id="studentStatusFilter">
+            <option value="all">Todos</option>
+            <option value="ok">Estables</option>
+            <option value="warning">En observación</option>
+            <option value="at-risk">En riesgo</option>
+          </select>
+        </div>
+        <div class="section">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Bienestar</th>
+                  <th>Emoción</th>
+                  <th>Estado</th>
+                  <th>Última Actividad</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: EMOTIONS ===== -->
+      <div class="view" id="view-emotions">
+        <div class="grid-2col">
+          <div class="section">
+            <div class="section-header">
+              <h2 class="section-title">Distribución General</h2>
+            </div>
+            <div class="chart-wrap"><canvas id="emotionDoughnut"></canvas></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <h2 class="section-title">Resumen por Emoción</h2>
+            </div>
+            <div id="emotionSummary"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title">Tendencia Emocional (7 días)</h2>
+          </div>
+          <div class="chart-wrap"><canvas id="emotionTrend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: REPORTS ===== -->
+      <div class="view" id="view-reports">
+        <div class="section">
+          <div class="section-header">
+            <h2 class="section-title"><i class="fa-solid fa-wand-magic-sparkles text-primary"></i> Generar Reporte con IA</h2>
+          </div>
+          <div class="form-row mb-2">
+            <div class="form-group">
+              <label class="form-label">Tipo de Reporte</label>
+              <select class="form-select" id="reportType">
+                <option value="general">Reporte General</option>
+                <option value="emocional">Análisis Emocional</option>
+                <option value="engagement">Engagement y Participación</option>
+                <option value="riesgo">Estudiantes en Riesgo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Período</label>
+              <select class="form-select" id="reportPeriod">
+                <option value="week">Última semana</option>
+                <option value="month">Último mes</option>
+                <option value="semester">Este semestre</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnGenerateReport"><i class="fa-solid fa-robot"></i> Generar con IA</button>
+            <button class="btn btn-secondary" id="btnCopyReport" disabled><i class="fa-solid fa-copy"></i> Copiar</button>
+            <button class="btn btn-secondary" id="btnDownloadReport" disabled><i class="fa-solid fa-download"></i> Descargar</button>
+          </div>
+        </div>
+        <div class="section">
+          <div id="reportOutput" class="report-output">
+            <div class="empty-state">
+              <i class="fa-solid fa-file-lines"></i>
+              <p>Selecciona el tipo de reporte y haz clic en "Generar con IA"</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: SETTINGS ===== -->
+      <div class="view" id="view-settings">
+        <div class="section">
+          <div class="settings-section">
+            <h3><i class="fa-solid fa-graduation-cap"></i> Información del Curso</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Nombre del Curso</label>
+                <input class="form-input" id="settCourseName" value="Introducción a IA">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Código</label>
+                <input class="form-input" id="settCourseCode" value="CS-101">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Descripción</label>
+              <textarea class="form-textarea" id="settCourseDesc">Curso introductorio de Inteligencia Artificial para estudiantes de pregrado. Cubre fundamentos de ML, redes neuronales y ética en IA.</textarea>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3><i class="fa-solid fa-bell"></i> Umbrales de Alerta</h3>
+            <div class="threshold-grid">
+              <div class="threshold-card">
+                <label>Alto Riesgo (Bienestar &lt;)</label>
+                <input type="number" id="threshHigh" value="4" min="1" max="10" step="0.5">
+              </div>
+              <div class="threshold-card">
+                <label>Riesgo Medio (Bienestar &lt;)</label>
+                <input type="number" id="threshMedium" value="6" min="1" max="10" step="0.5">
+              </div>
+              <div class="threshold-card">
+                <label>Días sin actividad para alerta</label>
+                <input type="number" id="threshInactive" value="3" min="1" max="30">
+              </div>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3><i class="fa-solid fa-sliders"></i> Notificaciones</h3>
+            <div class="toggle-row">
+              <div class="toggle-label">Alertas de alto riesgo<small>Recibir notificación inmediata</small></div>
+              <div class="toggle on" data-setting="notifHigh"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label">Alertas de riesgo medio<small>Resumen diario</small></div>
+              <div class="toggle on" data-setting="notifMedium"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label">Resumen semanal<small>Reporte automático cada lunes</small></div>
+              <div class="toggle on" data-setting="notifWeekly"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-label">Tendencias emocionales<small>Notificar cambios significativos</small></div>
+              <div class="toggle" data-setting="notifTrend"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btnSaveSettings"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal Container -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ========================================================================
+   AVIA DASHBOARD — COMPLETE APPLICATION
+   ======================================================================== */
+
+/* ========== DARK MODE DETECTION ========== */
+(function initTheme() {
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+    if (event.matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    if (typeof refreshCharts === 'function') { refreshCharts(); }
+  });
+})();
+
+/* ========== DEMO DATA ========== */
+const AVATAR_COLORS = [
+  'linear-gradient(135deg,#7c5cff,#a78bfa)',
+  'linear-gradient(135deg,#10b981,#6ee7b7)',
+  'linear-gradient(135deg,#f59e0b,#fbbf24)',
+  'linear-gradient(135deg,#ef4444,#f87171)',
+  'linear-gradient(135deg,#3b82f6,#60a5fa)',
+  'linear-gradient(135deg,#ec4899,#f472b6)',
+  'linear-gradient(135deg,#8b5cf6,#c4b5fd)',
+  'linear-gradient(135deg,#14b8a6,#5eead4)'
+];
+
+const EMOTIONS_MAP = {
+  happy:     { emoji: '😊', label: 'Feliz',      color: 'var(--success)' },
+  neutral:   { emoji: '😐', label: 'Neutral',     color: 'var(--text-secondary)' },
+  stressed:  { emoji: '😰', label: 'Estresado',   color: 'var(--warning)' },
+  confused:  { emoji: '🤔', label: 'Confundido',  color: 'var(--primary)' },
+  sad:       { emoji: '😢', label: 'Triste',      color: 'var(--danger)' },
+  frustrated:{ emoji: '😤', label: 'Frustrado',   color: '#f97316' }
+};
+
+const STUDENTS = [
+  { id:1,  name:'María García',       initials:'MG', email:'maria.garcia@uni.edu',      wellbeing:4.2, emotion:'stressed',  lastActive:'2026-04-29', status:'at-risk',  interactions:23,  trend:'down' },
+  { id:2,  name:'Juan Pérez',         initials:'JP', email:'juan.perez@uni.edu',        wellbeing:5.8, emotion:'confused',  lastActive:'2026-05-01', status:'warning',  interactions:45,  trend:'stable' },
+  { id:3,  name:'Ana López',          initials:'AL', email:'ana.lopez@uni.edu',         wellbeing:7.1, emotion:'frustrated',lastActive:'2026-05-02', status:'ok',       interactions:67,  trend:'up' },
+  { id:4,  name:'Carlos Rodríguez',   initials:'CR', email:'carlos.rodriguez@uni.edu',  wellbeing:8.5, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:89,  trend:'up' },
+  { id:5,  name:'Laura Martínez',     initials:'LM', email:'laura.martinez@uni.edu',    wellbeing:7.8, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:72,  trend:'up' },
+  { id:6,  name:'Diego Hernández',    initials:'DH', email:'diego.hernandez@uni.edu',   wellbeing:5.1, emotion:'stressed',  lastActive:'2026-04-30', status:'warning',  interactions:31,  trend:'down' },
+  { id:7,  name:'Sofía Ruiz',         initials:'SR', email:'sofia.ruiz@uni.edu',        wellbeing:8.9, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:95,  trend:'up' },
+  { id:8,  name:'Pedro Sánchez',      initials:'PS', email:'pedro.sanchez@uni.edu',     wellbeing:3.4, emotion:'sad',       lastActive:'2026-04-25', status:'at-risk',  interactions:8,   trend:'down' },
+  { id:9,  name:'Valentina Torres',   initials:'VT', email:'valentina.torres@uni.edu',  wellbeing:6.7, emotion:'neutral',   lastActive:'2026-05-01', status:'ok',       interactions:56,  trend:'stable' },
+  { id:10, name:'Andrés Morales',     initials:'AM', email:'andres.morales@uni.edu',    wellbeing:7.4, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:78,  trend:'up' },
+  { id:11, name:'Isabella Flores',    initials:'IF', email:'isabella.flores@uni.edu',   wellbeing:5.5, emotion:'confused',  lastActive:'2026-04-30', status:'warning',  interactions:38,  trend:'down' },
+  { id:12, name:'Mateo Jiménez',      initials:'MJ', email:'mateo.jimenez@uni.edu',     wellbeing:8.2, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:84,  trend:'up' },
+  { id:13, name:'Camila Vargas',      initials:'CV', email:'camila.vargas@uni.edu',     wellbeing:6.3, emotion:'neutral',   lastActive:'2026-05-01', status:'ok',       interactions:52,  trend:'stable' },
+  { id:14, name:'Santiago Rojas',     initials:'SaR',email:'santiago.rojas@uni.edu',    wellbeing:7.9, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:91,  trend:'up' },
+  { id:15, name:'Daniela Navarro',    initials:'DN', email:'daniela.navarro@uni.edu',   wellbeing:5.3, emotion:'stressed',  lastActive:'2026-04-29', status:'warning',  interactions:34,  trend:'down' },
+  { id:16, name:'Lucas Restrepo',     initials:'LR', email:'lucas.restrepo@uni.edu',    wellbeing:6.9, emotion:'neutral',   lastActive:'2026-05-01', status:'ok',       interactions:60,  trend:'stable' },
+  { id:17, name:'Gabriela Mendoza',   initials:'GM', email:'gabriela.mendoza@uni.edu',  wellbeing:8.0, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:76,  trend:'up' },
+  { id:18, name:'Sebastián Aguirre',  initials:'SA', email:'sebastian.aguirre@uni.edu', wellbeing:3.8, emotion:'sad',       lastActive:'2026-04-22', status:'at-risk',  interactions:5,   trend:'down' },
+  { id:19, name:'Mariana Castillo',   initials:'MC', email:'mariana.castillo@uni.edu',  wellbeing:7.6, emotion:'happy',     lastActive:'2026-05-02', status:'ok',       interactions:70,  trend:'up' },
+  { id:20, name:'Nicolás Guerrero',   initials:'NG', email:'nicolas.guerrero@uni.edu',  wellbeing:6.5, emotion:'neutral',   lastActive:'2026-05-01', status:'ok',       interactions:48,  trend:'stable' }
+];
+
+const ALERTS = [
+  { id:1, studentId:1,  severity:'high',   title:'Estrés elevado detectado',        detail:'3 días sin actividad',                     date:'2026-05-02', resolved:false },
+  { id:2, studentId:8,  severity:'high',   title:'Señales de tristeza persistente',  detail:'Bienestar bajo 4.0 por 2 semanas',         date:'2026-05-01', resolved:false },
+  { id:3, studentId:18, severity:'high',   title:'Aislamiento detectado',            detail:'Sin interacciones con compañeros en 10 días',date:'2026-04-30', resolved:false },
+  { id:4, studentId:2,  severity:'medium', title:'Baja participación',               detail:'Confusión recurrente en sesiones',          date:'2026-05-01', resolved:false },
+  { id:5, studentId:6,  severity:'medium', title:'Estrés académico',                 detail:'Reporta dificultad con el material',        date:'2026-04-30', resolved:false },
+  { id:6, studentId:11, severity:'medium', title:'Confusión recurrente',             detail:'Solicita ayuda frecuentemente',             date:'2026-04-29', resolved:false },
+  { id:7, studentId:15, severity:'medium', title:'Estrés por exámenes',              detail:'Patrón de ansiedad detectado',              date:'2026-04-28', resolved:false },
+  { id:8, studentId:3,  severity:'low',    title:'Frustración en última sesión',     detail:'Sesión de ayer mostró frustración leve',    date:'2026-05-02', resolved:false }
+];
+
+const WEEKLY_DATA = [
+  { day:'Lun', interactions:145, sessions:42, wellbeing:6.8 },
+  { day:'Mar', interactions:178, sessions:55, wellbeing:7.0 },
+  { day:'Mié', interactions:132, sessions:38, wellbeing:6.5 },
+  { day:'Jue', interactions:195, sessions:61, wellbeing:7.2 },
+  { day:'Vie', interactions:210, sessions:67, wellbeing:7.4 },
+  { day:'Sáb', interactions:88,  sessions:22, wellbeing:7.1 },
+  { day:'Dom', interactions:56,  sessions:15, wellbeing:7.3 }
+];
+
+const EMOTION_HISTORY = [
+  { date:'26 Abr', happy:38, neutral:30, stressed:18, confused:9,  sad:5 },
+  { date:'27 Abr', happy:40, neutral:28, stressed:16, confused:11, sad:5 },
+  { date:'28 Abr', happy:35, neutral:32, stressed:20, confused:8,  sad:5 },
+  { date:'29 Abr', happy:42, neutral:26, stressed:17, confused:10, sad:5 },
+  { date:'30 Abr', happy:44, neutral:27, stressed:14, confused:10, sad:5 },
+  { date:'1 May',  happy:41, neutral:29, stressed:15, confused:10, sad:5 },
+  { date:'2 May',  happy:42, neutral:28, stressed:15, confused:10, sad:5 }
+];
+
+/* ========== STATE ========== */
+var currentView = 'overview';
+var chartInstances = {};
+var reportContent = '';
+
+/* ========== UTILITIES ========== */
+function getStudentById(id) {
+  return STUDENTS.find(function(s) { return s.id === id; });
+}
+
+function getAvatarColor(id) {
+  return AVATAR_COLORS[(id - 1) % AVATAR_COLORS.length];
+}
+
+function formatDate(dateStr) {
+  var parts = dateStr.split('-');
+  var d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return d.toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+}
+
+function getStatusLabel(status) {
+  var map = { 'ok':'Estable', 'warning':'En observación', 'at-risk':'En riesgo' };
+  return map[status] || status;
+}
+
+function getSeverityLabel(sev) {
+  var map = { 'high':'Alto Riesgo', 'medium':'Riesgo Medio', 'low':'Bajo Riesgo' };
+  return map[sev] || sev;
+}
+
+function getWellbeingColor(val) {
+  if (val >= 7) return 'var(--success)';
+  if (val >= 5) return 'var(--warning)';
+  return 'var(--danger)';
+}
+
+/* ========== TOAST SYSTEM ========== */
+function showToast(message, type) {
+  type = type || 'info';
+  var container = document.getElementById('toastContainer');
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  var icons = { success:'fa-check-circle', error:'fa-circle-exclamation', info:'fa-circle-info' };
+  toast.innerHTML = '<i class="fa-solid ' + (icons[type] || icons.info) + '"></i> ' + message;
+  container.appendChild(toast);
+  requestAnimationFrame(function() { toast.classList.add('show'); });
+  setTimeout(function() {
+    toast.classList.remove('show');
+    setTimeout(function() { toast.remove(); }, 400);
+  }, 3200);
+}
+
+/* ========== MODAL SYSTEM ========== */
+function showModal(html, wide) {
+  var overlay = document.getElementById('modalOverlay');
+  var content = document.getElementById('modalContent');
+  content.className = 'modal' + (wide ? ' wide' : '');
+  content.innerHTML = html;
+  overlay.classList.add('open');
+}
+
+function hideModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) hideModal();
+});
+
+/* ========== CONFIRM DIALOG ========== */
+function showConfirmDialog(message, onConfirm) {
+  var html = '<div class="modal-header"><h2>Confirmar</h2><button class="modal-close" onclick="hideModal()"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="modal-body"><p style="font-size:15px;color:var(--text-secondary)">' + message + '</p>' +
+    '<div class="confirm-actions"><button class="btn btn-secondary" onclick="hideModal()">Cancelar</button>' +
+    '<button class="btn btn-danger" id="confirmBtn">Confirmar</button></div></div>';
+  showModal(html);
+  document.getElementById('confirmBtn').addEventListener('click', function() {
+    hideModal();
+    if (onConfirm) onConfirm();
+  });
+}
+
+/* ========== NAVIGATION / ROUTING ========== */
+var VIEW_CONFIG = {
+  overview: { title:'Dashboard del Profesor',  actions:'overview' },
+  alerts:   { title:'Alertas',                 actions:'alerts' },
+  students: { title:'Estudiantes',             actions:'students' },
+  emotions: { title:'Análisis Emocional',      actions:'emotions' },
+  reports:  { title:'Reportes',                actions:'reports' },
+  settings: { title:'Configuración',           actions:'settings' }
+};
+
+function navigate(viewId) {
+  currentView = viewId;
+  /* Update nav */
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.classList.toggle('active', item.getAttribute('data-view') === viewId);
+  });
+  /* Update views */
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  var targetView = document.getElementById('view-' + viewId);
+  if (targetView) targetView.classList.add('active');
+
+  /* Update header */
+  var cfg = VIEW_CONFIG[viewId];
+  document.getElementById('pageTitle').textContent = cfg.title;
+  document.getElementById('mobileTitle').textContent = cfg.title;
+  renderHeaderActions(cfg.actions);
+
+  /* Init view-specific content */
+  if (viewId === 'overview')  renderOverview();
+  if (viewId === 'alerts')    renderAlerts();
+  if (viewId === 'students')  renderStudents();
+  if (viewId === 'emotions')  renderEmotions();
+
+  /* Animate */
+  animateView(viewId);
+
+  /* Close mobile menu */
+  closeMobileMenu();
+}
+
+function renderHeaderActions(type) {
+  var el = document.getElementById('pageActions');
+  var h = '';
+  if (type === 'overview') {
+    h = '<span class="course-label"><i class="fa-solid fa-book-open"></i> Introducción a IA</span>' +
+        '<button class="btn btn-primary" onclick="showNewIntervention()"><i class="fa-solid fa-plus"></i> Nueva Intervención</button>' +
+        '<button class="btn btn-secondary" onclick="analyzeWithAI()"><i class="fa-solid fa-robot"></i> Analizar con IA</button>';
+  } else if (type === 'alerts') {
+    h = '<button class="btn btn-primary" onclick="showNewIntervention()"><i class="fa-solid fa-plus"></i> Nueva Intervención</button>';
+  } else if (type === 'students') {
+    h = '<span class="course-label">' + STUDENTS.length + ' estudiantes</span>';
+  } else if (type === 'emotions') {
+    h = '<button class="btn btn-secondary" onclick="analyzeWithAI()"><i class="fa-solid fa-robot"></i> Análisis IA</button>';
+  }
+  el.innerHTML = h;
+}
+
+function animateView(viewId) {
+  var view = document.getElementById('view-' + viewId);
+  if (!view) return;
+  var items = view.querySelectorAll('.anim-target');
+  items.forEach(function(item, i) {
+    item.style.opacity = '0';
+    item.style.transform = 'translateY(16px)';
+    item.style.transition = 'none';
+    setTimeout(function() {
+      item.style.transition = 'opacity 0.45s cubic-bezier(0.22,1,0.36,1), transform 0.45s cubic-bezier(0.22,1,0.36,1)';
+      item.style.opacity = '1';
+      item.style.transform = 'translateY(0)';
+    }, 40 + i * 50);
+  });
+}
+
+/* ========== MOBILE MENU ========== */
+function openMobileMenu() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+}
+
+function closeMobileMenu() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+document.getElementById('hamburgerBtn').addEventListener('click', openMobileMenu);
+document.getElementById('sidebarOverlay').addEventListener('click', closeMobileMenu);
+
+/* ========== NAV EVENT LISTENERS ========== */
+document.querySelectorAll('.nav-item').forEach(function(item) {
+  item.addEventListener('click', function() {
+    var view = this.getAttribute('data-view');
+    if (view) navigate(view);
+  });
+});
+
+/* ========== RENDER: OVERVIEW ========== */
+function renderOverview() {
+  renderStatsGrid();
+  renderOverviewAlerts();
+  renderOverviewEmotions();
+  initActivityChart();
+}
+
+function renderStatsGrid() {
+  var activeCount = STUDENTS.length;
+  var alertCount = ALERTS.filter(function(a) { return !a.resolved; }).length;
+  var avgWellbeing = (STUDENTS.reduce(function(s, st) { return s + st.wellbeing; }, 0) / STUDENTS.length).toFixed(1);
+  var totalInteractions = STUDENTS.reduce(function(s, st) { return s + st.interactions; }, 0);
+
+  var sparkData = [
+    [60,80,45,90,70,55,85],
+    [30,50,60,40,55,65,45],
+    [65,68,62,70,72,69,74],
+    [50,60,70,65,80,75,90]
+  ];
+
+  var cards = [
+    { title:'Estudiantes Activos', value:activeCount, change:'↑ 12% vs. semana pasada', up:true,  icon:'fa-users',      iconBg:'var(--primary-soft)',  iconColor:'var(--primary)',  spark:sparkData[0], sparkColor:'var(--primary)' },
+    { title:'Alertas Activas',     value:alertCount,   change:'↑ 3 nuevas hoy',          up:false, icon:'fa-triangle-exclamation', iconBg:'var(--danger-soft)', iconColor:'var(--danger)', spark:sparkData[1], sparkColor:'var(--danger)' },
+    { title:'Bienestar Promedio',  value:avgWellbeing, change:'↑ 0.4 puntos',            up:true,  icon:'fa-heart-pulse',iconBg:'var(--success-soft)',  iconColor:'var(--success)',  spark:sparkData[2], sparkColor:'var(--success)' },
+    { title:'Interacciones AVIA',  value:totalInteractions.toLocaleString('es-ES'), change:'↑ 28% esta semana', up:true, icon:'fa-comments', iconBg:'var(--primary-soft)', iconColor:'var(--primary)', spark:sparkData[3], sparkColor:'var(--primary)' }
+  ];
+
+  var html = '';
+  cards.forEach(function(c, i) {
+    var bars = '';
+    c.spark.forEach(function(v) {
+      bars += '<div class="spark-bar" style="height:' + v + '%;background:' + c.sparkColor + ';opacity:0.3"></div>';
+    });
+    html += '<div class="stat-card anim-target">' +
+      '<div class="stat-card-header"><h3>' + c.title + '</h3>' +
+      '<div class="stat-card-icon" style="background:' + c.iconBg + ';color:' + c.iconColor + '"><i class="fa-solid ' + c.icon + '"></i></div></div>' +
+      '<div class="value">' + c.value + '</div>' +
+      '<div class="change ' + (c.up ? 'up' : 'down') + '">' + c.change + '</div>' +
+      '<div class="sparkline">' + bars + '</div></div>';
+  });
+  document.getElementById('statsGrid').innerHTML = html;
+}
+
+function renderOverviewAlerts() {
+  var topAlerts = ALERTS.filter(function(a) { return !a.resolved; }).slice(0, 3);
+  var html = '';
+  topAlerts.forEach(function(alert) {
+    var student = getStudentById(alert.studentId);
+    if (!student) return;
+    html += buildAlertItem(alert, student, true);
+  });
+  document.getElementById('overviewAlerts').innerHTML = html;
+}
+
+function renderOverviewEmotions() {
+  var latest = EMOTION_HISTORY[EMOTION_HISTORY.length - 1];
+  var emotions = [
+    { key:'happy',    pct:latest.happy },
+    { key:'neutral',  pct:latest.neutral },
+    { key:'stressed', pct:latest.stressed },
+    { key:'confused', pct:latest.confused },
+    { key:'sad',      pct:latest.sad }
+  ];
+  var html = '';
+  emotions.forEach(function(e) {
+    var info = EMOTIONS_MAP[e.key];
+    html += '<div class="emotion-card"><div class="emotion-emoji">' + info.emoji + '</div>' +
+      '<div class="emotion-label">' + info.label + '</div>' +
+      '<div class="emotion-value" style="color:' + info.color + '">' + e.pct + '%</div></div>';
+  });
+  document.getElementById('overviewEmotions').innerHTML = html;
+}
+
+/* ========== RENDER: ALERTS ========== */
+function renderAlerts() {
+  var search = (document.getElementById('alertSearch').value || '').toLowerCase();
+  var sevFilter = document.getElementById('alertFilter').value;
+  var statusFilter = document.getElementById('alertStatusFilter').value;
+
+  var filtered = ALERTS.filter(function(a) {
+    var student = getStudentById(a.studentId);
+    var matchSearch = !search || (student && student.name.toLowerCase().indexOf(search) !== -1) || a.title.toLowerCase().indexOf(search) !== -1;
+    var matchSev = sevFilter === 'all' || a.severity === sevFilter;
+    var matchStatus = statusFilter === 'all' || (statusFilter === 'active' && !a.resolved) || (statusFilter === 'resolved' && a.resolved);
+    return matchSearch && matchSev && matchStatus;
+  });
+
+  var html = '';
+  if (filtered.length === 0) {
+    html = '<div class="empty-state"><i class="fa-solid fa-check-circle"></i><p>No se encontraron alertas</p></div>';
+  } else {
+    filtered.forEach(function(alert) {
+      var student = getStudentById(alert.studentId);
+      if (!student) return;
+      html += '<div class="anim-target">' + buildAlertItem(alert, student, false) + '</div>';
+    });
+  }
+  document.getElementById('alertsFullList').innerHTML = html;
+}
+
+function buildAlertItem(alert, student, compact) {
+  var resolved = alert.resolved;
+  var opacity = resolved ? 'opacity:0.5;' : '';
+  return '<div class="alert-item" style="' + opacity + '" onclick="showStudentProfile(' + student.id + ')">' +
+    '<div class="alert-avatar" style="background:' + getAvatarColor(student.id) + '">' + student.initials + '</div>' +
+    '<div class="alert-info"><div class="alert-name">' + student.name + '</div>' +
+    '<div class="alert-detail">' + alert.title + ' • ' + alert.detail + '</div></div>' +
+    '<span class="alert-badge ' + alert.severity + '">' + getSeverityLabel(alert.severity) + '</span>' +
+    (compact ? '' :
+      '<div class="alert-actions">' +
+      '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showContactForm(' + student.id + ')"><i class="fa-solid fa-envelope"></i> Contactar</button>' +
+      (!resolved ? '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();resolveAlert(' + alert.id + ')"><i class="fa-solid fa-check"></i> Resolver</button>' : '') +
+      '</div>') +
+    '</div>';
+}
+
+function resolveAlert(alertId) {
+  showConfirmDialog('¿Marcar esta alerta como resuelta?', function() {
+    var alert = ALERTS.find(function(a) { return a.id === alertId; });
+    if (alert) {
+      alert.resolved = true;
+      updateAlertBadge();
+      renderAlerts();
+      if (currentView === 'overview') renderOverviewAlerts();
+      showToast('Alerta marcada como resuelta', 'success');
+    }
+  });
+}
+
+function updateAlertBadge() {
+  var count = ALERTS.filter(function(a) { return !a.resolved; }).length;
+  document.getElementById('alertBadge').textContent = count;
+}
+
+/* Alert filter listeners */
+document.getElementById('alertSearch').addEventListener('input', renderAlerts);
+document.getElementById('alertFilter').addEventListener('change', renderAlerts);
+document.getElementById('alertStatusFilter').addEventListener('change', renderAlerts);
+
+/* ========== RENDER: STUDENTS ========== */
+function renderStudents() {
+  var search = (document.getElementById('studentSearch').value || '').toLowerCase();
+  var statusFilter = document.getElementById('studentStatusFilter').value;
+
+  var filtered = STUDENTS.filter(function(s) {
+    var matchSearch = !search || s.name.toLowerCase().indexOf(search) !== -1 || s.email.toLowerCase().indexOf(search) !== -1;
+    var matchStatus = statusFilter === 'all' || s.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  var html = '';
+  if (filtered.length === 0) {
+    html = '<tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-users"></i><p>No se encontraron estudiantes</p></div></td></tr>';
+  } else {
+    filtered.forEach(function(s) {
+      var emo = EMOTIONS_MAP[s.emotion] || EMOTIONS_MAP.neutral;
+      var wColor = getWellbeingColor(s.wellbeing);
+      var wPct = (s.wellbeing / 10 * 100).toFixed(0);
+      html += '<tr class="anim-target" onclick="showStudentProfile(' + s.id + ')">' +
+        '<td><div class="student-cell"><div class="avatar" style="background:' + getAvatarColor(s.id) + '">' + s.initials + '</div>' +
+        '<div><div style="font-weight:600">' + s.name + '</div><div style="font-size:12px;color:var(--text-secondary)">' + s.email + '</div></div></div></td>' +
+        '<td><span style="font-weight:700;color:' + wColor + '">' + s.wellbeing + '</span>' +
+        '<div class="wellbeing-bar"><div class="wellbeing-bar-fill" style="width:' + wPct + '%;background:' + wColor + '"></div></div></td>' +
+        '<td>' + emo.emoji + ' ' + emo.label + '</td>' +
+        '<td><span class="status-dot ' + s.status + '"></span>' + getStatusLabel(s.status) + '</td>' +
+        '<td>' + formatDate(s.lastActive) + '</td>' +
+        '<td><div class="alert-actions">' +
+        '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();showContactForm(' + s.id + ')"><i class="fa-solid fa-envelope"></i></button>' +
+        '</div></td></tr>';
+    });
+  }
+  document.getElementById('studentsTableBody').innerHTML = html;
+}
+
+document.getElementById('studentSearch').addEventListener('input', renderStudents);
+document.getElementById('studentStatusFilter').addEventListener('change', renderStudents);
+
+/* ========== RENDER: EMOTIONS ========== */
+function renderEmotions() {
+  initEmotionCharts();
+  renderEmotionSummary();
+}
+
+function renderEmotionSummary() {
+  var latest = EMOTION_HISTORY[EMOTION_HISTORY.length - 1];
+  var prev = EMOTION_HISTORY[EMOTION_HISTORY.length - 2];
+  var items = [
+    { key:'happy',    pct:latest.happy,    prev:prev.happy },
+    { key:'neutral',  pct:latest.neutral,  prev:prev.neutral },
+    { key:'stressed', pct:latest.stressed, prev:prev.stressed },
+    { key:'confused', pct:latest.confused, prev:prev.confused },
+    { key:'sad',      pct:latest.sad,      prev:prev.sad }
+  ];
+  var html = '';
+  items.forEach(function(item) {
+    var info = EMOTIONS_MAP[item.key];
+    var diff = item.pct - item.prev;
+    var arrow = diff > 0 ? '↑' : (diff < 0 ? '↓' : '→');
+    var cls = diff > 0 ? (item.key === 'happy' ? 'text-success' : 'text-warning') : (diff < 0 ? (item.key === 'happy' ? 'text-danger' : 'text-success') : 'text-muted');
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="font-size:26px">' + info.emoji + '</span>' +
+      '<div style="flex:1"><div style="font-weight:600">' + info.label + '</div>' +
+      '<div style="font-size:12.5px;color:var(--text-secondary)">Conteo: ' + Math.round(STUDENTS.length * item.pct / 100) + ' estudiantes</div></div>' +
+      '<div style="text-align:right"><div style="font-size:20px;font-weight:700;color:' + info.color + '">' + item.pct + '%</div>' +
+      '<div class="' + cls + '" style="font-size:12px">' + arrow + ' ' + Math.abs(diff) + '% vs ayer</div></div></div>';
+  });
+  document.getElementById('emotionSummary').innerHTML = html;
+}
+
+/* ========== CHARTS ========== */
+function getChartTheme() {
+  var style = getComputedStyle(document.documentElement);
+  return {
+    text: style.getPropertyValue('--text-secondary').trim(),
+    border: style.getPropertyValue('--border').trim(),
+    surface: style.getPropertyValue('--surface').trim(),
+    bg: style.getPropertyValue('--bg').trim()
+  };
+}
+
+function initActivityChart() {
+  var canvas = document.getElementById('activityChart');
+  if (!canvas) return;
+  if (chartInstances.activity) chartInstances.activity.destroy();
+  var theme = getChartTheme();
+  chartInstances.activity = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: WEEKLY_DATA.map(function(d) { return d.day; }),
+      datasets: [{
+        label: 'Interacciones',
+        data: WEEKLY_DATA.map(function(d) { return d.interactions; }),
+        borderColor: '#7c5cff',
+        backgroundColor: 'rgba(124,92,255,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: '#7c5cff',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }, {
+        label: 'Sesiones',
+        data: WEEKLY_DATA.map(function(d) { return d.sessions; }),
+        borderColor: '#34d399',
+        backgroundColor: 'rgba(52,211,153,0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: '#34d399',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: theme.text, padding: 20, usePointStyle: true, pointStyle: 'circle' } }
+      },
+      scales: {
+        x: { grid: { color: theme.border }, ticks: { color: theme.text } },
+        y: { beginAtZero: true, grid: { color: theme.border }, ticks: { color: theme.text } }
+      }
+    }
+  });
+}
+
+function initEmotionCharts() {
+  /* Doughnut */
+  var dCanvas = document.getElementById('emotionDoughnut');
+  if (!dCanvas) return;
+  if (chartInstances.doughnut) chartInstances.doughnut.destroy();
+  var latest = EMOTION_HISTORY[EMOTION_HISTORY.length - 1];
+  var theme = getChartTheme();
+
+  chartInstances.doughnut = new Chart(dCanvas, {
+    type: 'doughnut',
+    data: {
+      labels: ['Feliz','Neutral','Estresado','Confundido','Triste'],
+      datasets: [{
+        data: [latest.happy, latest.neutral, latest.stressed, latest.confused, latest.sad],
+        backgroundColor: ['#34d399','#8b92b3','#fbbf24','#7c5cff','#f87171'],
+        borderWidth: 3,
+        borderColor: theme.surface
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: theme.text, padding: 16, usePointStyle: true, pointStyle: 'circle' } }
+      }
+    }
+  });
+
+  /* Trend line */
+  var tCanvas = document.getElementById('emotionTrend');
+  if (!tCanvas) return;
+  if (chartInstances.trend) chartInstances.trend.destroy();
+
+  chartInstances.trend = new Chart(tCanvas, {
+    type: 'line',
+    data: {
+      labels: EMOTION_HISTORY.map(function(d) { return d.date; }),
+      datasets: [
+        { label:'Feliz',      data: EMOTION_HISTORY.map(function(d){return d.happy;}),    borderColor:'#34d399', tension:0.4, pointRadius:4, pointBackgroundColor:'#34d399' },
+        { label:'Neutral',    data: EMOTION_HISTORY.map(function(d){return d.neutral;}),  borderColor:'#8b92b3', tension:0.4, pointRadius:4, pointBackgroundColor:'#8b92b3' },
+        { label:'Estresado',  data: EMOTION_HISTORY.map(function(d){return d.stressed;}), borderColor:'#fbbf24', tension:0.4, pointRadius:4, pointBackgroundColor:'#fbbf24' },
+        { label:'Confundido', data: EMOTION_HISTORY.map(function(d){return d.confused;}), borderColor:'#7c5cff', tension:0.4, pointRadius:4, pointBackgroundColor:'#7c5cff' },
+        { label:'Triste',     data: EMOTION_HISTORY.map(function(d){return d.sad;}),      borderColor:'#f87171', tension:0.4, pointRadius:4, pointBackgroundColor:'#f87171' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: theme.text, padding: 16, usePointStyle: true, pointStyle: 'circle' } }
+      },
+      scales: {
+        x: { grid: { color: theme.border }, ticks: { color: theme.text } },
+        y: { beginAtZero: true, max: 60, grid: { color: theme.border }, ticks: { color: theme.text, callback: function(v){return v+'%';} } }
+      }
+    }
+  });
+}
+
+function refreshCharts() {
+  if (currentView === 'overview') initActivityChart();
+  if (currentView === 'emotions') initEmotionCharts();
+}
+
+/* ========== STUDENT PROFILE MODAL ========== */
+function showStudentProfile(studentId) {
+  var s = getStudentById(studentId);
+  if (!s) return;
+  var emo = EMOTIONS_MAP[s.emotion] || EMOTIONS_MAP.neutral;
+  var wColor = getWellbeingColor(s.wellbeing);
+
+  var studentAlerts = ALERTS.filter(function(a) { return a.studentId === s.id; });
+  var timelineHtml = '';
+  if (studentAlerts.length === 0) {
+    timelineHtml = '<p style="color:var(--text-secondary);font-size:13px;padding:10px 0">Sin alertas registradas</p>';
+  } else {
+    studentAlerts.forEach(function(a) {
+      var dotColor = a.severity === 'high' ? 'var(--danger)' : (a.severity === 'medium' ? 'var(--warning)' : 'var(--success)');
+      timelineHtml += '<div class="timeline-item"><div class="timeline-dot" style="background:' + dotColor + '"></div>' +
+        '<div><div class="timeline-text">' + a.title + '</div><div class="timeline-date">' + a.detail + ' — ' + formatDate(a.date) + '</div></div></div>';
+    });
+  }
+
+  var html = '<div class="modal-header"><h2>Perfil del Estudiante</h2><button class="modal-close" onclick="hideModal()"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="modal-body">' +
+    '<div class="profile-hero"><div class="avatar-lg" style="background:' + getAvatarColor(s.id) + '">' + s.initials + '</div>' +
+    '<h3>' + s.name + '</h3><p>' + s.email + '</p></div>' +
+    '<div class="profile-stats">' +
+    '<div class="profile-stat"><div class="val" style="color:' + wColor + '">' + s.wellbeing + '</div><div class="lbl">Bienestar</div></div>' +
+    '<div class="profile-stat"><div class="val">' + emo.emoji + '</div><div class="lbl">' + emo.label + '</div></div>' +
+    '<div class="profile-stat"><div class="val">' + s.interactions + '</div><div class="lbl">Interacciones</div></div>' +
+    '</div>' +
+    '<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-weight:600;font-size:14px">Estado</span>' +
+    '<span><span class="status-dot ' + s.status + '"></span>' + getStatusLabel(s.status) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-weight:600;font-size:14px">Tendencia</span>' +
+    '<span>' + (s.trend === 'up' ? '📈 Mejorando' : (s.trend === 'down' ? '📉 Bajando' : '➡️ Estable')) + '</span></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+    '<span style="font-weight:600;font-size:14px">Última actividad</span>' +
+    '<span>' + formatDate(s.lastActive) + '</span></div></div>' +
+    '<div><h4 style="font-size:14px;font-weight:700;margin-bottom:10px">Historial de Alertas</h4>' + timelineHtml + '</div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="btn btn-secondary" onclick="hideModal();showContactForm(' + s.id + ')"><i class="fa-solid fa-envelope"></i> Contactar</button>' +
+    '<button class="btn btn-primary" onclick="hideModal();showNewIntervention(' + s.id + ')"><i class="fa-solid fa-plus"></i> Intervención</button>' +
+    '</div>';
+  showModal(html);
+}
+
+/* ========== CONTACT FORM MODAL ========== */
+function showContactForm(studentId) {
+  var s = getStudentById(studentId);
+  if (!s) return;
+
+  var html = '<div class="modal-header"><h2>Contactar Estudiante</h2><button class="modal-close" onclick="hideModal()"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="modal-body">' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px;background:var(--bg);border-radius:12px">' +
+    '<div class="avatar" style="width:40px;height:40px;border-radius:50%;background:' + getAvatarColor(s.id) + ';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px">' + s.initials + '</div>' +
+    '<div><div style="font-weight:600">' + s.name + '</div><div style="font-size:12px;color:var(--text-secondary)">' + s.email + '</div></div></div>' +
+    '<div class="form-group"><label class="form-label">Asunto</label>' +
+    '<input class="form-input" id="contactSubject" value="Seguimiento de bienestar — ' + s.name + '"></div>' +
+    '<div class="form-group"><label class="form-label">Mensaje</label>' +
+    '<textarea class="form-textarea" id="contactMessage" rows="5" placeholder="Escribe tu mensaje aquí..."></textarea></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    '<button class="btn btn-secondary btn-sm" onclick="fillTemplate(\'check\')">📋 Check-in</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="fillTemplate(\'meeting\')">📅 Citar reunión</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="fillTemplate(\'resource\')">📚 Enviar recursos</button>' +
+    '<button class="btn btn-secondary btn-sm" onclick="generateAIMessage(' + s.id + ')"><i class="fa-solid fa-robot"></i> Generar con IA</button>' +
+    '</div></div>' +
+    '<div class="modal-footer">' +
+    '<button class="btn btn-secondary" onclick="hideModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="sendContact()"><i class="fa-solid fa-paper-plane"></i> Enviar</button>' +
+    '</div>';
+  showModal(html);
+}
+
+function fillTemplate(type) {
+  var msg = document.getElementById('contactMessage');
+  if (!msg) return;
+  var templates = {
+    check: 'Hola, espero que te encuentres bien. He notado algunos cambios en tu actividad reciente y quería saber cómo te sientes. ¿Hay algo en lo que pueda ayudarte? Estoy aquí para apoyarte.',
+    meeting: 'Hola, me gustaría agendar una reunión contigo para conversar sobre tu progreso en el curso. ¿Tienes disponibilidad esta semana? Podemos reunirnos en mi oficina o por videollamada.',
+    resource: 'Hola, te comparto algunos recursos adicionales que pueden serte útiles para las temáticas que hemos estado cubriendo en clase. No dudes en contactarme si tienes preguntas.'
+  };
+  msg.value = templates[type] || '';
+}
+
+function generateAIMessage(studentId) {
+  var s = getStudentById(studentId);
+  if (!s) return;
+  var msg = document.getElementById('contactMessage');
+  if (!msg) return;
+  msg.value = 'Generando mensaje con IA...';
+  msg.disabled = true;
+
+  if (typeof window.Poe === 'undefined') {
+    msg.value = 'Hola ' + s.name + ', espero que te encuentres bien. He estado revisando tu actividad en el curso y me gustaría conversar contigo. Tu bienestar es importante para mí como tu profesor. ¿Podemos agendar un momento para hablar?';
+    msg.disabled = false;
+    return;
+  }
+
+  var handlerName = 'msg-gen-' + Date.now();
+  window.Poe.registerHandler(handlerName, function(result) {
+    var resp = result.responses[0];
+    if (resp.status === 'error') {
+      msg.value = 'Error al generar: ' + (resp.statusText || 'desconocido');
+      msg.disabled = false;
+    } else if (resp.status === 'complete') {
+      msg.value = resp.content.replace(/^["']|["']$/g, '').trim();
+      msg.disabled = false;
+    }
+  });
+
+  var emo = EMOTIONS_MAP[s.emotion] || EMOTIONS_MAP.neutral;
+  window.Poe.sendUserMessage(
+    '@Claude-Sonnet-4 Genera un mensaje breve y empático (máximo 3 oraciones) de un profesor universitario a su estudiante ' + s.name +
+    '. El estudiante muestra emoción: ' + emo.label + ', bienestar: ' + s.wellbeing + '/10, estado: ' + getStatusLabel(s.status) +
+    '. El tono debe ser cálido y profesional. Responde SOLO con el texto del mensaje, sin comillas ni encabezados.',
+    { handler: handlerName, stream: false, openChat: false, parameters: {} }
+  ).catch(function(err) {
+    msg.value = 'Error: ' + err.message;
+    msg.disabled = false;
+  });
+}
+
+function sendContact() {
+  var subject = document.getElementById('contactSubject');
+  var message = document.getElementById('contactMessage');
+  if (!message || !message.value.trim()) {
+    showToast('Por favor escribe un mensaje', 'error');
+    return;
+  }
+  hideModal();
+  showToast('Mensaje enviado exitosamente', 'success');
+}
+
+/* ========== NEW INTERVENTION MODAL ========== */
+function showNewIntervention(preselectedId) {
+  var options = STUDENTS.map(function(s) {
+    var selected = (preselectedId && s.id === preselectedId) ? ' selected' : '';
+    return '<option value="' + s.id + '"' + selected + '>' + s.name + '</option>';
+  }).join('');
+
+  var html = '<div class="modal-header"><h2>Nueva Intervención</h2><button class="modal-close" onclick="hideModal()"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="modal-body">' +
+    '<div class="form-row">' +
+    '<div class="form-group"><label class="form-label">Estudiante</label>' +
+    '<select class="form-select" id="intStudent">' + options + '</select></div>' +
+    '<div class="form-group"><label class="form-label">Tipo</label>' +
+    '<select class="form-select" id="intType"><option value="academic">Académica</option><option value="emotional">Emocional</option><option value="behavioral">Conductual</option><option value="other">Otra</option></select></div>' +
+    '</div>' +
+    '<div class="form-group"><label class="form-label">Prioridad</label>' +
+    '<select class="form-select" id="intPriority"><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Baja</option></select></div>' +
+    '<div class="form-group"><label class="form-label">Descripción</label>' +
+    '<textarea class="form-textarea" id="intDescription" placeholder="Describe la intervención..."></textarea></div>' +
+    '<button class="btn btn-secondary btn-sm" onclick="getAISuggestion()" style="margin-bottom:8px"><i class="fa-solid fa-robot"></i> Obtener sugerencia IA</button>' +
+    '<div id="aiSuggestionArea"></div>' +
+    '</div>' +
+    '<div class="modal-footer">' +
+    '<button class="btn btn-secondary" onclick="hideModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="createIntervention()"><i class="fa-solid fa-plus"></i> Crear Intervención</button>' +
+    '</div>';
+  showModal(html);
+}
+
+function getAISuggestion() {
+  var studentSelect = document.getElementById('intStudent');
+  var typeSelect = document.getElementById('intType');
+  var area = document.getElementById('aiSuggestionArea');
+  if (!studentSelect || !area) return;
+
+  var s = getStudentById(parseInt(studentSelect.value));
+  if (!s) return;
+  var intType = typeSelect ? typeSelect.value : 'emotional';
+  area.innerHTML = '<div style="padding:14px;background:var(--bg);border-radius:10px"><div class="spinner"></div><p style="text-align:center;color:var(--text-secondary);font-size:13px;margin-top:8px" class="loading-dots">Consultando IA</p></div>';
+
+  if (typeof window.Poe === 'undefined') {
+    area.innerHTML = '<div style="padding:14px;background:var(--primary-soft);border-radius:10px;font-size:13px">' +
+      '<strong>💡 Sugerencia IA:</strong> Para ' + s.name + ', se recomienda una sesión individual de seguimiento enfocada en su bienestar emocional. ' +
+      'Considerar derivación al equipo de apoyo psicológico si la situación persiste por más de una semana.</div>';
+    return;
+  }
+
+  var handlerName = 'ai-suggest-' + Date.now();
+  window.Poe.registerHandler(handlerName, function(result) {
+    var resp = result.responses[0];
+    if (resp.status === 'error') {
+      area.innerHTML = '<div style="padding:14px;background:var(--danger-soft);border-radius:10px;font-size:13px;color:var(--danger)">Error: ' + (resp.statusText || 'desconocido') + '</div>';
+    } else if (resp.status === 'incomplete') {
+      area.innerHTML = '<div style="padding:14px;background:var(--primary-soft);border-radius:10px;font-size:13px"><strong>💡 Sugerencia IA:</strong> ' + resp.content + '</div>';
+    } else if (resp.status === 'complete') {
+      area.innerHTML = '<div style="padding:14px;background:var(--primary-soft);border-radius:10px;font-size:13px"><strong>💡 Sugerencia IA:</strong> ' + resp.content + '</div>';
+    }
+  });
+
+  var emo = EMOTIONS_MAP[s.emotion] || EMOTIONS_MAP.neutral;
+  window.Poe.sendUserMessage(
+    '@Claude-Sonnet-4 Eres un asesor educativo. Sugiere una intervención ' + intType + ' breve (máx 3 oraciones) para el estudiante ' + s.name +
+    ' que muestra: emoción ' + emo.label + ', bienestar ' + s.wellbeing + '/10, ' + s.interactions + ' interacciones. Solo responde con la sugerencia, sin encabezados.',
+    { handler: handlerName, stream: true, openChat: false, parameters: {} }
+  ).catch(function(err) {
+    area.innerHTML = '<div style="padding:14px;background:var(--danger-soft);border-radius:10px;font-size:13px;color:var(--danger)">Error: ' + err.message + '</div>';
+  });
+}
+
+function createIntervention() {
+  var desc = document.getElementById('intDescription');
+  if (!desc || !desc.value.trim()) {
+    showToast('Por favor describe la intervención', 'error');
+    return;
+  }
+  hideModal();
+  showToast('Intervención creada exitosamente', 'success');
+}
+
+/* ========== AI ANALYSIS (OVERVIEW) ========== */
+function analyzeWithAI() {
+  var activeAlerts = ALERTS.filter(function(a) { return !a.resolved; });
+  var avgW = (STUDENTS.reduce(function(s, st) { return s + st.wellbeing; }, 0) / STUDENTS.length).toFixed(1);
+  var latest = EMOTION_HISTORY[EMOTION_HISTORY.length - 1];
+
+  var atRiskNames = STUDENTS.filter(function(s){return s.status === 'at-risk';}).map(function(s){
+    var emo = EMOTIONS_MAP[s.emotion] || EMOTIONS_MAP.neutral;
+    return s.name + ' (bienestar: ' + s.wellbeing + ', emoción: ' + emo.label + ')';
+  }).join(', ');
+
+  var summary = 'Datos del curso "Introducción a IA":\n' +
+    '- Estudiantes: ' + STUDENTS.length + '\n' +
+    '- Alertas activas: ' + activeAlerts.length + ' (Alta: ' + activeAlerts.filter(function(a){return a.severity==='high';}).length + ', Media: ' + activeAlerts.filter(function(a){return a.severity==='medium';}).length + ')\n' +
+    '- Bienestar promedio: ' + avgW + '/10\n' +
+    '- Emociones hoy: Feliz ' + latest.happy + '%, Neutral ' + latest.neutral + '%, Estresado ' + latest.stressed + '%, Confundido ' + latest.confused + '%, Triste ' + latest.sad + '%\n' +
+    '- Estudiantes en riesgo: ' + atRiskNames;
+
+  var modalHtml = '<div class="modal-header"><h2><i class="fa-solid fa-robot" style="color:var(--primary)"></i> Análisis IA</h2><button class="modal-close" onclick="hideModal()"><i class="fa-solid fa-xmark"></i></button></div>' +
+    '<div class="modal-body"><div id="aiAnalysisOutput" class="report-output"><div class="spinner"></div><p style="text-align:center;color:var(--text-secondary);font-size:13px" class="loading-dots">Analizando datos del curso</p></div></div>';
+  showModal(modalHtml, true);
+
+  if (typeof window.Poe === 'undefined') {
+    document.getElementById('aiAnalysisOutput').innerHTML =
+      '<h2>📊 Análisis del Curso</h2><p>El curso muestra un bienestar promedio de <strong>' + avgW + '/10</strong>, lo cual es aceptable pero con áreas de mejora.</p>' +
+      '<h3>⚠️ Puntos de Atención</h3><ul><li>3 estudiantes en estado de riesgo requieren intervención inmediata</li>' +
+      '<li>15% de estudiantes reportan estrés significativo</li><li>La participación ha disminuido en el último periodo</li></ul>' +
+      '<h3>✅ Recomendaciones</h3><ul><li>Programar sesiones individuales con estudiantes en riesgo</li>' +
+      '<li>Implementar actividades grupales para reducir el aislamiento</li>' +
+      '<li>Revisar la carga de trabajo del curso</li></ul>' +
+      '<p><em>Nota: Este es un análisis de demostración. Conecta con la API de Poe para análisis en tiempo real.</em></p>';
+    return;
+  }
+
+  var handlerName = 'ai-analysis-' + Date.now();
+  window.Poe.registerHandler(handlerName, function(result) {
+    var resp = result.responses[0];
+    var output = document.getElementById('aiAnalysisOutput');
+    if (!output) return;
+    if (resp.status === 'error') {
+      output.innerHTML = '<p style="color:var(--danger)">Error: ' + (resp.statusText || 'desconocido') + '</p>';
+    } else if (resp.status === 'incomplete' || resp.status === 'complete') {
+      output.innerHTML = marked.parse(resp.content);
+    }
+  });
+
+  window.Poe.sendUserMessage(
+    '@Claude-Sonnet-4 Eres un analista educativo experto en bienestar estudiantil. Analiza estos datos y proporciona: 1) Resumen ejecutivo, 2) Principales hallazgos, 3) Estudiantes prioritarios, 4) Recomendaciones concretas. Responde en Markdown.\n\n' + summary,
+    { handler: handlerName, stream: true, openChat: false, parameters: {} }
+  ).catch(function(err) {
+    var output = document.getElementById('aiAnalysisOutput');
+    if (output) output.innerHTML = '<p style="color:var(--danger)">Error: ' + err.message + '</p>';
+  });
+}
+
+/* ========== REPORTS ========== */
+document.getElementById('btnGenerateReport').addEventListener('click', function() {
+  var type = document.getElementById('reportType').value;
+  var period = document.getElementById('reportPeriod').value;
+  var output = document.getElementById('reportOutput');
+  var copyBtn = document.getElementById('btnCopyReport');
+  var dlBtn = document.getElementById('btnDownloadReport');
+
+  output.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:var(--text-secondary);font-size:13px" class="loading-dots">Generando reporte</p>';
+  copyBtn.disabled = true;
+  dlBtn.disabled = true;
+  reportContent = '';
+
+  var typeLabels = { general:'General', emocional:'Análisis Emocional', engagement:'Engagement y Participación', riesgo:'Estudiantes en Riesgo' };
+  var periodLabels = { week:'última semana', month:'último mes', semester:'este semestre' };
+
+  var activeAlerts = ALERTS.filter(function(a){return !a.resolved;});
+  var avgW = (STUDENTS.reduce(function(s,st){return s+st.wellbeing;},0) / STUDENTS.length).toFixed(1);
+  var latest = EMOTION_HISTORY[EMOTION_HISTORY.length - 1];
+
+  var dataCtx = 'Curso: Introducción a IA\nEstudiantes: ' + STUDENTS.length +
+    '\nBienestar promedio: ' + avgW + '/10' +
+    '\nAlertas activas: ' + activeAlerts.length +
+    '\nEmociones: Feliz ' + latest.happy + '%, Neutral ' + latest.neutral + '%, Estresado ' + latest.stressed + '%, Confundido ' + latest.confused + '%, Triste ' + latest.sad + '%' +
+    '\nEstudiantes en riesgo: ' + STUDENTS.filter(function(s){return s.status==='at-risk';}).map(function(s){return s.name + ' (' + s.wellbeing + ')';}).join(', ') +
+    '\nEstudiantes en observación: ' + STUDENTS.filter(function(s){return s.status==='warning';}).map(function(s){return s.name + ' (' + s.wellbeing + ')';}).join(', ');
+
+  if (typeof window.Poe === 'undefined') {
+    var demoReport = '# Reporte ' + typeLabels[type] + '\n**Período:** ' + periodLabels[period] + '\n**Fecha:** 2 de Mayo, 2026\n\n' +
+      '## Resumen Ejecutivo\nEl curso cuenta con ' + STUDENTS.length + ' estudiantes activos con un bienestar promedio de ' + avgW + '/10. ' +
+      'Se identifican ' + activeAlerts.length + ' alertas activas que requieren atención.\n\n' +
+      '## Hallazgos Principales\n- **42%** de estudiantes reportan sentirse felices\n- **3 estudiantes** en estado de riesgo alto\n- **Participación** con tendencia al alza (+28%)\n\n' +
+      '## Recomendaciones\n1. Intervención inmediata con estudiantes en riesgo\n2. Actividades de integración grupal\n3. Revisión de carga académica\n\n' +
+      '*Reporte generado en modo demostración.*';
+    reportContent = demoReport;
+    output.innerHTML = marked.parse(demoReport);
+    copyBtn.disabled = false;
+    dlBtn.disabled = false;
+    return;
+  }
+
+  var handlerName = 'report-' + Date.now();
+  window.Poe.registerHandler(handlerName, function(result) {
+    var resp = result.responses[0];
+    if (resp.status === 'error') {
+      output.innerHTML = '<p style="color:var(--danger)">Error: ' + (resp.statusText || 'desconocido') + '</p>';
+    } else if (resp.status === 'incomplete') {
+      reportContent = resp.content;
+      output.innerHTML = marked.parse(resp.content);
+    } else if (resp.status === 'complete') {
+      reportContent = resp.content;
+      output.innerHTML = marked.parse(resp.content);
+      copyBtn.disabled = false;
+      dlBtn.disabled = false;
+    }
+  });
+
+  window.Poe.sendUserMessage(
+    '@Claude-Sonnet-4 Genera un reporte profesional tipo "' + typeLabels[type] + '" del período "' + periodLabels[period] + '" para un curso universitario. Incluye: título, resumen ejecutivo, análisis de datos, hallazgos clave, recomendaciones y plan de acción. Formato Markdown.\n\nDatos:\n' + dataCtx,
+    { handler: handlerName, stream: true, openChat: false, parameters: {} }
+  ).catch(function(err) {
+    output.innerHTML = '<p style="color:var(--danger)">Error: ' + err.message + '</p>';
+  });
+});
+
+document.getElementById('btnCopyReport').addEventListener('click', function() {
+  if (!reportContent) return;
+  navigator.clipboard.writeText(reportContent).then(function() {
+    showToast('Reporte copiado al portapapeles', 'success');
+  }).catch(function() {
+    showToast('Error al copiar', 'error');
+  });
+});
+
+document.getElementById('btnDownloadReport').addEventListener('click', function() {
+  if (!reportContent) return;
+  var blob = new Blob([reportContent], { type: 'text/markdown' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'reporte-avia.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Reporte descargado', 'success');
+});
+
+/* ========== SETTINGS ========== */
+document.querySelectorAll('.toggle').forEach(function(toggle) {
+  toggle.addEventListener('click', function() {
+    this.classList.toggle('on');
+  });
+});
+
+document.getElementById('btnSaveSettings').addEventListener('click', function() {
+  showToast('Configuración guardada exitosamente', 'success');
+});
+
+/* ========== VIEW ALL ALERTS BUTTON ========== */
+document.getElementById('btnViewAllAlerts').addEventListener('click', function() {
+  navigate('alerts');
+});
+
+/* ========== INITIALIZATION ========== */
+function init() {
+  renderOverview();
+  updateAlertBadge();
+}
+
+init();
+</script>
+</body>
+</html>
+

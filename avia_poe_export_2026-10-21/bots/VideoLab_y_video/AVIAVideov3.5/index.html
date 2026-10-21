@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Video v3.5 — Fase 2.2</title>
+<style>
+  :root {
+    --bg-primary: #0f0a1a;
+    --bg-secondary: #1a1128;
+    --bg-tertiary: #241a36;
+    --bg-card: #2a1f3d;
+    --text-primary: #f0e6ff;
+    --text-secondary: #b8a8d4;
+    --text-muted: #7a6b94;
+    --accent-purple: #9b59b6;
+    --accent-cyan: #00d4ff;
+    --accent-green: #2ecc71;
+    --accent-orange: #f39c12;
+    --accent-red: #e74c3c;
+    --accent-pink: #e91e63;
+    --border: #3d2e5c;
+    --timeline-bg: #15101f;
+    --radius: 8px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ═══ TOOLBAR ═══ */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .toolbar-logo { font-weight: 700; font-size: 15px; color: var(--accent-cyan); margin-right: 12px; }
+  .toolbar-logo span { color: var(--accent-purple); }
+  .toolbar-logo small { font-size: 10px; color: var(--accent-green); margin-left: 4px; }
+  .btn {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent-purple); border-color: var(--accent-purple); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--bg-tertiary); border-color: var(--border); }
+  .btn.active { background: var(--accent-purple); border-color: var(--accent-purple); }
+  .btn.btn-accent { background: var(--accent-cyan); color: #000; border-color: var(--accent-cyan); font-weight: 600; }
+  .btn.btn-pink { background: var(--accent-pink); color: white; border-color: var(--accent-pink); }
+  .btn.btn-danger { border-color: var(--accent-red); color: var(--accent-red); }
+  .btn.btn-danger:hover { background: var(--accent-red); color: white; }
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+  .toolbar-group { display: flex; gap: 3px; align-items: center; }
+  .toolbar-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-right: 2px; }
+
+  /* ═══ MAIN LAYOUT ═══ */
+  .main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+  /* ═══ PANEL CLIPS ═══ */
+  .panel-clips {
+    width: 200px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .panel-header {
+    padding: 10px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .clip-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .clip-item {
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    margin-bottom: 5px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .clip-item:hover { border-color: var(--accent-purple); }
+  .clip-item.active { border-color: var(--accent-cyan); background: var(--bg-tertiary); }
+  .clip-item .clip-name { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clip-item .clip-info { font-size: 9px; color: var(--text-muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .clip-badge { font-size: 8px; padding: 1px 5px; background: var(--accent-purple); border-radius: 10px; color: white; }
+  .clip-badge.trans { background: var(--accent-pink); }
+  .clip-badge.vol { background: var(--accent-orange); }
+  .clip-color { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 14px 10px;
+    text-align: center;
+    color: var(--text-muted);
+    margin: 6px;
+    transition: all 0.3s;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .drop-zone.drag-over { border-color: var(--accent-cyan); background: rgba(0,212,255,0.05); color: var(--accent-cyan); }
+
+  /* ═══ PANEL PREVIEW ═══ */
+  .panel-preview { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .video-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .video-container video { max-width: 100%; max-height: 100%; display: block; }
+  .video-placeholder { color: var(--text-muted); text-align: center; font-size: 13px; }
+  .video-placeholder .icon { font-size: 40px; margin-bottom: 8px; }
+
+  /* ═══ TEXT OVERLAY AVANZADO ═══ */
+  .text-overlay-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .text-overlay {
+    color: white;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.5);
+    padding: 8px 16px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .text-overlay.visible { opacity: 1; }
+  .text-overlay.pos-top { margin-top: 20px; }
+  .text-overlay.pos-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .text-overlay.pos-bottom { margin-bottom: 60px; }
+  .text-overlay.anim-fade { animation: fadeInOut 0.5s ease; }
+  .text-overlay.anim-slide { animation: slideIn 0.4s ease; }
+  .text-overlay.anim-zoom { animation: zoomIn 0.4s ease; }
+  @keyframes fadeInOut { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes zoomIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* ═══ TRANSITION OVERLAY ═══ */
+  .transition-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .transition-overlay.fade { background: black; opacity: 0; }
+  .transition-overlay.fade.active { animation: transitionFade var(--trans-duration, 0.5s) ease; }
+  .transition-overlay.wipe-left { background: linear-gradient(to right, black 0%, transparent 100%); transform: translateX(-100%); }
+  .transition-overlay.wipe-left.active { animation: wipeLeft var(--trans-duration, 0.5s) ease; }
+  .transition-overlay.wipe-right { background: linear-gradient(to left, black 0%, transparent 100%); transform: translateX(100%); }
+  .transition-overlay.wipe-right.active { animation: wipeRight var(--trans-duration, 0.5s) ease; }
+  @keyframes transitionFade { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes wipeLeft { 0% { transform: translateX(-100%); } 50% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+  @keyframes wipeRight { 0% { transform: translateX(100%); } 50% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+  /* ═══ VIDEO CONTROLS ═══ */
+  .video-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .ctrl-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: background 0.2s;
+  }
+  .ctrl-btn:hover { background: var(--accent-purple); }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+  }
+  .progress-fill { height: 100%; background: var(--accent-cyan); border-radius: 3px; width: 0%; transition: width 0.1s; }
+  .time-display { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 75px; text-align: center; }
+  .speed-select, .volume-slider {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px 6px;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .volume-slider { width: 60px; accent-color: var(--accent-cyan); }
+
+  /* ═══ PANEL CHAT ═══ */
+  .panel-chat {
+    width: 260px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .chat-msg {
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    line-height: 1.4;
+    max-width: 92%;
+    word-wrap: break-word;
+  }
+  .chat-msg.user { background: var(--accent-purple); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .chat-msg.bot { background: var(--bg-card); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 2px; }
+  .chat-msg.system { background: rgba(46,204,113,0.15); color: var(--accent-green); align-self: center; text-align: center; font-size: 10px; border-radius: 20px; padding: 3px 12px; }
+  .chat-input-area { display: flex; gap: 4px; padding: 8px; border-top: 1px solid var(--border); }
+  .chat-input {
+    flex: 1;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 11px;
+    outline: none;
+  }
+  .chat-input:focus { border-color: var(--accent-cyan); }
+  .mic-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .mic-btn:hover { background: var(--accent-purple); }
+  .mic-btn.recording { background: var(--accent-red); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(231,76,60,0.4); } 50% { box-shadow: 0 0 0 8px rgba(231,76,60,0); } }
+
+  /* ═══ TIMELINE ═══ */
+  .timeline-area {
+    flex-shrink: 0;
+    background: var(--timeline-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .timeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px;
+    font-size: 10px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .timeline-tracks { min-height: 60px; position: relative; overflow-x: auto; padding: 8px 12px; }
+  .timeline-track { display: flex; gap: 0; min-height: 42px; align-items: stretch; position: relative; }
+  .tl-clip {
+    height: 42px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 9px;
+    font-weight: 500;
+    color: white;
+    cursor: grab;
+    position: relative;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+    border: 2px solid transparent;
+  }
+  .tl-clip:active { cursor: grabbing; }
+  .tl-clip.active { border-color: var(--accent-cyan); }
+  .tl-clip.drag-over { opacity: 0.5; border-color: var(--accent-green); border-style: dashed; }
+  .tl-transition {
+    width: 24px;
+    height: 42px;
+    background: var(--accent-pink);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .tl-transition:hover { background: var(--accent-purple); transform: scale(1.1); }
+  .tl-transition.none { background: var(--bg-tertiary); opacity: 0.5; }
+  .playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-red);
+    z-index: 10;
+    pointer-events: none;
+    left: 0;
+  }
+  .playhead::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: var(--accent-red);
+    border-radius: 50%;
+  }
+
+  /* ═══ AUDIO TRACK ═══ */
+  .audio-track {
+    min-height: 32px;
+    padding: 4px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+  .audio-track-label { color: var(--accent-orange); font-weight: 600; min-width: 50px; }
+  .audio-waveform {
+    flex: 1;
+    height: 24px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 0 4px;
+  }
+  .wave-bar {
+    width: 3px;
+    background: var(--accent-orange);
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+
+  /* ═══ PANEL PROPIEDADES ═══ */
+  .props-panel {
+    position: absolute;
+    top: 50px;
+    right: 270px;
+    width: 220px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    z-index: 50;
+    display: none;
+  }
+  .props-panel.show { display: block; }
+  .props-header {
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .props-close { cursor: pointer; opacity: 0.6; }
+  .props-close:hover { opacity: 1; }
+  .props-body { padding: 12px; }
+  .props-row { margin-bottom: 12px; }
+  .props-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
+  .props-select, .props-input {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 11px;
+  }
+  .props-slider { width: 100%; accent-color: var(--accent-purple); }
+  .props-color-row { display: flex; gap: 6px; }
+  .props-color { width: 28px; height: 28px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+  .props-color.active { border-color: var(--accent-cyan); }
+
+  /* ═══ MODALS & NOTIFICATIONS ═══ */
+  .notification {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    z-index: 200;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    box-shadow: var(--shadow);
+    max-width: 280px;
+  }
+  .notification.show { transform: translateX(0); }
+  .notification.success { border-color: var(--accent-green); }
+  .notification.info { border-color: var(--accent-cyan); }
+  .notification.warning { border-color: var(--accent-orange); }
+  .notification.error { border-color: var(--accent-red); }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+  }
+  .modal-overlay.show { opacity: 1; visibility: visible; }
+  .modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: var(--shadow);
+  }
+  .modal h3 { margin-bottom: 10px; color: var(--accent-cyan); font-size: 14px; }
+  .modal p { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ═══ SCROLLBARS ═══ */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-purple); }
+
+  /* ═══ RESPONSIVE ═══ */
+  @media (max-width: 900px) {
+    .panel-clips { width: 160px; }
+    .panel-chat { width: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="toolbar-logo"><span>AVIA</span> Video<small>v3.5</small></div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <button class="btn" id="btnUndo" disabled title="Ctrl+Z">↩ Undo</button>
+    <button class="btn" id="btnRedo" disabled title="Ctrl+Y">↪ Redo</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">Filtros:</span>
+    <button class="btn" data-filter="none">Normal</button>
+    <button class="btn" data-filter="grayscale(100%)">B&N</button>
+    <button class="btn" data-filter="sepia(100%)">Sepia</button>
+    <button class="btn" data-filter="contrast(140%) saturate(130%)">Vivid</button>
+    <button class="btn" data-filter="brightness(120%) contrast(110%)">Bright</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <button class="btn" id="btnSplit" title="S">✂ Cortar</button>
+    <button class="btn btn-danger" id="btnDelete" title="Del">🗑</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">Transición:</span>
+    <button class="btn btn-pink" id="btnTransition" title="Configurar transición">🎬 Trans</button>
+    <button class="btn btn-pink" id="btnTextOverlay" title="Texto sobre video">📝 Texto</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">Audio:</span>
+    <button class="btn" id="btnAudioProps" title="Propiedades de audio">🔊 Audio</button>
+    <button class="btn btn-accent" id="btnAddMusic" title="Añadir música de fondo">🎵 Música</button>
+  </div>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-accent" id="btnSceneDetect">🎬 Escenas</button>
+</div>
+
+<div class="main">
+  <div class="panel-clips">
+    <div class="panel-header">📁 Clips <span id="clipCount">0</span></div>
+    <div class="drop-zone" id="dropZone">📥 Arrastra videos<br><small>o clic para seleccionar</small>
+      <input type="file" id="fileInput" accept="video/*,audio/*" multiple hidden>
+    </div>
+    <div class="clip-list" id="clipList"></div>
+  </div>
+
+  <div class="panel-preview">
+    <div class="video-container" id="videoContainer">
+      <video id="videoPlayer"></video>
+      <div class="video-placeholder" id="placeholder">
+        <div class="icon">🎬</div>
+        <div>Arrastra un video para comenzar</div>
+      </div>
+      <div class="text-overlay-container" id="textOverlayContainer">
+        <div class="text-overlay pos-top" id="textTop"></div>
+        <div class="text-overlay pos-center" id="textCenter"></div>
+        <div class="text-overlay pos-bottom" id="textBottom"></div>
+      </div>
+      <div class="transition-overlay" id="transitionOverlay"></div>
+    </div>
+    <div class="video-controls">
+      <button class="ctrl-btn" id="btnPrev">⏮</button>
+      <button class="ctrl-btn" id="btnPlay">▶</button>
+      <button class="ctrl-btn" id="btnNext">⏭</button>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+      <select class="speed-select" id="speedSelect">
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+      <span style="font-size:10px;color:var(--text-muted)">🔊</span>
+      <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.1" value="1">
+    </div>
+  </div>
+
+  <div class="panel-chat">
+    <div class="panel-header">🤖 Director AVIA</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">¡Hola! Soy <b>AVIA Director</b> v3.5 🎬<br><br>
+      <b>Nuevos comandos:</b><br>
+      🎬 "transición fade/wipe/zoom"<br>
+      📝 "texto arriba/centro/abajo [texto]"<br>
+      🔊 "volumen 50%"<br>
+      🔇 "silenciar clip"<br>
+      🎵 "fade in/out audio"<br><br>
+      Escribe <b>"ayuda"</b> para ver todo.</div>
+    </div>
+    <div class="chat-input-area">
+      <input class="chat-input" id="chatInput" placeholder="Escribe un comando...">
+      <button class="mic-btn" id="micBtn">🎙</button>
+    </div>
+  </div>
+</div>
+
+<div class="timeline-area">
+  <div class="timeline-header">
+    <span>📐 Timeline</span>
+    <span id="timelineInfo">Sin clips</span>
+  </div>
+  <div class="timeline-tracks" id="timelineTracks">
+    <div class="timeline-track" id="timelineTrack"></div>
+    <div class="playhead" id="playhead" style="display:none;"></div>
+  </div>
+  <div class="audio-track">
+    <span class="audio-track-label">🎵 Audio</span>
+    <div class="audio-waveform" id="audioWaveform"></div>
+    <input type="range" class="volume-slider" id="masterVolume" min="0" max="1" step="0.1" value="1" title="Volumen master">
+  </div>
+</div>
+
+<!-- Panel de Propiedades de Transición -->
+<div class="props-panel" id="transitionPanel">
+  <div class="props-header">
+    🎬 Transición
+    <span class="props-close" onclick="closeProps('transitionPanel')">✕</span>
+  </div>
+  <div class="props-body">
+    <div class="props-row">
+      <div class="props-label">Tipo</div>
+      <select class="props-select" id="transType">
+        <option value="none">Sin transición</option>
+        <option value="fade">Fade (Fundido)</option>
+        <option value="wipe-left">Wipe Izquierda</option>
+        <option value="wipe-right">Wipe Derecha</option>
+        <option value="crossfade">Crossfade</option>
+      </select>
+    </div>
+    <div class="props-row">
+      <div class="props-label">Duración: <span id="transDurVal">0.5s</span></div>
+      <input type="range" class="props-slider" id="transDuration" min="0.2" max="2" step="0.1" value="0.5">
+    </div>
+    <button class="btn btn-accent" style="width:100%" onclick="applyTransition()">Aplicar</button>
+  </div>
+</div>
+
+<!-- Panel de Propiedades de Texto -->
+<div class="props-panel" id="textPanel" style="right:270px;">
+  <div class="props-header">
+    📝 Text Overlay
+    <span class="props-close" onclick="closeProps('textPanel')">✕</span>
+  </div>
+  <div class="props-body">
+    <div class="props-row">
+      <div class="props-label">Texto</div>
+      <input class="props-input" id="textContent" placeholder="Escribe el texto...">
+    </div>
+    <div class="props-row">
+      <div class="props-label">Posición</div>
+      <select class="props-select" id="textPosition">
+        <option value="top">Arriba</option>
+        <option value="center" selected>Centro</option>
+        <option value="bottom">Abajo</option>
+      </select>
+    </div>
+    <div class="props-row">
+      <div class="props-label">Tamaño: <span id="textSizeVal">24px</span></div>
+      <input type="range" class="props-slider" id="textSize" min="12" max="72" value="24">
+    </div>
+    <div class="props-row">
+      <div class="props-label">Color</div>
+      <div class="props-color-row">
+        <div class="props-color active" data-color="#ffffff" style="background:#fff"></div>
+        <div class="props-color" data-color="#ffff00" style="background:#ff0"></div>
+        <div class="props-color" data-color="#00ff00" style="background:#0f0"></div>
+        <div class="props-color" data-color="#00ffff" style="background:#0ff"></div>
+        <div class="props-color" data-color="#ff00ff" style="background:#f0f"></div>
+        <div class="props-color" data-color="#ff6600" style="background:#f60"></div>
+      </div>
+    </div>
+    <div class="props-row">
+      <div class="props-label">Animación</div>
+      <select class="props-select" id="textAnim">
+        <option value="none">Sin animación</option>
+        <option value="fade">Fade</option>
+        <option value="slide">Slide Up</option>
+        <option value="zoom">Zoom</option>
+      </select>
+    </div>
+    <button class="btn btn-accent" style="width:100%;margin-top:8px" onclick="applyText()">Aplicar Texto</button>
+    <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="removeText()">Quitar Texto</button>
+  </div>
+</div>
+
+<!-- Panel de Propiedades de Audio -->
+<div class="props-panel" id="audioPanel" style="right:270px;">
+  <div class="props-header">
+    🔊 Audio del Clip
+    <span class="props-close" onclick="closeProps('audioPanel')">✕</span>
+  </div>
+  <div class="props-body">
+    <div class="props-row">
+      <div class="props-label">Volumen: <span id="clipVolVal">100%</span></div>
+      <input type="range" class="props-slider" id="clipVolume" min="0" max="150" value="100">
+    </div>
+    <div class="props-row">
+      <div class="props-label">Fade In: <span id="fadeInVal">0s</span></div>
+      <input type="range" class="props-slider" id="fadeIn" min="0" max="3" step="0.1" value="0">
+    </div>
+    <div class="props-row">
+      <div class="props-label">Fade Out: <span id="fadeOutVal">0s</span></div>
+      <input type="range" class="props-slider" id="fadeOut" min="0" max="3" step="0.1" value="0">
+    </div>
+    <div class="props-row">
+      <button class="btn" id="btnMuteClip" style="width:100%">🔇 Silenciar Clip</button>
+    </div>
+    <button class="btn btn-accent" style="width:100%;margin-top:8px" onclick="applyAudio()">Aplicar</button>
+  </div>
+</div>
+
+<div class="notification" id="notification"></div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <p id="modalMessage"></p>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancel">Cancelar</button>
+      <button class="btn btn-accent" id="modalConfirm">Aceptar</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="musicInput" accept="audio/*" hidden>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// AVIA VIDEO v3.5 — FASE 2.2: TRANSICIONES, TEXT & AUDIO
+// ═══════════════════════════════════════════════════════════
+
+const state = {
+  clips: [],
+  activeClipIndex: -1,
+  isPlaying: false,
+  sceneMarkers: [],
+  transcripts: [],
+  isRecording: false,
+  backgroundMusic: null,
+  masterVolume: 1,
+  clipColors: ['#8e44ad','#2980b9','#27ae60','#d35400','#c0392b','#1abc9c','#e67e22','#3498db']
+};
+let clipIdCounter = 0;
+
+// ═══ COMMAND PATTERN (Undo/Redo) ═══
+class CommandHistory {
+  constructor() { this.undoStack = []; this.redoStack = []; }
+  execute(cmd) { cmd.execute(); this.undoStack.push(cmd); this.redoStack = []; this.updateUI(); }
+  undo() { const c = this.undoStack.pop(); if(c){c.undo(); this.redoStack.push(c);} this.updateUI(); }
+  redo() { const c = this.redoStack.pop(); if(c){c.execute(); this.undoStack.push(c);} this.updateUI(); }
+  updateUI() {
+    $('btnUndo').disabled = !this.undoStack.length;
+    $('btnRedo').disabled = !this.redoStack.length;
+  }
+}
+const cmdHistory = new CommandHistory();
+
+// Command classes
+class AddClipCmd {
+  constructor(clip) { this.clip = clip; }
+  execute() { state.clips.push(this.clip); state.activeClipIndex = state.clips.length - 1; renderAll(); loadActiveClip(); }
+  undo() { const i = state.clips.findIndex(c => c.id === this.clip.id); if(i >= 0) state.clips.splice(i, 1); state.activeClipIndex = Math.min(state.activeClipIndex, state.clips.length - 1); if(!state.clips.length) state.activeClipIndex = -1; renderAll(); loadActiveClip(); }
+}
+
+class DeleteClipCmd {
+  constructor(idx) { this.idx = idx; this.clip = state.clips[idx]; }
+  execute() { state.clips.splice(this.idx, 1); state.activeClipIndex = Math.min(this.idx, state.clips.length - 1); if(!state.clips.length) state.activeClipIndex = -1; renderAll(); loadActiveClip(); }
+  undo() { state.clips.splice(this.idx, 0, this.clip); state.activeClipIndex = this.idx; renderAll(); loadActiveClip(); }
+}
+
+class SplitClipCmd {
+  constructor(idx, splitTime) { this.idx = idx; this.splitTime = splitTime; this.orig = {...state.clips[idx]}; this.c1 = null; this.c2 = null; }
+  execute() {
+    const o = this.orig;
+    this.c1 = {...o, id: this.c1?.id || ++clipIdCounter, name: o.name + ' (A)', endTrim: this.splitTime, duration: this.splitTime - (o.startTrim || 0)};
+    this.c2 = {...o, id: this.c2?.id || ++clipIdCounter, name: o.name + ' (B)', startTrim: this.splitTime, duration: (o.endTrim || o.originalDuration) - this.splitTime};
+    state.clips.splice(this.idx, 1, this.c1, this.c2);
+    state.activeClipIndex = this.idx;
+    renderAll(); loadActiveClip();
+  }
+  undo() { state.clips.splice(this.idx, 2, this.orig); state.activeClipIndex = this.idx; renderAll(); loadActiveClip(); }
+}
+
+class ModifyClipCmd {
+  constructor(idx, prop, newVal) { this.idx = idx; this.prop = prop; this.newVal = newVal; this.oldVal = state.clips[idx]?.[prop]; }
+  execute() { if(state.clips[this.idx]) { state.clips[this.idx][this.prop] = this.newVal; renderAll(); applyClipProps(); } }
+  undo() { if(state.clips[this.idx]) { state.clips[this.idx][this.prop] = this.oldVal; renderAll(); applyClipProps(); } }
+}
+
+class ReorderCmd {
+  constructor(from, to) { this.from = from; this.to = to; }
+  execute() { const [c] = state.clips.splice(this.from, 1); state.clips.splice(this.to, 0, c); state.activeClipIndex = this.to; renderAll(); }
+  undo() { const [c] = state.clips.splice(this.to, 1); state.clips.splice(this.from, 0, c); state.activeClipIndex = this.from; renderAll(); }
+}
+
+// ═══ DOM HELPERS ═══
+const $ = id => document.getElementById(id);
+const vp = $('videoPlayer'), ph = $('placeholder'), dz = $('dropZone'), fi = $('fileInput');
+const cl = $('clipList'), cm = $('chatMessages'), ci = $('chatInput');
+const tt = $('timelineTrack'), pb = $('progressBar'), pf = $('progressFill');
+const td = $('timeDisplay'), plh = $('playhead'), notif = $('notification');
+
+function fmt(s) { if(!s || isNaN(s)) return '0:00'; const m = Math.floor(s/60), sec = Math.floor(s%60); return m + ':' + (sec < 10 ? '0' : '') + sec; }
+function notify(msg, type = 'info') { notif.textContent = msg; notif.className = 'notification ' + type + ' show'; clearTimeout(notif._t); notif._t = setTimeout(() => notif.classList.remove('show'), 3000); }
+function showModal(title, message) { return new Promise(r => { $('modalTitle').textContent = title; $('modalMessage').textContent = message; $('modalOverlay').classList.add('show'); $('modalConfirm').onclick = () => { $('modalOverlay').classList.remove('show'); r(true); }; $('modalCancel').onclick = () => { $('modalOverlay').classList.remove('show'); r(false); }; }); }
+function cc(i) { return state.clipColors[i % state.clipColors.length]; }
+function closeProps(id) { $(id).classList.remove('show'); }
+
+// ═══ FILE HANDLING ═══
+dz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', e => handleFiles(e.target.files));
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+
+function handleFiles(files) {
+  for(const file of files) {
+    if(!file.type.startsWith('video/') && !file.type.startsWith('audio/')) { notify('Formato no soportado: ' + file.name, 'warning'); continue; }
+    const url = URL.createObjectURL(file);
+    const tv = document.createElement('video');
+    tv.preload = 'metadata';
+    tv.onloadedmetadata = () => {
+      const clip = {
+        id: ++clipIdCounter,
+        name: file.name.replace(/\.[^.]+$/, ''),
+        file, url,
+        duration: tv.duration,
+        originalDuration: tv.duration,
+        width: tv.videoWidth || 0,
+        height: tv.videoHeight || 0,
+        filter: 'none',
+        startTrim: 0,
+        endTrim: tv.duration,
+        // Fase 2.2: Nuevas propiedades
+        transition: { type: 'none', duration: 0.5 },
+        textOverlay: { text: '', position: 'center', size: 24, color: '#ffffff', animation: 'none' },
+        audio: { volume: 100, fadeIn: 0, fadeOut: 0, muted: false }
+      };
+      cmdHistory.execute(new AddClipCmd(clip));
+      notify('Añadido: ' + clip.name, 'success');
+    };
+    tv.src = url;
+  }
+}
+
+// ═══ RENDER FUNCTIONS ═══
+function renderClipList() {
+  cl.innerHTML = '';
+  $('clipCount').textContent = state.clips.length;
+  state.clips.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'clip-item' + (i === state.activeClipIndex ? ' active' : '');
+    
+    let badges = '';
+    if(c.filter !== 'none') badges += '<span class="clip-badge">FX</span>';
+    if(c.transition.type !== 'none') badges += '<span class="clip-badge trans">T</span>';
+    if(c.audio.volume !== 100 || c.audio.muted) badges += '<span class="clip-badge vol">🔊</span>';
+    if(c.textOverlay.text) badges += '<span class="clip-badge">📝</span>';
+    
+    d.innerHTML = `
+      <div class="clip-name"><span class="clip-color" style="background:${cc(i)}"></span>${c.name}</div>
+      <div class="clip-info">${fmt(c.duration)} ${badges}</div>
+    `;
+    d.onclick = () => { state.activeClipIndex = i; renderAll(); loadActiveClip(); };
+    cl.appendChild(d);
+  });
+}
+
+function renderTimeline() {
+  tt.innerHTML = '';
+  const total = state.clips.reduce((s, c) => s + c.duration, 0);
+  $('timelineInfo').textContent = state.clips.length ? state.clips.length + ' clips · ' + fmt(total) : 'Sin clips';
+  if(!state.clips.length) { plh.style.display = 'none'; return; }
+  plh.style.display = 'block';
+  
+  state.clips.forEach((c, i) => {
+    // Transition marker antes del clip (excepto el primero)
+    if(i > 0) {
+      const trans = document.createElement('div');
+      trans.className = 'tl-transition' + (c.transition.type === 'none' ? ' none' : '');
+      trans.title = c.transition.type === 'none' ? 'Sin transición' : c.transition.type;
+      trans.textContent = c.transition.type === 'none' ? '·' : '⟷';
+      trans.onclick = () => { state.activeClipIndex = i; openTransitionPanel(); };
+      tt.appendChild(trans);
+    }
+    
+    // Clip
+    const d = document.createElement('div');
+    d.className = 'tl-clip' + (i === state.activeClipIndex ? ' active' : '');
+    d.style.background = cc(i);
+    d.style.flex = c.duration.toString();
+    d.textContent = c.name;
+    d.draggable = true;
+    d.dataset.index = i;
+    d.onclick = () => { state.activeClipIndex = i; renderAll(); loadActiveClip(); };
+    d.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', i.toString()); d.style.opacity = '0.4'; });
+    d.addEventListener('dragend', () => { d.style.opacity = '1'; });
+    d.addEventListener('dragover', e => { e.preventDefault(); d.classList.add('drag-over'); });
+    d.addEventListener('dragleave', () => d.classList.remove('drag-over'));
+    d.addEventListener('drop', e => {
+      e.preventDefault(); d.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      if(from !== i) { cmdHistory.execute(new ReorderCmd(from, i)); notify('Clip reordenado', 'info'); }
+    });
+    tt.appendChild(d);
+  });
+  
+  renderWaveform();
+}
+
+function renderWaveform() {
+  const wf = $('audioWaveform');
+  wf.innerHTML = '';
+  const total = state.clips.reduce((s, c) => s + c.duration, 0);
+  if(!total) return;
+  
+  const barCount = 80;
+  for(let i = 0; i < barCount; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    const h = 5 + Math.random() * 15;
+    bar.style.height = h + 'px';
+    wf.appendChild(bar);
+  }
+}
+
+function renderAll() { renderClipList(); renderTimeline(); applyClipProps(); }
+
+// ═══ VIDEO PLAYER ═══
+function loadActiveClip() {
+  if(state.activeClipIndex < 0 || state.activeClipIndex >= state.clips.length) {
+    vp.removeAttribute('src'); vp.load();
+    ph.style.display = 'flex'; vp.style.display = 'none';
+    clearTextOverlays();
+    td.textContent = '0:00 / 0:00';
+    return;
+  }
+  const c = state.clips[state.activeClipIndex];
+  ph.style.display = 'none'; vp.style.display = 'block';
+  if(vp.src !== c.url) {
+    vp.src = c.url;
+    vp.onloadeddata = () => { vp.currentTime = c.startTrim || 0; };
+  } else {
+    vp.currentTime = c.startTrim || 0;
+  }
+  applyClipProps();
+  updatePanelValues();
+}
+
+function applyClipProps() {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  
+  // Filter
+  vp.style.filter = c.filter === 'none' ? '' : c.filter;
+  document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === c.filter));
+  
+  // Audio
+  vp.volume = (c.audio.muted ? 0 : c.audio.volume / 100) * state.masterVolume;
+  
+  // Text overlay
+  updateTextOverlay(c);
+}
+
+function updateTextOverlay(c) {
+  clearTextOverlays();
+  if(!c.textOverlay.text) return;
+  
+  const positions = { top: 'textTop', center: 'textCenter', bottom: 'textBottom' };
+  const el = $(positions[c.textOverlay.position]);
+  if(el) {
+    el.textContent = c.textOverlay.text;
+    el.style.fontSize = c.textOverlay.size + 'px';
+    el.style.color = c.textOverlay.color;
+    el.classList.add('visible');
+    if(c.textOverlay.animation !== 'none') {
+      el.classList.add('anim-' + c.textOverlay.animation);
+    }
+  }
+}
+
+function clearTextOverlays() {
+  ['textTop', 'textCenter', 'textBottom'].forEach(id => {
+    const el = $(id);
+    el.textContent = '';
+    el.className = 'text-overlay pos-' + id.replace('text', '').toLowerCase();
+  });
+}
+
+function updatePanelValues() {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  
+  // Transition panel
+  $('transType').value = c.transition.type;
+  $('transDuration').value = c.transition.duration;
+  $('transDurVal').textContent = c.transition.duration + 's';
+  
+  // Text panel
+  $('textContent').value = c.textOverlay.text;
+  $('textPosition').value = c.textOverlay.position;
+  $('textSize').value = c.textOverlay.size;
+  $('textSizeVal').textContent = c.textOverlay.size + 'px';
+  $('textAnim').value = c.textOverlay.animation;
+  document.querySelectorAll('.props-color').forEach(el => {
+    el.classList.toggle('active', el.dataset.color === c.textOverlay.color);
+  });
+  
+  // Audio panel
+  $('clipVolume').value = c.audio.volume;
+  $('clipVolVal').textContent = c.audio.volume + '%';
+  $('fadeIn').value = c.audio.fadeIn;
+  $('fadeInVal').textContent = c.audio.fadeIn + 's';
+  $('fadeOut').value = c.audio.fadeOut;
+  $('fadeOutVal').textContent = c.audio.fadeOut + 's';
+  $('btnMuteClip').textContent = c.audio.muted ? '🔊 Activar Audio' : '🔇 Silenciar Clip';
+}
+
+// ═══ VIDEO EVENTS ═══
+vp.addEventListener('timeupdate', () => {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  const cur = vp.currentTime, st = c.startTrim || 0, en = c.endTrim || c.originalDuration;
+  const elapsed = Math.max(0, cur - st), dur = en - st;
+  
+  pf.style.width = (dur > 0 ? (elapsed / dur * 100) : 0).toFixed(1) + '%';
+  td.textContent = fmt(elapsed) + ' / ' + fmt(dur);
+  
+  // Playhead
+  const total = state.clips.reduce((s, x) => s + x.duration, 0);
+  let abs = 0;
+  for(let i = 0; i < state.activeClipIndex; i++) abs += state.clips[i].duration;
+  abs += elapsed;
+  plh.style.left = (total > 0 ? (abs / total * 100) : 0) + '%';
+  
+  // Audio fade in/out
+  applyAudioFades(c, elapsed, dur);
+  
+  // Auto-advance with transition
+  if(cur >= en - 0.05) {
+    if(state.activeClipIndex < state.clips.length - 1) {
+      const nextClip = state.clips[state.activeClipIndex + 1];
+      if(nextClip.transition.type !== 'none') {
+        playTransition(nextClip.transition);
+      }
+      state.activeClipIndex++;
+      renderAll();
+      loadActiveClip();
+      vp.play();
+    } else {
+      vp.pause();
+      state.isPlaying = false;
+      $('btnPlay').textContent = '▶';
+    }
+  }
+});
+
+function applyAudioFades(c, elapsed, dur) {
+  if(c.audio.muted) { vp.volume = 0; return; }
+  
+  let vol = c.audio.volume / 100;
+  
+  // Fade in
+  if(c.audio.fadeIn > 0 && elapsed < c.audio.fadeIn) {
+    vol *= elapsed / c.audio.fadeIn;
+  }
+  
+  // Fade out
+  if(c.audio.fadeOut > 0 && elapsed > dur - c.audio.fadeOut) {
+    vol *= (dur - elapsed) / c.audio.fadeOut;
+  }
+  
+  vp.volume = Math.max(0, Math.min(1, vol * state.masterVolume));
+}
+
+vp.addEventListener('play', () => { state.isPlaying = true; $('btnPlay').textContent = '⏸'; });
+vp.addEventListener('pause', () => { state.isPlaying = false; $('btnPlay').textContent = '▶'; });
+
+// ═══ TRANSITIONS ═══
+function playTransition(trans) {
+  const overlay = $('transitionOverlay');
+  overlay.className = 'transition-overlay ' + trans.type;
+  overlay.style.setProperty('--trans-duration', trans.duration + 's');
+  
+  requestAnimationFrame(() => {
+    overlay.classList.add('active');
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      overlay.className = 'transition-overlay';
+    }, trans.duration * 1000);
+  });
+}
+
+function openTransitionPanel() {
+  closeAllPanels();
+  updatePanelValues();
+  $('transitionPanel').classList.add('show');
+}
+
+function applyTransition() {
+  if(state.activeClipIndex < 0) return;
+  const type = $('transType').value;
+  const duration = parseFloat($('transDuration').value);
+  
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'transition', { type, duration }));
+  notify('Transición: ' + (type === 'none' ? 'Ninguna' : type), 'success');
+  closeProps('transitionPanel');
+}
+
+// ═══ TEXT OVERLAY ═══
+function openTextPanel() {
+  closeAllPanels();
+  updatePanelValues();
+  $('textPanel').classList.add('show');
+}
+
+function applyText() {
+  if(state.activeClipIndex < 0) return;
+  const text = $('textContent').value;
+  const position = $('textPosition').value;
+  const size = parseInt($('textSize').value);
+  const color = document.querySelector('.props-color.active')?.dataset.color || '#ffffff';
+  const animation = $('textAnim').value;
+  
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'textOverlay', { text, position, size, color, animation }));
+  notify(text ? 'Texto aplicado' : 'Texto eliminado', 'success');
+  closeProps('textPanel');
+}
+
+function removeText() {
+  if(state.activeClipIndex < 0) return;
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'textOverlay', { text: '', position: 'center', size: 24, color: '#ffffff', animation: 'none' }));
+  notify('Texto eliminado', 'info');
+  closeProps('textPanel');
+}
+
+// ═══ AUDIO CONTROLS ═══
+function openAudioPanel() {
+  closeAllPanels();
+  updatePanelValues();
+  $('audioPanel').classList.add('show');
+}
+
+function applyAudio() {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  const volume = parseInt($('clipVolume').value);
+  const fadeIn = parseFloat($('fadeIn').value);
+  const fadeOut = parseFloat($('fadeOut').value);
+  
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, volume, fadeIn, fadeOut }));
+  notify('Audio configurado', 'success');
+  closeProps('audioPanel');
+}
+
+$('btnMuteClip').onclick = () => {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, muted: !c.audio.muted }));
+  updatePanelValues();
+  notify(c.audio.muted ? 'Audio activado' : 'Audio silenciado', 'info');
+};
+
+function closeAllPanels() {
+  ['transitionPanel', 'textPanel', 'audioPanel'].forEach(id => $(id).classList.remove('show'));
+}
+
+// ═══ TOOLBAR EVENTS ═══
+$('btnTransition').onclick = openTransitionPanel;
+$('btnTextOverlay').onclick = openTextPanel;
+$('btnAudioProps').onclick = openAudioPanel;
+
+$('btnPlay').onclick = () => { if(!state.clips.length) return; if(state.activeClipIndex < 0) state.activeClipIndex = 0; state.isPlaying ? vp.pause() : vp.play(); };
+$('btnPrev').onclick = () => { if(state.activeClipIndex > 0) { state.activeClipIndex--; renderAll(); loadActiveClip(); if(state.isPlaying) vp.play(); } };
+$('btnNext').onclick = () => { if(state.activeClipIndex < state.clips.length - 1) { state.activeClipIndex++; renderAll(); loadActiveClip(); if(state.isPlaying) vp.play(); } };
+$('speedSelect').onchange = e => { vp.playbackRate = parseFloat(e.target.value); notify('Velocidad: ' + e.target.value + 'x', 'info'); };
+$('volumeSlider').oninput = e => { vp.volume = parseFloat(e.target.value) * (state.clips[state.activeClipIndex]?.audio.volume || 100) / 100; };
+$('masterVolume').oninput = e => { state.masterVolume = parseFloat(e.target.value); applyClipProps(); };
+
+pb.onclick = e => {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  const r = pb.getBoundingClientRect();
+  const p = (e.clientX - r.left) / r.width;
+  const st = c.startTrim || 0, en = c.endTrim || c.originalDuration;
+  vp.currentTime = st + p * (en - st);
+};
+
+// Filters
+document.querySelectorAll('[data-filter]').forEach(b => {
+  b.onclick = () => {
+    if(state.activeClipIndex < 0) { notify('Selecciona un clip', 'warning'); return; }
+    cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'filter', b.dataset.filter));
+    notify('Filtro aplicado', 'success');
+  };
+});
+
+// Split & Delete
+function splitActive() {
+  if(state.activeClipIndex < 0) { notify('Selecciona un clip', 'warning'); return; }
+  const c = state.clips[state.activeClipIndex];
+  const ct = vp.currentTime, st = c.startTrim || 0, en = c.endTrim || c.originalDuration;
+  if(ct <= st + 0.1 || ct >= en - 0.1) { notify('Posiciona en el punto de corte', 'warning'); return; }
+  cmdHistory.execute(new SplitClipCmd(state.activeClipIndex, ct));
+  notify('Clip cortado', 'success');
+}
+
+async function deleteActive() {
+  if(state.activeClipIndex < 0) { notify('Selecciona un clip', 'warning'); return; }
+  const ok = await showModal('Eliminar', '¿Eliminar "' + state.clips[state.activeClipIndex].name + '"?');
+  if(ok) { cmdHistory.execute(new DeleteClipCmd(state.activeClipIndex)); notify('Clip eliminado', 'info'); }
+}
+
+$('btnSplit').onclick = splitActive;
+$('btnDelete').onclick = deleteActive;
+$('btnUndo').onclick = () => { cmdHistory.undo(); notify('Deshecho', 'info'); };
+$('btnRedo').onclick = () => { cmdHistory.redo(); notify('Rehecho', 'info'); };
+
+// Background Music
+$('btnAddMusic').onclick = () => $('musicInput').click();
+$('musicInput').onchange = e => {
+  const file = e.target.files[0];
+  if(file && file.type.startsWith('audio/')) {
+    state.backgroundMusic = { url: URL.createObjectURL(file), name: file.name };
+    notify('Música añadida: ' + file.name, 'success');
+    addChat('system', '🎵 Música de fondo: ' + file.name);
+  }
+};
+
+// Props panel events
+$('transDuration').oninput = e => $('transDurVal').textContent = e.target.value + 's';
+$('textSize').oninput = e => $('textSizeVal').textContent = e.target.value + 'px';
+$('clipVolume').oninput = e => $('clipVolVal').textContent = e.target.value + '%';
+$('fadeIn').oninput = e => $('fadeInVal').textContent = e.target.value + 's';
+$('fadeOut').oninput = e => $('fadeOutVal').textContent = e.target.value + 's';
+
+document.querySelectorAll('.props-color').forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll('.props-color').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  };
+});
+
+// ═══ SCENE DETECTION ═══
+$('btnSceneDetect').onclick = async () => {
+  if(state.activeClipIndex < 0) { notify('Selecciona un clip', 'warning'); return; }
+  const clip = state.clips[state.activeClipIndex];
+  addChat('bot', '🎬 Analizando escenas en "' + clip.name + '"...');
+  notify('Detectando escenas...', 'info');
+  
+  // Simulated scene detection
+  setTimeout(() => {
+    const scenes = Math.floor(2 + Math.random() * 4);
+    state.sceneMarkers = [];
+    for(let i = 0; i < scenes; i++) {
+      state.sceneMarkers.push({ clipId: clip.id, time: (clip.duration / (scenes + 1)) * (i + 1) });
+    }
+    addChat('bot', `✅ <b>${scenes} escenas</b> detectadas`);
+    notify(scenes + ' escenas encontradas', 'success');
+  }, 1500);
+};
+
+// ═══ KEYBOARD SHORTCUTS ═══
+document.addEventListener('keydown', e => {
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  switch(e.key) {
+    case ' ': e.preventDefault(); $('btnPlay').click(); break;
+    case 'ArrowLeft': e.preventDefault(); if(state.activeClipIndex >= 0) vp.currentTime = Math.max(0, vp.currentTime - 5); break;
+    case 'ArrowRight': e.preventDefault(); if(state.activeClipIndex >= 0) vp.currentTime += 5; break;
+    case 's': case 'S': if(!e.ctrlKey) { e.preventDefault(); splitActive(); } break;
+    case 'Delete': case 'Backspace': e.preventDefault(); deleteActive(); break;
+    case 'z': case 'Z': if(e.ctrlKey) { e.preventDefault(); cmdHistory.undo(); } break;
+    case 'y': case 'Y': if(e.ctrlKey) { e.preventDefault(); cmdHistory.redo(); } break;
+    case 't': case 'T': if(!e.ctrlKey) openTextPanel(); break;
+  }
+});
+
+// ═══ CHAT DIRECTOR ═══
+ci.addEventListener('keydown', e => { if(e.key === 'Enter' && ci.value.trim()) { processChat(ci.value.trim()); ci.value = ''; } });
+
+function addChat(type, html) { const d = document.createElement('div'); d.className = 'chat-msg ' + type; d.innerHTML = html; cm.appendChild(d); cm.scrollTop = cm.scrollHeight; }
+
+function processChat(text) {
+  addChat('user', text);
+  const lo = text.toLowerCase();
+  
+  // Transiciones
+  if(lo.match(/transici[oó]n?\s*(fade|fundido)/)) { setTransition('fade'); return; }
+  if(lo.match(/transici[oó]n?\s*(wipe|cortina)\s*(izq|left)/)) { setTransition('wipe-left'); return; }
+  if(lo.match(/transici[oó]n?\s*(wipe|cortina)\s*(der|right)/)) { setTransition('wipe-right'); return; }
+  if(lo.match(/transici[oó]n?\s*(cross|cruzado)/)) { setTransition('crossfade'); return; }
+  if(lo.match(/sin\s*transici[oó]n|quita.*transici[oó]n/)) { setTransition('none'); return; }
+  
+  // Texto
+  let m;
+  if((m = lo.match(/texto\s+(arriba|top)\s*[:\-]?\s*(.+)/))) { setTextOverlay('top', m[2]); return; }
+  if((m = lo.match(/texto\s+(centro|center)\s*[:\-]?\s*(.+)/))) { setTextOverlay('center', m[2]); return; }
+  if((m = lo.match(/texto\s+(abajo|bottom)\s*[:\-]?\s*(.+)/))) { setTextOverlay('bottom', m[2]); return; }
+  if((m = lo.match(/(?:a[nñ]ade?|pon)\s*texto\s*[:\-]?\s*(.+)/))) { setTextOverlay('center', m[1]); return; }
+  if(lo.match(/quit.*texto|sin\s*texto|borra.*texto/)) { removeTextChat(); return; }
+  
+  // Audio
+  if((m = lo.match(/volumen\s*(\d+)\s*%?/))) { setVolume(parseInt(m[1])); return; }
+  if(lo.match(/silencia|mute|sin\s*audio/)) { muteClip(true); return; }
+  if(lo.match(/activa.*audio|unmute|con\s*audio/)) { muteClip(false); return; }
+  if((m = lo.match(/fade\s*in\s*(\d+(?:\.\d+)?)/))) { setFadeIn(parseFloat(m[1])); return; }
+  if((m = lo.match(/fade\s*out\s*(\d+(?:\.\d+)?)/))) { setFadeOut(parseFloat(m[1])); return; }
+  
+  // Filtros
+  if(lo.match(/filtro.*(blanco|negro|bn|gris)/)) { applyFilter('grayscale(100%)'); return; }
+  if(lo.match(/filtro.*sepia/)) { applyFilter('sepia(100%)'); return; }
+  if(lo.match(/filtro.*(vivid|saturad)/)) { applyFilter('contrast(140%) saturate(130%)'); return; }
+  if(lo.match(/filtro.*(bright|brillante)/)) { applyFilter('brightness(120%) contrast(110%)'); return; }
+  if(lo.match(/(quit|sin|normal).*filtro/)) { applyFilter('none'); return; }
+  
+  // Otros comandos existentes
+  if(lo.match(/corta.*aqu[ií]|split/)) { splitActive(); addChat('bot', '✂️ Cortando...'); return; }
+  if(lo.match(/elimina|borra|delete/)) { deleteActive(); return; }
+  if(lo.match(/deshac|undo/)) { cmdHistory.undo(); addChat('bot', '↩️ Deshecho'); return; }
+  if(lo.match(/rehac|redo/)) { cmdHistory.redo(); addChat('bot', '↪️ Rehecho'); return; }
+  if(lo === 'play' || lo === 'reproducir') { vp.play(); addChat('bot', '▶️ Reproduciendo'); return; }
+  if(lo === 'pausa' || lo === 'pause') { vp.pause(); addChat('bot', '⏸️ Pausado'); return; }
+  
+  if(lo.match(/ayuda|help/)) {
+    addChat('bot', `📖 <b>Comandos Fase 2.2:</b><br><br>
+    <b>Transiciones:</b><br>
+    • "transición fade"<br>
+    • "transición wipe izquierda"<br>
+    • "sin transición"<br><br>
+    <b>Texto:</b><br>
+    • "texto arriba [texto]"<br>
+    • "texto centro [texto]"<br>
+    • "quitar texto"<br><br>
+    <b>Audio:</b><br>
+    • "volumen 50%"<br>
+    • "silenciar"<br>
+    • "fade in 1"<br>
+    • "fade out 2"`);
+    return;
+  }
+  
+  addChat('bot', '🤔 No entendí. Escribe <b>"ayuda"</b> para ver comandos.');
+}
+
+function setTransition(type) {
+  if(state.activeClipIndex < 0) { addChat('bot', '⚠️ Selecciona un clip'); return; }
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'transition', { ...c.transition, type }));
+  addChat('bot', '🎬 Transición: <b>' + (type === 'none' ? 'Ninguna' : type) + '</b>');
+}
+
+function setTextOverlay(position, text) {
+  if(state.activeClipIndex < 0) { addChat('bot', '⚠️ Selecciona un clip'); return; }
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'textOverlay', { ...c.textOverlay, text, position }));
+  addChat('bot', '📝 Texto en <b>' + position + '</b>: "' + text + '"');
+}
+
+function removeTextChat() {
+  if(state.activeClipIndex < 0) return;
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'textOverlay', { text: '', position: 'center', size: 24, color: '#ffffff', animation: 'none' }));
+  addChat('bot', '📝 Texto eliminado');
+}
+
+function setVolume(vol) {
+  if(state.activeClipIndex < 0) { addChat('bot', '⚠️ Selecciona un clip'); return; }
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, volume: vol }));
+  addChat('bot', '🔊 Volumen: <b>' + vol + '%</b>');
+}
+
+function muteClip(muted) {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, muted }));
+  addChat('bot', muted ? '🔇 Audio silenciado' : '🔊 Audio activado');
+}
+
+function setFadeIn(val) {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, fadeIn: val }));
+  addChat('bot', '🔊 Fade In: <b>' + val + 's</b>');
+}
+
+function setFadeOut(val) {
+  if(state.activeClipIndex < 0) return;
+  const c = state.clips[state.activeClipIndex];
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'audio', { ...c.audio, fadeOut: val }));
+  addChat('bot', '🔊 Fade Out: <b>' + val + 's</b>');
+}
+
+function applyFilter(filter) {
+  if(state.activeClipIndex < 0) { addChat('bot', '⚠️ Selecciona un clip'); return; }
+  cmdHistory.execute(new ModifyClipCmd(state.activeClipIndex, 'filter', filter));
+  addChat('bot', '🎨 Filtro aplicado');
+}
+
+// Voice input
+let voiceRec = null;
+$('micBtn').onclick = () => {
+  if(state.isRecording) { stopVoice(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) { notify('Voz no soportada', 'error'); return; }
+  try {
+    voiceRec = new SR();
+    voiceRec.lang = 'es-ES';
+    voiceRec.onstart = () => { state.isRecording = true; $('micBtn').classList.add('recording'); };
+    voiceRec.onresult = e => { const t = e.results[0][0].transcript; ci.value = t; processChat(t); ci.value = ''; };
+    voiceRec.onend = () => stopVoice();
+    voiceRec.onerror = () => stopVoice();
+    voiceRec.start();
+  } catch(e) { notify('Error micrófono', 'error'); }
+};
+
+function stopVoice() { state.isRecording = false; $('micBtn').classList.remove('recording'); if(voiceRec) try { voiceRec.stop(); } catch(e) {} voiceRec = null; }
+
+// ═══ INIT ═══
+renderAll();
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+</script>
+</body>
+</html>

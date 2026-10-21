@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIACreatorHub + VideoLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/marked@9.0.0/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #e50914;
+            --primary-glow: rgba(229, 9, 20, 0.4);
+            --secondary: #831010;
+            --accent: #ff4444;
+            --bg-deep: #0a0a0a;
+            --bg-surface: #141414;
+            --bg-elevated: #1f1f1f;
+            --bg-card: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #666666;
+            --border: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --purple: #8b5cf6;
+            --gradient-hero: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a0a 100%);
+            --gradient-card: linear-gradient(145deg, #1f1f1f 0%, #141414 100%);
+            --gradient-accent: linear-gradient(135deg, #e50914 0%, #831010 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-nav { flex: 1; padding: 1rem; overflow-y: auto; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: var(--gradient-accent); color: white; }
+        .nav-item i { width: 1.25rem; text-align: center; }
+
+        .nav-section {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 1rem 1rem 0.5rem;
+        }
+
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+        @media (max-width: 1024px) { .main-content { margin-left: 0; } }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title { font-size: 1.125rem; font-weight: 600; }
+        .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary { background: var(--gradient-accent); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--primary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { color: var(--primary); background: rgba(255,255,255,0.05); }
+        .btn-icon { width: 2.25rem; height: 2.25rem; padding: 0; }
+
+        .content-area { padding: 1.5rem; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover { border-color: rgba(255,255,255,0.1); }
+
+        /* Engine Cards */
+        .engine-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .engine-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+
+        .engine-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .engine-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .engine-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+        }
+
+        .stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 0.813rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 600;
+        }
+
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+        @media (max-width: 1280px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hero-subtitle { font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.open .modal-content { transform: scale(1); }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23666' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Production Queue */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-elevated);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .queue-thumb {
+            width: 80px;
+            height: 45px;
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .queue-info { flex: 1; }
+        .queue-title { font-weight: 600; font-size: 0.875rem; }
+        .queue-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .progress-bar {
+            height: 0.375rem;
+            background: var(--bg-card);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: 9999px;
+            transition: width 0.5s ease;
+        }
+
+        .badge-success { background: var(--success); color: white; }
+        .badge-warning { background: var(--warning); color: black; }
+        .badge-info { background: var(--info); color: white; }
+        .badge-purple { background: var(--purple); color: white; }
+        .badge-error { background: var(--error); color: white; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: var(--success); color: white; }
+        .notification.error { background: var(--error); color: white; }
+        .notification.info { background: var(--info); color: white; }
+        .notification.warning { background: var(--warning); color: black; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .menu-toggle { display: none; }
+        @media (max-width: 1024px) { .menu-toggle { display: flex; } }
+
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+        .sidebar-overlay.show { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeIn 0.3s ease forwards; }
+
+        .version-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+                        <i class="fas fa-film text-white"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm">AVIA VideoLab</div>
+                        <div class="text-xs text-[var(--text-muted)]">v5.0 Pro</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="produccion">
+                    <i class="fas fa-video"></i>
+                    <span>Producción</span>
+                </div>
+                <div class="nav-item" data-section="biblioteca">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Biblioteca</span>
+                </div>
+
+                <div class="nav-section">Herramientas</div>
+
+                <div class="nav-item" data-section="editor">
+                    <i class="fas fa-pen-fancy"></i>
+                    <span>Editor Guion</span>
+                </div>
+                <div class="nav-item" data-section="validador">
+                    <i class="fas fa-check-double"></i>
+                    <span>Validador</span>
+                </div>
+                <div class="nav-item" data-section="timeline">
+                    <i class="fas fa-film"></i>
+                    <span>Timeline</span>
+                </div>
+
+                <div class="nav-section">Configuración</div>
+
+                <div class="nav-item" data-section="carlos">
+                    <i class="fas fa-user-tie"></i>
+                    <span>AVIA-Clon-Carlos</span>
+                </div>
+                <div class="nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Ajustes</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-[var(--border)]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-sm font-bold">C</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">Carlos Creator</div>
+                        <div class="text-xs text-[var(--text-muted)]">Plan Pro</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="flex items-center gap-4">
+                    <button class="btn btn-ghost btn-icon menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="header-title" id="headerTitle">Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost btn-icon" onclick="exportProject()">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('newProduction')">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Producción</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- DASHBOARD -->
+                <section class="section active" id="section-dashboard">
+                    <div class="mb-8">
+                        <h1 class="hero-title">
+                            AVIACreatorHub + VideoLab
+                            <span class="text-3xl">🎬</span>
+                        </h1>
+                        <p class="hero-subtitle">Sistema Multi-Motor: RunwayML • Veo • Sora</p>
+                    </div>
+
+                    <!-- Engine Cards -->
+                    <div class="grid-4 mb-6">
+                        <div class="engine-card" onclick="selectEngine('runway')">
+                            <div class="engine-icon" style="background: rgba(16, 185, 129, 0.2);">🚀</div>
+                            <h3 class="font-semibold mb-1">RunwayML Gen-3</h3>
+                            <span class="engine-badge badge-success">MÁS RÁPIDO</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">~30s generación • Alta velocidad • API REST</p>
+                        </div>
+
+                        <div class="engine-card selected" onclick="selectEngine('veo')">
+                            <div class="engine-icon" style="background: rgba(139, 92, 246, 0.2);">🎬</div>
+                            <h3 class="font-semibold mb-1">Veo-v3.1</h3>
+                            <span class="engine-badge badge-purple">AUDIO NATIVO</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Audio integrado • Alta calidad • Google AI</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('sora')">
+                            <div class="engine-icon" style="background: rgba(239, 68, 68, 0.2);">🎥</div>
+                            <h3 class="font-semibold mb-1">Sora-2</h3>
+                            <span class="engine-badge badge-error">MAYOR DURACIÓN</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Hasta 60s • OpenAI • Narrativa compleja</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('pro')">
+                            <div class="engine-icon" style="background: rgba(245, 158, 11, 0.2);">⚡</div>
+                            <h3 class="font-semibold mb-1">Modo PRO</h3>
+                            <span class="engine-badge badge-warning">3 MOTORES</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Genera con los 3 a la vez • Compara resultados</p>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">En Cola</span>
+                                <span class="stat-badge badge-info" id="queueBadge">0</span>
+                            </div>
+                            <div class="stat-value" id="queueCount">0</div>
+                            <div class="stat-label">vídeos pendientes</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Completados Hoy</span>
+                                <span class="stat-badge badge-success">+12%</span>
+                            </div>
+                            <div class="stat-value" id="completedToday">2</div>
+                            <div class="stat-label">vídeos generados</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Versiones</span>
+                                <span class="stat-badge badge-info" id="versionBadge">1</span>
+                            </div>
+                            <div class="stat-value" id="versionCount">1</div>
+                            <div class="stat-label">exportadas</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold">Actividad Reciente</h3>
+                            <button class="btn btn-ghost btn-icon text-sm"><i class="fas fa-ellipsis-h"></i></button>
+                        </div>
+                        <div id="recentActivity">
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Video TOOC Promo</div>
+                                    <div class="queue-meta">Veo-v3.1 • 8s • Completado hace 2h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(1)"><i class="fas fa-play"></i></button>
+                            </div>
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Demo Feature X</div>
+                                    <div class="queue-meta">RunwayML • 5s • Completado hace 4h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(2)"><i class="fas fa-play"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PRODUCCIÓN -->
+                <section class="section" id="section-produccion">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Cola de Producción</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Gestiona tus vídeos en proceso</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('newProduction')">
+                            <i class="fas fa-plus"></i> Nuevo Vídeo
+                        </button>
+                    </div>
+                    <div id="productionQueue">
+                        <div class="card text-center py-12">
+                            <i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i>
+                            <p class="text-[var(--text-muted)]">No hay vídeos en cola</p>
+                            <button class="btn btn-primary mt-4" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Crear primero
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BIBLIOTECA -->
+                <section class="section" id="section-biblioteca">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Biblioteca</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Todos tus vídeos generados</p>
+                        </div>
+                    </div>
+                    <div class="grid-3" id="libraryGrid">
+                        <div class="card text-center py-8">
+                            <i class="fas fa-photo-video text-3xl text-[var(--text-muted)] mb-3"></i>
+                            <p class="text-sm text-[var(--text-muted)]">Tus vídeos aparecerán aquí</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EDITOR -->
+                <section class="section" id="section-editor">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Editor de Guion</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Escribe y valida tu guion</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Guion</h3>
+                            <textarea class="form-input form-textarea" style="min-height: 300px;" placeholder="Escribe tu guion aquí..." id="scriptContent"></textarea>
+                            <div class="flex justify-between items-center mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="wordCount">0</span> palabras</span>
+                                <button class="btn btn-primary" onclick="validateScript()">
+                                    <i class="fas fa-check-double"></i> Validar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Análisis</h3>
+                            <div id="scriptAnalysis" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-magic text-3xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Validar"</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VALIDADOR -->
+                <section class="section" id="section-validador">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Validador Visual</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Analiza coherencia entre guion e indicador</p>
+                    </div>
+                    <div class="card text-center py-12">
+                        <i class="fas fa-eye text-4xl text-[var(--text-muted)] mb-4"></i>
+                        <p class="text-[var(--text-muted)]">Sube un guion para validar indicadores visuales</p>
+                    </div>
+                </section>
+
+                <!-- TIMELINE -->
+                <section class="section" id="section-timeline">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Timeline de Proyecto</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Organiza y edita tus clips</p>
+                    </div>
+                    <div class="card">
+                        <div class="aspect-video bg-[var(--bg-elevated)] rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-play-circle text-5xl text-[var(--text-muted)]"></i>
+                        </div>
+                        <div class="flex gap-2 p-3 bg-[var(--bg-elevated)] rounded-lg overflow-x-auto">
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border-2 border-[var(--primary)] flex flex-col items-center justify-center">
+                                <i class="fas fa-play text-xs"></i>
+                                <span class="text-xs mt-1">Intro</span>
+                            </div>
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border border-[var(--border)] flex flex-col items-center justify-center">
+                                <i class="fas fa-play text-xs text-[var(--text-muted)]"></i>
+                                <span class="text-xs mt-1">Escena 1</span>
+                            </div>
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border border-dashed border-[var(--border)] flex flex-col items-center justify-center cursor-pointer" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus text-xs text-[var(--text-muted)]"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CARLOS -->
+                <section class="section" id="section-carlos">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">AVIA-Clon-Carlos</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configura el estilo y personalidad</p>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Perfil de Voz</h3>
+                            <div class="space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label">Tono</label>
+                                    <select class="form-input form-select">
+                                        <option>Entusiasta</option>
+                                        <option>Profesional</option>
+                                        <option>Casual</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Muletillas</label>
+                                    <input type="text" class="form-input" value="¡Vamos!, Increíble, Mira esto">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Vista Previa</h3>
+                            <div class="bg-[var(--bg-elevated)] rounded-lg p-4 text-sm" style="line-height: 1.8;">
+                                <p class="mb-3">¡Vamos! Hoy te voy a mostrar algo <strong>increíble</strong> que va a cambiar tu forma de trabajar...</p>
+                                <p class="text-[var(--success)]">[TONO: Entusiasta | RITMO: 1.1x]</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <section class="section" id="section-settings">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Ajustes</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configuración de la aplicación</p>
+                    </div>
+                    <div class="card">
+                        <h3 class="font-semibold mb-4">Exportar / Importar</h3>
+                        <div class="flex gap-3">
+                            <button class="btn btn-secondary" onclick="exportProject()">
+                                <i class="fas fa-download"></i> Exportar Proyecto
+                            </button>
+                            <label class="btn btn-secondary cursor-pointer">
+                                <i class="fas fa-upload"></i> Importar
+                                <input type="file" accept=".json" class="hidden" onchange="importProject(event)">
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- NEW PRODUCTION MODAL -->
+    <div class="modal" id="modal-newProduction">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Nueva Producción</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('newProduction')"><i class="fas fa-times"></i></button>
+            </div>
+
+            <form id="newProductionForm" class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label">Nombre del vídeo</label>
+                    <input type="text" class="form-input" placeholder="Ej: Promo TOOC v1" id="videoName">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Prompt / Indicador Visual</label>
+                    <textarea class="form-input form-textarea" placeholder="Describe la escena detalladamente..." id="videoPrompt"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Motor de Generación</label>
+                    <div class="grid-2 gap-3">
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--success)]">
+                            <input type="radio" name="engine" value="runway" class="hidden">
+                            <span class="text-xl">🚀</span>
+                            <div>
+                                <div class="font-medium text-sm">RunwayML Gen-3</div>
+                                <div class="text-xs text-[var(--text-muted)]">~30s • Rápido</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--purple)]">
+                            <input type="radio" name="engine" value="veo" checked class="hidden">
+                            <span class="text-xl">🎬</span>
+                            <div>
+                                <div class="font-medium text-sm">Veo-v3.1</div>
+                                <div class="text-xs text-[var(--text-muted)]">~2min • Audio</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--error)]">
+                            <input type="radio" name="engine" value="sora" class="hidden">
+                            <span class="text-xl">🎥</span>
+                            <div>
+                                <div class="font-medium text-sm">Sora-2</div>
+                                <div class="text-xs text-[var(--text-muted)]">~3min • Largo</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--warning)]">
+                            <input type="radio" name="engine" value="pro" class="hidden">
+                            <span class="text-xl">⚡</span>
+                            <div>
+                                <div class="font-medium text-sm">Modo PRO</div>
+                                <div class="text-xs text-[var(--text-muted)]">3 motores</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Aspecto</label>
+                        <select class="form-input form-select" id="videoAspect">
+                            <option value="16:9">16:9 Horizontal</option>
+                            <option value="9:16">9:16 Vertical</option>
+                            <option value="1:1">1:1 Cuadrado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duración</label>
+                        <select class="form-input form-select" id="videoDuration">
+                            <option value="4s">4 segundos</option>
+                            <option value="6s">6 segundos</option>
+                            <option value="8s" selected>8 segundos</option>
+                            <option value="10s">10 segundos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-secondary flex-1" onclick="closeModal('newProduction')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary flex-1" onclick="addToQueue()"><i class="fas fa-list-ul"></i> A Cola</button>
+                    <button type="submit" class="btn btn-primary flex-1"><i class="fas fa-play"></i> Producir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+    <div class="version-indicator">AVIACreatorHub + VideoLab v5.0</div>
+
+    <script>
+        // ========================================
+        // AVIA CREATOR HUB + VIDEOLAB v5.0
+        // ========================================
+
+        const MemoryStorage = (() => {
+            const store = new Map();
+            return {
+                get: (key) => store.get(key) || null,
+                set: (key, value) => store.set(key, value),
+                getJSON: (key, def = null) => { try { const v = store.get(key); return v ? JSON.parse(v) : def; } catch { return def; } },
+                setJSON: (key, value) => { try { store.set(key, JSON.stringify(value)); } catch { } }
+            };
+        })();
+
+        const State = {
+            currentSection: 'dashboard',
+            selectedEngine: 'veo',
+            queue: [],
+            completed: [
+                { id: 1, name: 'Video TOOC Promo', engine: 'veo', duration: '8s', date: new Date() },
+                { id: 2, name: 'Demo Feature X', engine: 'runway', duration: '5s', date: new Date() }
+            ],
+            versions: 1
+        };
+
+        const Engines = {
+            runway: { name: 'RunwayML Gen-3', icon: '🚀', speed: '~30s', color: 'var(--success)' },
+            veo: { name: 'Veo-v3.1', icon: '🎬', speed: '~2min', color: 'var(--purple)' },
+            sora: { name: 'Sora-2', icon: '🎥', speed: '~3min', color: 'var(--error)' },
+            pro: { name: 'Modo PRO', icon: '⚡', speed: 'Variable', color: 'var(--warning)' }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initNavigation();
+            initForms();
+            updateStats();
+        });
+
+        function initNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const section = item.dataset.section;
+                    if (section) navigateTo(section);
+                });
+            });
+        }
+
+        function navigateTo(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector(`[data-section="${sectionId}"]`)?.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${sectionId}`)?.classList.add('active');
+            const titles = { dashboard: 'Dashboard', produccion: 'Producción', biblioteca: 'Biblioteca', editor: 'Editor de Guion', validador: 'Validador', timeline: 'Timeline', carlos: 'AVIA-Clon-Carlos', settings: 'Ajustes' };
+            document.getElementById('headerTitle').textContent = titles[sectionId] || sectionId;
+            State.currentSection = sectionId;
+            closeSidebar();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('show');
+        }
+
+        function selectEngine(engine) {
+            State.selectedEngine = engine;
+            document.querySelectorAll('.engine-card').forEach(c => c.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            notify(`Motor seleccionado: ${Engines[engine].name}`, 'info');
+        }
+
+        function openModal(id) { document.getElementById(`modal-${id}`)?.classList.add('open'); }
+        function closeModal(id) { document.getElementById(`modal-${id}`)?.classList.remove('open'); }
+
+        function initForms() {
+            document.getElementById('newProductionForm')?.addEventListener('submit', (e) => { e.preventDefault(); startProduction(); });
+            document.getElementById('scriptContent')?.addEventListener('input', (e) => {
+                const words = e.target.value.trim().split(/\s+/).filter(w => w).length;
+                document.getElementById('wordCount').textContent = words;
+            });
+        }
+
+        function addToQueue() {
+            const name = document.getElementById('videoName').value || `Video ${Date.now()}`;
+            const prompt = document.getElementById('videoPrompt').value;
+            const engine = document.querySelector('input[name="engine"]:checked')?.value || 'veo';
+            if (!prompt) { notify('Ingresa un prompt para el vídeo', 'warning'); return; }
+            State.queue.push({ id: Date.now(), name, prompt, engine, status: 'queued', progress: 0 });
+            updateStats(); renderQueue(); closeModal('newProduction'); notify(`"${name}" añadido a la cola`, 'success'); resetForm();
+        }
+
+        function startProduction() {
+            const name = document.getElementById('videoName').value || `Video ${Date.now()}`;
+            const prompt = document.getElementById('videoPrompt').value;
+            const engine = document.querySelector('input[name="engine"]:checked')?.value || 'veo';
+            if (!prompt) { notify('Ingresa un prompt para el vídeo', 'warning'); return; }
+            closeModal('newProduction'); navigateTo('produccion');
+            if (engine === 'pro') {
+                ['runway', 'veo', 'sora'].forEach((eng, i) => {
+                    const job = { id: Date.now() + i, name: `${name} (${Engines[eng].icon})`, prompt, engine: eng, status: 'processing', progress: 0 };
+                    State.queue.push(job);
+                    setTimeout(() => simulateProduction(job.id), i * 1000);
+                });
+                notify('Modo PRO: Generando con 3 motores', 'info');
+            } else {
+                const job = { id: Date.now(), name, prompt, engine, status: 'processing', progress: 0 };
+                State.queue.push(job);
+                simulateProduction(job.id);
+            }
+            updateStats(); renderQueue(); resetForm();
+        }
+
+        function simulateProduction(jobId) {
+            const job = State.queue.find(j => j.id === jobId);
+            if (!job) return;
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress >= 100) { progress = 100; clearInterval(interval); completeJob(jobId); }
+                job.progress = Math.min(progress, 100);
+                renderQueue();
+            }, 500);
+        }
+
+        function completeJob(jobId) {
+            const idx = State.queue.findIndex(j => j.id === jobId);
+            if (idx === -1) return;
+            const job = State.queue[idx];
+            State.queue.splice(idx, 1);
+            State.completed.unshift({ id: job.id, name: job.name, engine: job.engine, duration: '8s', date: new Date() });
+            updateStats(); renderQueue(); notify(`¡"${job.name}" completado!`, 'success');
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('productionQueue');
+            if (!container) return;
+            if (State.queue.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i><p class="text-[var(--text-muted)]">No hay vídeos en cola</p><button class="btn btn-primary mt-4" onclick="openModal('newProduction')"><i class="fas fa-plus"></i> Crear primero</button></div>`;
+                return;
+            }
+            container.innerHTML = State.queue.map(job => {
+                const eng = Engines[job.engine];
+                return `<div class="queue-item animate-in"><div class="queue-thumb"><span class="text-2xl">${eng.icon}</span></div><div class="queue-info"><div class="queue-title">${job.name}</div><div class="queue-meta">${eng.name} • ${job.status === 'processing' ? 'Procesando...' : 'En cola'}</div>${job.status === 'processing' ? `<div class="progress-bar"><div class="progress-fill" style="width: ${job.progress}%"></div></div>` : ''}</div><span class="text-sm font-bold" style="color: ${eng.color}">${Math.round(job.progress)}%</span></div>`;
+            }).join('');
+        }
+
+        function resetForm() { document.getElementById('videoName').value = ''; document.getElementById('videoPrompt').value = ''; }
+
+        function updateStats() {
+            document.getElementById('queueCount').textContent = State.queue.length;
+            document.getElementById('queueBadge').textContent = State.queue.length;
+            document.getElementById('completedToday').textContent = State.completed.length;
+            document.getElementById('versionCount').textContent = State.versions;
+            document.getElementById('versionBadge').textContent = State.versions;
+        }
+
+        function exportProject() {
+            const data = { version: '5.0.0', exportedAt: new Date().toISOString(), app: 'AVIACreatorHub+VideoLab', state: { queue: State.queue, completed: State.completed } };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `aviacreatorhub-v${++State.versions}.json`; a.click();
+            updateStats(); notify('Proyecto exportado', 'success');
+        }
+
+        function importProject(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data.state) { State.queue = data.state.queue || []; State.completed = data.state.completed || []; } updateStats(); renderQueue(); notify('Proyecto importado', 'success'); } catch (err) { notify('Error: ' + err.message, 'error'); } };
+            reader.readAsText(file);
+        }
+
+        function validateScript() {
+            const content = document.getElementById('scriptContent').value;
+            if (!content.trim()) { notify('Escribe un guion primero', 'warning'); return; }
+            const words = content.trim().split(/\s+/).length;
+            const score = Math.min(100, Math.round((words / 200) * 100));
+            document.getElementById('scriptAnalysis').innerHTML = `<div class="text-left"><div class="flex justify-between mb-4"><span>Puntuación</span><span class="text-2xl font-bold" style="color: ${score > 70 ? 'var(--success)' : 'var(--warning)'}">${score}/100</span></div><div class="progress-bar" style="height: 8px;"><div class="progress-fill" style="width: ${score}%;"></div></div><p class="mt-4 text-sm text-[var(--text-muted)]">${words} palabras detectadas</p></div>`;
+        }
+
+        function playVideo(id) { notify('Reproduciendo vídeo...', 'info'); }
+
+        function notify(message, type = 'info') {
+            const el = document.getElementById('notification');
+            el.textContent = message;
+            el.className = `notification ${type} show`;
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        if (typeof window.Poe === 'undefined') {
+            window.Poe = { sendUserMessage: async (msg) => ({ success: true }), registerHandler: () => {}, getTriggerMessage: async () => ({ content: '', attachments: [] }) };
+        }
+    </script>
+</body>
+</html>

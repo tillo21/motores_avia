@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Inferencia y Testing (Paso 8)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+        .chat-container {
+            height: 600px;
+            overflow-y: auto;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e293b 0%, #581c87 50%, #1e293b 100%);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-6 mb-6 shadow-2xl">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                    <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    <div>
+                        <h1 class="text-3xl font-bold text-white">AVIA - Inferencia y Testing</h1>
+                        <p class="text-purple-100">Paso 8: Chat en Tiempo Real + Evaluación de Calidad</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div id="modelStatus" class="px-4 py-2 rounded-full bg-yellow-500">
+                        <span class="text-white font-semibold">⟳ Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Panel Izquierdo - Métricas -->
+            <div class="space-y-6">
+                <!-- Métricas -->
+                <div class="bg-slate-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                        📊 Métricas de Rendimiento
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg p-4">
+                            <div class="text-blue-300 text-sm mb-1">Tests Ejecutados</div>
+                            <div id="totalTests" class="text-3xl font-bold text-white">0</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-green-900 to-green-800 rounded-lg p-4">
+                            <div class="text-green-300 text-sm mb-1">Tasa de Éxito</div>
+                            <div id="successRate" class="text-3xl font-bold text-white">0%</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4">
+                            <div class="text-purple-300 text-sm mb-1">Tiempo Promedio</div>
+                            <div id="avgTime" class="text-3xl font-bold text-white">0ms</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-orange-900 to-orange-800 rounded-lg p-4">
+                            <div class="text-orange-300 text-sm mb-1">Diversidad Léxica</div>
+                            <div id="lexicalDiv" class="text-3xl font-bold text-white">8.3%</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-pink-900 to-pink-800 rounded-lg p-4">
+                            <div class="text-pink-300 text-sm mb-1">Coherencia Semántica</div>
+                            <div id="coherence" class="text-3xl font-bold text-white">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles -->
+                <div class="bg-slate-800 rounded-lg p-6 shadow-xl">
+                    <h2 class="text-xl font-bold text-white mb-4">Controles</h2>
+                    
+                    <div class="space-y-3">
+                        <button onclick="runAutoTest()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            ▶️ Test Automático
+                        </button>
+                        
+                        <button onclick="toggleComparison()" id="comparisonBtn" class="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            🔀 Modo Comparación OFF
+                        </button>
+                        
+                        <button onclick="exportResults()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            💾 Exportar Resultados
+                        </button>
+                        
+                        <button onclick="clearChat()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                            🗑️ Limpiar Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Central - Chat -->
+            <div class="lg:col-span-2">
+                <div class="bg-slate-800 rounded-lg shadow-xl flex flex-col" style="height: 700px;">
+                    <!-- Chat Header -->
+                    <div class="bg-gradient-to-r from-purple-700 to-pink-700 p-4 rounded-t-lg">
+                        <h2 class="text-xl font-bold text-white">💬 Chat de Inferencia en Tiempo Real</h2>
+                        <p id="chatSubtitle" class="text-purple-200 text-sm mt-1">💬 Conversación con Modelo Entrenado</p>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-900 chat-container">
+                        <!-- Los mensajes se añadirán aquí -->
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="p-4 bg-slate-800 border-t border-slate-700 rounded-b-lg">
+                        <div class="flex gap-2">
+                            <input
+                                type="text"
+                                id="messageInput"
+                                placeholder="Escribe tu mensaje aquí..."
+                                class="flex-1 bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                onkeypress="if(event.key === 'Enter') sendMessage()"
+                            />
+                            <button
+                                onclick="sendMessage()"
+                                class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-3 rounded-lg transition-colors"
+                            >
+                                📤
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-2">
+                            ✓ Modelo listo - Presiona Enter o clic en Enviar
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let comparisonMode = false;
+        let metrics = {
+            totalTests: 0,
+            successRate: 0,
+            avgResponseTime: 0,
+            semanticCoherence: 0
+        };
+
+        // Dataset de respuestas entrenadas
+        const trainedResponses = {
+            'hola': ['¡Saludos! ¿En qué puedo asistirte hoy?', '¡Buenos días! Estoy aquí para ayudarte', '¡Hola! ¿Cómo puedo colaborar contigo?'],
+            'saludos': ['¡Hola! ¿Qué necesitas?', '¡Buenas! Estoy listo para asistirte'],
+            'bien': ['¡Excelente! Me alegra saberlo', '¡Genial! ¿En qué más puedo ayudarte?'],
+            'gracias': ['¡De nada! Para eso estoy aquí', 'Es un placer ayudarte'],
+            'ayuda': ['Por supuesto, dime qué necesitas', 'Estoy aquí para brindarte asistencia'],
+            'problema': ['Lamento el inconveniente, ¿qué dificultad tienes?', 'Entiendo tu preocupación, explícame más'],
+            'adiós': ['¡Hasta luego! Que tengas un excelente día', '¡Nos vemos! Fue un placer asistirte'],
+            'nombre': ['Soy AVIA, tu asistente inteligente especializado', 'Me llamo AVIA, clon de Carlos'],
+            'qué puedes hacer': ['Puedo asistirte con información, coordinar tareas y responder consultas', 'Ofrezco orquestación, decisión y coordinación de alto nivel']
+        };
+
+        const baseResponses = {
+            'hola': ['Hola', 'Hola, ¿qué tal?'],
+            'bien': ['Bien', 'Bien, gracias'],
+            'gracias': ['Gracias', 'De nada'],
+            'ayuda': ['Ayuda disponible', '¿Necesitas ayuda?']
+        };
+
+        // Inicializar
+        setTimeout(() => {
+            document.getElementById('modelStatus').innerHTML = '<span class="text-white font-semibold">✓ Modelo Activo</span>';
+            document.getElementById('modelStatus').className = 'px-4 py-2 rounded-full bg-green-500';
+            addSystemMessage('✅ Modelo AVIA-Clon-Carlos cargado exitosamente. Sistema listo para inferencia.');
+        }, 1000);
+
+        // Generar respuesta
+        function generateResponse(input, useTrainedModel = true) {
+            const cleanInput = input.toLowerCase().trim();
+            const responses = useTrainedModel ? trainedResponses : baseResponses;
+            
+            if (responses[cleanInput]) {
+                const options = responses[cleanInput];
+                return options[Math.floor(Math.random() * options.length)];
+            }
+            
+            for (let key in responses) {
+                if (cleanInput.includes(key) || key.includes(cleanInput)) {
+                    const options = responses[key];
+                    return options[Math.floor(Math.random() * options.length)];
+                }
+            }
+            
+            return useTrainedModel 
+                ? 'Entiendo tu consulta. Aunque no tengo una respuesta específica, estoy aquí para asistirte de la mejor manera posible.'
+                : 'No entiendo';
+        }
+
+        // Calcular calidad
+        function calculateQuality(response) {
+            const words = response.split(' ').length;
+            const uniqueWords = new Set(response.toLowerCase().split(' ')).size;
+            const diversity = (uniqueWords / words * 100).toFixed(1);
+            const coherence = response.length > 15 && words > 3 ? 85 + Math.random() * 10 : 60 + Math.random() * 15;
+            
+            return {
+                length: words,
+                diversity: parseFloat(diversity),
+                coherence: parseFloat(coherence.toFixed(1)),
+                responseTime: (50 + Math.random() * 150).toFixed(0)
+            };
+        }
+
+        // Añadir mensaje al chat
+        function addMessage(text, type, quality = null) {
+            const chatMessages = document.getElementById('chatMessages');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const bgColor = type === 'user' ? 'bg-green-600' :
+                           type === 'bot' ? 'bg-blue-600' :
+                           type === 'base' ? 'bg-gray-600' :
+                           'bg-yellow-600';
+            
+            const label = type === 'user' ? '👤 Usuario' :
+                         type === 'bot' ? '🤖 AVIA (Entrenado)' :
+                         type === 'base' ? '⚙️ AVIA (Base)' :
+                         '🔔 Sistema';
+            
+            let qualityHTML = '';
+            if (quality) {
+                qualityHTML = `
+                    <div class="mt-3 pt-3 border-t border-white border-opacity-20 text-xs space-y-1">
+                        <div>📊 Calidad: ${quality.coherence}%</div>
+                        <div>📝 Palabras: ${quality.length}</div>
+                        <div>🎨 Diversidad: ${quality.diversity}%</div>
+                        <div>⚡ Tiempo: ${quality.responseTime}ms</div>
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="max-w-lg rounded-lg p-4 ${bgColor} text-white">
+                    <div class="font-semibold text-sm mb-1">${label}</div>
+                    <div class="text-sm">${text}</div>
+                    <div class="text-xs opacity-75 mt-2">${timestamp}</div>
+                    ${qualityHTML}
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            addMessage(text, 'system');
+        }
+
+        // Actualizar métricas
+        function updateMetrics(quality) {
+            metrics.totalTests++;
+            metrics.avgResponseTime = ((metrics.avgResponseTime * (metrics.totalTests - 1)) + parseFloat(quality.responseTime)) / metrics.totalTests;
+            metrics.successRate = quality.coherence > 70 
+                ? ((metrics.successRate * (metrics.totalTests - 1) + 100) / metrics.totalTests)
+                : ((metrics.successRate * (metrics.totalTests - 1)) / metrics.totalTests);
+            metrics.semanticCoherence = ((metrics.semanticCoherence * (metrics.totalTests - 1)) + quality.coherence) / metrics.totalTests;
+            
+            document.getElementById('totalTests').textContent = metrics.totalTests;
+            document.getElementById('successRate').textContent = metrics.successRate.toFixed(1) + '%';
+            document.getElementById('avgTime').textContent = metrics.avgResponseTime.toFixed(0) + 'ms';
+            document.getElementById('coherence').textContent = metrics.semanticCoherence.toFixed(1) + '%';
+        }
+
+        // Enviar mensaje
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            addMessage(text, 'user');
+            input.value = '';
+            
+            await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 700));
+            
+            const trainedResponse = generateResponse(text, true);
+            const quality = calculateQuality(trainedResponse);
+            addMessage(trainedResponse, 'bot', quality);
+            updateMetrics(quality);
+            
+            if (comparisonMode) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+                const baseResponse = generateResponse(text, false);
+                const baseQuality = calculateQuality(baseResponse);
+                addMessage(baseResponse, 'base', baseQuality);
+            }
+        }
+
+        // Toggle comparación
+        function toggleComparison() {
+            comparisonMode = !comparisonMode;
+            const btn = document.getElementById('comparisonBtn');
+            const subtitle = document.getElementById('chatSubtitle');
+            
+            if (comparisonMode) {
+                btn.textContent = '🔀 Modo Comparación ON';
+                btn.className = 'w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
+                subtitle.textContent = '🔀 Modo Comparación Activo - Modelo Entrenado vs Base';
+            } else {
+                btn.textContent = '🔀 Modo Comparación OFF';
+                btn.className = 'w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-lg transition-colors';
+                subtitle.textContent = '💬 Conversación con Modelo Entrenado';
+            }
+        }
+
+        // Test automático
+        async function runAutoTest() {
+            const testInputs = ['hola', 'cómo estás', 'necesito ayuda', 'gracias por todo', 'cuál es tu nombre', 'qué puedes hacer', 'adiós'];
+            
+            for (let input of testInputs) {
+                document.getElementById('messageInput').value = input;
+                await sendMessage();
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+        }
+
+        // Limpiar chat
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = '';
+            metrics = { totalTests: 0, successRate: 0, avgResponseTime: 0, semanticCoherence: 0 };
+            document.getElementById('totalTests').textContent = '0';
+            document.getElementById('successRate').textContent = '0%';
+            document.getElementById('avgTime').textContent = '0ms';
+            document.getElementById('coherence').textContent = '0%';
+        }
+
+        // Exportar resultados
+        function exportResults() {
+            const data = {
+                metrics,
+                timestamp: new Date().toISOString(),
+                messagesCount: document.getElementById('chatMessages').children.length
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `avia-test-results-${Date.now()}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>

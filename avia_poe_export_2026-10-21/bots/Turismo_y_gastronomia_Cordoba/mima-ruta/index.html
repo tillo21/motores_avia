@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiMa · AVIA — Selector de Destinos y Experiencias</title>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg:#F6F4F0;--bg-alt:#EDE9E3;--card:#FFFFFF;--card-hover:#FAFAF8;
+    --primary:#1B3A37;--primary-light:#275550;--primary-fg:#FFFFFF;
+    --terracotta:#C2613A;--terracotta-soft:rgba(194,97,58,0.1);--terracotta-hover:#A8502D;
+    --gold:#BFA050;--gold-soft:rgba(191,160,80,0.1);
+    --sage:#6B8F71;--sage-soft:rgba(107,143,113,0.1);
+    --text:#1A2421;--text-secondary:#546460;--text-muted:#8A9A95;
+    --border:rgba(27,58,55,0.09);--border-active:rgba(27,58,55,0.25);
+    --shadow-sm:0 1px 4px rgba(27,58,55,0.05);--shadow-md:0 8px 28px rgba(27,58,55,0.07);--shadow-lg:0 20px 56px rgba(27,58,55,0.1);
+    --radius:20px;--radius-sm:12px;--radius-xs:8px;
+    --transition:0.35s cubic-bezier(0.22,1,0.36,1);
+  }
+  html.dark {
+    --bg:#0E1A18;--bg-alt:#152220;--card:#1A2E2B;--card-hover:#1F3532;
+    --primary:#3FA89E;--primary-light:#4DBDB2;--primary-fg:#0E1A18;
+    --terracotta:#E07A52;--terracotta-soft:rgba(224,122,82,0.12);--terracotta-hover:#F09070;
+    --gold:#D4B35E;--gold-soft:rgba(212,179,94,0.12);
+    --sage:#8ABF91;--sage-soft:rgba(138,191,145,0.12);
+    --text:#E8E4DE;--text-secondary:#A0B5B0;--text-muted:#6A8480;
+    --border:rgba(63,168,158,0.1);--border-active:rgba(63,168,158,0.3);
+    --shadow-sm:0 1px 4px rgba(0,0,0,0.2);--shadow-md:0 8px 28px rgba(0,0,0,0.25);--shadow-lg:0 20px 56px rgba(0,0,0,0.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.65;-webkit-font-smoothing:antialiased;min-height:100vh}
+  ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--primary);border-radius:10px}
+
+  header{position:sticky;top:0;z-index:100;background:var(--card);border-bottom:1px solid var(--border);backdrop-filter:blur(16px);padding:0 24px}
+  .header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:58px;gap:16px}
+  .logo-area{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:38px;height:38px;background:var(--primary);color:var(--primary-fg);border-radius:50%;display:grid;place-items:center;font-size:0.95rem}
+  .logo-text h1{font-family:'Crimson Pro',serif;font-size:1.15rem;font-weight:600;letter-spacing:-0.3px}
+  .logo-text span{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px}
+  .header-badge{display:none;align-items:center;gap:6px;font-size:0.74rem;color:var(--text-muted)}
+  .header-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--sage);display:inline-block}
+  @media(min-width:640px){.header-badge{display:flex}}
+
+  .hero{background:var(--primary);color:var(--primary-fg);padding:36px 24px 44px;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 80% 20%,rgba(194,97,58,0.15) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgba(191,160,80,0.1) 0%,transparent 50%)}
+  .hero-inner{max-width:800px;margin:0 auto;text-align:center;position:relative;z-index:2}
+  .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:0.66rem;text-transform:uppercase;letter-spacing:2.5px;color:rgba(255,255,255,0.5);margin-bottom:12px}
+  .hero h2{font-family:'Crimson Pro',serif;font-size:clamp(1.6rem,4vw,2.5rem);font-weight:700;line-height:1.15;letter-spacing:-1px;margin-bottom:10px}
+  .hero p{font-size:0.95rem;color:rgba(255,255,255,0.7);max-width:520px;margin:0 auto}
+
+  .steps-bar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:58px;z-index:90}
+  .steps-inner{max-width:1400px;margin:0 auto;display:flex;gap:4px;padding:10px 0;overflow-x:auto}
+  .step-pill{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:100px;font-size:0.78rem;font-weight:600;white-space:nowrap;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all var(--transition);flex-shrink:0;font-family:'DM Sans',sans-serif}
+  .step-pill .step-num{width:20px;height:20px;border-radius:50%;background:var(--bg-alt);display:grid;place-items:center;font-size:0.65rem;font-weight:700;transition:all var(--transition)}
+  .step-pill.active{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+  .step-pill.active .step-num{background:rgba(255,255,255,0.2);color:var(--primary-fg)}
+  .step-pill.done{background:var(--sage-soft);color:var(--sage);border-color:transparent}
+  .step-pill.done .step-num{background:var(--sage);color:#fff}
+
+  .app-layout{max-width:1400px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:1fr 400px;gap:20px;align-items:start}
+  .panels-col{padding:24px 0 80px;min-width:0}
+  .sidebar-col{position:sticky;top:130px;padding:24px 0 40px;display:flex;flex-direction:column;gap:14px}
+  @media(max-width:1024px){.app-layout{grid-template-columns:1fr}.sidebar-col{position:relative;top:auto;order:-1;padding:16px 0 0}}
+
+  .panel{display:none;animation:panelIn .4s ease forwards}.panel.visible{display:block}
+  @keyframes panelIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .panel-header{margin-bottom:20px}
+  .panel-eyebrow{font-family:'JetBrains Mono',monospace;font-size:0.66rem;text-transform:uppercase;letter-spacing:2px;color:var(--terracotta);margin-bottom:5px}
+  .panel-title{font-family:'Crimson Pro',serif;font-size:clamp(1.4rem,3vw,1.9rem);font-weight:700;letter-spacing:-0.5px;margin-bottom:5px}
+  .panel-desc{color:var(--text-secondary);font-size:0.88rem;max-width:560px}
+
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .cat-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all var(--transition);position:relative;overflow:hidden}
+  .cat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--terracotta),var(--gold));transform:scaleX(0);transform-origin:left;transition:transform var(--transition)}
+  .cat-card:hover{border-color:var(--border-active);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+  .cat-card:hover::before{transform:scaleX(1)}
+  .cat-card.selected{border-color:var(--primary);background:var(--card-hover);box-shadow:var(--shadow-md)}
+  .cat-card.selected::before{transform:scaleX(1)}
+  .cat-card .cat-check{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center;font-size:0.6rem;transition:all var(--transition);color:transparent}
+  .cat-card.selected .cat-check{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+  .cat-icon{font-size:1.6rem;margin-bottom:10px;display:block}
+  .cat-card h3{font-family:'Crimson Pro',serif;font-size:1.05rem;font-weight:600;margin-bottom:3px}
+  .cat-card p{font-size:0.8rem;color:var(--text-muted);line-height:1.5}
+  .cat-count{display:inline-block;margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--gold);background:var(--gold-soft);padding:2px 8px;border-radius:100px}
+
+  .sub-section{margin-bottom:24px}
+  .sub-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid var(--border)}
+  .sub-section-icon{width:36px;height:36px;border-radius:var(--radius-xs);display:grid;place-items:center;font-size:1rem;flex-shrink:0}
+  .sub-section-header h3{font-family:'Crimson Pro',serif;font-size:1.1rem;font-weight:600}
+  .sub-section-header span{font-size:0.76rem;color:var(--text-muted)}
+  .sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+  .sub-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:14px 12px;cursor:pointer;transition:all var(--transition);display:flex;align-items:flex-start;gap:9px}
+  .sub-card:hover{border-color:var(--border-active);box-shadow:var(--shadow-sm)}
+  .sub-card.selected{border-color:var(--primary);background:var(--card-hover)}
+  .sub-check{width:19px;height:19px;border-radius:5px;border:2px solid var(--border);display:grid;place-items:center;font-size:0.52rem;transition:all var(--transition);color:transparent;flex-shrink:0;margin-top:2px}
+  .sub-card.selected .sub-check{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+  .sub-card h4{font-size:0.87rem;font-weight:600;margin-bottom:1px}
+  .sub-card p{font-size:0.72rem;color:var(--text-muted);line-height:1.4}
+
+  .opts-section{margin-bottom:22px}
+  .opts-section-title{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .opts-breadcrumb{font-family:'JetBrains Mono',monospace;font-size:0.66rem;color:var(--terracotta);text-transform:uppercase;letter-spacing:1px}
+  .opts-section-title h3{font-family:'Crimson Pro',serif;font-size:1.05rem;font-weight:600}
+  .opts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:11px}
+  .opt-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:16px;cursor:pointer;transition:all var(--transition);position:relative}
+  .opt-card:hover{border-color:var(--border-active);box-shadow:var(--shadow-sm);transform:translateY(-2px)}
+  .opt-card.selected{border-color:var(--terracotta);background:var(--terracotta-soft)}
+  .opt-card .opt-check{position:absolute;top:11px;right:11px;width:19px;height:19px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center;font-size:0.52rem;transition:all var(--transition);color:transparent}
+  .opt-card.selected .opt-check{background:var(--terracotta);border-color:var(--terracotta);color:#fff}
+  .opt-card h4{font-size:0.88rem;font-weight:600;margin-bottom:2px;padding-right:26px}
+  .opt-card .opt-meta{font-size:0.73rem;color:var(--text-muted);margin-bottom:6px}
+  .opt-tags{display:flex;gap:4px;flex-wrap:wrap}
+  .opt-tag{font-family:'JetBrains Mono',monospace;font-size:0.58rem;padding:2px 6px;border-radius:100px;background:var(--bg-alt);color:var(--text-muted)}
+  .opt-book-btn{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:6px 14px;border-radius:100px;font-size:0.73rem;font-weight:600;font-family:'DM Sans',sans-serif;background:var(--primary);color:var(--primary-fg);border:none;cursor:pointer;transition:all var(--transition)}
+  .opt-book-btn:hover{opacity:0.85;transform:translateY(-1px)}
+
+  .summary-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
+  .summary-card-header{background:var(--primary);color:var(--primary-fg);padding:18px;display:flex;align-items:center;gap:11px}
+  .summary-card-header .summary-icon{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.12);display:grid;place-items:center;font-size:1.1rem;flex-shrink:0}
+  .summary-card-header h3{font-family:'Crimson Pro',serif;font-size:1.1rem;font-weight:600}
+  .summary-card-header span{font-size:0.76rem;opacity:0.65}
+  .summary-items{padding:12px 18px}
+  .summary-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.85rem;flex-wrap:wrap}
+  .summary-item:last-child{border-bottom:none}
+  .summary-item .si-icon{width:28px;height:28px;border-radius:var(--radius-xs);display:grid;place-items:center;font-size:0.75rem;flex-shrink:0}
+  .summary-item .si-name{font-weight:600}
+  .summary-item .si-detail{font-size:0.73rem;color:var(--text-muted)}
+  .summary-item .si-actions{margin-left:auto;flex-shrink:0}
+  .summary-empty{text-align:center;padding:44px 20px;color:var(--text-muted)}
+  .summary-empty i{font-size:2rem;margin-bottom:8px;display:block}
+
+  .flow-bar{background:var(--primary);border-radius:var(--radius);padding:22px;margin-top:22px;color:var(--primary-fg)}
+  .flow-bar .flow-label{font-family:'JetBrains Mono',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.45);margin-bottom:10px}
+  .flow-steps{display:flex;align-items:center;gap:5px;overflow-x:auto;padding-bottom:4px}
+  .flow-step{background:rgba(255,255,255,0.08);border-radius:var(--radius-sm);padding:10px 12px;min-width:105px;flex-shrink:0}
+  .flow-step b{display:block;font-size:0.82rem}
+  .flow-step small{color:rgba(255,255,255,0.5);font-size:0.7rem}
+  .flow-arrow{color:var(--gold);font-size:0.9rem;flex-shrink:0}
+
+  .map-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .map-box-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+  .map-box-header h3{font-family:'Crimson Pro',serif;font-size:1rem;font-weight:600;display:flex;align-items:center;gap:7px}
+  .map-box-header h3 i{color:var(--terracotta);font-size:0.85rem}
+  .map-count-badge{font-family:'JetBrains Mono',monospace;font-size:0.62rem;background:var(--sage-soft);color:var(--sage);padding:3px 9px;border-radius:100px}
+  .locate-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:0.7rem;font-weight:600;font-family:'DM Sans',sans-serif;background:var(--terracotta);color:#fff;border:none;cursor:pointer;transition:all var(--transition)}
+  .locate-btn:hover{opacity:0.85}.locate-btn:disabled{opacity:0.4;cursor:not-allowed}
+  .locate-btn.located{background:var(--sage)}
+  #map{height:300px;background:var(--bg-alt)}
+  .map-hint{padding:8px 16px;font-size:0.7rem;color:var(--text-muted);text-align:center;border-top:1px solid var(--border)}
+
+  .leaflet-popup-content-wrapper{border-radius:var(--radius-sm)!important;box-shadow:var(--shadow-md)!important;font-family:'DM Sans',sans-serif!important}
+  .leaflet-popup-content{margin:10px 12px!important;font-size:0.82rem!important;line-height:1.5!important}
+  .popup-title{font-family:'Crimson Pro',serif;font-weight:600;font-size:0.95rem;margin-bottom:2px}
+  .popup-cat{font-family:'JetBrains Mono',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:1px;color:#C2613A}
+  .popup-book{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:5px 12px;border-radius:100px;font-size:0.7rem;font-weight:600;background:#1B3A37;color:#fff;border:none;cursor:pointer}
+
+  .gallery-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .gallery-box-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+  .gallery-box-header h3{font-family:'Crimson Pro',serif;font-size:1rem;font-weight:600;display:flex;align-items:center;gap:7px}
+  .gallery-box-header h3 i{color:var(--gold);font-size:0.85rem}
+  .gallery-grid{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:360px;overflow-y:auto}
+  .gallery-card{border-radius:var(--radius-sm);overflow:hidden;position:relative;aspect-ratio:4/3;cursor:default;transition:transform var(--transition)}
+  .gallery-card:hover{transform:scale(1.03)}
+  .gallery-card svg{width:100%;height:100%;display:block}
+  .gallery-card .gc-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 100%);padding:24px 8px 8px;color:#fff}
+  .gallery-card .gc-name{font-size:0.74rem;font-weight:600;line-height:1.3}
+  .gallery-card .gc-cat{font-family:'JetBrains Mono',monospace;font-size:0.52rem;text-transform:uppercase;letter-spacing:1px;opacity:0.7;margin-top:1px}
+  .gallery-empty{padding:36px 18px;text-align:center;color:var(--text-muted);font-size:0.82rem}
+  .gallery-empty i{font-size:1.6rem;display:block;margin-bottom:6px;opacity:0.4}
+
+  .actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:12px 24px;border-radius:100px;font-size:0.87rem;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all var(--transition);border:none;text-decoration:none}
+  .btn-primary{background:var(--terracotta);color:#fff;box-shadow:0 4px 16px rgba(194,97,58,0.25)}
+  .btn-primary:hover{background:var(--terracotta-hover);transform:translateY(-2px);box-shadow:0 6px 24px rgba(194,97,58,0.35)}
+  .btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none}
+  .btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--border-active);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  .btn-dark{background:var(--primary);color:var(--primary-fg)}
+  .btn-dark:hover{opacity:0.9;transform:translateY(-2px)}
+  .sel-count{display:inline-flex;align-items:center;gap:5px;background:var(--terracotta-soft);color:var(--terracotta);padding:6px 13px;border-radius:100px;font-size:0.78rem;font-weight:600;margin-bottom:16px}
+
+  /* ── MODAL ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;place-items:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal-overlay.show{display:grid}
+  .modal-card{width:min(480px,100%);background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-lg);animation:modalIn .3s ease}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+  .modal-header{background:var(--primary);color:var(--primary-fg);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .modal-header h3{font-family:'Crimson Pro',serif;font-size:1.15rem;font-weight:600}
+  .modal-header .modal-close{background:rgba(255,255,255,0.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:1rem;transition:background .2s}
+  .modal-header .modal-close:hover{background:rgba(255,255,255,0.3)}
+  .modal-body{padding:24px}
+  .modal-place-info{display:flex;align-items:center;gap:10px;padding:14px;background:var(--bg-alt);border-radius:var(--radius-sm);margin-bottom:20px}
+  .modal-place-info .mpi-icon{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:1.1rem;flex-shrink:0}
+  .modal-place-info .mpi-name{font-weight:600;font-size:0.92rem}
+  .modal-place-info .mpi-cat{font-size:0.72rem;color:var(--text-muted)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .form-group{display:flex;flex-direction:column;gap:5px}
+  .form-group label{font-size:0.78rem;font-weight:600;color:var(--text-secondary)}
+  .form-group input,.form-group select{padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-xs);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;transition:border-color .2s;outline:none}
+  .form-group input:focus,.form-group select:focus{border-color:var(--terracotta)}
+  .modal-actions{display:flex;gap:10px;margin-top:20px}
+  .modal-actions .btn{flex:1;justify-content:center}
+  @media(max-width:500px){.form-row{grid-template-columns:1fr}}
+
+  /* ── CONFIRMATION ── */
+  .confirm-box{text-align:center;padding:10px 0}
+  .confirm-icon{width:64px;height:64px;border-radius:50%;background:var(--sage-soft);color:var(--sage);display:grid;place-items:center;font-size:1.8rem;margin:0 auto 16px}
+  .confirm-box h4{font-family:'Crimson Pro',serif;font-size:1.2rem;font-weight:600;margin-bottom:6px}
+  .confirm-box .journey-id{font-family:'JetBrains Mono',monospace;font-size:0.82rem;background:var(--bg-alt);padding:8px 16px;border-radius:var(--radius-xs);display:inline-block;margin:10px 0}
+  .confirm-box p{font-size:0.85rem;color:var(--text-secondary);margin-bottom:4px}
+  .confirm-box .confirm-note{font-size:0.72rem;color:var(--text-muted);margin-top:12px;font-style:italic}
+
+  /* ── ROUTE LEGEND ── */
+  .route-legend{padding:8px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:0.7rem;color:var(--text-muted)}
+  .route-legend .leg{display:flex;align-items:center;gap:4px}
+  .route-legend .leg-line{width:20px;height:3px;border-radius:2px}
+
+  /* ── USER MARKER PULSE ── */
+  @keyframes userPulse{0%{box-shadow:0 0 0 0 rgba(194,97,58,0.5)}70%{box-shadow:0 0 0 14px rgba(194,97,58,0)}100%{box-shadow:0 0 0 0 rgba(194,97,58,0)}}
+  .user-marker{width:16px;height:16px;border-radius:50%;background:var(--terracotta);border:3px solid #fff;box-shadow:0 0 0 0 rgba(194,97,58,0.5);animation:userPulse 2s infinite}
+
+  footer{border-top:1px solid var(--border);text-align:center;padding:22px;font-size:0.72rem;color:var(--text-muted);max-width:1400px;margin:0 auto}
+  footer span{color:var(--terracotta)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--primary);color:var(--primary-fg);padding:11px 20px;border-radius:100px;font-size:0.8rem;font-weight:600;box-shadow:var(--shadow-lg);z-index:200;transition:transform .4s ease;white-space:nowrap;pointer-events:none}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:600px){
+    .cat-grid{grid-template-columns:1fr}.sub-grid{grid-template-columns:1fr}.opts-grid{grid-template-columns:1fr}
+    .hero{padding:28px 18px 36px}.app-layout{padding:0 14px}.panels-col{padding:16px 0 50px}
+    .flow-step{min-width:95px;padding:8px 10px}.actions{flex-direction:column}.actions .btn{justify-content:center}
+    #map{height:240px}.gallery-grid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<header><div class="header-inner"><div class="logo-area"><div class="logo-icon"><i class="fas fa-map-pin"></i></div><div class="logo-text"><h1>MiMa &middot; AVIA</h1><span>Selector de Experiencias</span></div></div><div class="header-badge">Demostraci&oacute;n &middot; sin reservas reales</div></div></header>
+
+<section class="hero"><div class="hero-inner"><div class="hero-eyebrow">POC &middot; Rutas + Reservas</div><h2>Dise&ntilde;a tu experiencia, traza la ruta y reserva</h2><p>Selecciona destinos, visualiza la ruta desde tu ubicaci&oacute;n y reserva cada experiencia.</p></div></section>
+
+<div class="steps-bar"><div class="steps-inner" id="stepsBar">
+  <button class="step-pill active" onclick="goToStep(0)"><span class="step-num">1</span> Destinos</button>
+  <button class="step-pill" onclick="goToStep(1)"><span class="step-num">2</span> Subdestinos</button>
+  <button class="step-pill" onclick="goToStep(2)"><span class="step-num">3</span> Opciones</button>
+  <button class="step-pill" onclick="goToStep(3)"><span class="step-num">4</span> Resumen</button>
+</div></div>
+
+<div class="app-layout">
+<div class="panels-col">
+  <div class="panel visible" id="panel0"><div class="panel-header"><div class="panel-eyebrow">01 &middot; Destinos</div><div class="panel-title">&iquest;Qu&eacute; necesitas?</div><div class="panel-desc">Selecciona categor&iacute;as. Activa tu ubicaci&oacute;n para ver la ruta.</div></div><div class="cat-grid" id="catGrid"></div><div class="actions"><button class="btn btn-primary" id="btnStep0" disabled onclick="goToStep(1)">Continuar <i class="fas fa-arrow-right"></i></button></div></div>
+  <div class="panel" id="panel1"><div class="panel-header"><div class="panel-eyebrow">02 &middot; Subdestinos</div><div class="panel-title">Elige subcategor&iacute;as</div><div class="panel-desc">Marca los servicios que te interesan.</div></div><div id="subContent"></div><div class="actions"><button class="btn btn-secondary" onclick="goToStep(0)"><i class="fas fa-arrow-left"></i> Atr&aacute;s</button><button class="btn btn-primary" id="btnStep1" disabled onclick="goToStep(2)">Continuar <i class="fas fa-arrow-right"></i></button></div></div>
+  <div class="panel" id="panel2"><div class="panel-header"><div class="panel-eyebrow">03 &middot; Opciones</div><div class="panel-title">Personaliza y reserva</div><div class="panel-desc">Selecciona opciones y haz clic en <b>Reservar</b> para cada una.</div></div><div id="optsContent"></div><div class="actions"><button class="btn btn-secondary" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Atr&aacute;s</button><button class="btn btn-primary" onclick="goToStep(3)">Ver resumen <i class="fas fa-arrow-right"></i></button></div></div>
+  <div class="panel" id="panel3"><div class="panel-header"><div class="panel-eyebrow">04 &middot; Resumen + Reservas</div><div class="panel-title">Tu experiencia completa</div><div class="panel-desc">Revisa y reserva desde aqu&iacute;.</div></div><div id="summaryContent"></div>
+    <div class="flow-bar"><div class="flow-label">Recorrido comercial</div><div class="flow-steps"><div class="flow-step"><b><i class="fas fa-camera"></i> Foto</b><small>Inspiraci&oacute;n</small></div><div class="flow-arrow"><i class="fas fa-chevron-right"></i></div><div class="flow-step"><b><i class="fas fa-map-marker-alt"></i> Lugar</b><small>Descubrimiento</small></div><div class="flow-arrow"><i class="fas fa-chevron-right"></i></div><div class="flow-step"><b><i class="fas fa-route"></i> Ruta</b><small>Organizaci&oacute;n</small></div><div class="flow-arrow"><i class="fas fa-chevron-right"></i></div><div class="flow-step"><b><i class="fas fa-calendar-check"></i> Reserva</b><small>TSORBIT</small></div></div></div>
+    <div class="actions"><button class="btn btn-secondary" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Atr&aacute;s</button><button class="btn btn-dark" onclick="resetAll()"><i class="fas fa-redo"></i> Nueva</button></div>
+  </div>
+</div>
+
+<div class="sidebar-col">
+  <div class="map-box">
+    <div class="map-box-header">
+      <h3><i class="fas fa-map-marked-alt"></i> AVIA-GEO</h3>
+      <button class="locate-btn" id="locateBtn" onclick="locateUser()"><i class="fas fa-crosshairs"></i> Mi ubicaci&oacute;n</button>
+      <span class="map-count-badge" id="mapCount">0 puntos</span>
+    </div>
+    <div id="map"></div>
+    <div class="route-legend" id="routeLegend" style="display:none">
+      <div class="leg"><span class="leg-line" style="background:#C2613A"></span> Tu ruta</div>
+      <div class="leg"><span class="leg-line" style="background:#6B8F71"></span> Tramos</div>
+      <span id="routeInfo"></span>
+    </div>
+    <div class="map-hint" id="mapHint">Selecciona destinos y activa tu ubicaci&oacute;n para trazar la ruta</div>
+  </div>
+  <div class="gallery-box"><div class="gallery-box-header"><h3><i class="fas fa-images"></i> Vista previa</h3></div><div id="galleryContent"><div class="gallery-empty"><i class="fas fa-mountain-sun"></i>Selecciona para ver</div></div></div>
+</div>
+</div>
+
+<footer><p>MiMa &middot; AVIA &mdash; POC Rutas + Reservas &middot; Demostraci&oacute;n</p><p style="margin-top:3px">Datos simulados &middot; <span>&copy; 2026 TSORBIT</span></p></footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-header"><h3 id="modalTitle">Reservar</h3><button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var PALETTES=[["#C2613A","#E8956A"],["#1B3A37","#3FA89E"],["#BFA050","#E0CC80"],["#6B8F71","#A8D5AE"],["#8B5CF6","#C4B5FD"],["#0D9488","#5EEAD4"],["#D97706","#FCD34D"],["#DC2626","#FCA5A5"],["#2563EB","#93C5FD"],["#7C3AED","#C084FC"],["#059669","#6EE7B7"],["#B45309","#FDE68A"]];
+var CAT_SYMBOLS={alojamiento:"\uD83C\uDFE8",gastronomia:"\uD83C\uDF7D",patrimonio:"\uD83C\uDFDB",artesania:"\uD83E\uDEA1",transporte:"\uD83D\uDE8C",naturaleza:"\uD83C\uDF3F",eventos:"\uD83C\uDF89",intermediacion:"\uD83D\uDD14"};
+
+var DATA={
+  alojamiento:{label:"Alojamiento",icon:"fas fa-bed",desc:"Hoteles, hostales, apartamentos y turismo rural",color:"var(--terracotta-soft)",iconColor:"var(--terracotta)",subs:{
+    hotel:{label:"Hotel",desc:"Servicios completos",options:[{name:"Hotel 5\u2605 Gran Lujo",meta:"Centro \u00b7 180\u20ac",tags:["Premium","Spa"],lat:37.8845,lon:-4.7790},{name:"Hotel Boutique 4\u2605",meta:"Juder\u00eda \u00b7 95\u20ac",tags:["Boutique","Patio"],lat:37.8798,lon:-4.7812},{name:"Hotel C\u00e9ntrico 3\u2605",meta:"Tendillas \u00b7 60\u20ac",tags:["Econ\u00f3mico"],lat:37.8847,lon:-4.7793}]},
+    hostal:{label:"Hostal",desc:"Asequible y c\u00e9ntrico",options:[{name:"Hostal La Fuente",meta:"Casco antiguo \u00b7 40\u20ac",tags:["Econ\u00f3mico"],lat:37.8815,lon:-4.7805},{name:"Pensi\u00f3n del Patio",meta:"San Basilio \u00b7 35\u20ac",tags:["Familiar"],lat:37.8772,lon:-4.7830}]},
+    apartamento:{label:"Apartamento",desc:"Autonom\u00eda",options:[{name:"Loft Juder\u00eda",meta:"2 pers \u00b7 75\u20ac",tags:["Cocina","Terraza"],lat:37.8791,lon:-4.7821},{name:"Piso con vistas",meta:"4 pers \u00b7 110\u20ac",tags:["Familiar"],lat:37.8860,lon:-4.7770}]},
+    rural:{label:"Turismo rural",desc:"Entorno natural",options:[{name:"Cortijo Sierra",meta:"Sierra \u00b7 85\u20ac",tags:["Naturaleza"],lat:37.9100,lon:-4.8000},{name:"Casa Rural Olivos",meta:"Campi\u00f1a \u00b7 65\u20ac",tags:["Rural"],lat:37.8500,lon:-4.8200}]}
+  }},
+  gastronomia:{label:"Gastronom\u00eda",icon:"fas fa-utensils",desc:"Tabernas, restaurantes, mercados y experiencias",color:"var(--gold-soft)",iconColor:"var(--gold)",subs:{
+    restaurante:{label:"Restaurante",desc:"Cocina local",options:[{name:"La Almudaina",meta:"Alta cocina",tags:["Autor","Vino"],lat:37.8803,lon:-4.7788},{name:"El Churrasco",meta:"Carnes",tags:["Patio"],lat:37.8795,lon:-4.7815},{name:"Casa Pepe",meta:"Salmorejo",tags:["T\u00edpico"],lat:37.8793,lon:-4.7808}]},
+    bar_taberna:{label:"Bar / Taberna",desc:"Tapas locales",options:[{name:"Taberna Salinas",meta:"Desde 1879",tags:["Hist\u00f3rica"],lat:37.8835,lon:-4.7782},{name:"Bar Santos",meta:"Tortilla famosa",tags:["Local"],lat:37.8787,lon:-4.7797},{name:"Bodega Guzm\u00e1n",meta:"Montilla-Moriles",tags:["Bodega"],lat:37.8820,lon:-4.7840}]},
+    mercado:{label:"Mercado",desc:"Producto fresco",options:[{name:"Mercado Victoria",meta:"Gastromercado",tags:["Gourmet"],lat:37.8855,lon:-4.7815},{name:"Mercado Corredera",meta:"Tradicional",tags:["Fresco"],lat:37.8840,lon:-4.7770}]},
+    experiencia:{label:"Experiencia gastro",desc:"Catas y talleres",options:[{name:"Cata Montilla-Moriles",meta:"Bodega \u00b7 2h",tags:["Cata"],lat:37.8600,lon:-4.7500},{name:"Taller salmorejo",meta:"Participativa",tags:["Taller"],lat:37.8810,lon:-4.7795},{name:"Ruta tapas guiada",meta:"4 paradas \u00b7 3h",tags:["Ruta"],lat:37.8825,lon:-4.7800}]},
+    desayuno:{label:"Desayuno",desc:"Caf\u00e9, churros",options:[{name:"Desayuno molinero",meta:"Aceite y tomate",tags:["T\u00edpico"],lat:37.8830,lon:-4.7785},{name:"Churros Corredera",meta:"Churrer\u00eda cl\u00e1sica",tags:["Churros"],lat:37.8842,lon:-4.7768}]}
+  }},
+  patrimonio:{label:"Patrimonio y Cultura",icon:"fas fa-landmark",desc:"Monumentos, museos y la historia de C\u00f3rdoba",color:"var(--sage-soft)",iconColor:"var(--sage)",subs:{
+    monumento:{label:"Monumento",desc:"Patrimonio hist\u00f3rico",options:[{name:"Mezquita-Catedral",meta:"UNESCO \u00b7 imprescindible",tags:["UNESCO"],lat:37.8789,lon:-4.7794},{name:"Alc\u00e1zar Reyes Cristianos",meta:"Jardines",tags:["Jardines"],lat:37.8768,lon:-4.7822},{name:"Puente Romano",meta:"S\u00edmbolo libre",tags:["Libre","Foto"],lat:37.8751,lon:-4.7765},{name:"Templo Romano",meta:"Arqueolog\u00eda",tags:["Centro"],lat:37.8832,lon:-4.7772}]},
+    museo:{label:"Museo",desc:"Colecciones",options:[{name:"Museo Arqueol\u00f3gico",meta:"Prehistoria al medievo",tags:["Cultura"],lat:37.8808,lon:-4.7785},{name:"Bellas Artes",meta:"Plaza del Potro",tags:["Gratuito"],lat:37.8804,lon:-4.7773}]},
+    visita_guiada:{label:"Visita guiada",desc:"Gu\u00edas expertos",options:[{name:"Free tour centro",meta:"2h \u00b7 propina",tags:["Free"],lat:37.8840,lon:-4.7790},{name:"Tour nocturno",meta:"Leyendas 1.5h",tags:["Nocturno"],lat:37.8790,lon:-4.7800},{name:"Medina Azahara",meta:"3h + transporte",tags:["Premium"],lat:37.8884,lon:-4.8695}]},
+    espectaculo:{label:"Espect\u00e1culos",desc:"Flamenco y teatro",options:[{name:"Tablao flamenco",meta:"Show 1h",tags:["Flamenco"],lat:37.8800,lon:-4.7818},{name:"Gran Teatro",meta:"Programaci\u00f3n variada",tags:["Teatro"],lat:37.8851,lon:-4.7789}]}
+  }},
+  artesania:{label:"Artesan\u00eda",icon:"fas fa-hammer",desc:"Oficios, talleres y compras",color:"var(--terracotta-soft)",iconColor:"var(--terracotta)",subs:{
+    cuero:{label:"Cuero / Guadamec\u00ed",desc:"Oficio emblem\u00e1tico",options:[{name:"Taller guadamec\u00ed",meta:"Zoco \u00b7 demostraci\u00f3n",tags:["Taller"],lat:37.8803,lon:-4.7791},{name:"Cordob\u00e1n repujado",meta:"Clase 2h",tags:["Clase"],lat:37.8800,lon:-4.7810}]},
+    ceramica:{label:"Cer\u00e1mica",desc:"Califal",options:[{name:"Cer\u00e1mica califal",meta:"Piezas \u00fanicas",tags:["Califal"],lat:37.8806,lon:-4.7796},{name:"Clase de torno",meta:"1.5h",tags:["Torno"],lat:37.8810,lon:-4.7802}]},
+    joyeria:{label:"Joyer\u00eda",desc:"Filigrana cordobesa",options:[{name:"Filigrana cordobesa",meta:"Plata artesanal",tags:["Plata"],lat:37.8812,lon:-4.7808},{name:"Joyer\u00eda de autor",meta:"Contempor\u00e1nea",tags:["Dise\u00f1o"],lat:37.8818,lon:-4.7792}]},
+    otros_oficios:{label:"Otros oficios",desc:"Guitarrer\u00eda, forja",options:[{name:"Guitarrer\u00eda",meta:"Visita taller",tags:["Guitarra"],lat:37.8822,lon:-4.7812},{name:"Taller de forja",meta:"Demostraci\u00f3n",tags:["Forja"],lat:37.8815,lon:-4.7825}]}
+  }},
+  transporte:{label:"Transporte",icon:"fas fa-bus-alt",desc:"Movilidad por C\u00f3rdoba",color:"var(--gold-soft)",iconColor:"var(--gold)",subs:{
+    a_pie:{label:"A pie",desc:"Centro peatonal",options:[{name:"Casco hist\u00f3rico",meta:"Libre \u00b7 2-3h",tags:["Libre"],lat:37.8810,lon:-4.7800},{name:"Ruta de los patios",meta:"Se\u00f1alizado",tags:["Patios"],lat:37.8780,lon:-4.7830}]},
+    bicicleta:{label:"Bicicleta",desc:"Pedalea",options:[{name:"Alquiler bici",meta:"D\u00eda completo",tags:["Alquiler"],lat:37.8843,lon:-4.7798},{name:"Tour bici guiado",meta:"2.5h",tags:["Tour"],lat:37.8838,lon:-4.7780}]},
+    taxi_vtc:{label:"Taxi / VTC",desc:"Traslado directo",options:[{name:"Taxi AVE",meta:"Precio fijo",tags:["AVE"],lat:37.8840,lon:-4.7656},{name:"VTC privado",meta:"Por horas",tags:["Privado"],lat:37.8850,lon:-4.7790}]}
+  }},
+  naturaleza:{label:"Naturaleza",icon:"fas fa-leaf",desc:"Sierra, ocio y familia",color:"var(--sage-soft)",iconColor:"var(--sage)",subs:{
+    sierra:{label:"Sierra",desc:"Rutas y miradores",options:[{name:"Ruta Los Villares",meta:"Senderismo 2h",tags:["F\u00e1cil"],lat:37.9050,lon:-4.7900},{name:"Ermita M\u00e1rtires",meta:"Panor\u00e1mica",tags:["Vistas"],lat:37.9000,lon:-4.7850}]},
+    familiar:{label:"Familiar",desc:"Planes para todos",options:[{name:"Jard\u00edn Bot\u00e1nico",meta:"Educativo",tags:["Ni\u00f1os"],lat:37.8720,lon:-4.7760},{name:"Parque Zool\u00f3gico",meta:"Recreativo",tags:["Zoo"],lat:37.8700,lon:-4.7740}]},
+    ocio_nocturno:{label:"Ocio nocturno",desc:"Terrazas",options:[{name:"Terraza azotea",meta:"C\u00f3ctel \u00b7 vistas",tags:["Terraza"],lat:37.8786,lon:-4.7783},{name:"M\u00fasica en vivo",meta:"Jazz / fusi\u00f3n",tags:["M\u00fasica"],lat:37.8832,lon:-4.7795}]}
+  }},
+  eventos:{label:"Eventos",icon:"fas fa-calendar-alt",desc:"Congresos y festivales",color:"var(--gold-soft)",iconColor:"var(--gold)",subs:{
+    congreso:{label:"Congreso",desc:"MICE",options:[{name:"Palacio de Congresos",meta:"2000+",tags:["MICE"],lat:37.8920,lon:-4.7750},{name:"Espacios singulares",meta:"Patios",tags:["Exclusivo"],lat:37.8795,lon:-4.7810}]},
+    festival:{label:"Festival",desc:"Culturales",options:[{name:"Festival Patios",meta:"Mayo \u00b7 UNESCO",tags:["UNESCO"],lat:37.8785,lon:-4.7825},{name:"Feria C\u00f3rdoba",meta:"Mayo",tags:["Feria"],lat:37.8650,lon:-4.7750}]}
+  }},
+  intermediacion:{label:"Servicios tur\u00edsticos",icon:"fas fa-concierge-bell",desc:"Agencias y gu\u00edas",color:"var(--sage-soft)",iconColor:"var(--sage)",subs:{
+    agencia:{label:"Agencia / DMC",desc:"Organizaci\u00f3n profesional",options:[{name:"Paquete 3 d\u00edas",meta:"Todo incluido",tags:["Paquete"],lat:37.8847,lon:-4.7793},{name:"DMC corporativo",meta:"Team building",tags:["Premium"],lat:37.8860,lon:-4.7780}]},
+    guia:{label:"Gu\u00eda oficial",desc:"Titulados",options:[{name:"Gu\u00eda privado 4h",meta:"Personalizado",tags:["Privado"],lat:37.8840,lon:-4.7790},{name:"Gu\u00eda patrimonio",meta:"Mezquita+Alc\u00e1zar",tags:["Experto"],lat:37.8789,lon:-4.7794}]}
+  }}
+};
+
+var state={step:0,selectedCats:{},selectedSubs:{},selectedOpts:{},userLoc:null,bookings:{}};
+var map,markersLayer,routeLayer,userMarker;
+
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function showToast(m){var t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(function(){t.classList.remove("show")},2400)}
+
+/* ═══ MAP ═══ */
+function initMap(){
+  map=L.map("map",{zoomControl:false}).setView([37.883,-4.779],13);
+  L.control.zoom({position:"bottomright"}).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"\u00a9 OSM"}).addTo(map);
+  markersLayer=L.layerGroup().addTo(map);
+  routeLayer=L.layerGroup().addTo(map);
+}
+
+function mkIcon(color){return L.divIcon({className:"",iconSize:[26,26],iconAnchor:[13,26],popupAnchor:[0,-28],html:'<svg width="26" height="26" viewBox="0 0 28 28"><path d="M14 2C8.48 2 4 6.48 4 12c0 7.5 10 14 10 14s10-6.5 10-14c0-5.52-4.48-10-10-10z" fill="'+color+'" stroke="#fff" stroke-width="2"/><circle cx="14" cy="12" r="4" fill="#fff"/></svg>'})}
+function mkNumIcon(color,num){return L.divIcon({className:"",iconSize:[30,30],iconAnchor:[15,30],popupAnchor:[0,-32],html:'<svg width="30" height="30" viewBox="0 0 30 30"><path d="M15 2C9.48 2 5 6.48 5 12c0 7.5 10 15 10 15s10-7.5 10-15c0-5.52-4.48-10-10-10z" fill="'+color+'" stroke="#fff" stroke-width="2"/><text x="15" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff" font-family="DM Sans,sans-serif">'+num+'</text></svg>'})}
+
+function resolveColor(varColor){
+  var dk=document.documentElement.classList.contains("dark");
+  var m={"var(--terracotta)":dk?"#E07A52":"#C2613A","var(--gold)":dk?"#D4B35E":"#BFA050","var(--sage)":dk?"#8ABF91":"#6B8F71"};
+  return m[varColor]||(dk?"#3FA89E":"#1B3A37");
+}
+
+function getSelectedPlaces(){
+  var places=[],s=state.step;
+  if(s===0){Object.keys(state.selectedCats).forEach(function(ck){var cat=DATA[ck];Object.keys(cat.subs).forEach(function(sk){var o=cat.subs[sk].options[0];if(o)places.push({name:cat.label+" \u2013 "+cat.subs[sk].label,meta:o.name,lat:o.lat,lon:o.lon,catKey:ck,color:cat.iconColor})})})
+  }else if(s===1){Object.keys(state.selectedSubs).forEach(function(fk){var p=fk.split("."),cat=DATA[p[0]],sub=cat.subs[p[1]];sub.options.forEach(function(o){places.push({name:o.name,meta:sub.label,lat:o.lat,lon:o.lon,catKey:p[0],color:cat.iconColor})})})
+  }else{
+    var ho=Object.keys(state.selectedOpts).length>0;
+    if(ho){Object.keys(state.selectedOpts).forEach(function(fk){var p=fk.split("."),cat=DATA[p[0]],sub=cat.subs[p[1]];Object.keys(state.selectedOpts[fk]).forEach(function(i){var o=sub.options[parseInt(i,10)];places.push({name:o.name,meta:sub.label+" \u00b7 "+cat.label,lat:o.lat,lon:o.lon,catKey:p[0],color:cat.iconColor})})})}
+    Object.keys(state.selectedSubs).forEach(function(fk){if(!ho||!state.selectedOpts[fk]){var p=fk.split("."),cat=DATA[p[0]],sub=cat.subs[p[1]];sub.options.forEach(function(o){places.push({name:o.name,meta:sub.label,lat:o.lat,lon:o.lon,catKey:p[0],color:cat.iconColor})})}});
+  }
+  return places;
+}
+
+function updateMap(){
+  markersLayer.clearLayers();routeLayer.clearLayers();
+  var places=getSelectedPlaces(),bounds=[];
+  // User marker
+  if(state.userLoc){
+    if(userMarker)map.removeLayer(userMarker);
+    userMarker=L.marker([state.userLoc.lat,state.userLoc.lon],{icon:L.divIcon({className:"",iconSize:[16,16],iconAnchor:[8,8],html:'<div class="user-marker"></div>'})}).bindPopup('<div class="popup-title">Tu ubicaci\u00f3n</div>').addTo(map);
+    bounds.push([state.userLoc.lat,state.userLoc.lon]);
+  }
+  // Dedupe places
+  var seen={},unique=[];
+  places.forEach(function(p){var k=p.lat+","+p.lon;if(!seen[k]){seen[k]=true;unique.push(p)}});
+
+  // Sort by distance from user if available
+  if(state.userLoc){
+    unique.sort(function(a,b){
+      var da=Math.pow(a.lat-state.userLoc.lat,2)+Math.pow(a.lon-state.userLoc.lon,2);
+      var db=Math.pow(b.lat-state.userLoc.lat,2)+Math.pow(b.lon-state.userLoc.lon,2);
+      return da-db;
+    });
+  }
+
+  unique.forEach(function(p,idx){
+    var c=resolveColor(p.color);
+    var ico=state.userLoc?mkNumIcon(c,idx+1):mkIcon(c);
+    var bookBtn='<button class="popup-book" onclick="openBooking(\''+esc(p.name).replace(/'/g,"\\'")+'\',\''+esc(p.meta).replace(/'/g,"\\'")+'\',\''+p.catKey+'\')"><i class="fas fa-calendar-check"></i> Reservar</button>';
+    var marker=L.marker([p.lat,p.lon],{icon:ico}).bindPopup('<div class="popup-cat">'+esc(p.meta)+'</div><div class="popup-title">'+esc(p.name)+'</div>'+bookBtn);
+    markersLayer.addLayer(marker);
+    bounds.push([p.lat,p.lon]);
+  });
+
+  // Draw route
+  if(state.userLoc && unique.length>0){
+    var routePoints=[[state.userLoc.lat,state.userLoc.lon]];
+    unique.forEach(function(p){routePoints.push([p.lat,p.lon])});
+    // Main route line (dashed)
+    L.polyline(routePoints,{color:"#C2613A",weight:3,opacity:0.7,dashArray:"8,8"}).addTo(routeLayer);
+    // Segment lines
+    for(var i=0;i<routePoints.length-1;i++){
+      L.polyline([routePoints[i],routePoints[i+1]],{color:"#6B8F71",weight:2,opacity:0.4}).addTo(routeLayer);
+    }
+    document.getElementById("routeLegend").style.display="flex";
+    // Approx distance
+    var totalDist=0;
+    for(var j=0;j<routePoints.length-1;j++){
+      totalDist+=map.distance(L.latLng(routePoints[j][0],routePoints[j][1]),L.latLng(routePoints[j+1][0],routePoints[j+1][1]));
+    }
+    document.getElementById("routeInfo").textContent=(totalDist/1000).toFixed(1)+" km \u00b7 "+unique.length+" paradas";
+  }else{document.getElementById("routeLegend").style.display="none"}
+
+  document.getElementById("mapCount").textContent=unique.length+" punto"+(unique.length!==1?"s":"");
+  if(bounds.length>1)map.fitBounds(bounds,{padding:[30,30],maxZoom:15});
+  else if(bounds.length===1)map.setView(bounds[0],15);
+  else map.setView([37.883,-4.779],13);
+  document.getElementById("mapHint").textContent=unique.length===0?"Selecciona destinos"+(state.userLoc?"":" y activa ubicaci\u00f3n"):unique.length+" ubicaciones"+(state.userLoc?" \u00b7 ruta trazada":" \u00b7 activa ubicaci\u00f3n para ruta");
+}
+
+/* ═══ GEOLOCATION ═══ */
+function locateUser(){
+  var btn=document.getElementById("locateBtn");
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Localizando...';
+  if(!navigator.geolocation){
+    showToast("Geolocalizaci\u00f3n no disponible");
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-crosshairs"></i> Mi ubicaci\u00f3n';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    state.userLoc={lat:pos.coords.latitude,lon:pos.coords.longitude};
+    btn.innerHTML='<i class="fas fa-check"></i> Ubicaci\u00f3n activa';btn.classList.add("located");btn.disabled=false;
+    showToast("Ubicaci\u00f3n obtenida \u2013 ruta visible");
+    updateMap();
+  },function(){
+    // Fallback: use Córdoba center
+    state.userLoc={lat:37.8882,lon:-4.7794};
+    btn.innerHTML='<i class="fas fa-check"></i> Ubicaci\u00f3n (demo)';btn.classList.add("located");btn.disabled=false;
+    showToast("Usando ubicaci\u00f3n demo en C\u00f3rdoba");
+    updateMap();
+  },{enableHighAccuracy:true,timeout:8000});
+}
+
+/* ═══ GALLERY ═══ */
+function makeSvg(catKey,idx){var pal=PALETTES[(idx*3+7)%PALETTES.length],sym=CAT_SYMBOLS[catKey]||"\uD83D\uDCCD",id="g"+idx+"_"+Date.now();return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs><linearGradient id="'+id+'" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="'+pal[0]+'"/><stop offset="100%" stop-color="'+pal[1]+'"/></linearGradient></defs><rect width="400" height="300" fill="url(#'+id+')"/><text x="200" y="140" text-anchor="middle" font-size="56" fill="rgba(255,255,255,0.2)">'+sym+'</text><circle cx="60" cy="50" r="80" fill="rgba(255,255,255,0.06)"/><circle cx="350" cy="250" r="100" fill="rgba(0,0,0,0.06)"/></svg>'}
+function updateGallery(){
+  var c=document.getElementById("galleryContent"),places=getSelectedPlaces();
+  if(!places.length){c.innerHTML='<div class="gallery-empty"><i class="fas fa-mountain-sun"></i>Selecciona para ver</div>';return}
+  var seen={},u=[];places.forEach(function(p){if(!seen[p.name]){seen[p.name]=true;u.push(p)}});
+  var h='<div class="gallery-grid">';u.forEach(function(p,i){h+='<div class="gallery-card">'+makeSvg(p.catKey,i)+'<div class="gc-overlay"><div class="gc-name">'+esc(p.name)+'</div><div class="gc-cat">'+esc(DATA[p.catKey]?DATA[p.catKey].label:"")+'</div></div></div>'});
+  c.innerHTML=h+'</div>';
+}
+function refreshSidebar(){updateMap();updateGallery()}
+
+/* ═══ BOOKING MODAL ═══ */
+function openBooking(name,meta,catKey){
+  var cat=DATA[catKey]||{label:"",icon:"fas fa-star",iconColor:"var(--primary)"};
+  var isBooked=state.bookings[name];
+  var body=document.getElementById("modalBody");
+  document.getElementById("modalTitle").textContent=isBooked?"Reserva confirmada":"Reservar experiencia";
+
+  if(isBooked){
+    body.innerHTML='<div class="confirm-box"><div class="confirm-icon"><i class="fas fa-check"></i></div><h4>Reserva registrada</h4><p><b>'+esc(name)+'</b></p><div class="journey-id">'+esc(isBooked.id)+'</div><p>'+esc(isBooked.date)+' a las '+esc(isBooked.time)+' \u00b7 '+isBooked.people+' persona'+(isBooked.people>1?"s":"")+'</p><p>'+esc(isBooked.contactName)+' \u00b7 '+esc(isBooked.email)+'</p><div class="confirm-note">POC: no se procesa ninguna reserva real.</div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cerrar</button><button class="btn btn-primary" onclick="cancelBooking(\''+esc(name).replace(/'/g,"\\'")+'\')" style="background:#DC2626"><i class="fas fa-trash"></i> Cancelar reserva</button></div>';
+  }else{
+    var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);var minDate=tomorrow.toISOString().split("T")[0];
+    body.innerHTML='<div class="modal-place-info"><div class="mpi-icon" style="background:'+cat.color+';color:'+cat.iconColor+'"><i class="'+cat.icon+'"></i></div><div><div class="mpi-name">'+esc(name)+'</div><div class="mpi-cat">'+esc(cat.label)+' \u00b7 '+esc(meta)+'</div></div></div>'+
+    '<form id="bookForm" onsubmit="submitBooking(event,\''+esc(name).replace(/'/g,"\\'")+'\',\''+esc(catKey)+'\')">'+
+    '<div class="form-row"><div class="form-group"><label>Fecha</label><input type="date" id="bDate" min="'+minDate+'" required></div><div class="form-group"><label>Hora</label><input type="time" id="bTime" value="10:00" required></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Personas</label><select id="bPeople"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6+</option></select></div><div class="form-group"><label>Tipo</label><select id="bType"><option>Reserva est\u00e1ndar</option><option>Consulta previa</option><option>Grupo / evento</option></select></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Nombre</label><input type="text" id="bName" placeholder="Tu nombre" required></div><div class="form-group"><label>Email</label><input type="email" id="bEmail" placeholder="correo@ejemplo.com" required></div></div>'+
+    '<div class="form-group"><label>Notas (opcional)</label><input type="text" id="bNotes" placeholder="Alergias, accesibilidad, etc."></div>'+
+    '<div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary"><i class="fas fa-calendar-check"></i> Confirmar reserva</button></div></form>';
+  }
+  document.getElementById("modalOverlay").classList.add("show");
+}
+
+function submitBooking(e,name,catKey){
+  e.preventDefault();
+  var bk={
+    id:"JRN-2026-"+Math.floor(100000+Math.random()*900000),
+    date:document.getElementById("bDate").value,
+    time:document.getElementById("bTime").value,
+    people:document.getElementById("bPeople").value,
+    type:document.getElementById("bType").value,
+    contactName:document.getElementById("bName").value,
+    email:document.getElementById("bEmail").value,
+    notes:document.getElementById("bNotes").value,
+    catKey:catKey
+  };
+  state.bookings[name]=bk;
+  // Show confirmation
+  var body=document.getElementById("modalBody");
+  document.getElementById("modalTitle").textContent="Reserva confirmada";
+  body.innerHTML='<div class="confirm-box"><div class="confirm-icon"><i class="fas fa-check"></i></div><h4>\u00a1Reserva registrada!</h4><p><b>'+esc(name)+'</b></p><div class="journey-id">'+esc(bk.id)+'</div><p>'+esc(bk.date)+' a las '+esc(bk.time)+' \u00b7 '+bk.people+' persona'+(bk.people!=="1"?"s":"")+'</p><p>'+esc(bk.contactName)+' ('+esc(bk.email)+')</p><div class="confirm-note">POC demostrativo \u2013 no se procesa ninguna reserva real. En producci\u00f3n, esto generar\u00eda un evento TSORBIT.</div></div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()" style="flex:1"><i class="fas fa-check"></i> Entendido</button></div>';
+  showToast("Reserva registrada \u2013 "+bk.id);
+  // Re-render current panel to update buttons
+  if(state.step===2)renderOpts();
+  if(state.step===3)renderSummary();
+}
+
+function cancelBooking(name){
+  delete state.bookings[name];
+  closeModal();
+  showToast("Reserva cancelada");
+  if(state.step===2)renderOpts();
+  if(state.step===3)renderSummary();
+}
+
+function closeModal(){document.getElementById("modalOverlay").classList.remove("show")}
+// Close on overlay click
+document.getElementById("modalOverlay").addEventListener("click",function(e){if(e.target===this)closeModal()});
+
+/* ═══ NAV ═══ */
+function goToStep(n){
+  if(n===1&&!Object.keys(state.selectedCats).length){showToast("Selecciona un destino");return}
+  if(n===2&&!Object.keys(state.selectedSubs).length){showToast("Selecciona un subdestino");return}
+  state.step=n;
+  for(var i=0;i<4;i++)document.getElementById("panel"+i).classList.toggle("visible",i===n);
+  document.querySelectorAll(".step-pill").forEach(function(p,i){p.classList.remove("active","done");if(i<n)p.classList.add("done");if(i===n)p.classList.add("active")});
+  if(n===1)renderSubs();if(n===2)renderOpts();if(n===3)renderSummary();
+  refreshSidebar();window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ═══ PANEL 0 ═══ */
+function renderCats(){
+  var g=document.getElementById("catGrid"),h="";
+  Object.keys(DATA).forEach(function(k){var c=DATA[k],sc=Object.keys(c.subs).length;
+    h+='<div class="cat-card" data-cat="'+k+'" onclick="toggleCat(\''+k+'\')"><div class="cat-check"><i class="fas fa-check"></i></div><span class="cat-icon" style="color:'+c.iconColor+'"><i class="'+c.icon+'"></i></span><h3>'+esc(c.label)+'</h3><p>'+esc(c.desc)+'</p><span class="cat-count">'+sc+' sub</span></div>'});
+  g.innerHTML=h;
+}
+function toggleCat(k){
+  if(state.selectedCats[k]){delete state.selectedCats[k];Object.keys(DATA[k].subs).forEach(function(sk){var f=k+"."+sk;delete state.selectedSubs[f];delete state.selectedOpts[f]})}
+  else state.selectedCats[k]=true;
+  updateCatUI();refreshSidebar();
+}
+function updateCatUI(){document.querySelectorAll(".cat-card").forEach(function(c){c.classList.toggle("selected",!!state.selectedCats[c.getAttribute("data-cat")])});document.getElementById("btnStep0").disabled=!Object.keys(state.selectedCats).length}
+
+/* ═══ PANEL 1 ═══ */
+function renderSubs(){
+  var c=document.getElementById("subContent"),h="",cks=Object.keys(state.selectedCats);
+  h+='<div class="sel-count"><i class="fas fa-layer-group"></i> '+cks.length+' destino'+(cks.length>1?"s":"")+'</div>';
+  cks.forEach(function(ck){var cat=DATA[ck];h+='<div class="sub-section"><div class="sub-section-header"><div class="sub-section-icon" style="background:'+cat.color+';color:'+cat.iconColor+'"><i class="'+cat.icon+'"></i></div><div><h3>'+esc(cat.label)+'</h3><span>'+Object.keys(cat.subs).length+' opciones</span></div></div><div class="sub-grid">';
+    Object.keys(cat.subs).forEach(function(sk){var sub=cat.subs[sk],fk=ck+"."+sk;h+='<div class="sub-card'+(state.selectedSubs[fk]?" selected":"")+'" data-sub="'+fk+'" onclick="toggleSub(\''+fk+'\')"><div class="sub-check"><i class="fas fa-check"></i></div><div><h4>'+esc(sub.label)+'</h4><p>'+esc(sub.desc)+'</p></div></div>'});
+    h+='</div></div>'});
+  c.innerHTML=h;updSubBtn();
+}
+function toggleSub(fk){if(state.selectedSubs[fk]){delete state.selectedSubs[fk];delete state.selectedOpts[fk]}else state.selectedSubs[fk]=true;document.querySelectorAll(".sub-card").forEach(function(c){c.classList.toggle("selected",!!state.selectedSubs[c.getAttribute("data-sub")])});updSubBtn();refreshSidebar()}
+function updSubBtn(){document.getElementById("btnStep1").disabled=!Object.keys(state.selectedSubs).length}
+
+/* ═══ PANEL 2 ═══ */
+function renderOpts(){
+  var c=document.getElementById("optsContent"),h="",sks=Object.keys(state.selectedSubs);
+  h+='<div class="sel-count"><i class="fas fa-tags"></i> '+sks.length+' subdestino'+(sks.length>1?"s":"")+'</div>';
+  sks.forEach(function(fk){var p=fk.split("."),cat=DATA[p[0]],sub=cat.subs[p[1]];
+    h+='<div class="opts-section"><div class="opts-section-title"><span class="opts-breadcrumb">'+esc(cat.label)+' \u203a</span><h3>'+esc(sub.label)+'</h3></div><div class="opts-grid">';
+    sub.options.forEach(function(opt,idx){var ok=fk+"."+idx,sel=state.selectedOpts[fk]&&state.selectedOpts[fk][idx]?" selected":"";
+      var booked=state.bookings[opt.name];
+      var bookHtml=booked?'<button class="opt-book-btn" style="background:var(--sage)" onclick="event.stopPropagation();openBooking(\''+esc(opt.name).replace(/'/g,"\\'")+'\',\''+esc(opt.meta).replace(/'/g,"\\'")+'\',\''+p[0]+'\')"><i class="fas fa-check-circle"></i> Reservado</button>':'<button class="opt-book-btn" onclick="event.stopPropagation();openBooking(\''+esc(opt.name).replace(/'/g,"\\'")+'\',\''+esc(opt.meta).replace(/'/g,"\\'")+'\',\''+p[0]+'\')"><i class="fas fa-calendar-check"></i> Reservar</button>';
+      h+='<div class="opt-card'+sel+'" data-opt="'+ok+'" onclick="toggleOpt(\''+fk+'\','+idx+')"><div class="opt-check"><i class="fas fa-check"></i></div><h4>'+esc(opt.name)+'</h4><div class="opt-meta">'+esc(opt.meta)+'</div><div class="opt-tags">'+opt.tags.map(function(t){return'<span class="opt-tag">'+esc(t)+'</span>'}).join("")+'</div>'+bookHtml+'</div>'});
+    h+='</div></div>'});
+  c.innerHTML=h;
+}
+function toggleOpt(fk,idx){
+  if(!state.selectedOpts[fk])state.selectedOpts[fk]={};
+  if(state.selectedOpts[fk][idx]){delete state.selectedOpts[fk][idx];if(!Object.keys(state.selectedOpts[fk]).length)delete state.selectedOpts[fk]}
+  else state.selectedOpts[fk][idx]=true;
+  document.querySelectorAll(".opt-card").forEach(function(c){var k=c.getAttribute("data-opt").split("."),f=k[0]+"."+k[1],o=parseInt(k[2],10);c.classList.toggle("selected",!!(state.selectedOpts[f]&&state.selectedOpts[f][o]))});
+  refreshSidebar();
+}
+
+/* ═══ PANEL 3 ═══ */
+function renderSummary(){
+  var c=document.getElementById("summaryContent"),h="",any=false;
+  Object.keys(state.selectedCats).forEach(function(ck){var cat=DATA[ck],rs=Object.keys(cat.subs).filter(function(sk){return state.selectedSubs[ck+"."+sk]});
+    if(!rs.length)return;
+    h+='<div class="summary-card"><div class="summary-card-header"><div class="summary-icon"><i class="'+cat.icon+'"></i></div><div><h3>'+esc(cat.label)+'</h3><span>'+rs.length+' sub'+(rs.length>1?"s":"")+'</span></div></div><div class="summary-items">';
+    rs.forEach(function(sk){var sub=cat.subs[sk],fk=ck+"."+sk,opts=state.selectedOpts[fk]||{},oi=Object.keys(opts);
+      if(oi.length>0){
+        oi.forEach(function(i){var opt=sub.options[parseInt(i,10)];var booked=state.bookings[opt.name];
+          var btnHtml=booked?'<button class="opt-book-btn" style="background:var(--sage)" onclick="openBooking(\''+esc(opt.name).replace(/'/g,"\\'")+'\',\''+esc(opt.meta).replace(/'/g,"\\'")+'\',\''+ck+'\')"><i class="fas fa-check-circle"></i> '+esc(booked.id)+'</button>':'<button class="opt-book-btn" onclick="openBooking(\''+esc(opt.name).replace(/'/g,"\\'")+'\',\''+esc(opt.meta).replace(/'/g,"\\'")+'\',\''+ck+'\')"><i class="fas fa-calendar-check"></i> Reservar</button>';
+          h+='<div class="summary-item"><div class="si-icon" style="background:'+cat.color+';color:'+cat.iconColor+'"><i class="fas fa-check"></i></div><div><div class="si-name">'+esc(opt.name)+'</div><div class="si-detail">'+esc(sub.label)+' \u00b7 '+esc(opt.meta)+'</div></div><div class="si-actions">'+btnHtml+'</div></div>';
+          any=true;
+        });
+      }else{
+        h+='<div class="summary-item"><div class="si-icon" style="background:'+cat.color+';color:'+cat.iconColor+'"><i class="fas fa-check"></i></div><div><div class="si-name">'+esc(sub.label)+'</div><div class="si-detail" style="font-style:italic">Sin opciones espec\u00edficas</div></div></div>';
+        any=true;
+      }
+    });
+    h+='</div></div>'});
+  if(!any)h='<div class="summary-empty"><i class="fas fa-inbox"></i><p>Sin selecciones</p></div>';
+  c.innerHTML=h;
+}
+
+function resetAll(){state={step:0,selectedCats:{},selectedSubs:{},selectedOpts:{},userLoc:state.userLoc,bookings:{}};updateCatUI();goToStep(0);showToast("Reiniciado")}
+
+if(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark");
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(e){if(e.matches)document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark")});
+
+initMap();renderCats();
+</script>
+</body>
+</html>
+

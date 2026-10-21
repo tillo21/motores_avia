@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Planificador Inteligente + Motor de Decisiones</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2d1b4e 100%);
+            color: #fff;
+            padding: 1.5rem;
+            min-height: 100vh;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+
+        /* Toast */
+        #toast-container {
+            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem; max-width: 350px;
+        }
+        .toast {
+            padding: 0.8rem 1.2rem; border-radius: 8px; font-size: 0.9rem;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+        }
+        .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+        .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        .toast.warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
+        @keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+        @keyframes fadeOut { to{opacity:0;transform:translateX(30px)} }
+
+        /* Header */
+        .header {
+            background: rgba(15,23,42,0.9); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+            border: 1px solid rgba(99,102,241,0.3);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.2);
+        }
+        .header h1 { 
+            font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem;
+            background: linear-gradient(90deg,#818cf8,#c084fc);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .status-badges {
+            display: flex; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap;
+        }
+        .badge {
+            font-size: 0.75rem; padding: 0.3rem 0.8rem; border-radius: 20px;
+            font-weight: 600; backdrop-filter: blur(10px);
+        }
+        .badge-scheduler { background: rgba(99,102,241,0.3); border: 1px solid #6366f1; }
+        .badge-decision { background: rgba(168,85,247,0.3); border: 1px solid #a855f7; }
+        .badge-active { background: rgba(16,185,129,0.3); border: 1px solid #10b981; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+        /* Layout */
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1.2fr 1fr; 
+            gap: 1.5rem; 
+            margin-bottom: 1.5rem;
+        }
+        .full-width { grid-column: 1 / -1; }
+        .card {
+            background: rgba(15,23,42,0.8); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card h2 { 
+            font-size: 1.2rem; margin-bottom: 1rem; 
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+
+        /* Task Queue */
+        .task-queue {
+            max-height: 500px; overflow-y: auto;
+        }
+        .task-item {
+            background: rgba(30,41,59,0.6); border-radius: 8px;
+            padding: 1rem; margin-bottom: 0.8rem;
+            border-left: 4px solid;
+            animation: taskIn 0.3s ease;
+            position: relative;
+        }
+        @keyframes taskIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:none} }
+        .task-item.critical { border-left-color: #ef4444; background: rgba(239,68,68,0.1); }
+        .task-item.high { border-left-color: #f59e0b; }
+        .task-item.medium { border-left-color: #3b82f6; }
+        .task-item.low { border-left-color: #64748b; }
+        .task-item.completed { opacity: 0.5; border-left-color: #10b981; }
+        .task-item.executing {
+            border-left-color: #8b5cf6;
+            box-shadow: 0 0 15px rgba(139,92,246,0.3);
+            animation: executing 1.5s infinite;
+        }
+        @keyframes executing {
+            0%,100% { box-shadow: 0 0 15px rgba(139,92,246,0.3); }
+            50% { box-shadow: 0 0 25px rgba(139,92,246,0.6); }
+        }
+        
+        .task-header {
+            display: flex; justify-content: space-between; align-items: start;
+            margin-bottom: 0.6rem;
+        }
+        .task-title { font-weight: 700; font-size: 1rem; flex: 1; }
+        .task-meta {
+            display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;
+        }
+        .task-priority {
+            font-size: 0.7rem; padding: 0.2rem 0.6rem;
+            border-radius: 10px; font-weight: 700; text-transform: uppercase;
+        }
+        .priority-critical { background: #ef4444; color: #fff; }
+        .priority-high { background: #f59e0b; color: #fff; }
+        .priority-medium { background: #3b82f6; color: #fff; }
+        .priority-low { background: #64748b; color: #fff; }
+        
+        .task-status {
+            font-size: 0.7rem; padding: 0.2rem 0.6rem;
+            border-radius: 10px; font-weight: 600;
+        }
+        .status-pending { background: rgba(100,116,139,0.3); color: #cbd5e1; }
+        .status-executing { background: rgba(139,92,246,0.3); color: #c4b5fd; }
+        .status-completed { background: rgba(16,185,129,0.3); color: #6ee7b7; }
+        .status-blocked { background: rgba(239,68,68,0.3); color: #fca5a5; }
+        
+        .task-body { font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.5rem; }
+        .task-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.75rem; opacity: 0.7; margin-top: 0.5rem;
+            padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .task-progress {
+            width: 100%; height: 4px; background: rgba(255,255,255,0.1);
+            border-radius: 2px; margin-top: 0.5rem; overflow: hidden;
+        }
+        .task-progress-bar {
+            height: 100%; background: linear-gradient(90deg,#6366f1,#8b5cf6);
+            transition: width 0.3s ease;
+        }
+
+        /* Decision Tree Visualization */
+        #decision-canvas {
+            width: 100%; height: 400px; background: rgba(10,14,39,0.6);
+            border-radius: 8px; border: 1px solid rgba(99,102,241,0.2);
+        }
+
+        /* Decision Log */
+        .decision-log {
+            max-height: 350px; overflow-y: auto;
+            background: rgba(10,14,39,0.6); border-radius: 8px;
+            padding: 1rem; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .decision-item {
+            background: rgba(30,41,59,0.6); border-radius: 8px;
+            padding: 0.8rem; margin-bottom: 0.6rem;
+            border-left: 3px solid #a855f7;
+            animation: decisionIn 0.3s ease;
+        }
+        @keyframes decisionIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:none} }
+        .decision-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.4rem;
+        }
+        .decision-title { font-weight: 600; font-size: 0.9rem; }
+        .decision-score {
+            font-size: 0.75rem; padding: 0.2rem 0.5rem;
+            background: rgba(168,85,247,0.3); border-radius: 10px;
+        }
+        .decision-body { font-size: 0.85rem; opacity: 0.85; }
+        .decision-factors {
+            display: flex; gap: 0.4rem; margin-top: 0.4rem; flex-wrap: wrap;
+        }
+        .factor-tag {
+            font-size: 0.7rem; padding: 0.15rem 0.5rem;
+            background: rgba(99,102,241,0.2); border-radius: 8px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+        .stat-card {
+            background: rgba(30,41,59,0.6); padding: 1rem; border-radius: 8px;
+            text-align: center; border: 1px solid rgba(99,102,241,0.2);
+        }
+        .stat-value {
+            font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(90deg,#60a5fa,#a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.8rem; opacity: 0.7; margin-top: 0.3rem; }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; }
+        .btn {
+            padding: 0.6rem 1rem; border-radius: 6px; border: none;
+            cursor: pointer; font-weight: 600; transition: all 0.2s;
+            font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+        .btn-success { background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        .btn-danger  { background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        .btn-warning { background: linear-gradient(135deg,#f59e0b,#d97706); color: #fff; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* Resource monitor */
+        .resource-bars {
+            display: grid; gap: 0.8rem; margin-top: 1rem;
+        }
+        .resource-item {
+            background: rgba(30,41,59,0.6); padding: 0.8rem;
+            border-radius: 8px;
+        }
+        .resource-label {
+            display: flex; justify-content: space-between;
+            font-size: 0.85rem; margin-bottom: 0.4rem;
+        }
+        .resource-bar {
+            width: 100%; height: 8px; background: rgba(255,255,255,0.1);
+            border-radius: 4px; overflow: hidden;
+        }
+        .resource-fill {
+            height: 100%; transition: width 0.3s ease, background 0.3s ease;
+        }
+        .resource-ok { background: linear-gradient(90deg,#10b981,#059669); }
+        .resource-warning { background: linear-gradient(90deg,#f59e0b,#d97706); }
+        .resource-critical { background: linear-gradient(90deg,#ef4444,#dc2626); }
+
+        @media(max-width:1200px) {
+            .grid { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="container">
+
+    <div class="header">
+        <h1>🧠 AVIA - Planificador Inteligente + Motor de Decisiones</h1>
+        <div class="status-badges">
+            <span class="badge badge-scheduler">📋 Scheduler v2.0</span>
+            <span class="badge badge-decision">🎯 Decision Engine</span>
+            <span class="badge badge-active" id="engineStatus">🟢 ACTIVO</span>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Task Queue -->
+        <div class="card">
+            <h2>📋 Cola de Tareas Priorizada (<span id="taskCount">0</span>)</h2>
+            <div class="task-queue" id="taskQueue"></div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="Planner.addRandomTask()">➕ Tarea aleatoria</button>
+                <button class="btn btn-warning" onclick="Planner.addBatch()">⚡ Batch (5 tareas)</button>
+                <button class="btn btn-danger" onclick="Planner.clearCompleted()">🗑️ Limpiar completadas</button>
+            </div>
+        </div>
+
+        <!-- Decision Log -->
+        <div class="card">
+            <h2>🎯 Registro de Decisiones (<span id="decisionCount">0</span>)</h2>
+            <div class="decision-log" id="decisionLog"></div>
+        </div>
+    </div>
+
+    <!-- Decision Tree Visualization -->
+    <div class="card">
+        <h2>🌳 Árbol de Decisiones en Tiempo Real</h2>
+        <canvas id="decision-canvas"></canvas>
+    </div>
+
+    <!-- Resource Monitor -->
+    <div class="card">
+        <h2>💾 Monitor de Recursos</h2>
+        <div class="resource-bars">
+            <div class="resource-item">
+                <div class="resource-label">
+                    <span>🔧 CPU Virtual</span>
+                    <span id="cpuValue">0%</span>
+                </div>
+                <div class="resource-bar">
+                    <div class="resource-fill resource-ok" id="cpuBar" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="resource-item">
+                <div class="resource-label">
+                    <span>💾 Memoria RAM</span>
+                    <span id="memValue">0%</span>
+                </div>
+                <div class="resource-bar">
+                    <div class="resource-fill resource-ok" id="memBar" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="resource-item">
+                <div class="resource-label">
+                    <span>⚡ Capacidad de Procesamiento</span>
+                    <span id="throughputValue">0%</span>
+                </div>
+                <div class="resource-bar">
+                    <div class="resource-fill resource-ok" id="throughputBar" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+        <h2>📊 Estadísticas del Sistema</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Tareas totales</div></div>
+            <div class="stat-card"><div class="stat-value" id="statPending">0</div><div class="stat-label">Pendientes</div></div>
+            <div class="stat-card"><div class="stat-value" id="statExecuting">0</div><div class="stat-label">En ejecución</div></div>
+            <div class="stat-card"><div class="stat-value" id="statCompleted">0</div><div class="stat-label">Completadas</div></div>
+            <div class="stat-card"><div class="stat-value" id="statDecisions">0</div><div class="stat-label">Decisiones</div></div>
+            <div class="stat-card"><div class="stat-value" id="statAvgTime">0ms</div><div class="stat-label">Tiempo promedio</div></div>
+        </div>
+    </div>
+
+    <!-- System Controls -->
+    <div class="card">
+        <h2>⚙️ Control del Sistema</h2>
+        <div class="controls">
+            <button class="btn btn-success" onclick="Planner.start()" id="btnStart">▶️ Iniciar</button>
+            <button class="btn btn-warning" onclick="Planner.pause()" id="btnPause" disabled>⏸️ Pausar</button>
+            <button class="btn btn-primary" onclick="Planner.makeDecision()">🎯 Decisión manual</button>
+            <button class="btn btn-warning" onclick="Planner.stressTest()">🔥 Stress test</button>
+            <button class="btn btn-danger" onclick="Planner.reset()">🔄 Reset completo</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   AVIA Intelligent Task Planner + Decision Engine
+   - Priority-based scheduling (critical/high/medium/low)
+   - Autonomous decision tree with weighted factors
+   - Resource-aware execution
+   - Real-time visual feedback
+══════════════════════════════════════════════════════════ */
+
+function toast(msg, type='info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+}
+
+class IntelligentPlanner {
+    constructor() {
+        this.tasks = [];
+        this.decisions = [];
+        this.taskIdCounter = 1;
+        this.decisionIdCounter = 1;
+        this.running = false;
+        
+        this.stats = {
+            total: 0,
+            pending: 0,
+            executing: 0,
+            completed: 0,
+            executionTimes: []
+        };
+
+        this.resources = {
+            cpu: 0,
+            memory: 0,
+            throughput: 0
+        };
+
+        this.decisionFactors = {
+            priority: 0.4,
+            age: 0.2,
+            dependencies: 0.15,
+            resourceCost: 0.15,
+            agentLoad: 0.1
+        };
+
+        this.canvas = document.getElementById('decision-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.decisionTree = [];
+
+        this._init();
+    }
+
+    _init() {
+        this._resizeCanvas();
+        window.addEventListener('resize', () => this._resizeCanvas());
+        this._startResourceMonitor();
+        this._startAnimationLoop();
+        
+        // Tareas iniciales
+        setTimeout(() => {
+            this.addTask('Inicialización del sistema', 'high', 'Orquestador');
+            this.addTask('Validación de configuración', 'medium', 'Validador');
+            this.addTask('Monitoreo de métricas', 'low', 'Monitor');
+        }, 500);
+    }
+
+    _resizeCanvas() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width * window.devicePixelRatio;
+        this.canvas.height = rect.height * window.devicePixelRatio;
+        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        this.canvasWidth = rect.width;
+        this.canvasHeight = rect.height;
+    }
+
+    // ═══ TASK MANAGEMENT ═══
+    addTask(description, priority='medium', assignedTo='Auto', dependencies=[]) {
+        const priorityValues = { critical: 4, high: 3, medium: 2, low: 1 };
+        
+        const task = {
+            id: this.taskIdCounter++,
+            description,
+            priority,
+            priorityValue: priorityValues[priority],
+            assignedTo,
+            dependencies,
+            status: 'pending',
+            progress: 0,
+            createdAt: Date.now(),
+            estimatedDuration: Math.floor(Math.random() * 3000) + 1000,
+            executionStart: null,
+            executionEnd: null
+        };
+
+        this.tasks.push(task);
+        this.stats.total++;
+        this.stats.pending++;
+        
+        this._sortTasks();
+        this._render();
+        
+        // Auto-decisión para asignar
+        if (assignedTo === 'Auto') {
+            this.makeDecision(task);
+        }
+
+        return task;
+    }
+
+    addRandomTask() {
+        const descriptions = [
+            'Análisis de datos históricos',
+            'Optimización de algoritmos',
+            'Generación de informe',
+            'Validación de integridad',
+            'Sincronización de estados',
+            'Procesamiento batch',
+            'Limpieza de cache',
+            'Backup incremental',
+            'Actualización de índices',
+            'Compilación de métricas'
+        ];
+        const priorities = ['critical', 'high', 'high', 'medium', 'medium', 'low'];
+        const agents = ['Orquestador', 'Validador', 'Analítico', 'Monitor', 'Creativo', 'Corrector'];
+        
+        const desc = descriptions[Math.floor(Math.random() * descriptions.length)];
+        const priority = priorities[Math.floor(Math.random() * priorities.length)];
+        const agent = agents[Math.floor(Math.random() * agents.length)];
+        
+        this.addTask(desc, priority, agent);
+        toast(`➕ Nueva tarea: ${priority.toUpperCase()}`, 'info');
+    }
+
+    addBatch() {
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => this.addRandomTask(), i * 200);
+        }
+        toast('⚡ Batch de 5 tareas agregadas', 'success');
+    }
+
+    _sortTasks() {
+        this.tasks.sort((a, b) => {
+            if (a.status === 'executing') return -1;
+            if (b.status === 'executing') return 1;
+            if (a.status === 'completed' && b.status !== 'completed') return 1;
+            if (b.status === 'completed' && a.status !== 'completed') return -1;
+            
+            // Por prioridad primero
+            if (a.priorityValue !== b.priorityValue) {
+                return b.priorityValue - a.priorityValue;
+            }
+            
+            // Por edad (más antiguas primero)
+            return a.createdAt - b.createdAt;
+        });
+    }
+
+    // ═══ EXECUTION ENGINE ═══
+    start() {
+        if (this.running) return;
+        this.running = true;
+        document.getElementById('btnStart').disabled = true;
+        document.getElementById('btnPause').disabled = false;
+        document.getElementById('engineStatus').textContent = '🟢 EJECUTANDO';
+        toast('▶️ Motor de ejecución iniciado', 'success');
+        this._executionLoop();
+    }
+
+    pause() {
+        this.running = false;
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnPause').disabled = true;
+        document.getElementById('engineStatus').textContent = '🟡 PAUSADO';
+        toast('⏸️ Ejecución pausada', 'warning');
+    }
+
+    _executionLoop() {
+        if (!this.running) return;
+
+        const pending = this.tasks.filter(t => t.status === 'pending');
+        const executing = this.tasks.filter(t => t.status === 'executing');
+        
+        // Límite de tareas concurrentes basado en recursos
+        const maxConcurrent = Math.max(1, Math.floor(5 - (this.resources.cpu / 20)));
+        
+        if (executing.length < maxConcurrent && pending.length > 0) {
+            const task = pending[0];
+            this._executeTask(task);
+        }
+
+        setTimeout(() => this._executionLoop(), 500);
+    }
+
+    _executeTask(task) {
+        task.status = 'executing';
+        task.executionStart = Date.now();
+        this.stats.pending--;
+        this.stats.executing++;
+        
+        // Simular carga de recursos
+        this.resources.cpu = Math.min(100, this.resources.cpu + 15);
+        this.resources.memory = Math.min(100, this.resources.memory + 10);
+        
+        this._render();
+        toast(`🔄 Ejecutando: ${task.description}`, 'info');
+
+        const duration = task.estimatedDuration;
+        const progressInterval = setInterval(() => {
+            if (task.status !== 'executing') {
+                clearInterval(progressInterval);
+                return;
+            }
+            task.progress = Math.min(100, task.progress + (100 / (duration / 100)));
+            this._render();
+        }, 100);
+
+        setTimeout(() => {
+            clearInterval(progressInterval);
+            task.status = 'completed';
+            task.progress = 100;
+            task.executionEnd = Date.now();
+            
+            const execTime = task.executionEnd - task.executionStart;
+            this.stats.executionTimes.push(execTime);
+            if (this.stats.executionTimes.length > 50) this.stats.executionTimes.shift();
+            
+            this.stats.executing--;
+            this.stats.completed++;
+            
+            this.resources.cpu = Math.max(0, this.resources.cpu - 15);
+            this.resources.memory = Math.max(0, this.resources.memory - 10);
+            
+            this._sortTasks();
+            this._render();
+            toast(`✅ Completada: ${task.description}`, 'success');
+        }, duration);
+    }
+
+    // ═══ DECISION ENGINE ═══
+    makeDecision(task = null) {
+        const context = task || this.tasks.find(t => t.status === 'pending' && t.assignedTo === 'Auto');
+        if (!context) {
+            toast('❌ No hay tareas pendientes', 'error');
+            return;
+        }
+
+        const agents = ['Orquestador', 'Validador', 'Analítico', 'Monitor', 'Creativo', 'Corrector'];
+        const scores = agents.map(agent => {
+            const score = this._calculateAgentScore(context, agent);
+            return { agent, score };
+        });
+
+        scores.sort((a, b) => b.score - a.score);
+        const best = scores[0];
+
+        const decision = {
+            id: this.decisionIdCounter++,
+            timestamp: Date.now(),
+            context: `Asignar tarea #${context.id}`,
+            options: scores.map(s => `${s.agent} (${s.score.toFixed(2)})`),
+            selected: best.agent,
+            confidence: best.score,
+            factors: Object.entries(this.decisionFactors).map(([k, v]) => 
+                `${k}: ${(v*100).toFixed(0)}%`
+            )
+        };
+
+        this.decisions.unshift(decision);
+        if (this.decisions.length > 20) this.decisions.pop();
+        this.stats.decisions = this.decisions.length;
+
+        if (context.assignedTo === 'Auto') {
+            context.assignedTo = best.agent;
+        }
+
+        this.decisionTree.push({
+            x: Math.random() * (this.canvasWidth - 100) + 50,
+            y: Math.random() * (this.canvasHeight - 100) + 50,
+            confidence: best.score,
+            timestamp: Date.now()
+        });
+        if (this.decisionTree.length > 15) this.decisionTree.shift();
+
+        this._render();
+        toast(`🎯 Decisión: Asignar a ${best.agent}`, 'success');
+        return decision;
+    }
+
+    _calculateAgentScore(task, agent) {
+        // Simulación de scoring multi-factor
+        let score = 0;
+
+        // Factor prioridad
+        score += this.decisionFactors.priority * (task.priorityValue / 4);
+
+        // Factor edad de tarea
+        const age = (Date.now() - task.createdAt) / 10000;
+        score += this.decisionFactors.age * Math.min(1, age);
+
+        // Factor especialización del agente
+        const agentSpecialty = {
+            'Orquestador': ['coordinación', 'priorización'],
+            'Validador': ['validación', 'integridad'],
+            'Analítico': ['análisis', 'optimización'],
+            'Monitor': ['monitoreo', 'métricas'],
+            'Creativo': ['generación', 'innovación'],
+            'Corrector': ['corrección', 'reparación']
+        };
+        
+        const taskType = task.description.toLowerCase();
+        const specialty = agentSpecialty[agent] || [];
+        const matchScore = specialty.some(s => taskType.includes(s)) ? 1 : 0.5;
+        score += this.decisionFactors.dependencies * matchScore;
+
+        // Factor carga de recursos
+        const resourceScore = 1 - (this.resources.cpu / 100);
+        score += this.decisionFactors.resourceCost * resourceScore;
+
+        // Factor carga del agente
+        const agentLoad = this.tasks.filter(t => 
+            t.assignedTo === agent && (t.status === 'executing' || t.status === 'pending')
+        ).length;
+        const loadScore = Math.max(0, 1 - (agentLoad / 5));
+        score += this.decisionFactors.agentLoad * loadScore;
+
+        return Math.min(1, Math.max(0, score + (Math.random() * 0.1 - 0.05)));
+    }
+
+    // ═══ UTILITIES ═══
+    clearCompleted() {
+        const before = this.tasks.length;
+        this.tasks = this.tasks.filter(t => t.status !== 'completed');
+        const removed = before - this.tasks.length;
+        this.stats.completed = Math.max(0, this.stats.completed - removed);
+        this._render();
+        toast(`🗑️ ${removed} tareas completadas eliminadas`, 'info');
+    }
+
+    stressTest() {
+        for (let i = 0; i < 15; i++) {
+            setTimeout(() => this.addRandomTask(), i * 150);
+        }
+        toast('🔥 Stress test: 15 tareas', 'warning');
+        if (!this.running) {
+            setTimeout(() => this.start(), 500);
+        }
+    }
+
+    reset() {
+        this.pause();
+        this.tasks = [];
+        this.decisions = [];
+        this.decisionTree = [];
+        this.taskIdCounter = 1;
+        this.decisionIdCounter = 1;
+        this.stats = { total: 0, pending: 0, executing: 0, completed: 0, executionTimes: [] };
+        this.resources = { cpu: 0, memory: 0, throughput: 0 };
+        this._render();
+        toast('🔄 Sistema reseteado', 'info');
+    }
+
+    // ═══ RENDERING ═══
+    _render() {
+        this._renderTasks();
+        this._renderDecisions();
+        this._renderStats();
+    }
+
+    _renderTasks() {
+        const el = document.getElementById('taskQueue');
+        document.getElementById('taskCount').textContent = this.tasks.length;
+        
+        el.innerHTML = this.tasks.map(t => `
+            <div class="task-item ${t.priority} ${t.status}">
+                <div class="task-header">
+                    <div class="task-title">${t.description}</div>
+                    <div class="task-meta">
+                        <span class="task-priority priority-${t.priority}">${t.priority}</span>
+                        <span class="task-status status-${t.status}">${t.status}</span>
+                    </div>
+                </div>
+                <div class="task-body">
+                    👤 ${t.assignedTo} · ⏱️ ~${(t.estimatedDuration/1000).toFixed(1)}s
+                </div>
+                ${t.status === 'executing' ? `
+                    <div class="task-progress">
+                        <div class="task-progress-bar" style="width:${t.progress}%"></div>
+                    </div>
+                ` : ''}
+                <div class="task-footer">
+                    <span>#${t.id}</span>
+                    <span>${new Date(t.createdAt).toLocaleTimeString()}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    _renderDecisions() {
+        const el = document.getElementById('decisionLog');
+        document.getElementById('decisionCount').textContent = this.decisions.length;
+        
+        el.innerHTML = this.decisions.map(d => `
+            <div class="decision-item">
+                <div class="decision-header">
+                    <span class="decision-title">${d.context}</span>
+                    <span class="decision-score">⭐ ${(d.confidence*100).toFixed(0)}%</span>
+                </div>
+                <div class="decision-body">
+                    ✅ Seleccionado: <strong>${d.selected}</strong>
+                </div>
+                <div class="decision-factors">
+                    ${d.factors.map(f => `<span class="factor-tag">${f}</span>`).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    _renderStats() {
+        document.getElementById('statTotal').textContent = this.stats.total;
+        document.getElementById('statPending').textContent = this.stats.pending;
+        document.getElementById('statExecuting').textContent = this.stats.executing;
+        document.getElementById('statCompleted').textContent = this.stats.completed;
+        document.getElementById('statDecisions').textContent = this.stats.decisions;
+        
+        const avgTime = this.stats.executionTimes.length > 0
+            ? Math.round(this.stats.executionTimes.reduce((a,b)=>a+b,0) / this.stats.executionTimes.length)
+            : 0;
+        document.getElementById('statAvgTime').textContent = `${avgTime}ms`;
+    }
+
+    // ═══ RESOURCE MONITORING ═══
+    _startResourceMonitor() {
+        setInterval(() => {
+            // Decaimiento natural de recursos
+            this.resources.cpu = Math.max(0, this.resources.cpu - 2);
+            this.resources.memory = Math.max(0, this.resources.memory - 1);
+            
+            // Throughput basado en tareas completadas
+            const recentTasks = this.tasks.filter(t => 
+                t.status === 'completed' && Date.now() - t.executionEnd < 5000
+            ).length;
+            this.resources.throughput = Math.min(100, recentTasks * 20);
+
+            this._updateResourceBars();
+        }, 500);
+    }
+
+    _updateResourceBars() {
+        const updateBar = (id, value, valueId) => {
+            const bar = document.getElementById(id);
+            const val = document.getElementById(valueId);
+            bar.style.width = `${value}%`;
+            val.textContent = `${Math.round(value)}%`;
+            
+            bar.className = 'resource-fill';
+            if (value < 60) bar.classList.add('resource-ok');
+            else if (value < 85) bar.classList.add('resource-warning');
+            else bar.classList.add('resource-critical');
+        };
+
+        updateBar('cpuBar', this.resources.cpu, 'cpuValue');
+        updateBar('memBar', this.resources.memory, 'memValue');
+        updateBar('throughputBar', this.resources.throughput, 'throughputValue');
+    }
+
+    // ═══ CANVAS ANIMATION ═══
+    _startAnimationLoop() {
+        const animate = () => {
+            this._drawDecisionTree();
+            requestAnimationFrame(animate);
+        };
+        animate();
+    }
+
+    _drawDecisionTree() {
+        const ctx = this.ctx;
+        const w = this.canvasWidth;
+        const h = this.canvasHeight;
+
+        ctx.fillStyle = 'rgba(10,14,39,0.3)';
+        ctx.fillRect(0, 0, w, h);
+
+        // Conexiones entre nodos
+        ctx.strokeStyle = 'rgba(168,85,247,0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < this.decisionTree.length; i++) {
+            const prev = this.decisionTree[i-1];
+            const curr = this.decisionTree[i];
+            ctx.beginPath();
+            ctx.moveTo(prev.x, prev.y);
+            ctx.lineTo(curr.x, curr.y);
+            ctx.stroke();
+        }
+
+        // Nodos de decisión
+        this.decisionTree.forEach((node, i) => {
+            const age = Date.now() - node.timestamp;
+            const opacity = Math.max(0.3, 1 - (age / 10000));
+            
+            ctx.shadowColor = `rgba(168,85,247,${opacity})`;
+            ctx.shadowBlur = 15 * node.confidence;
+            
+            const size = 6 + (node.confidence * 8);
+            ctx.fillStyle = `rgba(168,85,247,${opacity})`;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            
+            // Label para nodos recientes
+            if (i === this.decisionTree.length - 1) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${(node.confidence*100).toFixed(0)}%`, node.x, node.y - 15);
+            }
+        });
+    }
+}
+
+// ═══ INICIALIZACIÓN ═══
+const Planner = new IntelligentPlanner();
+</script>
+</body>
+</html>

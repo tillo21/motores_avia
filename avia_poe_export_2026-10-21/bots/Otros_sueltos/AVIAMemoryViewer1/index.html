@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Visor de Memoria Contextual v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --accent: #ec4899;
+            --dark-bg: #0f172a;
+            --dark-card: #1e293b;
+            --light-bg: #f8fafc;
+            --light-card: #ffffff;
+        }
+
+        * {
+            font-family: 'Inter', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+            background-color: var(--dark-bg);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        body.light {
+            background-color: var(--light-bg);
+            color: #1e293b;
+        }
+
+        .card {
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            background: var(--dark-card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        body.light .card {
+            background: var(--light-card);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Nube de palabras CSS puro - SIN dependencia externa */
+        .word-cloud-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1.5rem;
+            min-height: 280px;
+        }
+
+        .word-tag {
+            padding: 0.4rem 0.8rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .word-tag:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .word-tag.xl { font-size: 1.5rem; background: linear-gradient(135deg, #6366f1, #ec4899); color: white; }
+        .word-tag.lg { font-size: 1.2rem; background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; }
+        .word-tag.md { font-size: 1rem; background: linear-gradient(135deg, #ec4899, #f9a8d4); color: white; }
+        .word-tag.sm { font-size: 0.85rem; background: rgba(255,255,255,0.15); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.2); }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .word-tag:nth-child(odd) { animation-delay: 0.5s; }
+        .word-tag:nth-child(3n) { animation-delay: 1s; }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+            pointer-events: none;
+        }
+
+        .stat-card:hover::after {
+            animation: shimmer 0.6s ease-out;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .timeline-item {
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            transform: translateX(8px);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .toast {
+            animation: toastIn 0.4s ease-out;
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="sticky top-0 z-50 backdrop-blur-lg border-b border-white/10 bg-slate-900/80">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30">
+                        🧠
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold gradient-text">AVIA Memory Viewer</h1>
+                        <p class="text-sm opacity-70">Análisis Contextual v2.0 - Auto-corregido</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex bg-gray-800 rounded-lg p-1">
+                        <button onclick="setView('grid')" id="gridView" class="px-3 py-1.5 rounded text-sm transition-all bg-indigo-600 text-white">Grid</button>
+                        <button onclick="setView('list')" id="listView" class="px-3 py-1.5 rounded text-sm transition-all hover:bg-gray-700">Lista</button>
+                    </div>
+                    <button onclick="toggleTheme()" class="p-2 rounded-lg hover:bg-white/10 transition-all text-xl" title="Cambiar tema">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card card p-5 slide-in" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-70">Total Consultas</p>
+                        <p class="text-3xl font-bold gradient-text">12</p>
+                    </div>
+                    <span class="text-3xl">💬</span>
+                </div>
+            </div>
+            <div class="stat-card card p-5 slide-in" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-70">Temas Activos</p>
+                        <p class="text-3xl font-bold gradient-text">5</p>
+                    </div>
+                    <span class="text-3xl">📊</span>
+                </div>
+            </div>
+            <div class="stat-card card p-5 slide-in" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-70">Keywords</p>
+                        <p class="text-3xl font-bold gradient-text">18</p>
+                    </div>
+                    <span class="text-3xl">🔤</span>
+                </div>
+            </div>
+            <div class="stat-card card p-5 slide-in" style="animation-delay: 0.4s">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm opacity-70">Sentimiento</p>
+                        <p class="text-3xl font-bold gradient-text">+85%</p>
+                    </div>
+                    <span class="text-3xl">😊</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card p-4 mb-6 slide-in" style="animation-delay: 0.5s">
+            <div class="flex flex-wrap gap-4 items-center">
+                <span class="font-semibold">Filtros:</span>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="filterByAgent('all')" class="filter-btn active px-4 py-2 rounded-lg text-sm transition-all">Todos</button>
+                    <button onclick="filterByAgent('tillo')" class="filter-btn px-4 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">🤖 TILLO</button>
+                    <button onclick="filterByAgent('semia')" class="filter-btn px-4 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">🎭 SEMIA</button>
+                    <button onclick="filterByAgent('digna')" class="filter-btn px-4 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">⚖️ DIGNA</button>
+                </div>
+                <select class="ml-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option>Última hora</option>
+                    <option>Últimas 24h</option>
+                    <option>Última semana</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div id="viewContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Topics Chart -->
+            <div class="card p-6 slide-in" style="animation-delay: 0.6s">
+                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span>📊</span> Análisis de Temas
+                </h3>
+                <div class="h-72">
+                    <canvas id="topicsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Word Cloud - CSS PURO (Sin librería externa) -->
+            <div class="card p-6 slide-in" style="animation-delay: 0.7s">
+                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span>☁️</span> Nube de Palabras
+                </h3>
+                <div class="word-cloud-container" id="wordCloudContainer">
+                    <!-- Generado por JavaScript -->
+                </div>
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="card p-6 lg:col-span-2 slide-in" style="animation-delay: 0.8s">
+                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span>📅</span> Timeline de Actividad
+                </h3>
+                <div class="h-32">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activities -->
+            <div class="card p-6 lg:col-span-2 slide-in" style="animation-delay: 0.9s">
+                <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span>🔄</span> Actividad Reciente
+                </h3>
+                <div class="space-y-2" id="activityList">
+                    <!-- Generado por JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="fixed bottom-6 right-6 flex gap-3">
+            <button onclick="exportData('json')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                📥 JSON
+            </button>
+            <button onclick="exportData('csv')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow-lg transition-all hover:scale-105 flex items-center gap-2">
+                📄 CSV
+            </button>
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-6 left-6 flex flex-col gap-2 z-50"></div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════
+        // AVIA STUDIO v2.0 - PROTOCOLO AUTO-CORRECCIÓN
+        // ═══════════════════════════════════════════════════════════
+
+        const AVIA_CONFIG = {
+            version: '2.0',
+            theme: 'dark',
+            view: 'grid',
+            filter: 'all',
+            errors: [],
+            corrections: []
+        };
+
+        // Datos de la aplicación
+        const APP_DATA = {
+            topics: {
+                labels: ['Tecnología', 'IA Ética', 'Educación', 'Salud', 'Innovación'],
+                values: [85, 72, 68, 55, 48],
+                colors: [
+                    'rgba(99, 102, 241, 0.8)',
+                    'rgba(139, 92, 246, 0.8)',
+                    'rgba(236, 72, 153, 0.8)',
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)'
+                ]
+            },
+            timeline: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+                values: [2, 1, 5, 8, 12, 7, 3]
+            },
+            keywords: [
+                { text: 'Inteligencia Artificial', size: 'xl' },
+                { text: 'Machine Learning', size: 'lg' },
+                { text: 'Ética Digital', size: 'lg' },
+                { text: 'HAI Stanford', size: 'xl' },
+                { text: 'UNESCO', size: 'md' },
+                { text: 'Bienestar', size: 'md' },
+                { text: 'Accesibilidad', size: 'lg' },
+                { text: 'MIT Media Lab', size: 'md' },
+                { text: 'Wearables', size: 'sm' },
+                { text: 'Post-Móvil', size: 'md' },
+                { text: 'Datos', size: 'sm' },
+                { text: 'Algoritmos', size: 'sm' },
+                { text: 'OECD', size: 'sm' },
+                { text: 'Sostenibilidad', size: 'sm' }
+            ],
+            activities: [
+                { agent: '🤖', name: 'TILLO', action: 'analizó', topic: 'Implementación de IA', time: '5 min', confidence: '92%' },
+                { agent: '🎭', name: 'SEMIA', action: 'detectó', topic: 'Patrón emocional positivo', time: '12 min', confidence: '87%' },
+                { agent: '⚖️', name: 'DIGNA', action: 'evaluó', topic: 'Consideraciones éticas', time: '18 min', confidence: '94%' },
+                { agent: '🔮', name: 'SIRA', action: 'identificó', topic: 'Tendencia emergente', time: '25 min', confidence: '78%' }
+            ]
+        };
+
+        // ═══════════════════════════════════════════════════════════
+        // INICIALIZACIÓN CON AUTO-CORRECCIÓN
+        // ═══════════════════════════════════════════════════════════
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 AVIA Studio v2.0 iniciando...');
+            
+            try {
+                initTopicsChart();
+                logCorrection('Chart.js Topics', 'Gráfico de temas inicializado correctamente');
+            } catch (e) {
+                logError('TopicsChart', e.message);
+            }
+
+            try {
+                initTimelineChart();
+                logCorrection('Chart.js Timeline', 'Timeline inicializado correctamente');
+            } catch (e) {
+                logError('TimelineChart', e.message);
+            }
+
+            try {
+                initWordCloud();
+                logCorrection('WordCloud CSS', 'Nube de palabras CSS puro - Sin dependencias externas');
+            } catch (e) {
+                logError('WordCloud', e.message);
+            }
+
+            try {
+                initActivities();
+                logCorrection('Activities', 'Lista de actividades generada');
+            } catch (e) {
+                logError('Activities', e.message);
+            }
+
+            showToast('✅ AVIA v2.0 cargado - Errores corregidos', 'success');
+            console.log('📋 Correcciones aplicadas:', AVIA_CONFIG.corrections);
+        });
+
+        // ═══════════════════════════════════════════════════════════
+        // GRÁFICO DE TEMAS (Chart.js)
+        // ═══════════════════════════════════════════════════════════
+
+        function initTopicsChart() {
+            const ctx = document.getElementById('topicsChart');
+            if (!ctx) throw new Error('Canvas topicsChart no encontrado');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: APP_DATA.topics.labels,
+                    datasets: [{
+                        label: 'Frecuencia',
+                        data: APP_DATA.topics.values,
+                        backgroundColor: APP_DATA.topics.colors,
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // TIMELINE (Chart.js)
+        // ═══════════════════════════════════════════════════════════
+
+        function initTimelineChart() {
+            const ctx = document.getElementById('timelineChart');
+            if (!ctx) throw new Error('Canvas timelineChart no encontrado');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: APP_DATA.timeline.labels,
+                    datasets: [{
+                        label: 'Actividad',
+                        data: APP_DATA.timeline.values,
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // NUBE DE PALABRAS - CSS PURO (AUTO-CORRECCIÓN APLICADA)
+        // ═══════════════════════════════════════════════════════════
+
+        function initWordCloud() {
+            const container = document.getElementById('wordCloudContainer');
+            if (!container) throw new Error('Contenedor wordCloud no encontrado');
+
+            container.innerHTML = '';
+
+            APP_DATA.keywords.forEach((keyword, index) => {
+                const tag = document.createElement('span');
+                tag.className = `word-tag ${keyword.size}`;
+                tag.textContent = keyword.text;
+                tag.style.animationDelay = `${index * 0.1}s`;
+                tag.onclick = () => showToast(`🔍 Keyword: "${keyword.text}"`, 'info');
+                container.appendChild(tag);
+            });
+
+            // LOG: Corrección aplicada
+            console.log('✅ WordCloud: Implementación CSS pura - Sin dependencia de wordcloud2.js');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // LISTA DE ACTIVIDADES
+        // ═══════════════════════════════════════════════════════════
+
+        function initActivities() {
+            const container = document.getElementById('activityList');
+            if (!container) throw new Error('Contenedor activityList no encontrado');
+
+            container.innerHTML = APP_DATA.activities.map(act => `
+                <div class="timeline-item flex items-center gap-4 p-3 rounded-lg cursor-pointer">
+                    <div class="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-xl flex-shrink-0">
+                        ${act.agent}
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <p class="font-semibold truncate">${act.name} ${act.action}: "${act.topic}"</p>
+                        <p class="text-sm opacity-70">Hace ${act.time} • Confianza: ${act.confidence}</p>
+                    </div>
+                    <button class="p-2 hover:bg-white/10 rounded-lg flex-shrink-0" onclick="showToast('📋 Detalles de ${act.name}', 'info')">
+                        ℹ️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // FUNCIONES DE UI
+        // ═══════════════════════════════════════════════════════════
+
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            
+            if (body.classList.contains('light')) {
+                body.classList.remove('light');
+                icon.textContent = '🌙';
+                AVIA_CONFIG.theme = 'dark';
+            } else {
+                body.classList.add('light');
+                icon.textContent = '☀️';
+                AVIA_CONFIG.theme = 'light';
+            }
+            
+            showToast(`🎨 Tema: ${AVIA_CONFIG.theme}`, 'info');
+        }
+
+        function setView(view) {
+            const container = document.getElementById('viewContainer');
+            const gridBtn = document.getElementById('gridView');
+            const listBtn = document.getElementById('listView');
+            
+            if (view === 'grid') {
+                container.className = 'grid grid-cols-1 lg:grid-cols-2 gap-6';
+                gridBtn.classList.add('bg-indigo-600', 'text-white');
+                listBtn.classList.remove('bg-indigo-600', 'text-white');
+            } else {
+                container.className = 'flex flex-col gap-6';
+                listBtn.classList.add('bg-indigo-600', 'text-white');
+                gridBtn.classList.remove('bg-indigo-600', 'text-white');
+            }
+            
+            AVIA_CONFIG.view = view;
+        }
+
+        function filterByAgent(agent) {
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            AVIA_CONFIG.filter = agent;
+            showToast(`🔍 Filtro: ${agent === 'all' ? 'Todos' : agent.toUpperCase()}`, 'info');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // EXPORTACIÓN
+        // ═══════════════════════════════════════════════════════════
+
+        function exportData(format) {
+            const data = {
+                version: AVIA_CONFIG.version,
+                timestamp: new Date().toISOString(),
+                topics: APP_DATA.topics,
+                keywords: APP_DATA.keywords,
+                activities: APP_DATA.activities
+            };
+
+            let content, filename, type;
+
+            if (format === 'json') {
+                content = JSON.stringify(data, null, 2);
+                filename = `avia-memory-${Date.now()}.json`;
+                type = 'application/json';
+            } else {
+                // CSV
+                const rows = [['Tipo', 'Nombre', 'Valor']];
+                data.topics.labels.forEach((label, i) => {
+                    rows.push(['Tema', label, data.topics.values[i]]);
+                });
+                data.keywords.forEach(kw => {
+                    rows.push(['Keyword', kw.text, kw.size]);
+                });
+                content = rows.map(r => r.join(',')).join('\n');
+                filename = `avia-memory-${Date.now()}.csv`;
+                type = 'text/csv';
+            }
+
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast(`📥 Exportado: ${filename}`, 'success');
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // SISTEMA DE LOGGING Y TOASTS
+        // ═══════════════════════════════════════════════════════════
+
+        function logError(component, message) {
+            const error = { component, message, time: new Date().toISOString() };
+            AVIA_CONFIG.errors.push(error);
+            console.error(`❌ [${component}]:`, message);
+        }
+
+        function logCorrection(component, message) {
+            const correction = { component, message, time: new Date().toISOString() };
+            AVIA_CONFIG.corrections.push(correction);
+            console.log(`✅ [${component}]:`, message);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-green-600',
+                info: 'bg-indigo-600',
+                warning: 'bg-yellow-600',
+                error: 'bg-red-600'
+            };
+
+            toast.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px]`;
+            toast.innerHTML = `<span>${message}</span>`;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // ATAJOS DE TECLADO
+        // ═══════════════════════════════════════════════════════════
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'e':
+                        e.preventDefault();
+                        exportData('json');
+                        break;
+                    case 't':
+                        e.preventDefault();
+                        toggleTheme();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

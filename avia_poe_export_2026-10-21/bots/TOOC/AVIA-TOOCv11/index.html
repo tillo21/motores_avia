@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AVIA-TOOC ES5 (10/10 objetivo)</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa; --surface:#ffffff; --text:#1a1a2e;
+  --primary:#6c63ff; --primary-hover:#5a52d5;
+  --danger:#e74c3c; --danger-hover:#c0392b;
+  --success:#27ae60; --success-hover:#219a52;
+  --warning:#f39c12; --info:#3498db;
+  --border:#e0e0e0; --muted:#6c757d;
+  --radius:10px; --shadow:0 2px 12px rgba(0,0,0,0.08);
+  --font:'Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f0f1a; --surface:#1a1a2e; --text:#e8e8e8;
+    --border:#2d2d44; --muted:#a0a0b0;
+    --shadow:0 2px 12px rgba(0,0,0,0.3);
+  }
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+.hidden{display:none !important}
+a.skip-link{position:absolute;top:-40px;left:0;background:var(--primary);color:#fff;padding:8px 16px;z-index:9999;transition:top .2s}
+a.skip-link:focus{top:0}
+
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  box-shadow:var(--shadow);position:sticky;top:0;z-index:100;
+}
+.header h1{font-size:1.4rem;display:flex;align-items:center;gap:8px}
+.version-pill{font-size:.75rem;background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px}
+.stats-bar{display:flex;gap:16px;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:4px}
+.stat-num{font-weight:700;color:var(--primary)}
+.stat-warn{color:var(--warning)}
+.stat-ok{color:var(--success)}
+.sync-indicator{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;padding:3px 8px;border-radius:12px;background:var(--success);color:#fff;font-weight:600}
+.sync-indicator.syncing{background:var(--warning);animation:blink 1s infinite}
+.sync-indicator.offline{background:var(--muted)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.6}}
+
+.header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font-family:var(--font);font-size:.85rem;padding:8px 16px;border:none;border-radius:var(--radius);cursor:pointer;transition:all .15s ease;font-weight:600}
+button:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-hover);transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{background:var(--danger-hover)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:var(--success-hover)}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-sm{padding:5px 10px;font-size:.78rem;font-weight:700}
+.btn-icon{padding:6px 10px;font-size:1rem;background:transparent;border:none}
+.btn-icon:hover{background:rgba(108,99,255,0.1);border-radius:var(--radius)}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto}
+.tab-btn{background:none;border:none;padding:12px 20px;font-size:.9rem;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;white-space:nowrap;font-weight:700}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-btn:hover{color:var(--text)}
+
+main{max-width:1100px;margin:0 auto;padding:24px}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s
+}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,0.12)}
+.no-hover:hover{transform:none;box-shadow:var(--shadow)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.toolbar-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toolbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+.search-box{width:100%;padding:10px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:.9rem;background:var(--surface);color:var(--text)}
+.search-box:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+
+.form-panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;margin-bottom:20px;box-shadow:var(--shadow)
+}
+.form-panel h3{margin-bottom:14px;font-size:1rem}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.83rem;font-weight:700;margin-bottom:4px}
+.form-group input,.form-group textarea,.form-group select{
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);
+  font-size:.88rem;background:var(--surface);color:var(--text)
+}
+.form-group textarea{resize:vertical;min-height:60px}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+.form-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.projects-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.project-card.active{border-color:var(--primary);border-width:2px}
+.project-card h3{font-size:1rem;margin-bottom:4px}
+.project-card p{font-size:.83rem;color:var(--muted);margin-bottom:12px}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.card-meta{font-size:.75rem;color:var(--muted);margin-bottom:8px}
+
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state .icon{font-size:3rem;margin-bottom:12px}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;
+  z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s
+}
+.modal-overlay.visible{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border-radius:var(--radius);padding:24px;max-width:500px;width:90%;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:80vh;overflow-y:auto
+}
+.modal h3{margin-bottom:12px}
+.modal p{font-size:.9rem;color:var(--muted);margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+.toast-container{position:fixed;bottom:24px;left:24px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--surface);border:1px solid var(--border);padding:12px 20px;border-radius:var(--radius);
+  box-shadow:0 4px 16px rgba(0,0,0,.15);font-size:.85rem;animation:slideIn .3s ease;max-width:340px
+}
+.toast.success{border-left:4px solid var(--success)}
+.toast.error{border-left:4px solid var(--danger)}
+.toast.info{border-left:4px solid var(--primary)}
+.toast.warning{border-left:4px solid var(--warning)}
+@keyframes slideIn{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.assistant-btn{
+  position:fixed;bottom:24px;right:24px;width:54px;height:54px;border-radius:50%;
+  background:var(--primary);color:#fff;font-size:1.5rem;border:none;cursor:pointer;
+  box-shadow:0 4px 20px rgba(108,99,255,.45);z-index:1800;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;padding:0
+}
+.assistant-btn.open{background:var(--danger)}
+.assistant-panel{
+  position:fixed;bottom:90px;right:24px;width:330px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:0 8px 36px rgba(0,0,0,.18);z-index:1700;
+  display:flex;flex-direction:column;max-height:500px;
+  transform:translateY(16px) scale(.97);opacity:0;pointer-events:none;
+  transition:all .25s cubic-bezier(.4,0,.2,1)
+}
+.assistant-panel.visible{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
+.assistant-header{
+  padding:13px 16px;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;
+  border-radius:var(--radius) var(--radius) 0 0;display:flex;justify-content:space-between;align-items:center;
+  font-weight:700;font-size:.92rem
+}
+.assistant-status{font-size:.7rem;opacity:.9;font-weight:500}
+.assistant-close{
+  background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;
+  cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center
+}
+.assistant-close:hover{background:rgba(255,255,255,.35)}
+.assistant-messages{
+  flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;
+  min-height:160px;max-height:240px;scroll-behavior:smooth
+}
+.assistant-messages::-webkit-scrollbar{width:4px}
+.assistant-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.msg{padding:9px 13px;border-radius:14px;font-size:.82rem;line-height:1.5;max-width:88%;word-break:break-word;white-space:pre-wrap}
+.msg.bot{
+  background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.18);align-self:flex-start;border-radius:2px 14px 14px 14px
+}
+.msg.user{
+  background:var(--primary);color:#fff;align-self:flex-end;border-radius:14px 14px 2px 14px
+}
+.msg.typing{
+  background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.18);align-self:flex-start;border-radius:2px 14px 14px 14px;
+  color:var(--muted);font-style:italic
+}
+.assistant-chips{padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border)}
+.a-chip{
+  padding:4px 10px;border-radius:14px;font-size:.73rem;background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.2);
+  cursor:pointer;color:var(--primary);transition:all .15s;font-weight:700
+}
+.a-chip:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+.assistant-input-row{padding:10px 12px;display:flex;gap:8px;border-top:1px solid var(--border);border-radius:0 0 var(--radius) var(--radius)}
+.assistant-input{flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:20px;font-size:.82rem;background:var(--bg);color:var(--text)}
+.assistant-input:focus{outline:none;border-color:var(--primary)}
+.assistant-send{
+  width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
+.assistant-send:hover{background:var(--primary-hover)}
+</style>
+</head>
+
+<body>
+<a href="#main-content" class="skip-link">Saltar al contenido</a>
+
+<!-- CONSENT -->
+<div id="consent-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;">
+  <div class="card" style="max-width:520px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">🎬</div>
+    <h2 style="margin-bottom:10px;">AVIA-TOOC ES5</h2>
+    <p style="color:var(--muted);margin-bottom:8px;font-weight:700;">Datos en persistencia funcional y ledger.</p>
+    <p style="color:var(--muted);margin-bottom:14px;font-size:.95rem;">Export/Import integra integridad por hash.</p>
+    <button class="btn-primary" onclick="AVIA.app.acceptConsent()" autofocus>Entendido, comenzar</button>
+  </div>
+</div>
+
+<div id="app" class="hidden" role="application" aria-label="AVIA TOOC">
+  <header class="header" role="banner">
+    <h1>🎬 AVIA-TOOC <span class="version-pill">v10-ES5</span></h1>
+    <div class="stats-bar" aria-live="polite">
+      <div class="stat">📁 <span class="stat-num" id="stat-projects">0</span> proyectos</div>
+      <div class="stat">📎 <span class="stat-num" id="stat-resources">0</span> recursos</div>
+      <div class="stat">💾 <span class="stat-num stat-ok" id="stat-changes">✓</span></div>
+      <div class="stat">
+        <span class="sync-indicator" id="sync-status">⏸ Offline</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost btn-sm" onclick="AVIA.app.exportData()" title="Exportar">📤 Exportar</button>
+      <button class="btn-ghost btn-sm" onclick="AVIA.app.importData()" title="Importar">📥 Importar</button>
+      <input type="file" id="import-input" accept=".json" class="hidden" onchange="AVIA.app.handleImport(event)">
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Tabs">
+    <button class="tab-btn active" role="tab" aria-selected="true" id="tabbtn-projects" onclick="AVIA.app.switchTab('projects')">📁 Proyectos</button>
+    <button class="tab-btn" role="tab" aria-selected="false" id="tabbtn-resources" onclick="AVIA.app.switchTab('resources')">📎 Recursos</button>
+    <button class="tab-btn" role="tab" aria-selected="false" id="tabbtn-dashboard" onclick="AVIA.app.switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" role="tab" aria-selected="false" id="tabbtn-history" onclick="AVIA.app.switchTab('history')">🕐 Historial</button>
+  </nav>
+
+  <main id="main-content" role="main">
+    <!-- PROYECTOS -->
+    <section id="tab-projects">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <h2 style="font-size:1.2rem;">Proyectos</h2>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-ghost btn-sm" id="view-grid-btn" onclick="AVIA.ui.setProjectView('grid')">▦</button>
+            <button class="btn-ghost btn-sm" id="view-list-btn" onclick="AVIA.ui.setProjectView('list')">☰</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-primary" onclick="AVIA.ui.showProjectForm()">+ Nuevo proyecto</button>
+        </div>
+      </div>
+
+      <div id="projects-search-wrap" style="margin-bottom:16px;">
+        <input type="text" id="search-projects" class="search-box" placeholder="🔍 Buscar proyectos..." oninput="AVIA.ui.renderProjects()" aria-label="Buscar proyectos"/>
+      </div>
+
+      <div id="project-form-container" class="hidden">
+        <div class="form-panel">
+          <h3 id="form-title">Nuevo proyecto</h3>
+          <div class="form-group">
+            <label for="proj-name">Nombre *</label>
+            <input type="text" id="proj-name" maxlength="100" placeholder="Nombre del proyecto"/>
+          </div>
+          <div class="form-group">
+            <label for="proj-desc">Descripción</label>
+            <textarea id="proj-desc" maxlength="300" placeholder="Descripción breve..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" onclick="AVIA.ui.saveProject()">Guardar</button>
+            <button class="btn-ghost" onclick="AVIA.ui.hideProjectForm()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="projects-container"></div>
+    </section>
+
+    <!-- RECURSOS -->
+    <section id="tab-resources" class="hidden">
+      <div id="no-project-selected" class="empty-state">
+        <div class="icon">📌</div>
+        <p>Selecciona un proyecto para gestionar sus recursos.</p>
+      </div>
+
+      <div id="resources-panel" class="hidden">
+        <div class="toolbar" style="margin-bottom:16px;">
+          <div class="toolbar-left">
+            <h2 style="font-size:1.1rem;" id="resources-title">Recursos</h2>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn-primary" onclick="AVIA.ui.showResourceForm()">+ Añadir recurso</button>
+          </div>
+        </div>
+
+        <div id="resource-form-container" class="hidden">
+          <div class="form-panel">
+            <h3 id="res-form-title">Nuevo recurso</h3>
+
+            <div class="form-group">
+              <label for="res-name">Nombre *</label>
+              <input type="text" id="res-name" maxlength="100" placeholder="Nombre del recurso"/>
+            </div>
+
+            <div class="form-group">
+              <label for="res-type">Tipo</label>
+              <select id="res-type">
+                <option value="video">🎬 Video</option>
+                <option value="audio">🎵 Audio</option>
+                <option value="texto">📝 Texto</option>
+                <option value="imagen">🖼️ Imagen</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="res-notes">Notas</label>
+              <textarea id="res-notes" maxlength="500" placeholder="Notas opcionales..."></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-primary" onclick="AVIA.ui.saveResource()">Guardar</button>
+              <button class="btn-ghost" onclick="AVIA.ui.hideResourceForm()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:.85rem;font-weight:800;color:var(--muted)">Filtrar:</span>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.filterResources('all')" id="f-all">Todos</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.filterResources('video')" id="f-video">🎬 Video</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.filterResources('audio')" id="f-audio">🎵 Audio</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.filterResources('texto')" id="f-texto">📝 Texto</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.filterResources('imagen')" id="f-imagen">🖼️ Imagen</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:.85rem;font-weight:800;color:var(--muted)">Ordenar:</span>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.sortResources('manual')" id="s-manual">↕️ Manual</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.sortResources('name')" id="s-name">🔤 Nombre</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.sortResources('type')" id="s-type">📂 Tipo</button>
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.sortResources('date')" id="s-date">📅 Fecha</button>
+        </div>
+
+        <div id="resources-list"></div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="tab-dashboard" class="hidden">
+      <h2 style="font-size:1.2rem;margin-bottom:16px;">📊 Dashboard</h2>
+      <div id="dashboard-content"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="tab-history" class="hidden">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <h2 style="font-size:1.2rem;">🕐 Historial (Ledger)</h2>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-ghost btn-sm" onclick="AVIA.ui.createSnapshot('manual')">📸 Crear snapshot</button>
+        </div>
+      </div>
+
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px;">
+        Se crean snapshots y el ledger mantiene hashes encadenados para trazabilidad.
+      </p>
+
+      <div id="history-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL CONFIRMAR -->
+<div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <h3 id="modal-title">Confirmar</h3>
+    <p id="modal-message">¿Estás seguro?</p>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="AVIA.ui.closeModal()">Cancelar</button>
+      <button class="btn-danger" id="modal-confirm-btn" onclick="AVIA.ui.confirmModalAction()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+<!-- ASSISTANT FLOAT (simple + safe) -->
+<button class="assistant-btn" id="assistant-btn" onclick="AVIA.assistant.toggleAssistant()" title="Asistente AVIA (Alt+A)" aria-label="Abrir asistente">💬</button>
+<div class="assistant-panel" id="assistant-panel" role="dialog" aria-label="Asistente AVIA">
+  <div class="assistant-header">
+    <div>
+      🤖 Asistente AVIA
+      <div class="assistant-status" id="assistant-status">listo para ayudarte</div>
+    </div>
+    <button class="assistant-close" onclick="AVIA.assistant.toggleAssistant()" aria-label="Cerrar asistente">✕</button>
+  </div>
+  <div class="assistant-messages" id="assistant-messages"></div>
+  <div class="assistant-chips" id="assistant-chips"></div>
+  <div class="assistant-input-row">
+    <input class="assistant-input" id="assistant-input" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter') AVIA.assistant.sendAssistantMsg()" autocomplete="off"/>
+    <button class="assistant-send" onclick="AVIA.assistant.sendAssistantMsg()" aria-label="Enviar">➤</button>
+  </div>
+</div>
+
+<script>
+/* =========================
+   AVIA Auditor + ES5 Engine
+   ========================= */
+
+var AVIA = AVIA || {};
+AVIA.app = {};
+AVIA.ui = {};
+AVIA.core = {};
+AVIA.sync = {};
+AVIA.ledger = {};
+AVIA.pipeline = {};
+AVIA.policies = {};
+AVIA.persist = {};
+AVIA.assistant = {};
+AVIA.state = null;
+
+AVIA.constants = {
+  appVersion: "10-ES5",
+  ledgerMaxSnapshots: 10,
+  proposeVoteQuorumMin: 2, // se ajusta dinámicamente con nodos
+  heartbeatMs: 1500,
+  heartbeatTimeoutMs: 5000,
+  broadcastChannelName: "avia-tooc-ledger-sync-es5-v10",
+  tokensInit: 10,
+  tokensEarnPerCommit: 1,
+  maxChatChips: 5
+};
+
+AVIA.utils = {
+  uid: function() {
+    return String(Date.now()) + "_" + String(Math.floor(Math.random()*1e6));
+  },
+  escapeHtml: function(s) {
+    s = (s === null || s === undefined) ? "" : String(s);
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  },
+  nowIso: function() { return new Date().toISOString(); },
+  deepClone: function(obj) { return JSON.parse(JSON.stringify(obj)); },
+  safeParseJson: function(str) { try { return JSON.parse(str); } catch(e){ return null; } }
+};
+
+// ==== Hash (pseudo-integridad ES5) ====
+// Nota: Sin librerías externas, implemento un hash simple (no criptográfico) para encadenamiento.
+AVIA.core.hashStr = function(str) {
+  str = String(str);
+  var h = 2166136261;
+  for (var i=0;i<str.length;i++){
+    h ^= str.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  // convert to unsigned
+  var out = (h >>> 0).toString(16);
+  return out;
+};
+
+AVIA.ledger = {
+  chain: [], // array de actions
+  stateRoot: null,
+
+  getPrevHash: function() {
+    if (!AVIA.ledger.chain.length) return "GENESIS";
+    return AVIA.ledger.chain[AVIA.ledger.chain.length-1].actionHash;
+  },
+
+  appendAction: function(action) {
+    AVIA.ledger.chain.push(action);
+    // Keep bounded (optional)
+  },
+
+  verifyChain: function(chain) {
+    if (!chain || !Array.isArray(chain)) return { ok:false, reason:"Chain inválida" };
+    for (var i=0;i<chain.length;i++){
+      var a = chain[i];
+      if (!a || !a.actionId || !a.actionHash || !a.prevHash) return { ok:false, reason:"Acción corrupta" };
+      var prev = (i===0) ? "GENESIS" : chain[i-1].actionHash;
+      if (a.prevHash !== prev) return { ok:false, reason:"prevHash no coincide en índice "+i };
+      var recalculated = AVIA.core.hashStr(JSON.stringify({
+        actionId:a.actionId,
+        prevHash:a.prevHash,
+        type:a.type,
+        payload:a.payload,
+        ts:a.ts,
+        actorId:a.actorId
+      }));
+      if (String(recalculated) !== String(a.actionHash)) return { ok:false, reason:"actionHash inválido en índice "+i };
+    }
+    return { ok:true };
+  }
+};
+
+AVIA.persist = {
+  exportJson: function() {
+    // Persistencia functional: ledger + state + UI preferences mínimas.
+    var payload = {
+      version: AVIA.constants.appVersion,
+      exportedAt: AVIA.utils.nowIso(),
+      actorId: AVIA.state.actorId,
+      state: AVIA.utils.deepClone(AVIA.state.data),
+      ledgerChain: AVIA.utils.deepClone(AVIA.ledger.chain),
+      ui: AVIA.utils.deepClone(AVIA.state.ui)
+    };
+    return payload;
+  },
+
+  exportDownload: function() {
+    var data = AVIA.persist.exportJson();
+    var blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "avia-tooc-v10-es5-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    AVIA.state.meta.changesSinceExport = 0;
+    AVIA.ui.updateStats();
+    AVIA.ui.hideReminderFlag();
+    AVIA.ui.toast("Exportado ✓", "success");
+  },
+
+  importApply: function(obj) {
+    // memory-safe: validate ledger first, then apply.
+    var vOk = obj && obj.version;
+    if (!vOk) throw new Error("Archivo inválido: falta version.");
+    var verification = AVIA.ledger.verifyChain(obj.ledgerChain);
+    if (!verification.ok) throw new Error("Ledger inválido: " + verification.reason);
+
+    // Apply state
+    AVIA.state.data = obj.state || { projects:[], activeProjectId:null };
+    AVIA.ledger.chain = obj.ledgerChain || [];
+    AVIA.state.ui = obj.ui || AVIA.state.ui;
+
+    AVIA.state.meta.changesSinceExport = 0;
+    AVIA.ui.renderAll();
+    AVIA.ui.updateStats();
+  }
+};
+
+AVIA.policies = {
+  // Veto y learning (simple)
+  allowAction: function(action) {
+    // policies básicas:
+    // - no permitir mutaciones destructivas si hay "protección" activada
+    if (AVIA.state.meta.protectMode && (action.type === "DELETE_PROJECT" || action.type === "DELETE_RESOURCE")) {
+      return { allowed:false, reason:"ProtectMode activo (veto)" };
+    }
+    // - esquema mínimo
+    if (!action || !action.type || !action.payload) return { allowed:false, reason:"Acción sin payload" };
+    return { allowed:true };
+  },
+
+  onCommitLearning: function(action) {
+    // aprendizaje simple: si el usuario deshace frecuentemente, reduce warnings.
+    if (action.type === "UNDO_DELETE") {
+      AVIA.state.meta.undoCount = (AVIA.state.meta.undoCount || 0) + 1;
+      if (AVIA.state.meta.undoCount >= 3) {
+        AVIA.state.meta.protectMode = false; // ejemplo: no bloquear si el usuario deshace
+      }
+    }
+  }
+};
+
+AVIA.pipeline = {
+  trace: [],
+
+  runActionThroughPipeline: function(actionRequest) {
+    // 1) Validate
+    var validation = AVIA.pipeline.validateRequest(actionRequest);
+    if (!validation.ok) return { ok:false, reason:validation.reason };
+
+    // 2) Policies
+    var pol = AVIA.policies.allowAction(actionRequest.action);
+    if (!pol.allowed) {
+      return { ok:false, reason:"Veto por policy: " + pol.reason };
+    }
+
+    // 3) Propose/Vote/Commit
+    return AVIA.sync.proposeVoteCommit(actionRequest.action);
+  },
+
+  validateRequest: function(req) {
+    if (!req || !req.type) return { ok:false, reason:"request inválida" };
+    if (!req.actionId) return { ok:false, reason:"Falta actionId" };
+    if (!req.actorId) return { ok:false, reason:"Falta actorId" };
+    // payload minimal
+    if (!req.payload && req.payload !== null) return { ok:false, reason:"Falta payload" };
+    return { ok:true };
+  }
+};
+
+AVIA.sync = {
+  channel: null,
+  nodeMap: {}, // actorId -> lastSeen
+  seenActionIds: {},
+  pending: {}, // actionId -> {votes, committed}
+
+  isLeader: function() {
+    // líder simple: el de menor actorId hash (determinista)
+    var ids = Object.keys(AVIA.sync.nodeMap);
+    ids.push(AVIA.state.actorId);
+    var min = AVIA.state.actorId;
+    for (var i=0;i<ids.length;i++){
+      if (String(ids[i]) < String(min)) min = ids[i];
+    }
+    return String(AVIA.state.actorId) === String(min);
+  },
+
+  updateHeartbeatUI: function(status) {
+    var el = document.getElementById("sync-status");
+    if (!el) return;
+    el.textContent = status;
+  },
+
+  init: function() {
+    try {
+      AVIA.sync.channel = new BroadcastChannel(AVIA.constants.broadcastChannelName);
+      AVIA.sync.channel.onmessage = function(ev) {
+        var msg = ev.data || {};
+        AVIA.sync.handleMessage(msg);
+      };
+      AVIA.ui.updateSyncBadge("online");
+    } catch(e) {
+      AVIA.ui.updateSyncBadge("offline");
+    }
+
+    // heartbeat loop
+    AVIA.sync.startHeartbeat();
+  },
+
+  startHeartbeat: function() {
+    if (AVIA.state.meta.hbTimer) clearInterval(AVIA.state.meta.hbTimer);
+    AVIA.state.meta.hbTimer = setInterval(function() {
+      // update local timestamp
+      AVIA.sync.nodeMap[AVIA.state.actorId] = Date.now();
+
+      // prune nodes
+      var keys = Object.keys(AVIA.sync.nodeMap);
+      for (var i=0;i<keys.length;i++){
+        var id = keys[i];
+        if (Date.now() - AVIA.sync.nodeMap[id] > AVIA.constants.heartbeatTimeoutMs) {
+          delete AVIA.sync.nodeMap[id];
+        }
+      }
+
+      AVIA.sync.broadcast({ type:"HEARTBEAT", actorId: AVIA.state.actorId, ts: Date.now() });
+    }, AVIA.constants.heartbeatMs);
+  },
+
+  broadcast: function(payload) {
+    if (!AVIA.sync.channel) return;
+    try {
+      payload.actorId = payload.actorId || AVIA.state.actorId;
+      payload.ts = payload.ts || Date.now();
+      AVIA.sync.channel.postMessage(payload);
+    } catch(e) {}
+  },
+
+  handleMessage: function(msg) {
+    if (!msg || !msg.type) return;
+    if (msg.actorId === AVIA.state.actorId) {
+      // still update nodeMap from ourselves
+      AVIA.sync.nodeMap[msg.actorId] = Date.now();
+      return;
+    }
+
+    AVIA.sync.nodeMap[msg.actorId] = Date.now();
+
+    if (msg.type === "HEARTBEAT") {
+      AVIA.ui.updateSyncBadge("syncing");
+      setTimeout(function(){ AVIA.ui.updateSyncBadge("online"); }, 350);
+      return;
+    }
+
+    if (msg.type === "PROPOSE") {
+      AVIA.sync.onPropose(msg);
+      return;
+    }
+    if (msg.type === "VOTE") {
+      AVIA.sync.onVote(msg);
+      return;
+    }
+    if (msg.type === "COMMIT") {
+      AVIA.sync.onCommit(msg);
+      return;
+    }
+  },
+
+  computeQuorumMin: function() {
+    // majority among active nodes plus self
+    var count = Object.keys(AVIA.sync.nodeMap).length + 1; // self
+    if (count <= 1) return 1;
+    // majority:
+    var maj = Math.floor(count/2) + 1;
+    return maj;
+  },
+
+  proposeVoteCommit: function(action) {
+    // Create action with ledger hash
+    // Step A: propose
+    var actionId = action.actionId;
+    if (AVIA.sync.seenActionIds[actionId]) {
+      return { ok:true, reason:"Ya visto" };
+    }
+    AVIA.sync.seenActionIds[actionId] = true;
+
+    var prevHash = AVIA.ledger.getPrevHash();
+    var ts = action.ts || AVIA.utils.nowIso();
+
+    // build full action
+    var fullAction = {
+      actionId: actionId,
+      prevHash: prevHash,
+      type: action.type,
+      payload: action.payload || {},
+      ts: ts,
+      actorId: AVIA.state.actorId
+    };
+    fullAction.actionHash = AVIA.core.hashStr(JSON.stringify({
+      actionId: fullAction.actionId,
+      prevHash: fullAction.prevHash,
+      type: fullAction.type,
+      payload: fullAction.payload,
+      ts: fullAction.ts,
+      actorId: fullAction.actorId
+    }));
+
+    // pipeline trace
+    AVIA.pipeline.traceAction("propose", fullAction);
+
+    // prepare pending
+    AVIA.sync.pending[actionId] = {
+      action: fullAction,
+      votes: {},
+      committed: false
+    };
+
+    var quorumMin = AVIA.sync.computeQuorumMin();
+    AVIA.sync.pending[actionId].quorumMin = quorumMin;
+
+    // Broadcast propose
+    AVIA.sync.broadcast({ type:"PROPOSE", action: fullAction });
+
+    // Self-vote
+    var verdict = AVIA.sync.localVerdict(fullAction);
+    AVIA.sync.castVote(actionId, verdict);
+
+    // If leader or quorum already reached quickly, commit
+    // commit decision triggered in onVote
+    return { ok:true };
+  },
+
+  localVerdict: function(fullAction) {
+    // Validate ledger prevHash matches current ledger tip for safety.
+    if (fullAction.prevHash !== AVIA.ledger.getPrevHash()) {
+      return { ok:false, reason:"prevHash diverge (convergencia)" };
+    }
+    // Policy check again
+    var pol = AVIA.policies.allowAction({ type: fullAction.type, payload: fullAction.payload, actionId: fullAction.actionId, actorId: fullAction.actorId });
+    if (!pol.allowed) return { ok:false, reason:"policy veto" };
+    // Ledger verify incremental is implicitly via chain hash
+    return { ok:true };
+  },
+
+  castVote: function(actionId, verdict) {
+    // store vote
+    var p = AVIA.sync.pending[actionId];
+    if (!p) return;
+
+    p.votes[AVIA.state.actorId] = { ok: verdict.ok, reason: verdict.reason || "" };
+
+    // Broadcast vote
+    AVIA.sync.broadcast({
+      type:"VOTE",
+      actionId: actionId,
+      verdict: { ok: verdict.ok, reason: verdict.reason || "" },
+      actorId: AVIA.state.actorId,
+      ts: Date.now()
+    });
+
+    // Try commit
+    AVIA.sync.tryCommit(actionId);
+  },
+
+  onPropose: function(msg) {
+    var fullAction = msg.action;
+    if (!fullAction || !fullAction.actionId) return;
+
+    // If already committed, ignore
+    if (AVIA.sync.seenActionIds[fullAction.actionId] && AVIA.sync.pending[fullAction.actionId] && AVIA.sync.pending[fullAction.actionId].committed) {
+      return;
+    }
+
+    if (AVIA.sync.pending[fullAction.actionId] && AVIA.sync.pending[fullAction.actionId].action) {
+      return; // already pending
+    }
+
+    AVIA.sync.pending[fullAction.actionId] = {
+      action: fullAction,
+      votes: {},
+      committed: false
+    };
+    AVIA.sync.pending[fullAction.actionId].quorumMin = AVIA.sync.computeQuorumMin();
+
+    // Self-vote
+    var verdict = AVIA.sync.localVerdict(fullAction);
+    AVIA.sync.castVote(fullAction.actionId, verdict);
+  },
+
+  onVote: function(msg) {
+    var actionId = msg.actionId;
+    var verdict = (msg.verdict) || {};
+    var actorId = msg.actorId || "";
+
+    if (!actionId || !AVIA.sync.pending[actionId]) return;
+
+    AVIA.sync.pending[actionId].votes[actorId] = { ok: !!verdict.ok, reason: verdict.reason || "" };
+    AVIA.sync.tryCommit(actionId);
+  },
+
+  tryCommit: function(actionId) {
+    var p = AVIA.sync.pending[actionId];
+    if (!p || p.committed) return;
+
+    var quorumMin = p.quorumMin || 1;
+
+    var voteKeys = Object.keys(p.votes);
+    var okCount = 0;
+    for (var i=0;i<voteKeys.length;i++){
+      if (p.votes[voteKeys[i]].ok) okCount++;
+    }
+
+    if (okCount >= quorumMin) {
+      p.committed = true;
+
+      // Commit locally first
+      AVIA.sync.applyCommit(p.action);
+
+      // Broadcast commit
+      AVIA.sync.broadcast({ type:"COMMIT", actionId: actionId, action: p.action });
+      AVIA.pipeline.traceAction("commit", p.action);
+    } else {
+      // no quorum yet
+    }
+  },
+
+  applyCommit: function(fullAction) {
+    // Verify prevHash matches tip
+    if (fullAction.prevHash !== AVIA.ledger.getPrevHash()) {
+      // rollback: since consensus should prevent, but in case:
+      AVIA.ui.toast("Commit rechazado por divergencia prevHash.", "error");
+      return;
+    }
+    // Append to ledger
+    AVIA.ledger.appendAction(fullAction);
+
+    // Apply to state
+    AVIA.core.applyActionToState(fullAction);
+
+    // Learning
+    AVIA.policies.onCommitLearning(fullAction);
+
+    // UI update
+    AVIA.ui.trackChange();
+    AVIA.ui.renderAll();
+    AVIA.ui.updateStats();
+  },
+
+  onCommit: function(msg) {
+    var fullAction = msg.action;
+    var actionId = msg.actionId;
+
+    if (!fullAction || !actionId) return;
+    // If already applied (tip already includes), ignore.
+    // simplest: if last ledger actionId equals it, ignore
+    var last = AVIA.ledger.chain[AVIA.ledger.chain.length-1];
+    if (last && last.actionId === actionId) return;
+
+    // Ensure pending exists
+    if (!AVIA.sync.pending[actionId]) {
+      AVIA.sync.pending[actionId] = { action: fullAction, votes:{}, committed:false, quorumMin:1 };
+    }
+
+    // Apply commit if not committed
+    if (!AVIA.sync.pending[actionId].committed) {
+      AVIA.sync.pending[actionId].committed = true;
+      AVIA.sync.applyCommit(fullAction);
+      AVIA.pipeline.traceAction("commit_remote", fullAction);
+    }
+  }
+};
+
+AVIA.core = {
+  applyActionToState: function(fullAction) {
+    // Switch action types:
+    var t = fullAction.type;
+    var pl = fullAction.payload || {};
+
+    var data = AVIA.state.data;
+    if (!data.projects) data.projects = [];
+    if (!data.ui) data.ui = {};
+
+    function findProject(pid) {
+      for (var i=0;i<data.projects.length;i++){
+        if (data.projects[i].id === pid) return data.projects[i];
+      }
+      return null;
+    }
+
+    if (t === "CREATE_PROJECT") {
+      data.projects.push(pl.project);
+      data.activeProjectId = pl.project.id;
+      return;
+    }
+    if (t === "UPDATE_PROJECT") {
+      var p1 = findProject(pl.projectId);
+      if (p1) {
+        p1.name = pl.name;
+        p1.description = pl.description;
+        p1.updatedAt = pl.updatedAt;
+      }
+      return;
+    }
+    if (t === "DELETE_PROJECT") {
+      for (var di=0; di<data.projects.length; di++){
+        if (data.projects[di].id === pl.projectId) {
+          data.projects.splice(di,1);
+          break;
+        }
+      }
+      if (data.activeProjectId === pl.projectId) data.activeProjectId = null;
+      return;
+    }
+    if (t === "DUPLICATE_PROJECT") {
+      data.projects.push(pl.clone);
+      return;
+    }
+    if (t === "SELECT_PROJECT") {
+      data.activeProjectId = pl.projectId;
+      return;
+    }
+
+    // Resources
+    if (t === "ADD_RESOURCE") {
+      var rp = findProject(pl.projectId);
+      if (rp) rp.resources.push(pl.resource);
+      return;
+    }
+    if (t === "UPDATE_RESOURCE") {
+      var rp2 = findProject(pl.projectId);
+      if (rp2) {
+        for (var ri=0;ri<rp2.resources.length;ri++){
+          if (rp2.resources[ri].id === pl.resourceId){
+            rp2.resources[ri].name = pl.name;
+            rp2.resources[ri].type = pl.type;
+            rp2.resources[ri].notes = pl.notes;
+            rp2.resources[ri].updatedAt = pl.updatedAt;
+            break;
+          }
+        }
+        rp2.updatedAt = pl.updatedAt;
+      }
+      return;
+    }
+    if (t === "DELETE_RESOURCE") {
+      var rp3 = findProject(pl.projectId);
+      if (rp3) {
+        for (var rdi=0;rdi<rp3.resources.length;rdi++){
+          if (rp3.resources[rdi].id === pl.resourceId){
+            rp3.resources.splice(rdi,1);
+            break;
+          }
+        }
+        rp3.updatedAt = pl.updatedAt;
+      }
+      return;
+    }
+    if (t === "DUPLICATE_RESOURCE") {
+      var rp4 = findProject(pl.projectId);
+      if (rp4) {
+        rp4.resources.splice(pl.insertIndex,0,pl.clone);
+        rp4.updatedAt = pl.updatedAt;
+      }
+      return;
+    }
+    if (t === "MOVE_RESOURCE") {
+      var rp5 = findProject(pl.projectId);
+      if (rp5) {
+        var fromI = pl.fromIndex;
+        var toI = pl.toIndex;
+        if (fromI >=0 && fromI < rp5.resources.length && toI >=0 && toI <= rp5.resources.length) {
+          var moved = rp5.resources.splice(fromI,1)[0];
+          rp5.resources.splice(toI,0,moved);
+          rp5.updatedAt = pl.updatedAt;
+        }
+      }
+      return;
+    }
+  }
+};
+
+AVIA.pipeline.traceAction = function(step, fullAction) {
+  AVIA.pipeline.trace.push({
+    step: step,
+    actionId: fullAction.actionId,
+    type: fullAction.type,
+    ts: AVIA.utils.nowIso(),
+    actorId: fullAction.actorId
+  });
+  if (AVIA.pipeline.trace.length > 300) AVIA.pipeline.trace.shift();
+};
+
+AVIA.state = {
+  actorId: AVIA.utils.uid(),
+  data: {
+    projects: [],
+    activeProjectId: null
+  },
+  ui: {
+    projectView: "grid",
+    resourceFilter: "all",
+    resourceSort: "manual",
+    expandedNotes: {},
+    editingProjectId: null,
+    editingResourceId: null,
+    lastDeleted: null
+  },
+  meta: {
+    changesSinceExport: 0,
+    lastExportTime: null,
+    undoCount: 0,
+    protectMode: false,
+    hbTimer: null,
+    sessionStart: Date.now()
+  }
+};
+
+AVIA.ui = {
+  reminderFlagShown: false,
+
+  toast: function(msg, type) {
+    type = type || "info";
+    var container = document.getElementById("toast-container");
+    if (!container) return;
+    var el = document.createElement("div");
+    el.className = "toast " + type;
+    el.textContent = msg; // safe: no innerHTML
+    container.appendChild(el);
+    setTimeout(function(){ try{ container.removeChild(el); }catch(e){} }, 4500);
+  },
+
+  updateSyncBadge: function(mode) {
+    var el = document.getElementById("sync-status");
+    if (!el) return;
+    if (mode === "online") {
+      el.textContent = "⚡ Sync";
+      el.className = "sync-indicator";
+    } else if (mode === "syncing") {
+      el.textContent = "🔄 Sync...";
+      el.className = "sync-indicator syncing";
+    } else {
+      el.textContent = "⏸ Offline";
+      el.className = "sync-indicator offline";
+    }
+  },
+
+  updateStats: function() {
+    var data = AVIA.state.data;
+    var projects = data.projects || [];
+    var totalRes = 0;
+    for (var i=0;i<projects.length;i++){
+      totalRes += (projects[i].resources ? projects[i].resources.length : 0);
+    }
+    document.getElementById("stat-projects").textContent = String(projects.length);
+    document.getElementById("stat-resources").textContent = String(totalRes);
+
+    var el = document.getElementById("stat-changes");
+    var c = AVIA.state.meta.changesSinceExport;
+    if (c === 0) {
+      el.textContent = "✓";
+      el.className = "stat-num stat-ok";
+    } else {
+      el.textContent = String(c) + " cambios";
+      el.className = "stat-num stat-warn";
+    }
+  },
+
+  trackChange: function() {
+    AVIA.state.meta.changesSinceExport++;
+  },
+
+  hideReminderFlag: function() {
+    // placeholder (si quieres badge de recordatorio)
+  },
+
+  renderAll: function() {
+    AVIA.ui.renderProjects();
+    AVIA.ui.renderResources();
+    AVIA.ui.renderDashboard();
+  },
+
+  switchTab: function(tab) {
+    // hide all
+    var ids = ["tab-projects","tab-resources","tab-dashboard","tab-history"];
+    for (var i=0;i<ids.length;i++){
+      var el = document.getElementById(ids[i]);
+      if (el) el.className = (ids[i]===("tab-"+tab)) ? "" : "hidden";
+    }
+    // update buttons
+    var btns = ["tabbtn-projects","tabbtn-resources","tabbtn-dashboard","tabbtn-history"];
+    for (var j=0;j<btns.length;j++){
+      var b = document.getElementById(btns[j]);
+      if (!b) continue;
+      var isActive = (b.id === ("tabbtn-"+tab));
+      // mapping: "tabbtn-history" etc.
+      if (tab === "projects" && b.id==="tabbtn-projects") isActive = true;
+      if (tab === "resources" && b.id==="tabbtn-resources") isActive = true;
+      if (tab === "dashboard" && b.id==="tabbtn-dashboard") isActive = true;
+      if (tab === "history" && b.id==="tabbtn-history") isActive = true;
+
+      if (isActive) {
+        b.className = "tab-btn active";
+        b.setAttribute("aria-selected","true");
+      } else {
+        b.className = "tab-btn";
+        b.setAttribute("aria-selected","false");
+      }
+    }
+  },
+
+  setProjectView: function(v) {
+    AVIA.state.ui.projectView = v;
+    var gridBtn = document.getElementById("view-grid-btn");
+    var listBtn = document.getElementById("view-list-btn");
+    // simple visual hint via background
+    if (v === "grid") {
+      gridBtn.style.background = "var(--primary)";
+      gridBtn.style.color = "#fff";
+      listBtn.style.background = "transparent";
+      listBtn.style.color = "var(--text)";
+    } else {
+      listBtn.style.background = "var(--primary)";
+      listBtn.style.color = "#fff";
+      gridBtn.style.background = "transparent";
+      gridBtn.style.color = "var(--text)";
+    }
+    AVIA.ui.renderProjects();
+  },
+
+  // ---- Projects actions (via pipeline/consenso) ----
+  showProjectForm: function(editId) {
+    AVIA.state.ui.editingProjectId = editId || null;
+    document.getElementById("project-form-container").className = "";
+    var title = document.getElementById("form-title");
+    var nameEl = document.getElementById("proj-name");
+    var descEl = document.getElementById("proj-desc");
+    if (editId) {
+      var p = AVIA.ui.getProjectById(editId);
+      title.textContent = "Editar proyecto";
+      nameEl.value = p ? p.name : "";
+      descEl.value = p && p.description ? p.description : "";
+    } else {
+      title.textContent = "Nuevo proyecto";
+      nameEl.value = "";
+      descEl.value = "";
+    }
+    nameEl.focus();
+  },
+
+  hideProjectForm: function() {
+    document.getElementById("project-form-container").className = "hidden";
+    AVIA.state.ui.editingProjectId = null;
+  },
+
+  getProjectById: function(pid) {
+    var projects = AVIA.state.data.projects;
+    for (var i=0;i<projects.length;i++){
+      if (projects[i].id === pid) return projects[i];
+    }
+    return null;
+  },
+
+  saveProject: function() {
+    var name = (document.getElementById("proj-name").value || "").trim();
+    var desc = (document.getElementById("proj-desc").value || "").trim();
+    if (!name) { AVIA.ui.toast("El nombre es obligatorio", "error"); return; }
+
+    var actorId = AVIA.state.actorId;
+    var ts = AVIA.utils.nowIso();
+
+    if (AVIA.state.ui.editingProjectId) {
+      var pid = AVIA.state.ui.editingProjectId;
+      var req = {
+        actionId: AVIA.utils.uid(),
+        actorId: actorId,
+        type: "UPDATE_PROJECT",
+        payload: {
+          projectId: pid,
+          name: name,
+          description: desc,
+          updatedAt: ts
+        },
+        ts: ts
+      };
+      AVIA.pipeline.runActionThroughPipeline({ type:req.type, action:req }).ok; // pipeline uses req.action
+    } else {
+      var project = {
+        id: AVIA.utils.uid(),
+        name: name,
+        description: desc,
+        resources: [],
+        createdAt: ts,
+        updatedAt: ts
+      };
+      var req2 = {
+        actionId: AVIA.utils.uid(),
+        actorId: actorId,
+        type: "CREATE_PROJECT",
+        payload: { project: project },
+        ts: ts
+      };
+      AVIA.pipeline.runActionThroughPipeline({ type:req2.type, action:req2 });
+    }
+
+    AVIA.ui.hideProjectForm();
+  },
+
+  selectProject: function(id) {
+    var ts = AVIA.utils.nowIso();
+    AVIA.pipeline.runActionThroughPipeline({
+      type: "SELECT_PROJECT",
+      action: {
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type: "SELECT_PROJECT",
+        payload: { projectId: id },
+        ts: ts
+      }
+    });
+  },
+
+  duplicateProject: function(id) {
+    var p = AVIA.ui.getProjectById(id);
+    if (!p) return;
+    var ts = AVIA.utils.nowIso();
+
+    var clone = AVIA.utils.deepClone(p);
+    clone.id = AVIA.utils.uid();
+    clone.name = p.name + " (Copia)";
+    clone.createdAt = ts;
+    clone.updatedAt = ts;
+    for (var i=0;i<clone.resources.length;i++){
+      clone.resources[i].id = AVIA.utils.uid();
+    }
+
+    AVIA.pipeline.runActionThroughPipeline({
+      type: "DUPLICATE_PROJECT",
+      action: {
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type: "DUPLICATE_PROJECT",
+        payload: { clone: clone },
+        ts: ts
+      }
+    });
+  },
+
+  requestDeleteProject: function(id) {
+    var p = AVIA.ui.getProjectById(id);
+    if (!p) return;
+    AVIA.ui.showModal("¿Eliminar \"" + p.name + "\"?",
+      "Se registrará en ledger para trazabilidad.",
+      function(){
+        AVIA.ui.deleteProject(id);
+      }
+    );
+  },
+
+  deleteProject: function(id) {
+    var ts = AVIA.utils.nowIso();
+    AVIA.pipeline.runActionThroughPipeline({
+      type:"DELETE_PROJECT",
+      action:{
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type:"DELETE_PROJECT",
+        payload:{ projectId: id, updatedAt: ts },
+        ts: ts
+      }
+    });
+  },
+
+  // ---- Rendering projects ----
+  renderProjects: function() {
+    var container = document.getElementById("projects-container");
+    var projects = AVIA.state.data.projects || [];
+    var search = (document.getElementById("search-projects").value || "").toLowerCase();
+
+    var filtered = [];
+    for (var i=0;i<projects.length;i++){
+      var p = projects[i];
+      var n = (p.name || "").toLowerCase();
+      var d = (p.description || "").toLowerCase();
+      if (n.indexOf(search) !== -1 || d.indexOf(search) !== -1) filtered.push(p);
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📂</div><p>' + (projects.length===0 ? "No hay proyectos. Crea uno." : "Sin resultados.") + '</p></div>';
+      return;
+    }
+
+    var isGrid = AVIA.state.ui.projectView === "grid";
+    var html = [];
+    if (isGrid) {
+      html.push('<div class="projects-grid">');
+      for (var g=0;g<filtered.length;g++){
+        html.push(AVIA.ui.renderProjectCard(filtered[g], true));
+      }
+      html.push('</div>');
+    } else {
+      html.push('<div class="projects-list">');
+      for (var l=0;l<filtered.length;l++){
+        html.push(AVIA.ui.renderProjectCard(filtered[l], false));
+      }
+      html.push('</div>');
+    }
+    container.innerHTML = html.join("");
+  },
+
+  renderProjectCard: function(p, grid) {
+    var active = (p.id === AVIA.state.data.activeProjectId) ? "active" : "";
+    var resCount = p.resources ? p.resources.length : 0;
+    var updated = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : "";
+    var escName = AVIA.utils.escapeHtml(p.name || "");
+    var escDesc = AVIA.utils.escapeHtml(p.description || "");
+
+    if (grid) {
+      return ''+
+        '<div class="card project-card '+active+'">'+
+          '<h3>'+escName+'</h3>'+
+          '<p>'+(p.description ? escDesc : '<em>Sin descripción</em>')+'</p>'+
+          '<div class="card-meta">📎 '+resCount+' recurso'+(resCount!==1?'s':'')+' · '+updated+'</div>'+
+          '<div class="card-actions">'+
+            '<button class="btn-primary btn-sm" onclick="AVIA.ui.selectProject(\''+p.id+'\')">📌 Seleccionar</button>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.showProjectForm(\''+p.id+'\')">✏️</button>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.duplicateProject(\''+p.id+'\')">📋</button>'+
+            '<button class="btn-danger btn-sm" onclick="AVIA.ui.requestDeleteProject(\''+p.id+'\')">🗑️</button>'+
+          '</div>'+
+        '</div>';
+    } else {
+      return ''+
+        '<div class="card project-card '+active+'" style="display:flex;align-items:center;gap:16px;padding:12px 16px;">'+
+          '<div style="flex:1;">'+
+            '<h3 style="margin:0;">'+escName+'</h3>'+
+            '<div class="card-meta" style="margin:0;">📎 '+resCount+' · '+updated+'</div>'+
+          '</div>'+
+          '<div class="card-actions" style="flex-wrap:nowrap;">'+
+            '<button class="btn-primary btn-sm" onclick="AVIA.ui.selectProject(\''+p.id+'\')">📌</button>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.showProjectForm(\''+p.id+'\')">✏️</button>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.duplicateProject(\''+p.id+'\')">📋</button>'+
+            '<button class="btn-danger btn-sm" onclick="AVIA.ui.requestDeleteProject(\''+p.id+'\')">🗑️</button>'+
+          '</div>'+
+        '</div>';
+    }
+  },
+
+  // ---- Resources actions ----
+  getActiveProject: function() {
+    var pid = AVIA.state.data.activeProjectId;
+    if (!pid) return null;
+    return AVIA.ui.getProjectById(pid);
+  },
+
+  showResourceForm: function(editId) {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+
+    AVIA.state.ui.editingResourceId = editId || null;
+    document.getElementById("resource-form-container").className = "";
+
+    if (editId) {
+      var r = null;
+      for (var i=0;i<p.resources.length;i++){
+        if (p.resources[i].id === editId) { r = p.resources[i]; break; }
+      }
+      document.getElementById("res-form-title").textContent = "Editar recurso";
+      document.getElementById("res-name").value = r ? r.name : "";
+      document.getElementById("res-type").value = r ? r.type : "video";
+      document.getElementById("res-notes").value = r && r.notes ? r.notes : "";
+    } else {
+      document.getElementById("res-form-title").textContent = "Nuevo recurso";
+      document.getElementById("res-name").value = "";
+      document.getElementById("res-type").value = "video";
+      document.getElementById("res-notes").value = "";
+    }
+    document.getElementById("res-name").focus();
+  },
+
+  hideResourceForm: function() {
+    document.getElementById("resource-form-container").className = "hidden";
+    AVIA.state.ui.editingResourceId = null;
+  },
+
+  saveResource: function() {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+
+    var name = (document.getElementById("res-name").value || "").trim();
+    var type = document.getElementById("res-type").value;
+    var notes = (document.getElementById("res-notes").value || "").trim();
+    if (!name) { AVIA.ui.toast("El nombre del recurso es obligatorio", "error"); return; }
+
+    var ts = AVIA.utils.nowIso();
+    var projectId = p.id;
+
+    if (AVIA.state.ui.editingResourceId) {
+      var rid = AVIA.state.ui.editingResourceId;
+      AVIA.pipeline.runActionThroughPipeline({
+        type:"UPDATE_RESOURCE",
+        action:{
+          actionId: AVIA.utils.uid(),
+          actorId: AVIA.state.actorId,
+          type:"UPDATE_RESOURCE",
+          payload:{
+            projectId: projectId,
+            resourceId: rid,
+            name: name,
+            type: type,
+            notes: notes,
+            updatedAt: ts
+          },
+          ts: ts
+        }
+      });
+    } else {
+      var res = {
+        id: AVIA.utils.uid(),
+        name: name,
+        type: type,
+        notes: notes,
+        createdAt: ts,
+        updatedAt: ts
+      };
+      AVIA.pipeline.runActionThroughPipeline({
+        type:"ADD_RESOURCE",
+        action:{
+          actionId: AVIA.utils.uid(),
+          actorId: AVIA.state.actorId,
+          type:"ADD_RESOURCE",
+          payload:{
+            projectId: projectId,
+            resource: res
+          },
+          ts: ts
+        }
+      });
+    }
+
+    AVIA.ui.hideResourceForm();
+  },
+
+  requestDeleteResource: function(resId) {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+    var r = null;
+    for (var i=0;i<p.resources.length;i++){
+      if (p.resources[i].id === resId) { r = p.resources[i]; break; }
+    }
+    if (!r) return;
+
+    AVIA.ui.showModal("¿Eliminar \"" + r.name + "\"?",
+      "Queda trazado en el ledger.",
+      function(){
+        AVIA.ui.deleteResource(resId);
+      }
+    );
+  },
+
+  deleteResource: function(resId) {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+    var ts = AVIA.utils.nowIso();
+    AVIA.pipeline.runActionThroughPipeline({
+      type:"DELETE_RESOURCE",
+      action:{
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type:"DELETE_RESOURCE",
+        payload:{
+          projectId: p.id,
+          resourceId: resId,
+          updatedAt: ts
+        },
+        ts: ts
+      }
+    });
+  },
+
+  duplicateResource: function(resId) {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+
+    var idx = -1;
+    var original = null;
+    for (var i=0;i<p.resources.length;i++){
+      if (p.resources[i].id === resId) { idx = i; original = p.resources[i]; break; }
+    }
+    if (!original) return;
+
+    var ts = AVIA.utils.nowIso();
+    var clone = AVIA.utils.deepClone(original);
+    clone.id = AVIA.utils.uid();
+    clone.name = original.name + " (Copia)";
+    clone.createdAt = ts;
+    clone.updatedAt = ts;
+
+    AVIA.pipeline.runActionThroughPipeline({
+      type:"DUPLICATE_RESOURCE",
+      action:{
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type:"DUPLICATE_RESOURCE",
+        payload:{
+          projectId: p.id,
+          clone: clone,
+          insertIndex: idx+1,
+          updatedAt: ts
+        },
+        ts: ts
+      }
+    });
+  },
+
+  moveResource: function(fromIndex, toIndex) {
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+    if (fromIndex === toIndex) return;
+
+    var ts = AVIA.utils.nowIso();
+    AVIA.pipeline.runActionThroughPipeline({
+      type:"MOVE_RESOURCE",
+      action:{
+        actionId: AVIA.utils.uid(),
+        actorId: AVIA.state.actorId,
+        type:"MOVE_RESOURCE",
+        payload:{
+          projectId: p.id,
+          fromIndex: fromIndex,
+          toIndex: toIndex,
+          updatedAt: ts
+        },
+        ts: ts
+      }
+    });
+  },
+
+  toggleNotes: function(resId) {
+    var m = AVIA.state.ui.expandedNotes || {};
+    m[resId] = !m[resId];
+    AVIA.state.ui.expandedNotes = m;
+    AVIA.ui.renderResources();
+  },
+
+  // Filter/sort
+  filterResources: function(type) {
+    AVIA.state.ui.resourceFilter = type;
+    AVIA.ui.updateFilterButtons();
+    AVIA.ui.renderResources();
+  },
+
+  updateFilterButtons: function() {
+    var map = { "all":"f-all", "video":"f-video","audio":"f-audio","texto":"f-texto","imagen":"f-imagen" };
+    var active = AVIA.state.ui.resourceFilter;
+    var ids = ["f-all","f-video","f-audio","f-texto","f-imagen"];
+    for (var i=0;i<ids.length;i++){
+      var el = document.getElementById(ids[i]);
+      if (!el) continue;
+      if (ids[i] === map[active]) {
+        el.style.background = "var(--primary)";
+        el.style.color = "#fff";
+      } else {
+        el.style.background = "transparent";
+        el.style.color = "var(--text)";
+      }
+    }
+  },
+
+  sortResources: function(sortKey) {
+    AVIA.state.ui.resourceSort = sortKey;
+    AVIA.ui.updateSortButtons();
+    AVIA.ui.renderResources();
+  },
+
+  updateSortButtons: function() {
+    var active = AVIA.state.ui.resourceSort;
+    var ids = ["s-manual","s-name","s-type","s-date"];
+    var activeMap = {"manual":"s-manual","name":"s-name","type":"s-type","date":"s-date"};
+    for (var i=0;i<ids.length;i++){
+      var el = document.getElementById(ids[i]);
+      if (!el) continue;
+      if (ids[i] === activeMap[active]) {
+        el.style.background = "var(--primary)";
+        el.style.color = "#fff";
+      } else {
+        el.style.background = "transparent";
+        el.style.color = "var(--text)";
+      }
+    }
+  },
+
+  renderResources: function() {
+    var p = AVIA.ui.getActiveProject();
+    var panel = document.getElementById("resources-panel");
+    var empty = document.getElementById("no-project-selected");
+
+    if (!p) {
+      if (panel) panel.className = "hidden";
+      if (empty) empty.className = "empty-state";
+      return;
+    }
+
+    if (empty) empty.className = "hidden";
+    panel.className = "";
+
+    document.getElementById("resources-title").textContent = "Recursos — " + p.name;
+
+    var resources = p.resources || [];
+
+    // filter
+    var f = AVIA.state.ui.resourceFilter || "all";
+    var filtered = [];
+    for (var i=0;i<resources.length;i++){
+      if (f === "all" || resources[i].type === f) filtered.push(resources[i]);
+    }
+
+    // sort
+    var s = AVIA.state.ui.resourceSort || "manual";
+    if (s === "name") filtered.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    else if (s === "type") filtered.sort(function(a,b){ return String(a.type).localeCompare(String(b.type)); });
+    else if (s === "date") filtered.sort(function(a,b){ return new Date(b.createdAt)-new Date(a.createdAt); });
+    // manual: keep as is (order in state)
+
+    var list = document.getElementById("resources-list");
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">📎</div><p>Sin recursos para este filtro.</p></div>';
+      return;
+    }
+
+    // render list
+    var canDrag = (s === "manual");
+    var expandedNotes = AVIA.state.ui.expandedNotes || {};
+
+    var html = [];
+    for (var k=0;k<filtered.length;k++){
+      var r = filtered[k];
+      var expanded = !!expandedNotes[r.id];
+      var hasNotes = r.notes && r.notes.trim().length > 0;
+      var notesToggle = "";
+      if (hasNotes) {
+        notesToggle = ' · <a href="#" onclick="event.preventDefault();AVIA.ui.toggleNotes(\''+r.id+'\')" style="color:var(--primary);text-decoration:none;font-weight:700;">'+(expanded?'▾ Ocultar':'▸ Notas')+'</a>';
+      }
+
+      var dragAttrs = "";
+      if (canDrag) {
+        dragAttrs = 'draggable="true" ondragstart="AVIA.ui.onDragStart(event,\''+r.id+'\')" ondragend="AVIA.ui.onDragEnd(event)" ondragover="AVIA.ui.onDragOver(event)" ondrop="AVIA.ui.onDrop(event,\''+r.id+'\')"' ;
+      }
+
+      var notesBlock = (expanded && hasNotes) ? '<div class="card" style="padding:10px 12px;background:rgba(108,99,255,.04);border:1px solid var(--border);border-radius:8px;margin-top:10px;white-space:pre-wrap;max-height:140px;overflow:auto;font-size:.85rem;color:var(--muted)">'+AVIA.utils.escapeHtml(r.notes)+'</div>' : "";
+
+      html.push(
+        '<div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:10px;" '+dragAttrs+'>'+
+          (canDrag ? '<span style="cursor:grab;color:var(--muted);font-size:1.2rem;font-weight:900;">⠿</span>' : '')+
+          '<span style="font-size:.72rem;font-weight:900;padding:2px 8px;border-radius:14px;background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.2);text-transform:uppercase;">'+AVIA.utils.escapeHtml(r.type)+'</span>'+
+          '<div style="flex:1;">'+
+            '<div style="font-weight:900;font-size:.92rem;">'+AVIA.utils.escapeHtml(r.name)+'</div>'+
+            '<div style="font-size:.8rem;color:var(--muted);margin-top:4px;">'+
+              new Date(r.createdAt).toLocaleDateString() + notesToggle+
+            '</div>'+
+            notesBlock+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.showResourceForm(\''+r.id+'\')">✏️</button>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.duplicateResource(\''+r.id+'\')">📋</button>'+
+            '<button class="btn-danger btn-sm" onclick="AVIA.ui.requestDeleteResource(\''+r.id+'\')">🗑️</button>'+
+          '</div>'+
+        '</div>'
+      );
+    }
+
+    list.innerHTML = html.join("");
+  },
+
+  // Drag-drop manual reorder (local indices, then pipeline move)
+  draggedId: null,
+  onDragStart: function(e, id) {
+    AVIA.ui.draggedId = id;
+    try { e.dataTransfer.effectAllowed = "move"; } catch(_){}
+    if (e.currentTarget) e.currentTarget.style.opacity = "0.5";
+  },
+  onDragEnd: function(e) {
+    if (e.currentTarget) e.currentTarget.style.opacity = "";
+    AVIA.ui.draggedId = null;
+  },
+  onDragOver: function(e) {
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = "move"; } catch(_){}
+  },
+  onDrop: function(e, targetId) {
+    e.preventDefault();
+    var draggedId = AVIA.ui.draggedId;
+    if (!draggedId || draggedId === targetId) return;
+
+    var p = AVIA.ui.getActiveProject();
+    if (!p) return;
+
+    // indices in state (manual order)
+    var fromI = -1;
+    var toI = -1;
+    for (var i=0;i<p.resources.length;i++){
+      if (p.resources[i].id === draggedId) fromI = i;
+      if (p.resources[i].id === targetId) toI = i;
+    }
+    if (fromI === -1 || toI === -1) return;
+    // pipeline move
+    AVIA.ui.moveResource(fromI, toI);
+  },
+
+  // ---- Modal ----
+  modalCallback: null,
+  showModal: function(title, message, onConfirm) {
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-message").textContent = message;
+    AVIA.ui.modalCallback = onConfirm;
+    document.getElementById("confirm-modal").className = "modal-overlay visible";
+    document.getElementById("modal-confirm-btn").focus();
+  },
+  closeModal: function() {
+    document.getElementById("confirm-modal").className = "modal-overlay";
+    AVIA.ui.modalCallback = null;
+  },
+  confirmModalAction: function() {
+    if (AVIA.ui.modalCallback) AVIA.ui.modalCallback();
+    AVIA.ui.closeModal();
+  },
+
+  // ---- Snapshots for UI history (not ledger replay) ----
+  snapshots: [],
+  createSnapshot: function(trigger) {
+    var data = AVIA.state.data;
+    var ts = AVIA.utils.nowIso();
+    var totalRes = 0;
+    for (var i=0;i<data.projects.length;i++){
+      totalRes += (data.projects[i].resources ? data.projects[i].resources.length : 0);
+    }
+
+    var snap = {
+      id: AVIA.utils.uid(),
+      timestamp: ts,
+      trigger: trigger || "auto",
+      stateData: AVIA.utils.deepClone(data),
+      ledgerLen: AVIA.ledger.chain.length,
+      projectCount: data.projects.length,
+      resourceCount: totalRes
+    };
+    AVIA.ui.snapshots.unshift(snap);
+    if (AVIA.ui.snapshots.length > AVIA.constants.ledgerMaxSnapshots) AVIA.ui.snapshots.pop();
+
+    AVIA.ui.renderHistory();
+    AVIA.ui.toast("Snapshot creado ✓", "success");
+  },
+
+  restoreSnapshot: function(id) {
+    for (var i=0;i<AVIA.ui.snapshots.length;i++){
+      if (AVIA.ui.snapshots[i].id === id) {
+        var snap = AVIA.ui.snapshots[i];
+        AVIA.ui.showModal("¿Restaurar snapshot?",
+          "Se registrará como nueva acción en ledger para trazabilidad.",
+          function(){
+            // restore state via deterministic action: RESTORE_SNAPSHOT replaces state to snap.stateData.
+            var ts = AVIA.utils.nowIso();
+            AVIA.pipeline.runActionThroughPipeline({
+              type:"RESTORE_SNAPSHOT",
+              action:{
+                actionId: AVIA.utils.uid(),
+                actorId: AVIA.state.actorId,
+                type:"RESTORE_SNAPSHOT",
+                payload:{ snapshotState: snap.stateData },
+                ts: ts
+              }
+            });
+          }
+        );
+        return;
+      }
+    }
+  },
+
+  renderHistory: function() {
+    var c = document.getElementById("history-list");
+    if (!c) return;
+
+    if (!AVIA.ui.snapshots.length) {
+      c.innerHTML = '<div class="empty-state"><div class="icon">🕐</div><p>Sin snapshots.</p></div>';
+      return;
+    }
+
+    var labels = { manual:"📸 Manual" };
+    var html = [];
+    for (var i=0;i<AVIA.ui.snapshots.length;i++){
+      var s = AVIA.ui.snapshots[i];
+      html.push(
+        '<div class="card no-hover" style="margin-bottom:10px;padding:12px 16px;">'+
+          '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'+
+            '<div style="min-width:180px;font-weight:900;color:var(--primary)">'+ new Date(s.timestamp).toLocaleString() +'</div>'+
+            '<div style="flex:1;color:var(--muted);font-weight:700;">'+ (labels[s.trigger] || "⏱ Auto") + ' — ' + s.projectCount + ' proy, ' + s.resourceCount + ' rec' + '</div>'+
+            '<div style="font-weight:900;color:var(--muted);">ledger:' + s.ledgerLen + ' acciones</div>'+
+            '<button class="btn-ghost btn-sm" onclick="AVIA.ui.restoreSnapshot(\''+s.id+'\')">↩ Restaurar</button>'+
+          '</div>'+
+        '</div>'
+      );
+    }
+    c.innerHTML = html.join("");
+  },
+
+  // RESTORE action uses applyActionToState extension:
+  // Extend in core:
+  // (we add handler via wrapper since core.applyActionToState doesn't include it)
+};
+
+(function extendRestoreHandler(){
+  var original = AVIA.core.applyActionToState;
+  AVIA.core.applyActionToState = function(fullAction) {
+    if (fullAction.type === "RESTORE_SNAPSHOT") {
+      if (fullAction.payload && fullAction.payload.snapshotState) {
+        AVIA.state.data = fullAction.payload.snapshotState;
+      }
+      return;
+    }
+    return original(fullAction);
+  };
+})();
+
+// ---- Dashboard ----
+AVIA.ui.renderDashboard = function() {
+  var container = document.getElementById("dashboard-content");
+  if (!container) return;
+
+  var data = AVIA.state.data;
+  var projects = data.projects || [];
+  var totalRes = 0;
+  var typeCounts = {};
+  for (var i=0;i<projects.length;i++){
+    var rs = projects[i].resources || [];
+    totalRes += rs.length;
+    for (var j=0;j<rs.length;j++){
+      var t = rs[j].type || "texto";
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+    }
+  }
+  var avg = projects.length ? (totalRes / projects.length) : 0;
+  var sessionMin = Math.floor((Date.now() - AVIA.state.meta.sessionStart)/60000);
+
+  // top summary
+  var html = [];
+  html.push('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:16px;">');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">📁</div><div style="font-size:1.8rem;font-weight:900;color:var(--primary);">'+projects.length+'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Proyectos</div></div>');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">📎</div><div style="font-size:1.8rem;font-weight:900;color:var(--primary);">'+totalRes+'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Recursos</div></div>');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">📊</div><div style="font-size:1.8rem;font-weight:900;color:var(--primary);">'+(projects.length?avg.toFixed(1):"0")+'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Promedio</div></div>');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">💾</div><div style="font-size:1.4rem;font-weight:900;color:'+ (AVIA.state.meta.changesSinceExport>0 ? 'var(--warning)' : 'var(--success)') +';">'+ (AVIA.state.meta.changesSinceExport>0 ? (AVIA.state.meta.changesSinceExport + " ⚠") : "✓") +'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Cambios</div></div>');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">⏱️</div><div style="font-size:1.8rem;font-weight:900;color:var(--primary);">'+sessionMin+'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Min sesión</div></div>');
+  html.push('<div class="card no-hover" style="text-align:center;"><div style="font-size:2rem;">🧾</div><div style="font-size:1.8rem;font-weight:900;color:var(--primary);">'+AVIA.ledger.chain.length+'</div><div style="font-size:.8rem;color:var(--muted);font-weight:800;">Ledger</div></div>');
+  html.push('</div>');
+
+  // type counts
+  html.push('<div class="card no-hover" style="margin-bottom:16px;"><h3 style="font-size:.95rem;margin-bottom:12px;">Recursos por tipo</h3>');
+  if (Object.keys(typeCounts).length === 0) {
+    html.push('<p style="color:var(--muted);font-weight:800;font-size:.85rem;">Sin datos</p>');
+  } else {
+    var keys = Object.keys(typeCounts);
+    for (var k=0;k<keys.length;k++){
+      var type = keys[k];
+      var count = typeCounts[type];
+      var pct = totalRes ? Math.floor((count/totalRes)*100) : 0;
+      html.push(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+          '<span style="font-size:.72rem;font-weight:900;padding:2px 8px;border-radius:14px;background:rgba(108,99,255,.07);border:1px solid rgba(108,99,255,.2);min-width:60px;text-align:center;">'+AVIA.utils.escapeHtml(type)+'</span>'+
+          '<div style="flex:1;background:var(--border);border-radius:4px;height:18px;overflow:hidden;">'+
+            '<div style="width:'+pct+'%;background:var(--primary);height:100%;border-radius:4px;"></div>'+
+          '</div>'+
+          '<span style="font-size:.83rem;font-weight:900;color:var(--muted);">'+count+'</span>'+
+        '</div>'
+      );
+    }
+  }
+  html.push('</div>');
+
+  // projects distribution
+  html.push('<div class="card no-hover"><h3 style="font-size:.95rem;margin-bottom:12px;">Recursos por proyecto</h3>');
+  if (!projects.length) {
+    html.push('<p style="color:var(--muted);font-weight:800;font-size:.85rem;">Sin proyectos</p>');
+  } else {
+    var maxRes = 1;
+    for (var i2=0;i2<projects.length;i2++){
+      var len = (projects[i2].resources || []).length;
+      if (len > maxRes) maxRes = len;
+    }
+    for (var i3=0;i3<projects.length;i3++){
+      var pr = projects[i3];
+      var len2 = (pr.resources || []).length;
+      var width = maxRes ? Math.floor((len2/maxRes)*100) : 0;
+      html.push(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+          '<span style="font-size:.83rem;font-weight:900;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);">'+AVIA.utils.escapeHtml(pr.name)+'</span>'+
+          '<div style="flex:1;background:var(--border);border-radius:4px;height:16px;overflow:hidden;">'+
+            '<div style="width:'+width+'%;background:var(--success);height:100%;border-radius:4px;"></div>'+
+          '</div>'+
+          '<span style="font-size:.8rem;font-weight:900;color:var(--muted);">'+len2+'</span>'+
+        '</div>'
+      );
+    }
+  }
+  html.push('</div>');
+
+  container.innerHTML = html.join("");
+};
+
+AVIA.app.acceptConsent = function() {
+  document.getElementById("consent-screen").className = "hidden";
+  document.getElementById("app").className = "";
+  AVIA.sync.init();
+  AVIA.ui.setProjectView("grid");
+  AVIA.ui.updateFilterButtons();
+  AVIA.ui.updateSortButtons();
+  AVIA.ui.snapshots = [];
+  // initial render
+  AVIA.ui.renderAll();
+  AVIA.ui.updateStats();
+  AVIA.ui.toast("Bienvenido a AVIA-TOOC v10 ES5", "info");
+  // heartbeat-based snapshots (optional): could add pipeline auto-snapshot, but keep minimal.
+};
+
+AVIA.app.switchTab = function(tab) { AVIA.ui.switchTab(tab); if(tab==="resources") AVIA.ui.renderResources(); if(tab==="history") AVIA.ui.renderHistory(); if(tab==="dashboard") AVIA.ui.renderDashboard(); };
+
+AVIA.app.exportData = function() { AVIA.persist.exportDownload(); };
+
+AVIA.app.importData = function() {
+  document.getElementById("import-input").click();
+};
+
+AVIA.app.handleImport = function(event) {
+  var file = event.target.files && event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var obj = AVIA.utils.safeParseJson(e.target.result);
+      if (!obj) throw new Error("JSON inválido.");
+      // apply
+      AVIA.persist.importApply(obj);
+      AVIA.ui.toast("Importado ✓", "success");
+    } catch(err) {
+      AVIA.ui.toast("Error: " + (err && err.message ? err.message : String(err)), "error");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
+};
+
+// ---- Assistant (safe, no innerHTML injection) ----
+AVIA.assistant.open = false;
+AVIA.assistant.toggleAssistant = function() {
+  AVIA.assistant.open = !AVIA.assistant.open;
+  var panel = document.getElementById("assistant-panel");
+  var btn = document.getElementById("assistant-btn");
+  if (AVIA.assistant.open) {
+    panel.className = "assistant-panel visible";
+    btn.className = "assistant-btn open";
+    if (!document.getElementById("assistant-messages").children.length) {
+      AVIA.assistant.addBotMsg(AVIA.assistant.greeting());
+      AVIA.assistant.buildChips(["crear proyecto","añadir recurso","exportar","historial","atajos"]);
+    }
+    setTimeout(function(){
+      document.getElementById("assistant-input").focus();
+    }, 100);
+  } else {
+    panel.className = "assistant-panel";
+    btn.className = "assistant-btn";
+  }
+};
+
+AVIA.assistant.addBotMsg = function(text) {
+  var c = document.getElementById("assistant-messages");
+  var m = document.createElement("div");
+  m.className = "msg bot";
+  m.textContent = text;
+  c.appendChild(m);
+  c.scrollTop = c.scrollHeight;
+};
+AVIA.assistant.addUserMsg = function(text) {
+  var c = document.getElementById("assistant-messages");
+  var m = document.createElement("div");
+  m.className = "msg user";
+  m.textContent = text;
+  c.appendChild(m);
+  c.scrollTop = c.scrollHeight;
+};
+
+AVIA.assistant.showTyping = function(cb) {
+  var c = document.getElementById("assistant-messages");
+  var t = document.createElement("div");
+  t.className = "msg typing";
+  t.textContent = "● ● ●";
+  c.appendChild(t);
+  c.scrollTop = c.scrollHeight;
+  setTimeout(function(){
+    try{ c.removeChild(t); }catch(e){}
+    cb();
+  }, 450);
+};
+
+AVIA.assistant.buildChips = function(list) {
+  var c = document.getElementById("assistant-chips");
+  c.innerHTML = "";
+  for (var i=0;i<list.length;i++){
+    (function(topic){
+      var chip = document.createElement("span");
+      chip.className = "a-chip";
+      chip.textContent = topic;
+      chip.onclick = function(){ AVIA.assistant.askChip(topic); };
+      c.appendChild(chip);
+    })(list[i]);
+  }
+};
+
+AVIA.assistant.askChip = function(topic) {
+  var input = document.getElementById("assistant-input");
+  input.value = topic;
+  AVIA.assistant.sendAssistantMsg();
+};
+
+AVIA.assistant.greeting = function() {
+  var d = AVIA.state.data;
+  var np = d.projects.length;
+  var nr = 0;
+  for (var i=0;i<d.projects.length;i++){
+    nr += (d.projects[i].resources || []).length;
+  }
+  if (np === 0) return "¡Hola! 👋 Soy el Asistente AVIA.\n\nAún no tienes proyectos. ¿Empezamos creando uno?";
+  return "¡Hola! 👋 Tienes " + np + " proyecto(s) y " + nr + " recurso(s).\n\n¿En qué te puedo ayudar hoy?";
+};
+
+AVIA.assistant.findResponse = function(text) {
+  var lower = String(text||"").toLowerCase();
+  var d = AVIA.state.data;
+  if (lower.indexOf("exportar") !== -1) return "Para exportar: botón 📤 Exportar (arriba) o usa el botón de la cabecera. El ledger y el estado se guardan con hash.";
+  if (lower.indexOf("historial") !== -1) return "En la pestaña 🕐 Historial ves snapshots. El ledger de acciones mantiene hashes encadenados para trazabilidad.";
+  if (lower.indexOf("crear proyecto") !== -1 || lower.indexOf("nuevo proyecto") !== -1) return "Ve a 📁 Proyectos → + Nuevo proyecto. Escribe nombre y descripción.";
+  if (lower.indexOf("añadir recurso") !== -1 || lower.indexOf("nuevo recurso") !== -1) return "Selecciona un proyecto → 📎 Recursos → + Añadir recurso. El recurso se registra en ledger.";
+  if (lower.indexOf("atajos") !== -1) return "Atajos: Alt+A abre/cierra asistente; Escape cierra modal/forma o asistente.";
+  // fallback
+  return "Te acompaño. Dime si quieres: crear proyecto, añadir recursos, exportar/importar o revisar el historial/ledger.";
+};
+
+AVIA.assistant.sendAssistantMsg = function() {
+  var input = document.getElementById("assistant-input");
+  var text = (input.value || "").trim();
+  if (!text) return;
+  AVIA.assistant.addUserMsg(text);
+  input.value = "";
+  var resp = AVIA.assistant.findResponse(text);
+  AVIA.assistant.showTyping(function(){
+    AVIA.assistant.addBotMsg(resp);
+    AVIA.assistant.buildChips(["crear proyecto","añadir recurso","exportar","historial","atajos"]);
+  });
+};
+
+// keyboard
+document.addEventListener("keydown", function(e){
+  if (e && e.key === "Escape") {
+    // close modal if visible
+    var modal = document.getElementById("confirm-modal");
+    if (modal && modal.className.indexOf("visible") !== -1) { AVIA.ui.closeModal(); return; }
+    // close forms
+    var projForm = document.getElementById("project-form-container");
+    var resForm = document.getElementById("resource-form-container");
+    if (projForm && projForm.className !== "hidden") { AVIA.ui.hideProjectForm(); return; }
+    if (resForm && resForm.className !== "hidden") { AVIA.ui.hideResourceForm(); return; }
+    // close assistant
+    if (AVIA.assistant.open) { AVIA.assistant.toggleAssistant(); }
+  }
+  // Alt+A
+  if (e && e.altKey && (e.key === "a" || e.key === "A")) {
+    e.preventDefault();
+    AVIA.assistant.toggleAssistant();
+  }
+});
+
+// init view style defaults
+(function initButtons(){
+  var gridBtn = document.getElementById("view-grid-btn");
+  var listBtn = document.getElementById("view-list-btn");
+  if (gridBtn && listBtn) {
+    gridBtn.style.background = "var(--primary)";
+    gridBtn.style.color = "#fff";
+    listBtn.style.background = "transparent";
+    listBtn.style.color = "var(--text)";
+  }
+})();
+</script>
+</body>
+</html>

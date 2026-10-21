@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIAAnalytics - Panel de Analítica y Métricas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .animate-slideInDown {
+            animation: slideInDown 0.3s ease-out;
+        }
+        .animate-slideInUp {
+            animation: slideInUp 0.4s ease-out;
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scaleIn {
+            animation: scaleIn 0.3s ease-out;
+        }
+        .toast-notification {
+            animation: slideInDown 0.3s ease-out;
+        }
+        .modal-backdrop {
+            animation: fadeIn 0.2s ease-out;
+        }
+        .modal-content {
+            animation: scaleIn 0.3s ease-out;
+        }
+        .heatmap-cell {
+            transition: all 0.2s ease;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.2);
+            z-index: 10;
+        }
+        .kpi-card {
+            transition: all 0.3s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"></div>
+
+    <!-- Main Container -->
+    <div class="min-h-screen p-4 md:p-8">
+        <!-- Header -->
+        <div class="mb-8 animate-slideInDown">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        AVIAAnalytics
+                    </h1>
+                    <p class="text-gray-600 mt-1">Panel de Analítica y Métricas en Tiempo Real</p>
+                </div>
+                
+                <div class="flex flex-wrap gap-2">
+                    <!-- Date Range Selector -->
+                    <select id="dateRange" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="1d">Hoy</option>
+                        <option value="7d" selected>Últimos 7 días</option>
+                        <option value="30d">Últimos 30 días</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+
+                    <!-- Filters Button -->
+                    <button onclick="toggleFilters()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                        </svg>
+                        Filtros
+                    </button>
+
+                    <!-- Export Button -->
+                    <button onclick="showExportModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Panel -->
+            <div id="filtersPanel" class="hidden mt-4 bg-white rounded-lg border border-gray-200 overflow-hidden animate-slideInDown">
+                <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Módulo</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos los módulos</option>
+                            <option value="dashboard">Dashboard</option>
+                            <option value="security">Seguridad</option>
+                            <option value="docs">Documentos</option>
+                            <option value="users">Usuarios</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Evento</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos</option>
+                            <option value="access">Accesos</option>
+                            <option value="error">Errores</option>
+                            <option value="warning">Advertencias</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Todos</option>
+                            <option value="success">Exitosos</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="failed">Fallidos</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+            <!-- KPI 1: Usuarios Activos -->
+            <div class="kpi-card bg-white rounded-xl shadow-sm hover:shadow-md p-6 border border-gray-100 animate-slideInUp" style="animation-delay: 0s;">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-600 mb-2">Usuarios Activos</p>
+                        <p class="text-3xl font-bold text-gray-900 mb-2">2,845</p>
+                        <div class="inline-flex items-center text-sm font-medium text-green-600">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            +12.5%
+                        </div>
+                    </div>
+                    <div class="bg-blue-500 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI 2: Tasa de Respuesta -->
+            <div class="kpi-card bg-white rounded-xl shadow-sm hover:shadow-md p-6 border border-gray-100 animate-slideInUp" style="animation-delay: 0.1s;">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-600 mb-2">Tasa de Respuesta</p>
+                        <p class="text-3xl font-bold text-gray-900 mb-2">245ms</p>
+                        <div class="inline-flex items-center text-sm font-medium text-green-600">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            -8.2%
+                        </div>
+                    </div>
+                    <div class="bg-green-500 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI 3: Errores -->
+            <div class="kpi-card bg-white rounded-xl shadow-sm hover:shadow-md p-6 border border-gray-100 animate-slideInUp" style="animation-delay: 0.2s;">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-600 mb-2">Errores</p>
+                        <p class="text-3xl font-bold text-gray-900 mb-2">132</p>
+                        <div class="inline-flex items-center text-sm font-medium text-red-600">
+                            <svg class="w-4 h-4 mr-1 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            +3.1%
+                        </div>
+                    </div>
+                    <div class="bg-red-500 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI 4: Uptime -->
+            <div class="kpi-card bg-white rounded-xl shadow-sm hover:shadow-md p-6 border border-gray-100 animate-slideInUp" style="animation-delay: 0.3s;">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-600 mb-2">Uptime</p>
+                        <p class="text-3xl font-bold text-gray-900 mb-2">99.94%</p>
+                        <div class="inline-flex items-center text-sm font-medium text-green-600">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            +0.02%
+                        </div>
+                    </div>
+                    <div class="bg-purple-500 p-3 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Traffic Chart -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 animate-slideInUp">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Tráfico Temporal
+                </h3>
+                <canvas id="trafficChart" height="300"></canvas>
+            </div>
+
+            <!-- Module Distribution -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 animate-slideInUp">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                    </svg>
+                    Distribución por Módulo
+                </h3>
+                <canvas id="moduleChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Status Pie Chart -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 animate-slideInUp">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Estado del Sistema
+                </h3>
+                <canvas id="statusChart" height="250"></canvas>
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="text-sm text-gray-700">Exitosas</span>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900">2,845</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <span class="text-sm text-gray-700">Advertencias</span>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900">423</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <span class="text-sm text-gray-700">Errores</span>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900">132</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Heatmap -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100 animate-slideInUp">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Mapa de Calor - Actividad por Hora
+                </h3>
+                <div class="overflow-x-auto">
+                    <div id="heatmapGrid" class="inline-grid grid-cols-24 gap-1 min-w-max"></div>
+                </div>
+                <div class="flex items-center justify-between mt-4 text-xs text-gray-600">
+                    <span>Menos actividad</span>
+                    <div class="flex items-center gap-1">
+                        <div class="w-4 h-4 rounded" style="background-color: #dbeafe;"></div>
+                        <div class="w-4 h-4 rounded" style="background-color: #93c5fd;"></div>
+                        <div class="w-4 h-4 rounded" style="background-color: #3b82f6;"></div>
+                        <div class="w-4 h-4 rounded" style="background-color: #1e40af;"></div>
+                    </div>
+                    <span>Más actividad</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="hidden fixed inset-0 z-50">
+        <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" onclick="hideExportModal()"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="modal-content bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Exportar Datos
+                    </h3>
+                    <button onclick="hideExportModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <p class="text-gray-600 mb-6">
+                    Selecciona el formato de exportación para los datos analíticos actuales.
+                </p>
+                
+                <div class="space-y-3">
+                    <button onclick="handleExport('csv')" class="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all font-medium">
+                        Exportar como CSV
+                    </button>
+                    <button onclick="handleExport('json')" class="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-medium">
+                        Exportar como JSON
+                    </button>
+                    <button onclick="handleExport('xlsx')" class="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all font-medium">
+                        Exportar como Excel
+                    </button>
+                    <button onclick="hideExportModal()" class="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toast Notification System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' 
+                ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+            
+            toast.className = `toast-notification ${bgColor} text-white px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 max-w-md mb-4`;
+            toast.innerHTML = `${icon}<span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Toggle Filters Panel
+        function toggleFilters() {
+            const panel = document.getElementById('filtersPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        // Export Modal Functions
+        function showExportModal() {
+            document.getElementById('exportModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideExportModal() {
+            document.getElementById('exportModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function handleExport(format) {
+            showToast(`Exportando datos en formato ${format.toUpperCase()}...`);
+            hideExportModal();
+            
+            setTimeout(() => {
+                showToast(`Datos exportados exitosamente (${format.toUpperCase()})`);
+            }, 1500);
+        }
+
+        // ESC key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideExportModal();
+            }
+        });
+
+        // Generate Heatmap
+        function generateHeatmap() {
+            const grid = document.getElementById('heatmapGrid');
+            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            
+            // Hour labels
+            for (let hour = 0; hour < 24; hour++) {
+                const label = document.createElement('div');
+                label.className = 'text-xs text-gray-500 text-center w-6';
+                label.textContent = `${hour}h`;
+                grid.appendChild(label);
+            }
+            
+            // Heatmap cells
+            days.forEach(day => {
+                for (let hour = 0; hour < 24; hour++) {
+                    const value = Math.floor(Math.random() * 100);
+                    const cell = document.createElement('div');
+                    cell.className = 'heatmap-cell w-6 h-6 rounded cursor-pointer';
+                    cell.style.backgroundColor = getHeatmapColor(value);
+                    cell.title = `${day} ${hour}:00 - ${value} eventos`;
+                    cell.addEventListener('mouseenter', () => {
+                        cell.style.boxShadow = '0 0 0 2px #3b82f6';
+                    });
+                    cell.addEventListener('mouseleave', () => {
+                        cell.style.boxShadow = 'none';
+                    });
+                    grid.appendChild(cell);
+                }
+            });
+        }
+
+        function getHeatmapColor(value) {
+            if (value < 25) return '#dbeafe';
+            if (value < 50) return '#93c5fd';
+            if (value < 75) return '#3b82f6';
+            return '#1e40af';
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            // Traffic Chart
+            const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+            new Chart(trafficCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                    datasets: [{
+                        label: 'Usuarios',
+                        data: [450, 520, 480, 610, 590, 420, 380],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Solicitudes',
+                        data: [1500, 1800, 1650, 2100, 1950, 1400, 1300],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Module Chart
+            const moduleCtx = document.getElementById('moduleChart').getContext('2d');
+            new Chart(moduleCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Dashboard', 'Seguridad', 'Documentos', 'Usuarios', 'Config'],
+                    datasets: [{
+                        label: 'Visitas',
+                        data: [850, 620, 940, 480, 350],
+                        backgroundColor: '#8b5cf6'
+                    }, {
+                        label: 'Tiempo (seg)',
+                        data: [180, 240, 190, 150, 120],
+                        backgroundColor: '#06b6d4'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Exitosas', 'Advertencias', 'Errores'],
+                    datasets: [{
+                        data: [2845, 423, 132],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initCharts();
+            generateHeatmap();
+        });
+    </script>
+</body>
+</html>

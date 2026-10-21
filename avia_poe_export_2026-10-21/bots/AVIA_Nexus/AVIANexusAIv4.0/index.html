@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIANexus — AI Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg0:#04060e;--bg1:#0a0f1e;--bg2:rgba(10,18,42,.65);--bg3:rgba(15,25,55,.8);
+  --cy:#00f0ff;--mg:#ff00e5;--bl:#4d6dff;--gn:#00ff8c;--am:#ffb800;--rd:#ff3366;
+  --t1:#e8eaf6;--t2:#8892b0;--t3:#4a5580;
+  --gb:rgba(0,240,255,.15);--glb:rgba(255,255,255,.06);
+  --r:14px;--rs:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg0);color:var(--t1);min-height:100vh;overflow-x:hidden}
+
+/* BG */
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-grid::before{content:'';position:absolute;inset:-50%;background-image:linear-gradient(var(--gb) 1px,transparent 1px),linear-gradient(90deg,var(--gb) 1px,transparent 1px);background-size:60px 60px;animation:gs 40s linear infinite;opacity:.5}
+.bg-grid::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 20%,rgba(0,240,255,.06) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,0,229,.05) 0%,transparent 60%)}
+@keyframes gs{to{transform:translate(60px,60px)}}
+.orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;animation:of 12s ease-in-out infinite alternate}
+.o1{width:300px;height:300px;top:10%;left:5%;background:rgba(0,240,255,.07)}
+.o2{width:250px;height:250px;bottom:15%;right:10%;background:rgba(255,0,229,.06);animation-delay:-4s}
+.o3{width:200px;height:200px;top:50%;left:50%;background:rgba(77,109,255,.05);animation-delay:-8s}
+@keyframes of{0%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.1)}66%{transform:translate(-20px,30px) scale(.95)}100%{transform:translate(15px,-10px) scale(1.05)}}
+.scanline{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--cy),transparent);opacity:.12;z-index:9999;animation:sl 6s linear infinite;pointer-events:none}
+@keyframes sl{from{top:-3px}to{top:100vh}}
+
+/* LAYOUT */
+.wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:16px;min-height:100vh;transition:all .3s}
+.wrap.fs{max-width:100%;padding:10px}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--bg2);border:1px solid var(--glb);border-radius:var(--r);backdrop-filter:blur(20px);margin-bottom:16px;animation:sd .6s ease-out}
+@keyframes sd{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;background:linear-gradient(135deg,var(--cy),var(--mg));border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron';font-weight:900;font-size:16px;color:#000;position:relative;overflow:hidden}
+.logo::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.3) 50%,transparent 60%);animation:sh 3s ease-in-out infinite}
+@keyframes sh{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.logo-t h1{font-family:'Orbitron';font-size:1.1rem;font-weight:700;background:linear-gradient(90deg,var(--cy),var(--bl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px}
+.logo-t span{font-size:.65rem;color:var(--t3);font-family:'JetBrains Mono';letter-spacing:3px;text-transform:uppercase}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.sbdg{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(0,255,140,.08);border:1px solid rgba(0,255,140,.2);font-family:'JetBrains Mono';font-size:.65rem;color:var(--gn);letter-spacing:1px}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--gn);animation:pu 2s ease-in-out infinite}
+@keyframes pu{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,255,140,.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(0,255,140,0)}}
+.ib{width:36px;height:36px;border-radius:var(--rs);background:rgba(255,255,255,.04);border:1px solid var(--glb);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:.85rem}
+.ib:hover{background:rgba(0,240,255,.1);color:var(--cy);border-color:rgba(0,240,255,.3)}
+.ib.on{background:rgba(0,240,255,.15);color:var(--cy);border-color:rgba(0,240,255,.4)}
+
+/* METRICS */
+.mbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px}
+.mc{padding:14px;background:var(--bg2);border:1px solid var(--glb);border-radius:var(--r);backdrop-filter:blur(20px);position:relative;overflow:hidden;animation:fu .5s ease-out both;cursor:default;transition:all .25s}
+.mc:hover{border-color:rgba(0,240,255,.2);transform:translateY(-2px);box-shadow:0 0 30px rgba(0,240,255,.1)}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cy),transparent);opacity:0;transition:opacity .3s}
+.mc:hover::before{opacity:1}
+.mc:nth-child(1){animation-delay:.05s}.mc:nth-child(2){animation-delay:.1s}.mc:nth-child(3){animation-delay:.15s}.mc:nth-child(4){animation-delay:.2s}.mc:nth-child(5){animation-delay:.25s}
+@keyframes fu{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mi{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;margin-bottom:8px}
+.mi.c{background:rgba(0,240,255,.1);color:var(--cy)}.mi.m{background:rgba(255,0,229,.1);color:var(--mg)}.mi.g{background:rgba(0,255,140,.1);color:var(--gn)}.mi.a{background:rgba(255,184,0,.1);color:var(--am)}.mi.b{background:rgba(77,109,255,.1);color:var(--bl)}
+.ml{font-size:.65rem;color:var(--t3);font-family:'JetBrains Mono';letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.mv{font-family:'Orbitron';font-size:1.3rem;font-weight:700;color:var(--t1)}
+.mch{font-size:.68rem;margin-top:3px;font-family:'JetBrains Mono'}
+.mch.up{color:var(--gn)}.mch.dn{color:var(--rd)}
+
+/* GRID */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 18px;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid var(--glb);font-family:'Orbitron';font-size:.65rem;color:var(--t2);cursor:pointer;transition:all .2s;letter-spacing:1px;white-space:nowrap}
+.tab:hover{background:rgba(0,240,255,.06);border-color:rgba(0,240,255,.2);color:var(--cy)}
+.tab.on{background:rgba(0,240,255,.12);border-color:rgba(0,240,255,.4);color:var(--cy)}
+
+/* CARD */
+.cd{background:var(--bg2);border:1px solid var(--glb);border-radius:var(--r);backdrop-filter:blur(20px);overflow:hidden;animation:fu .5s ease-out both;display:flex;flex-direction:column}
+.ch{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--glb)}
+.ct{display:flex;align-items:center;gap:8px;font-family:'Orbitron';font-size:.72rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--t1)}
+.ct i{font-size:.8rem}
+.cb{padding:16px;flex:1;overflow:auto}
+
+/* ACTIONS */
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ab{padding:12px 10px;border-radius:var(--rs);background:rgba(255,255,255,.03);border:1px solid var(--glb);color:var(--t1);cursor:pointer;transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:'Rajdhani';font-size:.78rem;font-weight:500;text-align:center}
+.ab i{font-size:1.1rem;transition:all .25s}
+.ab:hover{border-color:rgba(0,240,255,.3);background:rgba(0,240,255,.06);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,240,255,.08)}
+.ab:hover i{color:var(--cy);transform:scale(1.15)}
+.ab:active{transform:translateY(0)}
+.ab.run{border-color:rgba(0,240,255,.4);background:rgba(0,240,255,.08);pointer-events:none}
+.ab.run i{animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ab .al{line-height:1.2}.ab .as{font-size:.6rem;color:var(--t3);font-family:'JetBrains Mono'}
+
+/* LOG */
+.le{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:.75rem}
+.le:last-child{border-bottom:none}
+.lt{font-family:'JetBrains Mono';font-size:.63rem;color:var(--t3);white-space:nowrap;min-width:50px;padding-top:2px}
+.li{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0}
+.li.info{background:rgba(0,240,255,.1);color:var(--cy)}.li.warn{background:rgba(255,184,0,.1);color:var(--am)}.li.ok{background:rgba(0,255,140,.1);color:var(--gn)}.li.err{background:rgba(255,51,102,.1);color:var(--rd)}
+.lm{color:var(--t2);line-height:1.4;font-family:'JetBrains Mono';font-size:.68rem}
+
+/* TERMINAL / RESPONSE */
+.rsp{min-height:120px;max-height:420px;overflow-y:auto;padding:4px}
+.rsp::-webkit-scrollbar{width:4px}.rsp::-webkit-scrollbar-track{background:transparent}.rsp::-webkit-scrollbar-thumb{background:rgba(0,240,255,.2);border-radius:2px}
+.ai-r{font-family:'Rajdhani';font-size:.92rem;line-height:1.7;color:var(--t2)}
+.ai-r h1,.ai-r h2,.ai-r h3{font-family:'Orbitron';color:var(--t1);margin:14px 0 6px;font-size:.95rem}
+.ai-r p{margin-bottom:8px}.ai-r code{background:rgba(0,240,255,.08);padding:2px 5px;border-radius:4px;font-family:'JetBrains Mono';font-size:.78rem;color:var(--cy)}
+.ai-r pre{background:rgba(0,0,0,.3);padding:12px;border-radius:var(--rs);overflow-x:auto;margin:8px 0;border:1px solid var(--glb)}
+.ai-r pre code{background:none;padding:0;color:var(--t1)}
+.ai-r ul,.ai-r ol{padding-left:20px;margin-bottom:8px}.ai-r li{margin-bottom:3px}.ai-r strong{color:var(--t1)}
+.ai-r blockquote{border-left:3px solid var(--cy);padding-left:12px;margin:8px 0;color:var(--t3);font-style:italic}
+.ai-r a{color:var(--cy);text-decoration:none}.ai-r a:hover{text-decoration:underline}
+.ai-r table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.82rem}
+.ai-r th,.ai-r td{padding:6px 10px;border:1px solid var(--glb);text-align:left}
+.ai-r th{background:rgba(0,240,255,.06);color:var(--t1);font-weight:600}
+
+.ld{display:flex;align-items:center;gap:8px;padding:14px 0;color:var(--t3);font-family:'JetBrains Mono';font-size:.73rem}
+.ldots{display:flex;gap:4px}
+.ldots span{width:6px;height:6px;border-radius:50%;background:var(--cy);animation:ldd 1.4s ease-in-out infinite}
+.ldots span:nth-child(2){animation-delay:.2s}.ldots span:nth-child(3){animation-delay:.4s}
+@keyframes ldd{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.2)}}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.chip{padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid var(--glb);font-family:'JetBrains Mono';font-size:.63rem;color:var(--t2);cursor:pointer;transition:all .2s;white-space:nowrap}
+.chip:hover{background:rgba(0,240,255,.08);border-color:rgba(0,240,255,.3);color:var(--cy)}
+
+.tir{display:flex;gap:8px;margin-top:10px}
+.ti{flex:1;padding:11px 14px;background:rgba(0,0,0,.3);border:1px solid var(--glb);border-radius:var(--rs);color:var(--t1);font-family:'JetBrains Mono';font-size:16px;outline:none;transition:all .2s}
+.ti:focus{border-color:rgba(0,240,255,.4);box-shadow:0 0 0 3px rgba(0,240,255,.08)}
+.ti::placeholder{color:var(--t3)}
+.sb{padding:11px 18px;background:linear-gradient(135deg,var(--cy),var(--bl));border:none;border-radius:var(--rs);color:#000;font-weight:700;font-family:'Rajdhani';font-size:.82rem;cursor:pointer;transition:all .2s;letter-spacing:1px}
+.sb:hover{opacity:.9;transform:scale(1.03)}.sb:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* CHART */
+.chart-box{position:relative;height:220px;margin-top:8px}
+
+/* EMPTY */
+.emp{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:100px;color:var(--t3);text-align:center}
+.emp i{font-size:1.8rem;margin-bottom:10px;opacity:.4}.emp p{font-size:.78rem;font-family:'JetBrains Mono'}
+
+/* FULLSCREEN */
+.fso{display:none;position:fixed;inset:0;z-index:1000;background:var(--bg0);overflow-y:auto}
+.fso.on{display:block}
+.fsi{max-width:1000px;margin:0 auto;padding:20px;min-height:100vh;display:flex;flex-direction:column}
+.fsh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.fsh h2{font-family:'Orbitron';font-size:.95rem;font-weight:600;color:var(--cy);letter-spacing:2px}
+.cfb{padding:7px 16px;border-radius:var(--rs);background:rgba(255,51,102,.1);border:1px solid rgba(255,51,102,.3);color:var(--rd);font-family:'Rajdhani';font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s}
+.cfb:hover{background:rgba(255,51,102,.2)}
+.frc{flex:1;overflow-y:auto;padding:18px;background:var(--bg2);border:1px solid var(--glb);border-radius:var(--r);backdrop-filter:blur(20px)}
+.frc .ai-r{font-size:1rem;line-height:1.8}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:2000;align-items:center;justify-content:center}
+.mo.on{display:flex}
+.mb{background:var(--bg1);border:1px solid var(--glb);border-radius:var(--r);padding:24px;max-width:380px;width:90%;text-align:center;animation:mp .3s ease-out}
+@keyframes mp{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.mb h3{font-family:'Orbitron';font-size:.85rem;color:var(--t1);margin-bottom:10px}
+.mb p{font-size:.82rem;color:var(--t2);margin-bottom:16px;line-height:1.5}
+.ma{display:flex;gap:8px;justify-content:center}
+.mbtn{padding:9px 20px;border-radius:var(--rs);font-family:'Rajdhani';font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid var(--glb)}
+.mbtn.pri{background:linear-gradient(135deg,var(--cy),var(--bl));color:#000;border:none}
+.mbtn.sec{background:transparent;color:var(--t2)}
+.mbtn:hover{opacity:.85}
+
+/* SPAN-2 */
+.sp2{grid-column:1/-1}
+
+@media(max-width:900px){.mgrid{grid-template-columns:1fr}.sp2{grid-column:1}.mbar{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}}
+@media(max-width:600px){.wrap{padding:10px}.hdr{padding:10px 14px;flex-wrap:wrap;gap:8px}.logo-t h1{font-size:.9rem}.sbdg{display:none}.ag{grid-template-columns:1fr}.mv{font-size:1.05rem}.mbar{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+<div class="scanline"></div>
+
+<div class="wrap" id="wrap">
+  <!-- HEADER -->
+  <header class="hdr">
+    <div class="hdr-l">
+      <div class="logo">A</div>
+      <div class="logo-t">
+        <h1>AVIANEXUS AI</h1>
+        <span>Command Center v4.0</span>
+      </div>
+    </div>
+    <div class="hdr-r">
+      <div class="sbdg"><div class="sdot"></div>ONLINE</div>
+      <button class="ib" id="fsBtn" title="Pantalla completa"><i class="fas fa-expand"></i></button>
+      <button class="ib" id="clrBtn" title="Limpiar logs"><i class="fas fa-trash-alt"></i></button>
+    </div>
+  </header>
+
+  <!-- METRICS -->
+  <section class="mbar" id="mbar">
+    <div class="mc"><div class="mi c"><i class="fas fa-egg"></i></div><div class="ml">Aves Activas</div><div class="mv" id="mBirds">45,284</div><div class="mch up">↑ +3.2% semanal</div></div>
+    <div class="mc"><div class="mi g"><i class="fas fa-chart-line"></i></div><div class="ml">Producción</div><div class="mv" id="mProd">94.8%</div><div class="mch up">↑ Meta superada</div></div>
+    <div class="mc"><div class="mi m"><i class="fas fa-brain"></i></div><div class="ml">AI Queries</div><div class="mv" id="mQ">0</div><div class="mch up">sesión activa</div></div>
+    <div class="mc"><div class="mi a"><i class="fas fa-bolt"></i></div><div class="ml">Acciones</div><div class="mv" id="mA">0</div><div class="mch up">ejecutadas</div></div>
+    <div class="mc"><div class="mi b"><i class="fas fa-clock"></i></div><div class="ml">Uptime</div><div class="mv" id="mUp">00:00</div><div class="mch up">en línea</div></div>
+  </section>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabs">
+    <div class="tab on" data-tab="command">⚡ Comando AI</div>
+    <div class="tab" data-tab="dashboard">📊 Dashboard</div>
+    <div class="tab" data-tab="actions">🚀 Acciones</div>
+    <div class="tab" data-tab="log">📋 Log</div>
+  </div>
+
+  <!-- TAB: COMMAND -->
+  <div class="tab-panel" id="tp-command">
+    <div class="cd sp2" style="animation-delay:.15s">
+      <div class="ch">
+        <div class="ct"><i class="fas fa-robot" style="color:var(--cy)"></i>Terminal AI — Análisis en Tiempo Real</div>
+        <button class="ib" id="expBtn" title="Expandir"><i class="fas fa-expand-alt"></i></button>
+      </div>
+      <div class="cb">
+        <div class="chips">
+          <span class="chip" data-p="Analiza el rendimiento de producción avícola actual (45,284 aves, 94.8% tasa de postura) y sugiere mejoras para maximizar la producción">📊 Rendimiento</span>
+          <span class="chip" data-p="Genera un resumen ejecutivo del estado de la granja avícola: aves activas, producción, alertas, y tendencias clave">📋 Resumen</span>
+          <span class="chip" data-p="Identifica posibles riesgos sanitarios y vulnerabilidades en la operación avícola. Evalúa temperatura de galpones, inventario de alimento, y protocolos de bioseguridad">🔒 Seguridad</span>
+          <span class="chip" data-p="Genera predicciones de producción de huevos y consumo de alimento para las próximas 2 semanas basándote en los datos actuales de la granja">🔮 Predicciones</span>
+          <span class="chip" data-p="Analiza los costos operativos de la granja y proporciona un plan de optimización de recursos con impacto estimado en rentabilidad">💰 Costos</span>
+        </div>
+        <div class="rsp" id="rsp">
+          <div class="emp" id="rspE"><i class="fas fa-satellite"></i><p>Envía un comando o selecciona una acción</p></div>
+        </div>
+        <div class="tir">
+          <input type="text" class="ti" id="tIn" placeholder="Escribe un comando para AVIANEXUS AI..." autocomplete="off">
+          <button class="sb" id="sBtn">ENVIAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: DASHBOARD -->
+  <div class="tab-panel" id="tp-dashboard" style="display:none">
+    <div class="mgrid">
+      <div class="cd" style="animation-delay:.1s">
+        <div class="ch"><div class="ct"><i class="fas fa-chart-area" style="color:var(--gn)"></i>Producción Semanal</div></div>
+        <div class="cb"><div class="chart-box"><canvas id="prodChart"></canvas></div></div>
+      </div>
+      <div class="cd" style="animation-delay:.15s">
+        <div class="ch"><div class="ct"><i class="fas fa-chart-pie" style="color:var(--mg)"></i>Distribución por Galpón</div></div>
+        <div class="cb"><div class="chart-box"><canvas id="distChart"></canvas></div></div>
+      </div>
+      <div class="cd sp2" style="animation-delay:.2s">
+        <div class="ch"><div class="ct"><i class="fas fa-temperature-high" style="color:var(--am)"></i>Métricas en Tiempo Real</div></div>
+        <div class="cb">
+          <div class="mbar" style="margin-bottom:0">
+            <div class="mc"><div class="ml">Temp. Galpón A</div><div class="mv" style="color:var(--gn)">24°C</div><div class="mch up">✓ Normal</div></div>
+            <div class="mc"><div class="ml">Temp. Galpón B</div><div class="mv" style="color:var(--gn)">25°C</div><div class="mch up">✓ Normal</div></div>
+            <div class="mc"><div class="ml">Temp. Galpón C</div><div class="mv" style="color:var(--rd)">32°C</div><div class="mch dn">⚠ Elevada</div></div>
+            <div class="mc"><div class="ml">Humedad Media</div><div class="mv">65%</div><div class="mch up">✓ Óptimo</div></div>
+            <div class="mc"><div class="ml">Alimento Stock</div><div class="mv" style="color:var(--am)">15%</div><div class="mch dn">⚠ Bajo</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ACTIONS -->
+  <div class="tab-panel" id="tp-actions" style="display:none">
+    <div class="mgrid">
+      <div class="cd" style="animation-delay:.1s">
+        <div class="ch"><div class="ct"><i class="fas fa-rocket" style="color:var(--mg)"></i>Acciones del Sistema</div></div>
+        <div class="cb">
+          <div class="ag" id="aGrid">
+            <button class="ab" data-act="diagnostico"><i class="fas fa-stethoscope" style="color:var(--cy)"></i><span class="al">Diagnóstico AI</span><span class="as">Análisis completo</span></button>
+            <button class="ab" data-act="reporte"><i class="fas fa-chart-bar" style="color:var(--gn)"></i><span class="al">Generar Reporte</span><span class="as">Métricas completas</span></button>
+            <button class="ab" data-act="prediccion"><i class="fas fa-magic" style="color:var(--am)"></i><span class="al">Predicción</span><span class="as">Tendencias futuras</span></button>
+            <button class="ab" data-act="optimizar"><i class="fas fa-cogs" style="color:var(--mg)"></i><span class="al">Optimizar</span><span class="as">Rendimiento AI</span></button>
+            <button class="ab" data-act="seguridad"><i class="fas fa-shield-alt" style="color:var(--rd)"></i><span class="al">Audit Seguridad</span><span class="as">Escaneo profundo</span></button>
+            <button class="ab" data-act="resumen"><i class="fas fa-file-alt" style="color:var(--bl)"></i><span class="al">Resumen Ejecutivo</span><span class="as">Briefing rápido</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="cd" style="animation-delay:.15s">
+        <div class="ch"><div class="ct"><i class="fas fa-robot" style="color:var(--cy)"></i>Resultado de Acción</div></div>
+        <div class="cb">
+          <div class="rsp" id="actRsp"><div class="emp"><i class="fas fa-bolt"></i><p>Ejecuta una acción para ver el resultado</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LOG -->
+  <div class="tab-panel" id="tp-log" style="display:none">
+    <div class="cd">
+      <div class="ch">
+        <div class="ct"><i class="fas fa-terminal" style="color:var(--cy)"></i>Log del Sistema</div>
+        <span style="font-family:'JetBrains Mono';font-size:.6rem;color:var(--t3)" id="lc">0 entradas</span>
+      </div>
+      <div class="cb" style="max-height:500px;overflow-y:auto" id="sLog">
+        <div class="emp" id="lE"><i class="fas fa-satellite-dish"></i><p>Esperando actividad...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN -->
+<div class="fso" id="fso">
+  <div class="fsi">
+    <div class="fsh">
+      <h2><i class="fas fa-robot"></i>&nbsp; AVIANEXUS AI — Modo Expandido</h2>
+      <button class="cfb" id="cfs"><i class="fas fa-compress-alt"></i>&nbsp; Cerrar</button>
+    </div>
+    <div class="frc" id="frc"><div class="emp"><i class="fas fa-satellite"></i><p>Sin contenido. Usa el terminal para generar una respuesta.</p></div></div>
+    <div class="tir" style="margin-top:14px">
+      <input type="text" class="ti" id="fIn" placeholder="Escribe un comando..." autocomplete="off">
+      <button class="sb" id="fSb">ENVIAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="moO">
+  <div class="mb"><h3 id="moT">Confirmar</h3><p id="moM">¿Estás seguro?</p><div class="ma"><button class="mbtn sec" id="moC">Cancelar</button><button class="mbtn pri" id="moK">Confirmar</button></div></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var S={qc:0,ac:0,st:Date.now(),logs:[],busy:false,html:"",fsOpen:false};
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return document.querySelectorAll(s)};
+
+/* Dark mode detect */
+if(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark")}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(e){e.matches?document.documentElement.classList.add("dark"):document.documentElement.classList.remove("dark")});
+
+/* Uptime */
+setInterval(function(){
+  var d=Date.now()-S.st,s=Math.floor(d/1000),m=Math.floor(s/60),h=Math.floor(m/60);
+  s%=60;m%=60;
+  $("#mUp").textContent=h>0?pad(h)+":"+pad(m)+":"+pad(s):pad(m)+":"+pad(s);
+},1000);
+function pad(n){return n<10?"0"+n:""+n}
+
+/* Metrics */
+function updM(){$("#mQ").textContent=S.qc;$("#mA").textContent=S.ac}
+
+/* Escape */
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+
+/* Log */
+function addLog(t,m){
+  var lE=$("#lE");if(lE)lE.style.display="none";
+  var now=new Date(),ts=pad(now.getHours())+":"+pad(now.getMinutes());
+  var ic={info:"fa-info",warn:"fa-exclamation",ok:"fa-check",err:"fa-times"};
+  var e=document.createElement("div");e.className="le";
+  e.innerHTML='<span class="lt">'+ts+'</span><div class="li '+t+'"><i class="fas '+(ic[t]||"fa-info")+'"></i></div><span class="lm">'+esc(m)+'</span>';
+  $("#sLog").appendChild(e);$("#sLog").scrollTop=$("#sLog").scrollHeight;
+  S.logs.push({t:t,m:m});$("#lc").textContent=S.logs.length+" entradas";
+}
+
+/* Modal */
+function showModal(title,msg){
+  return new Promise(function(res){
+    $("#moT").textContent=title;$("#moM").textContent=msg;
+    $("#moO").classList.add("on");
+    function clean(){$("#moO").classList.remove("on");$("#moK").removeEventListener("click",ok);$("#moC").removeEventListener("click",no)}
+    function ok(){clean();res(true)}function no(){clean();res(false)}
+    $("#moK").addEventListener("click",ok);$("#moC").addEventListener("click",no);
+  });
+}
+
+/* Render */
+function render(html,loading){
+  var c='<div class="ai-r">'+html+'</div>';
+  if(loading)c+='<div class="ld"><div class="ldots"><span></span><span></span><span></span></div> Procesando...</div>';
+  $("#rsp").innerHTML=c;$("#rsp").scrollTop=$("#rsp").scrollHeight;
+  if(S.fsOpen){$("#frc").innerHTML=c.replace('class="ai-r"','class="ai-r"');$("#frc").scrollTop=$("#frc").scrollHeight}
+}
+function renderAct(html,loading){
+  var c='<div class="ai-r">'+html+'</div>';
+  if(loading)c+='<div class="ld"><div class="ldots"><span></span><span></span><span></span></div> Procesando...</div>';
+  $("#actRsp").innerHTML=c;$("#actRsp").scrollTop=$("#actRsp").scrollHeight;
+}
+function showLoad(msg,target){
+  var el=$(target||"#rsp");
+  var rE=$("#rspE");if(rE)rE.style.display="none";
+  el.innerHTML='<div class="ld"><div class="ldots"><span></span><span></span><span></span></div> '+esc(msg||"Procesando...")+'</div>';
+  if(S.fsOpen&&target!=="#actRsp"){$("#frc").innerHTML=el.innerHTML}
+}
+
+/* Poe handler */
+var activeTarget="#rsp";
+if(window.Poe){
+  window.Poe.registerHandler("nx-handler",function(result,ctx){
+    var msg=result.responses[0];if(!msg)return;
+    var tgt=ctx&&ctx.target||"#rsp";
+    if(msg.status==="error"){
+      S.busy=false;$("#sBtn").disabled=false;$("#fSb").disabled=false;
+      var eh='<p style="color:var(--rd)"><i class="fas fa-exclamation-triangle"></i> Error: '+esc(msg.statusText||"Error desconocido")+'</p>';
+      if(tgt==="#actRsp")renderAct(eh,false);else render(eh,false);
+      addLog("err","Error AI: "+(msg.statusText||"desconocido"));
+      clearRunBtns();return;
+    }
+    var parsed="";
+    try{parsed=marked.parse(msg.content||"")}catch(e){parsed=esc(msg.content||"")}
+    S.html=parsed;
+    if(msg.status==="incomplete"){
+      if(tgt==="#actRsp")renderAct(parsed,true);else render(parsed,true);
+    }else if(msg.status==="complete"){
+      S.busy=false;$("#sBtn").disabled=false;$("#fSb").disabled=false;
+      if(tgt==="#actRsp")renderAct(parsed,false);else render(parsed,false);
+      addLog("ok","Respuesta AI completada ("+(ctx&&ctx.actionType||"query")+")");
+      clearRunBtns();
+    }
+  });
+}
+
+function clearRunBtns(){$$(".ab").forEach(function(b){b.classList.remove("run")})}
+
+/* Send */
+function sendAI(prompt,actionType,target){
+  if(S.busy||!prompt.trim())return;
+  S.busy=true;$("#sBtn").disabled=true;$("#fSb").disabled=true;
+  S.qc++;updM();
+  showLoad("Conectando con AVIANEXUS AI...",target);
+  addLog("info","Enviando: "+prompt.substring(0,55)+(prompt.length>55?"...":""));
+
+  var sysCtx="Eres AVIANEXUS AI, un sistema de inteligencia artificial avanzado especializado en gestión avícola integrado en un Command Center futurista. "+
+    "Responde en español. Usa Markdown. "+
+    "Datos del sistema: Aves=45284, Producción=94.8%, Galpones=3(A:15284,B:18450,C:11550), Temp_A=24°C, Temp_B=25°C, Temp_C=32°C(ALERTA), Humedad=65%, Stock_Alimento=15%(BAJO), "+
+    "Queries="+S.qc+", Acciones="+S.ac+", Uptime="+$("#mUp").textContent+", Logs="+S.logs.length+". "+
+    "Acción: "+(actionType||"consulta libre")+". ";
+
+  var full="@Claude-Sonnet-4.5 "+sysCtx+"\n\nComando: "+prompt;
+
+  if(window.Poe){
+    window.Poe.sendUserMessage(full,{
+      handler:"nx-handler",stream:true,openChat:false,
+      handlerContext:{actionType:actionType||"query",target:target||"#rsp"},
+      parameters:{}
+    }).catch(function(err){
+      S.busy=false;$("#sBtn").disabled=false;$("#fSb").disabled=false;
+      var errH='<p style="color:var(--rd)"><i class="fas fa-exclamation-triangle"></i> '+esc(String(err))+'</p>';
+      if(target==="#actRsp")renderAct(errH,false);else render(errH,false);
+      addLog("err","Error API: "+String(err));clearRunBtns();
+    });
+  }else{
+    setTimeout(function(){
+      S.busy=false;$("#sBtn").disabled=false;$("#fSb").disabled=false;
+      var dm=marked.parse("## AVIANEXUS AI — Respuesta\n\n**Modo:** Demo (API no disponible)\n\nEl sistema funciona en modo demostración. Conecta la app al entorno Poe para IA real.\n\n### Datos del sistema\n- Aves activas: **45,284**\n- Producción: **94.8%**\n- Galpón C: **⚠️ Temp 32°C**\n- Stock alimento: **⚠️ 15%**\n\n> Comando: *"+prompt+"*");
+      S.html=dm;
+      if(target==="#actRsp")renderAct(dm,false);else render(dm,false);
+      addLog("ok","Respuesta demo generada");clearRunBtns();
+    },1200);
+  }
+}
+
+/* Action prompts */
+var AP={
+  diagnostico:"Ejecuta un diagnóstico completo de la granja avícola. Analiza: producción por galpón, temperaturas, consumo de alimento, mortalidad, salud general. Presenta resultados con tabla e indicadores (✅ ⚠️ ❌). Incluye recomendaciones priorizadas.",
+  reporte:"Genera un reporte ejecutivo completo con: 1) Resumen ejecutivo, 2) Métricas clave con valores, 3) Estado por galpón, 4) Alertas activas (Temp Galpón C, Stock alimento), 5) Recomendaciones. Usa tablas Markdown.",
+  prediccion:"Basándote en los datos actuales (45284 aves, 94.8% producción, tendencia +3.2%), genera predicciones para 2 semanas: huevos estimados, consumo alimento, costos, riesgos. Incluye niveles de confianza.",
+  optimizar:"Analiza y genera un plan de optimización para la granja: 1) Cuellos de botella, 2) Quick wins (problema Galpón C, stock alimento), 3) Optimizaciones medio plazo, 4) Mejoras estructurales. Incluye impacto estimado.",
+  seguridad:"Auditoría de bioseguridad de la granja avícola: 1) Riesgos sanitarios (Galpón C temp alta), 2) Protocolos de bioseguridad, 3) Estado de vacunación, 4) Calidad del agua y alimento, 5) Plan de contingencia. Clasifica por severidad.",
+  resumen:"Briefing ejecutivo rápido (30 segundos lectura): estado general (semáforo), métricas clave, alertas activas (Galpón C 32°C, alimento 15%), top 3 acciones inmediatas. Sé conciso."
+};
+
+/* Action buttons */
+$$("#aGrid .ab").forEach(function(b){
+  b.addEventListener("click",function(){
+    var act=b.getAttribute("data-act");if(!act||S.busy)return;
+    S.ac++;updM();addLog("info","Acción: "+act.toUpperCase());
+    b.classList.add("run");
+    sendAI(AP[act]||"Ejecuta: "+act,act,"#actRsp");
+  });
+});
+
+/* Chips */
+$$(".chip").forEach(function(c){
+  c.addEventListener("click",function(){
+    var p=c.getAttribute("data-p");
+    if(p&&!S.busy){$("#tIn").value=p;sendAI(p,"chip","#rsp");$("#tIn").value=""}
+  });
+});
+
+/* Terminal input */
+function doSend(){var v=$("#tIn").value.trim();if(v){sendAI(v,"query","#rsp");$("#tIn").value=""}}
+function doFsSend(){var v=$("#fIn").value.trim();if(v){sendAI(v,"fullscreen","#rsp");$("#fIn").value=""}}
+$("#sBtn").addEventListener("click",doSend);
+$("#tIn").addEventListener("keydown",function(e){if(e.key==="Enter")doSend()});
+$("#fSb").addEventListener("click",doFsSend);
+$("#fIn").addEventListener("keydown",function(e){if(e.key==="Enter")doFsSend()});
+
+/* Tabs */
+$$(".tab").forEach(function(t){
+  t.addEventListener("click",function(){
+    $$(".tab").forEach(function(x){x.classList.remove("on")});t.classList.add("on");
+    $$(".tab-panel").forEach(function(p){p.style.display="none"});
+    var panel=$("#tp-"+t.getAttribute("data-tab"));if(panel)panel.style.display="block";
+    if(t.getAttribute("data-tab")==="dashboard")initCharts();
+  });
+});
+
+/* Fullscreen */
+$("#fsBtn").addEventListener("click",function(){
+  S.fsOpen=true;$("#fso").classList.add("on");
+  if(S.html)$("#frc").innerHTML='<div class="ai-r">'+S.html+'</div>';
+  $("#fIn").focus();this.classList.add("on");
+});
+$("#expBtn").addEventListener("click",function(){
+  S.fsOpen=true;$("#fso").classList.add("on");
+  if(S.html)$("#frc").innerHTML='<div class="ai-r">'+S.html+'</div>';
+  $("#fIn").focus();
+});
+$("#cfs").addEventListener("click",closeFS);
+function closeFS(){S.fsOpen=false;$("#fso").classList.remove("on");$("#fsBtn").classList.remove("on")}
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&S.fsOpen)closeFS()});
+
+/* Clear logs */
+$("#clrBtn").addEventListener("click",async function(){
+  var ok=await showModal("Limpiar Logs","¿Eliminar todos los registros del sistema?");
+  if(ok){S.logs=[];$("#sLog").innerHTML='<div class="emp"><i class="fas fa-satellite-dish"></i><p>Esperando actividad...</p></div>';
+  $("#lc").textContent="0 entradas";addLog("info","Logs limpiados")}
+});
+
+/* Charts */
+var chartsInit=false;
+function initCharts(){
+  if(chartsInit)return;chartsInit=true;
+  var gc="rgba(0,240,255,.08)",tc="#8892b0";
+
+  new Chart($("#prodChart").getContext("2d"),{
+    type:"line",
+    data:{labels:["Sem 1","Sem 2","Sem 3","Sem 4","Sem 5","Sem 6"],
+      datasets:[{label:"Producción",data:[42150,43280,44120,44850,45100,45284],
+        borderColor:"#00f0ff",backgroundColor:"rgba(0,240,255,.1)",fill:true,tension:.4,borderWidth:2.5,
+        pointBackgroundColor:"#00f0ff",pointBorderColor:"#0a0f1e",pointBorderWidth:2,pointRadius:4,pointHoverRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#0a0f1e",titleColor:"#e8eaf6",bodyColor:"#8892b0",borderColor:"rgba(0,240,255,.2)",borderWidth:1,padding:12,cornerRadius:8,callbacks:{label:function(c){return c.parsed.y.toLocaleString()+" aves"}}}},
+      scales:{y:{grid:{color:gc},ticks:{color:tc,font:{family:"JetBrains Mono",size:11},callback:function(v){return v.toLocaleString()}}},x:{grid:{display:false},ticks:{color:tc,font:{family:"Rajdhani",size:12}}}}}
+  });
+
+  new Chart($("#distChart").getContext("2d"),{
+    type:"doughnut",
+    data:{labels:["Galpón A","Galpón B","Galpón C"],
+      datasets:[{data:[15284,18450,11550],backgroundColor:["#00f0ff","#ff00e5","#4d6dff"],borderWidth:0,cutout:"68%",borderRadius:4,spacing:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{color:tc,font:{family:"Rajdhani",size:12},padding:14,usePointStyle:true,pointStyleWidth:8}},
+        tooltip:{backgroundColor:"#0a0f1e",titleColor:"#e8eaf6",bodyColor:"#8892b0",borderColor:"rgba(0,240,255,.2)",borderWidth:1,padding:12,cornerRadius:8,callbacks:{label:function(c){return c.label+": "+c.parsed.toLocaleString()+" aves"}}}}}
+  });
+}
+
+/* Init */
+addLog("ok","AVIANEXUS AI Command Center inicializado");
+addLog("info","Modelo activo: Claude-Sonnet-4.5");
+addLog("info","Sistema avícola conectado — 3 galpones monitoreados");
+addLog("warn","Alerta: Galpón C temperatura elevada (32°C)");
+addLog("warn","Alerta: Stock de alimento bajo (15%)");
+})();
+</script>
+</body>
+</html>
+

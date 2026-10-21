@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Map → Bocatti | SiestaOTTOS v5.2 - FASE 2</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+            margin-right: 8px;
+        }
+        
+        .badge-new {
+            background: #ed8936;
+        }
+        
+        .map-container {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            font-size: 22px;
+            color: #1a202c;
+        }
+        
+        .btn-close {
+            background: #f7fafc;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+            transition: background 0.2s;
+        }
+        
+        .btn-close:hover {
+            background: #edf2f7;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .autocomplete-results {
+            position: absolute;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: calc(100% - 48px);
+            z-index: 10;
+            display: none;
+        }
+        
+        .autocomplete-results.active {
+            display: block;
+        }
+        
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2d3748;
+            border-bottom: 1px solid #f7fafc;
+        }
+        
+        .autocomplete-item:hover {
+            background: #f7fafc;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .transport-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .transport-option {
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .transport-option:hover {
+            border-color: #cbd5e0;
+            background: #f7fafc;
+        }
+        
+        .transport-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .transport-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .transport-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .preferences {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .preference-tag {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #edf2f7;
+            color: #4a5568;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preference-tag:hover {
+            background: #e2e8f0;
+        }
+        
+        .preference-tag.selected {
+            background: #667eea;
+            color: white;
+        }
+        
+        .route-info {
+            background: #f0fff4;
+            border-left: 4px solid #48bb78;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+        
+        .route-info h3 {
+            color: #22543d;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .route-details {
+            color: #2f855a;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .route-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2f855a;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 4px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .map-preview {
+            height: 200px;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .error-message {
+            background: #fff5f5;
+            border-left: 4px solid #fc8181;
+            padding: 12px;
+            border-radius: 8px;
+            color: #742a2a;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            #map {
+                height: 350px;
+            }
+            
+            .transport-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .route-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 AVIA Map → Bocatti</h1>
+            <p>Sistema de navegación afectiva | SiestaOTTOS v5.2</p>
+            <span class="badge">✓ FASE 1</span>
+            <span class="badge badge-new">🔥 FASE 2 ACTIVA</span>
+        </div>
+        
+        <!-- Mapa Principal -->
+        <div class="map-container">
+            <div id="map"></div>
+            <button class="btn-primary" onclick="openModal()">
+                📍 ¿Cómo llegar a Bocatti?
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modal de Planificación -->
+    <div id="routeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🗺️ Planifica tu ruta</h2>
+                <button class="btn-close" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <p style="color: #718096; font-size: 14px; margin-bottom: 24px;">
+                    Movilidad afectiva, accesible y transparente
+                </p>
+                
+                <!-- Origen -->
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">📍 Origen</label>
+                    <input 
+                        type="text" 
+                        id="originInput" 
+                        class="form-input" 
+                        placeholder="Escribe tu dirección o ubicación"
+                        autocomplete="off"
+                    >
+                    <div id="autocompleteResults" class="autocomplete-results"></div>
+                </div>
+                
+                <!-- Transporte -->
+                <div class="form-group">
+                    <label class="form-label">🚗 Medio de transporte</label>
+                    <div class="transport-grid">
+                        <div class="transport-option" data-transport="car" onclick="selectTransport('car')">
+                            <div class="transport-icon">🚗</div>
+                            <div class="transport-label">Coche</div>
+                        </div>
+                        <div class="transport-option" data-transport="foot" onclick="selectTransport('foot')">
+                            <div class="transport-icon">🚶</div>
+                            <div class="transport-label">A pie</div>
+                        </div>
+                        <div class="transport-option" data-transport="bike" onclick="selectTransport('bike')">
+                            <div class="transport-icon">🚲</div>
+                            <div class="transport-label">Bicicleta</div>
+                        </div>
+                        <div class="transport-option" data-transport="bike" onclick="selectTransport('bike')">
+                            <div class="transport-icon">🚌</div>
+                            <div class="transport-label">Transporte público</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preferencias -->
+                <div class="form-group">
+                    <label class="form-label">🎯 Preferencias de ruta</label>
+                    <div class="preferences">
+                        <span class="preference-tag" onclick="togglePreference(this)">☁️ Tranquila</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">♿ Accesible</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">€ Sin peajes</span>
+                        <span class="preference-tag" onclick="togglePreference(this)">🌄 Paisajística</span>
+                    </div>
+                </div>
+                
+                <!-- Botón Calcular -->
+                <button class="btn-primary" id="calculateBtn" onclick="calculateRoute()">
+                    ➜ Buscar mejores rutas
+                </button>
+                
+                <!-- Resultado de ruta -->
+                <div id="routeResult" style="display: none;">
+                    <div class="route-info">
+                        <h3>✓ Ruta calculada</h3>
+                        <div class="route-details" id="routeDetails"></div>
+                        <div class="route-stats" id="routeStats"></div>
+                    </div>
+                </div>
+                
+                <!-- Mapa de previsualización -->
+                <div id="mapPreview" class="map-preview" style="display: none;"></div>
+                
+                <!-- Mensaje de error -->
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ========================================
+        // CONFIGURACIÓN GLOBAL
+        // ========================================
+        const BOCATTI_LOCATION = {
+            lat: 40.4168,
+            lng: -3.7038,
+            name: 'Bocatti Madrid'
+        };
+        
+        const APIS = {
+            nominatim: 'https://nominatim.openstreetmap.org/search',
+            osrm: 'https://router.project-osrm.org/route/v1'
+        };
+        
+        // Estado global
+        let map, previewMap;
+        let selectedTransport = 'car';
+        let selectedPreferences = [];
+        let selectedOrigin = null;
+        let currentRoute = null;
+        let routeLayer = null;
+        let originMarker = null;
+        let autocompleteTimeout = null;
+        
+        // ========================================
+        // INICIALIZACIÓN DE MAPA
+        // ========================================
+        function initMap() {
+            map = L.map('map').setView([BOCATTI_LOCATION.lat, BOCATTI_LOCATION.lng], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap | AVIA-Studio v5.2',
+                maxZoom: 19
+            }).addTo(map);
+            
+            const customIcon = L.divIcon({
+                html: '<div style="background: #667eea; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">🍽️</div>',
+                className: '',
+                iconSize: [40, 40]
+            });
+            
+            const marker = L.marker([BOCATTI_LOCATION.lat, BOCATTI_LOCATION.lng], {icon: customIcon}).addTo(map);
+            marker.bindPopup(`<b>🍽️ ${BOCATTI_LOCATION.name}</b><br>Tu destino te espera`).openPopup();
+        }
+        
+        // ========================================
+        // GEOCODIFICACIÓN (NOMINATIM)
+        // ========================================
+        async function geocodeAddress(query) {
+            try {
+                const response = await fetch(
+                    `${APIS.nominatim}?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=es`
+                );
+                return await response.json();
+            } catch (error) {
+                console.error('Error en geocodificación:', error);
+                return [];
+            }
+        }
+        
+        // Autocompletado
+        document.getElementById('originInput')?.addEventListener('input', function(e) {
+            const query = e.target.value.trim();
+            
+            clearTimeout(autocompleteTimeout);
+            
+            if (query.length < 3) {
+                document.getElementById('autocompleteResults').classList.remove('active');
+                return;
+            }
+            
+            autocompleteTimeout = setTimeout(async () => {
+                const results = await geocodeAddress(query);
+                displayAutocomplete(results);
+            }, 300);
+        });
+        
+        function displayAutocomplete(results) {
+            const container = document.getElementById('autocompleteResults');
+            
+            if (results.length === 0) {
+                container.classList.remove('active');
+                return;
+            }
+            
+            container.innerHTML = results.map(result => `
+                <div class="autocomplete-item" data-lat="${result.lat}" data-lon="${result.lon}" data-display="${result.display_name}">
+                    📍 ${result.display_name}
+                </div>
+            `).join('');
+            
+            container.classList.add('active');
+            
+            container.querySelectorAll('.autocomplete-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    selectedOrigin = {
+                        lat: parseFloat(this.dataset.lat),
+                        lng: parseFloat(this.dataset.lon),
+                        display: this.dataset.display
+                    };
+                    document.getElementById('originInput').value = this.dataset.display;
+                    container.classList.remove('active');
+                });
+            });
+        }
+        
+        // ========================================
+        // CÁLCULO DE RUTA (OSRM)
+        // ========================================
+        async function calculateOSRMRoute(origin, destination, profile = 'car') {
+            try {
+                const profileMap = {
+                    'car': 'driving',
+                    'bike': 'cycling',
+                    'foot': 'foot',
+                    'bus': 'driving'
+                };
+                
+                const url = `${APIS.osrm}/${profileMap[profile]}/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&steps=true`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                    throw new Error('No se encontró ruta');
+                }
+                
+                return data.routes[0];
+            } catch (error) {
+                console.error('Error en cálculo de ruta:', error);
+                throw error;
+            }
+        }
+        
+        // ========================================
+        // RENDERIZADO DE RUTA EN MAPA
+        // ========================================
+        function drawRoute(route, origin, destination) {
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+            }
+            
+            if (originMarker) {
+                map.removeLayer(originMarker);
+            }
+            
+            const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            
+            routeLayer = L.polyline(coordinates, {
+                color: '#667eea',
+                weight: 5,
+                opacity: 0.8,
+                smoothFactor: 1
+            }).addTo(map);
+            
+            const originIcon = L.divIcon({
+                html: '<div style="background: #48bb78; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">📍</div>',
+                className: '',
+                iconSize: [36, 36]
+            });
+            
+            originMarker = L.marker([origin.lat, origin.lng], {icon: originIcon}).addTo(map);
+            originMarker.bindPopup('<b>🚀 Origen</b><br>' + origin.display);
+            
+            map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
+            
+            if (!previewMap && document.getElementById('mapPreview')) {
+                setTimeout(() => {
+                    document.getElementById('mapPreview').style.display = 'block';
+                    previewMap = L.map('mapPreview').fitBounds(routeLayer.getBounds());
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(previewMap);
+                    
+                    L.polyline(coordinates, {
+                        color: '#667eea',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(previewMap);
+                    
+                    L.marker([origin.lat, origin.lng]).addTo(previewMap);
+                    L.marker([destination.lat, destination.lng]).addTo(previewMap);
+                }, 100);
+            }
+        }
+        
+        // ========================================
+        // FUNCIÓN PRINCIPAL DE CÁLCULO
+        // ========================================
+        async function calculateRoute() {
+            const button = document.getElementById('calculateBtn');
+            const errorDiv = document.getElementById('errorMessage');
+            
+            errorDiv.style.display = 'none';
+            
+            if (!selectedOrigin) {
+                errorDiv.textContent = '⚠️ Por favor selecciona una dirección de origen del menú desplegable';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            if (!selectedTransport) {
+                errorDiv.textContent = '⚠️ Por favor selecciona un medio de transporte';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            button.innerHTML = '<span class="spinner"></span> Calculando ruta...';
+            button.disabled = true;
+            
+            try {
+                currentRoute = await calculateOSRMRoute(
+                    selectedOrigin,
+                    BOCATTI_LOCATION,
+                    selectedTransport
+                );
+                
+                const distance = (currentRoute.distance / 1000).toFixed(1);
+                const duration = Math.round(currentRoute.duration / 60);
+                const serenity = Math.min(95, Math.max(70, 100 - (distance * 1.5)));
+                const confidence = Math.min(98, Math.max(75, 100 - (duration * 0.5)));
+                
+                document.getElementById('routeDetails').innerHTML = `
+                    <strong>Origen:</strong> ${selectedOrigin.display.split(',')[0]}<br>
+                    <strong>Destino:</strong> ${BOCATTI_LOCATION.name}<br>
+                    <strong>Transporte:</strong> ${getTransportLabel(selectedTransport)}<br>
+                    <strong>Preferencias:</strong> ${selectedPreferences.join(', ') || 'Ninguna'}
+                `;
+                
+                document.getElementById('routeStats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${duration} min</div>
+                        <div class="stat-label">DURACIÓN</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${distance} km</div>
+                        <div class="stat-label">DISTANCIA</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.round(serenity)}%</div>
+                        <div class="stat-label">SERENIDAD</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.round(confidence)}%</div>
+                        <div class="stat-label">CONFIANZA</div>
+                    </div>
+                `;
+                
+                document.getElementById('routeResult').style.display = 'block';
+                
+                drawRoute(currentRoute, selectedOrigin, BOCATTI_LOCATION);
+                
+                button.innerHTML = '✓ Confirmar y reservar en Bocatti';
+                button.style.background = '#48bb78';
+                button.onclick = confirmRoute;
+                
+                console.log('📤 Datos enviados a Bocattiv5:', {
+                    origin: selectedOrigin,
+                    destination: BOCATTI_LOCATION,
+                    transport: selectedTransport,
+                    preferences: selectedPreferences,
+                    route: {
+                        distance,
+                        duration,
+                        serenity,
+                        confidence
+                    }
+                });
+                
+            } catch (error) {
+                errorDiv.textContent = '❌ Error al calcular la ruta. Por favor verifica la dirección e intenta nuevamente.';
+                errorDiv.style.display = 'block';
+                button.innerHTML = '➜ Buscar mejores rutas';
+                button.disabled = false;
+            }
+        }
+        
+        // ========================================
+        // CONFIRMACIÓN DE RUTA
+        // ========================================
+        function confirmRoute() {
+            alert('✅ ¡Ruta confirmada! Redirigiendo a Bocattiv5 para completar tu reserva...');
+            
+            // Aquí se integraría con Bocattiv5
+            window.parent.postMessage({
+                type: 'ROUTE_CONFIRMED',
+                data: {
+                    origin: selectedOrigin,
+                    destination: BOCATTI_LOCATION,
+                    transport: selectedTransport,
+                    preferences: selectedPreferences,
+                    route: currentRoute
+                }
+            }, '*');
+            
+            closeModal();
+        }
+        
+        // ========================================
+        // UTILIDADES
+        // ========================================
+        function getTransportLabel(transport) {
+            const labels = {
+                'car': '🚗 Coche',
+                'foot': '🚶 A pie',
+                'bike': '🚲 Bicicleta',
+                'bus': '🚌 Transporte público'
+            };
+            return labels[transport] || transport;
+        }
+        
+        function openModal() {
+            document.getElementById('routeModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('routeModal').classList.remove('active');
+            document.getElementById('autocompleteResults').classList.remove('active');
+        }
+        
+        function selectTransport(type) {
+            document.querySelectorAll('.transport-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.target.closest('.transport-option').classList.add('selected');
+            selectedTransport = type;
+        }
+        
+        function togglePreference(element) {
+            element.classList.toggle('selected');
+            const pref = element.textContent.trim();
+            if (selectedPreferences.includes(pref)) {
+                selectedPreferences = selectedPreferences.filter(p => p !== pref);
+            } else {
+                selectedPreferences.push(pref);
+            }
+        }
+        
+        // ========================================
+        // INICIALIZACIÓN
+        // ========================================
+        window.addEventListener('DOMContentLoaded', initMap);
+        
+        // Cerrar autocomplete al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#originInput') && !e.target.closest('#autocompleteResults')) {
+                document.getElementById('autocompleteResults').classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

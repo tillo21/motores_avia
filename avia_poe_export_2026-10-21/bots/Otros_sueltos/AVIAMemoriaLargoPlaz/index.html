@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Memoria a Largo Plazo + Aprendizaje de Patrones</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #050a1a 0%, #0d1429 50%, #1a0d2e 100%);
+            color: #e2e8f0;
+            padding: 1.5rem;
+            min-height: 100vh;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+
+        /* Toast */
+        #toast-container {
+            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem; max-width: 360px;
+        }
+        .toast {
+            padding: 0.8rem 1.2rem; border-radius: 8px; font-size: 0.88rem;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5); backdrop-filter: blur(12px);
+        }
+        .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+        .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        .toast.warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
+        .toast.memory  { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
+        @keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+        @keyframes fadeOut { to{opacity:0;transform:translateX(30px)} }
+
+        /* Header */
+        .header {
+            background: rgba(10,16,40,0.95); backdrop-filter: blur(12px);
+            border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 1.5rem;
+            border: 1px solid rgba(139,92,246,0.35);
+            box-shadow: 0 4px 24px rgba(139,92,246,0.15);
+        }
+        .header h1 {
+            font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem;
+            background: linear-gradient(90deg,#a78bfa,#ec4899,#60a5fa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-sub { font-size: 0.9rem; color: #94a3b8; margin-top: 0.4rem; }
+        .badges { display: flex; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap; }
+        .badge {
+            font-size: 0.72rem; padding: 0.3rem 0.85rem; border-radius: 20px;
+            font-weight: 600; backdrop-filter: blur(8px);
+        }
+        .badge-episodic { background: rgba(99,102,241,0.3); border: 1px solid #6366f1; }
+        .badge-semantic  { background: rgba(236,72,153,0.3); border: 1px solid #ec4899; }
+        .badge-procedural{ background: rgba(16,185,129,0.3); border: 1px solid #10b981; }
+        .badge-pulse { animation: hb 2s infinite; }
+        @keyframes hb { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        /* Grid Layout */
+        .grid-main {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+        .grid-triple {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+        .grid-dual {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: rgba(10,16,40,0.85); backdrop-filter: blur(12px);
+            border-radius: 12px; padding: 1.4rem;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .card h2 {
+            font-size: 1.05rem; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 0.5rem;
+            color: #c4b5fd;
+        }
+
+        /* Memory Network Canvas */
+        #memNetCanvas {
+            width: 100%; height: 360px;
+            background: rgba(5,10,26,0.7);
+            border-radius: 8px; border: 1px solid rgba(139,92,246,0.2);
+            display: block;
+        }
+
+        /* Memory Types Tabs */
+        .tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+        .tab {
+            padding: 0.4rem 0.9rem; border-radius: 6px; border: none;
+            cursor: pointer; font-size: 0.82rem; font-weight: 600;
+            transition: all 0.2s; background: rgba(30,41,59,0.6); color: #94a3b8;
+        }
+        .tab.active { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+        .tab:hover:not(.active) { background: rgba(99,102,241,0.2); color: #c4b5fd; }
+
+        /* Memory Items */
+        .memory-list { max-height: 320px; overflow-y: auto; }
+        .memory-item {
+            background: rgba(20,30,55,0.7); border-radius: 8px;
+            padding: 0.85rem 1rem; margin-bottom: 0.6rem;
+            border-left: 3px solid;
+            position: relative; overflow: hidden;
+            transition: all 0.3s;
+        }
+        .memory-item:hover { transform: translateX(3px); }
+        .memory-item.episodic  { border-left-color: #6366f1; }
+        .memory-item.semantic  { border-left-color: #ec4899; }
+        .memory-item.procedural{ border-left-color: #10b981; }
+        .mem-header { display: flex; justify-content: space-between; align-items: start; }
+        .mem-title { font-weight: 600; font-size: 0.9rem; }
+        .mem-strength {
+            font-size: 0.7rem; padding: 0.2rem 0.5rem;
+            border-radius: 10px; font-weight: 700;
+        }
+        .strength-strong  { background: rgba(16,185,129,0.3); color: #6ee7b7; }
+        .strength-medium  { background: rgba(245,158,11,0.3); color: #fcd34d; }
+        .strength-weak    { background: rgba(239,68,68,0.3); color: #fca5a5; }
+        .mem-body { font-size: 0.82rem; color: #94a3b8; margin-top: 0.35rem; }
+        .mem-footer { display: flex; justify-content: space-between; font-size: 0.7rem; color: #64748b; margin-top: 0.4rem; }
+        .mem-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 0.5rem; }
+        .mem-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+        /* Decay animation */
+        .memory-item.decaying { animation: decay 1s ease forwards; }
+        @keyframes decay { to { opacity: 0.3; transform: scale(0.97); } }
+        .memory-item.reinforced { animation: reinforce 0.5s ease; }
+        @keyframes reinforce {
+            0%{box-shadow:0 0 0 rgba(139,92,246,0)} 
+            50%{box-shadow:0 0 20px rgba(139,92,246,0.6)} 
+            100%{box-shadow:0 0 0 rgba(139,92,246,0)}
+        }
+
+        /* Pattern Cards */
+        .pattern-card {
+            background: rgba(20,30,55,0.7); border-radius: 8px;
+            padding: 1rem; margin-bottom: 0.6rem;
+            border: 1px solid rgba(99,102,241,0.2);
+            transition: all 0.3s;
+        }
+        .pattern-card:hover { border-color: rgba(139,92,246,0.5); }
+        .pattern-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .pattern-name { font-weight: 700; font-size: 0.9rem; }
+        .pattern-confidence {
+            font-size: 0.72rem; padding: 0.2rem 0.6rem;
+            background: rgba(168,85,247,0.25); border-radius: 10px;
+            color: #d8b4fe;
+        }
+        .pattern-desc { font-size: 0.82rem; color: #94a3b8; margin-bottom: 0.5rem; }
+        .pattern-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .ptag {
+            font-size: 0.68rem; padding: 0.15rem 0.5rem;
+            border-radius: 6px; background: rgba(99,102,241,0.15);
+            color: #a5b4fc;
+        }
+
+        /* Learning Curve Canvas */
+        #learningCanvas {
+            width: 100%; height: 220px;
+            background: rgba(5,10,26,0.7);
+            border-radius: 8px; border: 1px solid rgba(99,102,241,0.15);
+            display: block;
+        }
+
+        /* Pattern Heatmap */
+        #heatmapCanvas {
+            width: 100%; height: 180px;
+            background: rgba(5,10,26,0.7);
+            border-radius: 8px; border: 1px solid rgba(99,102,241,0.15);
+            display: block;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.8rem;
+        }
+        .stat-card {
+            background: rgba(20,30,55,0.7); padding: 1rem; border-radius: 8px;
+            text-align: center; border: 1px solid rgba(99,102,241,0.15);
+        }
+        .stat-value {
+            font-size: 1.7rem; font-weight: 800;
+            background: linear-gradient(90deg,#a78bfa,#ec4899);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.72rem; color: #64748b; margin-top: 0.25rem; }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1rem; }
+        .btn {
+            padding: 0.55rem 1rem; border-radius: 6px; border: none;
+            cursor: pointer; font-weight: 600; transition: all 0.2s;
+            font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-purple  { background: linear-gradient(135deg,#8b5cf6,#6d28d9); color: #fff; }
+        .btn-pink    { background: linear-gradient(135deg,#ec4899,#be185d); color: #fff; }
+        .btn-green   { background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        .btn-blue    { background: linear-gradient(135deg,#3b82f6,#1d4ed8); color: #fff; }
+        .btn-orange  { background: linear-gradient(135deg,#f59e0b,#d97706); color: #fff; }
+        .btn-red     { background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        .btn:hover   { opacity: 0.85; transform: translateY(-1px); }
+
+        /* Consolidation indicator */
+        .consolidation-bar {
+            width: 100%; height: 6px;
+            background: rgba(255,255,255,0.08); border-radius: 3px; margin-top: 0.6rem;
+        }
+        .consolidation-fill {
+            height: 100%; border-radius: 3px;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            transition: width 0.4s ease;
+        }
+
+        /* Association map */
+        .assoc-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+        .assoc-tag {
+            font-size: 0.72rem; padding: 0.25rem 0.6rem;
+            border-radius: 20px; cursor: pointer; transition: all 0.2s;
+            border: 1px solid rgba(139,92,246,0.3);
+            background: rgba(139,92,246,0.1);
+        }
+        .assoc-tag:hover { background: rgba(139,92,246,0.3); transform: scale(1.05); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(15,23,42,0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.4); border-radius: 2px; }
+
+        @media(max-width:1100px) {
+            .grid-main, .grid-triple, .grid-dual { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>🧠 AVIA — Memoria a Largo Plazo + Aprendizaje de Patrones</h1>
+        <div class="header-sub">Fase 1.4 · Sistema Mnémico Tripartito · Motor de Consolidación Neural</div>
+        <div class="badges">
+            <span class="badge badge-episodic">🎞️ Memoria Episódica</span>
+            <span class="badge badge-semantic">💡 Memoria Semántica</span>
+            <span class="badge badge-procedural">⚙️ Memoria Procedimental</span>
+            <span class="badge badge-pulse" style="background:rgba(16,185,129,0.25);border:1px solid #10b981">🟢 Consolidando</span>
+            <span id="consolidationPhase" style="font-size:0.72rem;padding:0.3rem 0.85rem;border-radius:20px;background:rgba(245,158,11,0.2);border:1px solid #f59e0b">⏳ Ciclo: --</span>
+        </div>
+    </div>
+
+    <!-- Row 1: Memory Network + Memory Log -->
+    <div class="grid-main">
+        <div class="card">
+            <h2>🕸️ Red de Memoria Asociativa</h2>
+            <canvas id="memNetCanvas"></canvas>
+            <div class="controls">
+                <button class="btn btn-purple" onclick="Memory.stimulate()">⚡ Estimular red</button>
+                <button class="btn btn-blue"   onclick="Memory.consolidate()">🔗 Consolidar ahora</button>
+                <button class="btn btn-orange"  onclick="Memory.runDecay()">⏳ Aplicar decay</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📚 Almacén de Memorias (<span id="memCount">0</span>)</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="Memory.setTab('all',this)">Todas</button>
+                <button class="tab" onclick="Memory.setTab('episodic',this)">Episódica</button>
+                <button class="tab" onclick="Memory.setTab('semantic',this)">Semántica</button>
+                <button class="tab" onclick="Memory.setTab('procedural',this)">Procedimental</button>
+            </div>
+            <div class="memory-list" id="memoryList"></div>
+            <div class="controls">
+                <button class="btn btn-purple" onclick="Memory.encodeEpisodic()">🎞️ Episódica</button>
+                <button class="btn btn-pink"   onclick="Memory.encodeSemantic()">💡 Semántica</button>
+                <button class="btn btn-green"  onclick="Memory.encodeProcedural()">⚙️ Procedimental</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: Pattern Learning + Learning Curve -->
+    <div class="grid-dual">
+        <div class="card">
+            <h2>🔍 Patrones Aprendidos (<span id="patCount">0</span>)</h2>
+            <div style="max-height:340px;overflow-y:auto;" id="patternList"></div>
+            <div class="controls">
+                <button class="btn btn-blue"  onclick="Memory.extractPatterns()">🔎 Extraer patrones</button>
+                <button class="btn btn-green" onclick="Memory.learnBatch()">📦 Aprender lote</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Curva de Aprendizaje</h2>
+            <canvas id="learningCanvas"></canvas>
+            <h2 style="margin-top:1rem">🌡️ Mapa de Calor – Activaciones</h2>
+            <canvas id="heatmapCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Row 3: Associations + Consolidation -->
+    <div class="grid-dual">
+        <div class="card">
+            <h2>🔗 Asociaciones Activas</h2>
+            <div id="assocView" style="min-height:100px"></div>
+        </div>
+        <div class="card">
+            <h2>🔄 Estado de Consolidación</h2>
+            <div id="consolidationStatus"></div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card" style="margin-bottom:1.5rem">
+        <h2>📊 Métricas de Aprendizaje</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="sTotal">0</div><div class="stat-label">Memorias totales</div></div>
+            <div class="stat-card"><div class="stat-value" id="sEpisodic">0</div><div class="stat-label">Episódicas</div></div>
+            <div class="stat-card"><div class="stat-value" id="sSemantic">0</div><div class="stat-label">Semánticas</div></div>
+            <div class="stat-card"><div class="stat-value" id="sProcedural">0</div><div class="stat-label">Procedimentales</div></div>
+            <div class="stat-card"><div class="stat-value" id="sPatterns">0</div><div class="stat-label">Patrones</div></div>
+            <div class="stat-card"><div class="stat-value" id="sConsolidations">0</div><div class="stat-label">Consolidaciones</div></div>
+            <div class="stat-card"><div class="stat-value" id="sDecayed">0</div><div class="stat-label">Decaídas</div></div>
+            <div class="stat-card"><div class="stat-value" id="sLearningScore">0%</div><div class="stat-label">Score aprendizaje</div></div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+        <h2>⚙️ Control del Sistema Mnémico</h2>
+        <div class="controls">
+            <button class="btn btn-purple" onclick="Memory.autoSimulate()">🤖 Simulación auto</button>
+            <button class="btn btn-orange" onclick="Memory.stressLearn()">🔥 Stress learning</button>
+            <button class="btn btn-pink"   onclick="Memory.recallQuery()">🔁 Recall query</button>
+            <button class="btn btn-red"    onclick="Memory.resetSystem()">🗑️ Reset</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   AVIA Phase 1.4 — Long-Term Memory + Pattern Learning
+   Tripartite memory: Episodic · Semantic · Procedural
+   ─────────────────────────────────────────────────── */
+
+function toast(msg, type='info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+}
+
+// ─── DATA ───────────────────────────────────────────
+const EPISODIC_TEMPLATES = [
+    { title:'Tarea crítica ejecutada', body:'Procesamiento de {agent} completado en {time}ms', ctx:'task_exec' },
+    { title:'Error detectado y corregido', body:'Corrector aplicó fix en módulo {module}', ctx:'error' },
+    { title:'Pico de recursos observado', body:'CPU alcanzó {val}% durante tarea {task}', ctx:'resource' },
+    { title:'Decisión de prioridad emitida', body:'Motor eligió {agent} con confianza {conf}%', ctx:'decision' },
+    { title:'Timeout de tarea', body:'Tarea {task} excedió límite de {time}ms', ctx:'timeout' },
+    { title:'Colaboración inter-agente', body:'{agent1} delegó subtarea a {agent2}', ctx:'collab' },
+];
+const SEMANTIC_TEMPLATES = [
+    { title:'Regla de prioridad aprendida', body:'Tareas críticas deben ejecutarse en < 2000ms', ctx:'rule' },
+    { title:'Patrón de fallo identificado', body:'Módulo {module} falla con carga > 80%', ctx:'failure_rule' },
+    { title:'Relación agente-eficiencia', body:'{agent} es óptimo para tareas de análisis', ctx:'agent_skill' },
+    { title:'Umbral de recursos establecido', body:'CPU > 70% degrada latencia en 40%', ctx:'threshold' },
+    { title:'Correlación temporal', body:'Carga máxima ocurre entre ciclos 10-15', ctx:'temporal' },
+    { title:'Heurística de asignación', body:'Tareas con dependencias → Orquestador primero', ctx:'heuristic' },
+];
+const PROCEDURAL_TEMPLATES = [
+    { title:'Procedimiento de recuperación', body:'En fallo: 1) detener → 2) limpiar → 3) reintentar', ctx:'recovery' },
+    { title:'Workflow de optimización', body:'Agrupar tareas similares → ejecutar en batch', ctx:'optimization' },
+    { title:'Protocolo de escalado', body:'Si cola > 10 tareas → activar agente adicional', ctx:'scaling' },
+    { title:'Rutina de consolidación', body:'Cada 5 ciclos: comprimir episódicos → semánticos', ctx:'consolidation' },
+    { title:'Secuencia de inicialización', body:'Validar → Cargar config → Lanzar monitores', ctx:'init' },
+    { title:'Algoritmo de decay adaptativo', body:'Fuerza -= 0.05 por ciclo inactivo, mín 0.1', ctx:'decay_algo' },
+];
+const AGENTS = ['Orquestador','Validador','Analítico','Monitor','Creativo','Corrector'];
+const MODULES = ['scheduler','decision-engine','memory-core','io-handler','pattern-extractor'];
+
+function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function fill(tmpl, vars) {
+    return tmpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] || k);
+}
+
+// ─── MEMORY ENGINE ──────────────────────────────────
+class MemorySystem {
+    constructor() {
+        this.memories = [];
+        this.patterns = [];
+        this.associations = {};
+        this.memIdCounter = 1;
+        this.consolidationCount = 0;
+        this.decayedCount = 0;
+        this.learningCurve = [];
+        this.heatmap = new Array(8).fill(null).map(() => new Array(12).fill(0));
+        this.activeTab = 'all';
+        this.consolidationProgress = 0;
+        this.cycle = 0;
+        this.activatedNodes = [];
+
+        // Canvas refs
+        this.netCanvas = document.getElementById('memNetCanvas');
+        this.netCtx = this.netCanvas.getContext('2d');
+        this.lrnCanvas = document.getElementById('learningCanvas');
+        this.lrnCtx = this.lrnCanvas.getContext('2d');
+        this.hmCanvas = document.getElementById('heatmapCanvas');
+        this.hmCtx = this.hmCanvas.getContext('2d');
+
+        // Network nodes
+        this.netNodes = [];
+        this.netEdges = [];
+
+        this._initCanvas();
+        this._startAutoConsolidate();
+        this._animLoop();
+
+        // Seed initial memories
+        setTimeout(() => this._seedInitial(), 400);
+    }
+
+    _initCanvas() {
+        [this.netCanvas, this.lrnCanvas, this.hmCanvas].forEach(c => {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = c.getBoundingClientRect();
+            c.width  = rect.width  * dpr;
+            c.height = rect.height * dpr;
+            c.getContext('2d').scale(dpr, dpr);
+        });
+        window.addEventListener('resize', () => {
+            setTimeout(() => this._initCanvas(), 100);
+        });
+    }
+
+    _w(c) { return c.getBoundingClientRect().width; }
+    _h(c) { return c.getBoundingClientRect().height; }
+
+    // ─── ENCODING ──────────────────────────────────
+    _createMemory(type, title, body, ctx) {
+        const typeColors = { episodic:'#6366f1', semantic:'#ec4899', procedural:'#10b981' };
+        const mem = {
+            id: this.memIdCounter++,
+            type, title, body, ctx,
+            strength: 0.5 + Math.random() * 0.5,
+            createdAt: Date.now(),
+            lastAccessed: Date.now(),
+            accessCount: 1,
+            associations: [],
+            nodeX: 50 + Math.random() * (this._w(this.netCanvas) - 100),
+            nodeY: 50 + Math.random() * (this._h(this.netCanvas) - 100),
+            vx: (Math.random()-0.5)*0.5,
+            vy: (Math.random()-0.5)*0.5,
+            color: typeColors[type],
+        };
+        this.memories.push(mem);
+        this._buildAssociations(mem);
+        this._updateNetEdges();
+        this._bumpHeatmap();
+        this._updateStats();
+        this._renderMemories();
+        return mem;
+    }
+
+    encodeEpisodic() {
+        const t = rnd(EPISODIC_TEMPLATES);
+        const vars = {
+            agent: rnd(AGENTS), agent1: rnd(AGENTS), agent2: rnd(AGENTS),
+            time: randInt(500,3000), val: randInt(60,95),
+            task: `T${randInt(1,50)}`, module: rnd(MODULES),
+            conf: randInt(70,99)
+        };
+        const m = this._createMemory('episodic', t.title, fill(t.body,vars), t.ctx);
+        toast(`🎞️ Memoria episódica codificada: "${m.title}"`, 'info');
+        this._addLearningPoint('episodic', m.strength);
+    }
+
+    encodeSemantic() {
+        const t = rnd(SEMANTIC_TEMPLATES);
+        const vars = { agent: rnd(AGENTS), module: rnd(MODULES), val: randInt(60,95) };
+        const m = this._createMemory('semantic', t.title, fill(t.body,vars), t.ctx);
+        toast(`💡 Memoria semántica codificada: "${m.title}"`, 'memory');
+        this._addLearningPoint('semantic', m.strength);
+    }
+
+    encodeProcedural() {
+        const t = rnd(PROCEDURAL_TEMPLATES);
+        const m = this._createMemory('procedural', t.title, t.body, t.ctx);
+        toast(`⚙️ Memoria procedimental codificada`, 'success');
+        this._addLearningPoint('procedural', m.strength);
+    }
+
+    // ─── ASSOCIATIONS ─────────────────────────────
+    _buildAssociations(newMem) {
+        this.memories.forEach(m => {
+            if (m.id === newMem.id) return;
+            let sim = 0;
+            if (m.type === newMem.type) sim += 0.3;
+            if (m.ctx === newMem.ctx) sim += 0.4;
+            const words1 = new Set(newMem.body.toLowerCase().split(/\W+/));
+            const words2 = new Set(m.body.toLowerCase().split(/\W+/));
+            const inter = [...words1].filter(w => w.length > 3 && words2.has(w)).length;
+            sim += Math.min(0.3, inter * 0.1);
+            if (sim > 0.3) {
+                newMem.associations.push(m.id);
+                m.associations.push(newMem.id);
+            }
+        });
+    }
+
+    _updateNetEdges() {
+        this.netEdges = [];
+        this.memories.forEach(m => {
+            m.associations.forEach(aid => {
+                const exists = this.netEdges.find(e =>
+                    (e.a === m.id && e.b === aid) || (e.a === aid && e.b === m.id)
+                );
+                if (!exists) this.netEdges.push({ a: m.id, b: aid });
+            });
+        });
+    }
+
+    // ─── PATTERN EXTRACTION ───────────────────────
+    extractPatterns() {
+        const patterns = this._minePatterns();
+        let added = 0;
+        patterns.forEach(p => {
+            const exists = this.patterns.find(ep => ep.id === p.id);
+            if (!exists) { this.patterns.push(p); added++; }
+            else { exists.confidence = Math.min(1, exists.confidence + 0.05); }
+        });
+        this._renderPatterns();
+        this._updateStats();
+        toast(`🔍 ${added} nuevos patrones extraídos`, added > 0 ? 'success' : 'info');
+    }
+
+    _minePatterns() {
+        const patterns = [];
+        const typeCounts = { episodic: 0, semantic: 0, procedural: 0 };
+        const ctxCounts = {};
+        this.memories.forEach(m => {
+            typeCounts[m.type]++;
+            ctxCounts[m.ctx] = (ctxCounts[m.ctx] || 0) + 1;
+        });
+
+        // Dominant type pattern
+        const domType = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0];
+        if (domType[1] > 2) {
+            patterns.push({
+                id: `pt_type_${domType[0]}`,
+                name: `Predominancia ${domType[0]}`,
+                desc: `El sistema genera principalmente memorias de tipo ${domType[0]} (${domType[1]} instancias)`,
+                confidence: Math.min(0.95, domType[1] / 10),
+                tags: ['tipo', domType[0], 'frecuencia'],
+                discovered: Date.now()
+            });
+        }
+
+        // Context pattern
+        Object.entries(ctxCounts).forEach(([ctx, count]) => {
+            if (count >= 2) {
+                patterns.push({
+                    id: `pt_ctx_${ctx}`,
+                    name: `Patrón: ${ctx.replace(/_/g,' ')}`,
+                    desc: `Contexto "${ctx}" aparece ${count} veces — posible área de atención`,
+                    confidence: Math.min(0.9, count / 6),
+                    tags: [ctx, 'contexto', 'recurrente'],
+                    discovered: Date.now()
+                });
+            }
+        });
+
+        // High-strength cluster
+        const strong = this.memories.filter(m => m.strength > 0.8);
+        if (strong.length > 2) {
+            patterns.push({
+                id: 'pt_strong_cluster',
+                name: 'Cluster de alta retención',
+                desc: `${strong.length} memorias con fuerza > 80% — núcleo de conocimiento sólido`,
+                confidence: Math.min(0.95, strong.length / 8),
+                tags: ['retención', 'cluster', 'núcleo'],
+                discovered: Date.now()
+            });
+        }
+
+        // Association density
+        const denseMems = this.memories.filter(m => m.associations.length > 2);
+        if (denseMems.length > 0) {
+            patterns.push({
+                id: 'pt_dense_assoc',
+                name: 'Nodo hub detectado',
+                desc: `${denseMems.length} memorias con > 2 asociaciones — red semántica densa`,
+                confidence: Math.min(0.88, denseMems.length / 5),
+                tags: ['red', 'hub', 'asociación'],
+                discovered: Date.now()
+            });
+        }
+
+        // Decay risk
+        const weak = this.memories.filter(m => m.strength < 0.35);
+        if (weak.length > 1) {
+            patterns.push({
+                id: 'pt_decay_risk',
+                name: 'Riesgo de pérdida de memoria',
+                desc: `${weak.length} memorias con fuerza < 35% — requieren refuerzo`,
+                confidence: 0.92,
+                tags: ['decay', 'riesgo', 'refuerzo'],
+                discovered: Date.now()
+            });
+        }
+
+        return patterns;
+    }
+
+    // ─── CONSOLIDATION ────────────────────────────
+    consolidate() {
+        this.cycle++;
+        document.getElementById('consolidationPhase').textContent = `⏳ Ciclo: ${this.cycle}`;
+
+        let consolidated = 0;
+        // Promote strong episodic → semantic
+        this.memories.forEach(m => {
+            if (m.type === 'episodic' && m.strength > 0.85 && m.accessCount > 2) {
+                // Create derived semantic memory
+                const semanticBody = `Generalización de: "${m.title}" (fuerza: ${(m.strength*100).toFixed(0)}%)`;
+                const derived = this._createMemory('semantic',
+                    `[Consolidado] ${m.title}`, semanticBody, m.ctx);
+                derived.strength = m.strength * 0.9;
+                derived.associations.push(m.id);
+                m.associations.push(derived.id);
+                m.strength *= 0.85; // episodic weakens slightly after consolidation
+                consolidated++;
+            }
+        });
+
+        this.consolidationCount++;
+        this.consolidationProgress = Math.min(100,
+            (this.memories.filter(m => m.strength > 0.6).length / Math.max(1, this.memories.length)) * 100
+        );
+
+        this.extractPatterns();
+        this._renderConsolidation();
+        this._renderMemories();
+        this._updateStats();
+        toast(`🔗 Consolidación ${this.cycle}: ${consolidated} memorias promovidas`, 'success');
+    }
+
+    // ─── DECAY ────────────────────────────────────
+    runDecay() {
+        let decayed = 0;
+        this.memories.forEach(m => {
+            const idleMs = Date.now() - m.lastAccessed;
+            const idleFactor = Math.min(1, idleMs / 30000);
+            const decayRate = 0.05 + idleFactor * 0.1;
+            m.strength = Math.max(0.05, m.strength - decayRate);
+            if (m.strength < 0.2) decayed++;
+        });
+        this.decayedCount += decayed;
+        this._renderMemories();
+        this._updateStats();
+        toast(`⏳ Decay aplicado — ${decayed} memorias en zona crítica`, decayed > 0 ? 'warning' : 'info');
+    }
+
+    // ─── STIMULATE ────────────────────────────────
+    stimulate() {
+        const candidates = this.memories.filter(m => m.strength < 0.8);
+        if (candidates.length === 0) { toast('✨ Todas las memorias están fuertes', 'success'); return; }
+        const target = rnd(candidates);
+        target.strength = Math.min(1, target.strength + 0.25);
+        target.accessCount++;
+        target.lastAccessed = Date.now();
+        this.activatedNodes = [target.id, ...target.associations.slice(0,3)];
+        setTimeout(() => { this.activatedNodes = []; }, 1500);
+        this._renderMemories();
+        this._updateStats();
+        toast(`⚡ Memoria reforzada: "${target.title}"`, 'memory');
+    }
+
+    // ─── RECALL ───────────────────────────────────
+    recallQuery() {
+        if (this.memories.length === 0) { toast('❌ Sin memorias', 'error'); return; }
+        const query = rnd(this.memories);
+        query.lastAccessed = Date.now();
+        query.accessCount++;
+        query.strength = Math.min(1, query.strength + 0.1);
+        this.activatedNodes = [query.id, ...query.associations.slice(0,4)];
+        setTimeout(() => { this.activatedNodes = []; }, 2000);
+        toast(`🔁 Recall: "${query.title}" (${query.associations.length} asociaciones activadas)`, 'info');
+        this._renderMemories();
+        this._renderAssociations(query);
+    }
+
+    _renderAssociations(mem) {
+        const el = document.getElementById('assocView');
+        const related = this.memories.filter(m => mem.associations.includes(m.id));
+        el.innerHTML = `
+            <div style="font-size:0.85rem;color:#94a3b8;margin-bottom:0.5rem">
+                Recall activo: <strong style="color:#c4b5fd">${mem.title}</strong>
+                (fuerza ${(mem.strength*100).toFixed(0)}%)
+            </div>
+            <div class="assoc-list">
+                ${related.map(r => `
+                    <span class="assoc-tag" style="border-color:${r.color}20;background:${r.color}15"
+                          onclick="Memory._clickAssoc(${r.id})">
+                        ${r.type === 'episodic' ? '🎞️' : r.type === 'semantic' ? '💡' : '⚙️'}
+                        ${r.title.slice(0,28)}…
+                    </span>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    _clickAssoc(id) {
+        const m = this.memories.find(x => x.id === id);
+        if (m) this._renderAssociations(m);
+    }
+
+    // ─── LEARNING CURVE ───────────────────────────
+    _addLearningPoint(type, strength) {
+        this.learningCurve.push({
+            t: Date.now(), type, strength,
+            total: this.memories.length,
+            patterns: this.patterns.length
+        });
+        if (this.learningCurve.length > 80) this.learningCurve.shift();
+        this._drawLearningCurve();
+    }
+
+    _drawLearningCurve() {
+        const canvas = this.lrnCanvas;
+        const ctx = this.lrnCtx;
+        const W = this._w(canvas);
+        const H = this._h(canvas);
+        ctx.clearRect(0, 0, W, H);
+
+        // BG
+        ctx.fillStyle = 'rgba(5,10,26,0)';
+        ctx.fillRect(0, 0, W, H);
+
+        if (this.learningCurve.length < 2) return;
+
+        const maxT = Math.max(...this.learningCurve.map(p => p.total));
+        const maxP = Math.max(1, Math.max(...this.learningCurve.map(p => p.patterns)));
+        const pad = 24;
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(99,102,241,0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = pad + (H - pad*2) * i/4;
+            ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+        }
+
+        // Draw memory total line
+        const drawLine = (data, color, maxVal) => {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            data.forEach((p, i) => {
+                const x = pad + (i / (data.length - 1)) * (W - pad*2);
+                const y = H - pad - ((p / maxVal) * (H - pad*2));
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Area fill
+            ctx.beginPath();
+            data.forEach((p, i) => {
+                const x = pad + (i / (data.length - 1)) * (W - pad*2);
+                const y = H - pad - ((p / maxVal) * (H - pad*2));
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.lineTo(W-pad, H-pad);
+            ctx.lineTo(pad, H-pad);
+            ctx.closePath();
+            ctx.fillStyle = color.replace(')', ',0.08)').replace('rgb','rgba');
+            ctx.fill();
+        };
+
+        drawLine(this.learningCurve.map(p => p.total), 'rgb(139,92,246)', maxT);
+        drawLine(this.learningCurve.map(p => p.patterns), 'rgb(236,72,153)', maxP);
+
+        // Labels
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('Memorias', pad+2, pad+10);
+        ctx.fillStyle = '#ec4899';
+        ctx.fillText('Patrones', pad+70, pad+10);
+    }
+
+    // ─── HEATMAP ──────────────────────────────────
+    _bumpHeatmap() {
+        const row = Math.floor(Math.random() * 8);
+        const col = Math.floor(Math.random() * 12);
+        this.heatmap[row][col] = Math.min(1, (this.heatmap[row][col] || 0) + 0.15);
+        // Decay surrounding
+        this.heatmap.forEach((r, ri) => r.forEach((v, ci) => {
+            if (ri !== row || ci !== col) this.heatmap[ri][ci] = Math.max(0, v - 0.02);
+        }));
+        this._drawHeatmap();
+    }
+
+    _drawHeatmap() {
+        const canvas = this.hmCanvas;
+        const ctx = this.hmCtx;
+        const W = this._w(canvas);
+        const H = this._h(canvas);
+        ctx.clearRect(0, 0, W, H);
+
+        const rows = 8, cols = 12;
+        const cw = W / cols, ch = H / rows;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const val = this.heatmap[r][c] || 0;
+                const alpha = 0.1 + val * 0.9;
+                // Cool → Warm gradient based on value
+                const h = Math.floor(240 - val * 240); // blue (240) → red (0)
+                ctx.fillStyle = `hsla(${h},80%,60%,${alpha})`;
+                ctx.fillRect(c*cw + 1, r*ch + 1, cw - 2, ch - 2);
+
+                if (val > 0.5) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    ctx.font = '8px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText((val*100).toFixed(0), c*cw + cw/2, r*ch + ch/2 + 3);
+                }
+            }
+        }
+        ctx.textAlign = 'left';
+    }
+
+    // ─── MEMORY NETWORK VISUALIZATION ─────────────
+    _animLoop() {
+        const draw = () => {
+            this._drawMemNet();
+            requestAnimationFrame(draw);
+        };
+        draw();
+    }
+
+    _drawMemNet() {
+        const canvas = this.netCanvas;
+        const ctx = this.netCtx;
+        const W = this._w(canvas);
+        const H = this._h(canvas);
+
+        ctx.fillStyle = 'rgba(5,10,26,0.25)';
+        ctx.fillRect(0, 0, W, H);
+
+        // Physics: repel + spring
+        this.memories.forEach(m => {
+            this.memories.forEach(other => {
+                if (m.id === other.id) return;
+                const dx = other.nodeX - m.nodeX;
+                const dy = other.nodeY - m.nodeY;
+                const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                if (dist < 120) {
+                    const force = (120 - dist) / 120 * 0.15;
+                    m.vx -= (dx / dist) * force;
+                    m.vy -= (dy / dist) * force;
+                }
+            });
+            // Spring toward associations
+            m.associations.forEach(aid => {
+                const other = this.memories.find(x => x.id === aid);
+                if (!other) return;
+                const dx = other.nodeX - m.nodeX;
+                const dy = other.nodeY - m.nodeY;
+                const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                const ideal = 80;
+                const force = (dist - ideal) / ideal * 0.04;
+                m.vx += (dx / dist) * force;
+                m.vy += (dy / dist) * force;
+            });
+            m.vx *= 0.9; m.vy *= 0.9;
+            m.nodeX = Math.max(20, Math.min(W - 20, m.nodeX + m.vx));
+            m.nodeY = Math.max(20, Math.min(H - 20, m.nodeY + m.vy));
+        });
+
+        // Draw edges
+        this.netEdges.forEach(e => {
+            const a = this.memories.find(m => m.id === e.a);
+            const b = this.memories.find(m => m.id === e.b);
+            if (!a || !b) return;
+            const isActive = this.activatedNodes.includes(a.id) && this.activatedNodes.includes(b.id);
+            ctx.strokeStyle = isActive ? 'rgba(168,85,247,0.7)' : 'rgba(99,102,241,0.15)';
+            ctx.lineWidth = isActive ? 2 : 0.8;
+            ctx.beginPath();
+            ctx.moveTo(a.nodeX, a.nodeY);
+            ctx.lineTo(b.nodeX, b.nodeY);
+            ctx.stroke();
+        });
+
+        // Draw nodes
+        this.memories.forEach(m => {
+            const isActive = this.activatedNodes.includes(m.id);
+            const radius = 5 + m.strength * 10;
+
+            if (isActive) {
+                ctx.shadowColor = m.color;
+                ctx.shadowBlur = 20;
+            }
+
+            ctx.beginPath();
+            ctx.arc(m.nodeX, m.nodeY, radius, 0, Math.PI * 2);
+            const alpha = 0.3 + m.strength * 0.7;
+            ctx.fillStyle = m.color + Math.floor(alpha * 255).toString(16).padStart(2,'0');
+            ctx.fill();
+
+            if (isActive) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // Label for strong or active
+            if (m.strength > 0.75 || isActive) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.font = '9px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(m.title.slice(0,18), m.nodeX, m.nodeY - radius - 4);
+                ctx.textAlign = 'left';
+            }
+        });
+        ctx.shadowBlur = 0;
+    }
+
+    // ─── BATCH / STRESS ───────────────────────────
+    learnBatch() {
+        const types = ['episodic','semantic','procedural'];
+        const encoders = [() => this.encodeEpisodic(), () => this.encodeSemantic(), () => this.encodeProcedural()];
+        for (let i = 0; i < 6; i++) {
+            setTimeout(() => {
+                const idx = Math.floor(Math.random() * 3);
+                encoders[idx]();
+            }, i * 220);
+        }
+    }
+
+    stressLearn() {
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                const r = Math.random();
+                if (r < 0.4) this.encodeEpisodic();
+                else if (r < 0.7) this.encodeSemantic();
+                else this.encodeProcedural();
+            }, i * 150);
+        }
+        setTimeout(() => this.consolidate(), 3500);
+        setTimeout(() => this.extractPatterns(), 4000);
+        toast('🔥 Stress learning: 20 memorias + consolidación', 'warning');
+    }
+
+    autoSimulate() {
+        let i = 0;
+        const actions = [
+            () => this.encodeEpisodic(),
+            () => this.encodeSemantic(),
+            () => this.encodeProcedural(),
+            () => this.stimulate(),
+            () => this.runDecay(),
+            () => this.extractPatterns(),
+            () => this.consolidate(),
+            () => this.recallQuery(),
+        ];
+        const iv = setInterval(() => {
+            const action = rnd(actions);
+            action();
+            if (++i >= 15) clearInterval(iv);
+        }, 600);
+        toast('🤖 Simulación automática iniciada (15 pasos)', 'success');
+    }
+
+    resetSystem() {
+        this.memories = [];
+        this.patterns = [];
+        this.associations = {};
+        this.memIdCounter = 1;
+        this.consolidationCount = 0;
+        this.decayedCount = 0;
+        this.learningCurve = [];
+        this.heatmap = new Array(8).fill(null).map(() => new Array(12).fill(0));
+        this.cycle = 0;
+        this.netEdges = [];
+        this.activatedNodes = [];
+        this.consolidationProgress = 0;
+        document.getElementById('consolidationPhase').textContent = '⏳ Ciclo: --';
+        this._renderMemories();
+        this._renderPatterns();
+        this._renderConsolidation();
+        this._updateStats();
+        toast('🗑️ Sistema mnémico reseteado', 'info');
+    }
+
+    _seedInitial() {
+        this.encodeEpisodic();
+        setTimeout(() => this.encodeSemantic(), 300);
+        setTimeout(() => this.encodeProcedural(), 600);
+        setTimeout(() => this.encodeEpisodic(), 900);
+        setTimeout(() => this.extractPatterns(), 1400);
+    }
+
+    // ─── AUTO CONSOLIDATION LOOP ──────────────────
+    _startAutoConsolidate() {
+        setInterval(() => {
+            if (this.memories.length > 0) this.runDecay();
+        }, 8000);
+        setInterval(() => {
+            if (this.memories.length >= 4) this.consolidate();
+        }, 15000);
+    }
+
+    // ─── RENDER ───────────────────────────────────
+    setTab(tab, el) {
+        this.activeTab = tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        this._renderMemories();
+    }
+
+    _renderMemories() {
+        const filtered = this.activeTab === 'all'
+            ? this.memories
+            : this.memories.filter(m => m.type === this.activeTab);
+
+        const el = document.getElementById('memoryList');
+        document.getElementById('memCount').textContent = this.memories.length;
+
+        const typeIcon = { episodic:'🎞️', semantic:'💡', procedural:'⚙️' };
+        const strengthLabel = s => s > 0.7 ? 'strong' : s > 0.4 ? 'medium' : 'weak';
+        const strengthText  = s => s > 0.7 ? 'FUERTE' : s > 0.4 ? 'MEDIA' : 'DÉBIL';
+        const barColor = s => s > 0.7 ? '#10b981' : s > 0.4 ? '#f59e0b' : '#ef4444';
+
+        el.innerHTML = filtered.slice().reverse().map(m => `
+            <div class="memory-item ${m.type}" id="mem-${m.id}">
+                <div class="mem-header">
+                    <div class="mem-title">${typeIcon[m.type]} ${m.title}</div>
+                    <span class="mem-strength strength-${strengthLabel(m.strength)}">
+                        ${strengthText(m.strength)} ${(m.strength*100).toFixed(0)}%
+                    </span>
+                </div>
+                <div class="mem-body">${m.body}</div>
+                <div class="mem-bar">
+                    <div class="mem-bar-fill" style="width:${m.strength*100}%;background:${barColor(m.strength)}"></div>
+                </div>
+                <div class="mem-footer">
+                    <span>#${m.id} · ${m.type} · ${m.associations.length} asoc.</span>
+                    <span>×${m.accessCount} accesos</span>
+                </div>
+            </div>
+        `).join('') || `<div style="text-align:center;color:#475569;padding:2rem">Sin memorias en esta categoría</div>`;
+    }
+
+    _renderPatterns() {
+        const el = document.getElementById('patternList');
+        document.getElementById('patCount').textContent = this.patterns.length;
+        el.innerHTML = this.patterns.slice().reverse().map(p => `
+            <div class="pattern-card">
+                <div class="pattern-header">
+                    <span class="pattern-name">🔍 ${p.name}</span>
+                    <span class="pattern-confidence">⭐ ${(p.confidence*100).toFixed(0)}%</span>
+                </div>
+                <div class="pattern-desc">${p.desc}</div>
+                <div class="pattern-tags">
+                    ${p.tags.map(t => `<span class="ptag">${t}</span>`).join('')}
+                </div>
+            </div>
+        `).join('') || `<div style="text-align:center;color:#475569;padding:2rem">Sin patrones detectados aún</div>`;
+    }
+
+    _renderConsolidation() {
+        const el = document.getElementById('consolidationStatus');
+        const score = this.memories.length > 0
+            ? Math.round((this.memories.filter(m => m.strength > 0.6).length / this.memories.length) * 100)
+            : 0;
+        el.innerHTML = `
+            <div style="font-size:0.88rem;color:#94a3b8;margin-bottom:0.6rem">
+                Ciclos completados: <strong style="color:#c4b5fd">${this.consolidationCount}</strong> ·
+                Score de retención: <strong style="color:#6ee7b7">${score}%</strong>
+            </div>
+            <div class="consolidation-bar">
+                <div class="consolidation-fill" style="width:${score}%"></div>
+            </div>
+            <div style="margin-top:0.8rem;font-size:0.82rem;color:#64748b">
+                Episódicas → Semánticas: consolidación activa cada 15s<br>
+                Decay automático cada 8s · Patrones en tiempo real
+            </div>
+        `;
+    }
+
+    _updateStats() {
+        const ep = this.memories.filter(m => m.type === 'episodic').length;
+        const se = this.memories.filter(m => m.type === 'semantic').length;
+        const pr = this.memories.filter(m => m.type === 'procedural').length;
+        const totalMems = this.memories.length;
+        const strong = this.memories.filter(m => m.strength > 0.6).length;
+        const learningScore = totalMems > 0
+            ? Math.round((strong / totalMems * 0.5 + Math.min(1, this.patterns.length/10) * 0.5) * 100) : 0;
+
+        document.getElementById('sTotal').textContent = totalMems;
+        document.getElementById('sEpisodic').textContent = ep;
+        document.getElementById('sSemantic').textContent = se;
+        document.getElementById('sProcedural').textContent = pr;
+        document.getElementById('sPatterns').textContent = this.patterns.length;
+        document.getElementById('sConsolidations').textContent = this.consolidationCount;
+        document.getElementById('sDecayed').textContent = this.decayedCount;
+        document.getElementById('sLearningScore').textContent = learningScore + '%';
+
+        this._renderConsolidation();
+    }
+}
+
+// ─── BOOT ───────────────────────────────────────────
+const Memory = new MemorySystem();
+toast('🧠 Sistema mnémico AVIA inicializado', 'memory');
+</script>
+</body>
+</html>

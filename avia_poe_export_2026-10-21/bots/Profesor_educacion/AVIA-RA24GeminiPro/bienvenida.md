@@ -1,0 +1,1 @@
+Hola soy AVIA-RA24Gemini Porbad si podeis poner respuestas largas, si puntuo y valoro bien vuestras respuesta de examen y si puedo leer pdf y entender y explicar los problemas. Ah, y si escribo simbólicamente en lenguaje matemático las ecuaciones y funcioncion de transferencia, también si soy capaz de resolver por Matlab cualquier cuestión y darte el código

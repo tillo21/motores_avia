@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXTMED_IA - Dashboard Ejecutivo CTO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Backend Simulator
+        const BackendSimulator = {
+            async getData() {
+                await this.delay(800);
+                return {
+                    timestamp: new Date().toISOString(),
+                    tasks: [
+                        { id: 'wp2-1', wp: 'WP2', task: 'Arquitectura del sistema', owner: 'Elena', deadline: 'Semana 2', status: 'in-progress', progress: 85, priority: 'critical', daysStalled: 1 },
+                        { id: 'wp2-2', wp: 'WP2', task: 'Ingesta de datos', owner: 'William', deadline: 'Semana 4', status: 'pending', progress: 25, priority: 'high', daysStalled: 4 },
+                        { id: 'wp2-3', wp: 'WP2', task: 'IA afectiva', owner: 'Elena', deadline: 'Semana 6', status: 'in-progress', progress: 45, priority: 'critical', daysStalled: 0 },
+                        { id: 'wp2-4', wp: 'WP2', task: 'Motor personalización', owner: 'Elena', deadline: 'Semana 8', status: 'not-started', progress: 0, priority: 'high', daysStalled: 0 },
+                        { id: 'wp2-5', wp: 'WP2', task: 'Prototipo funcional', owner: 'Roberto', deadline: 'Semana 10', status: 'not-started', progress: 0, priority: 'critical', daysStalled: 0 },
+                        { id: 'wp3-1', wp: 'WP3', task: 'Integración OTT', owner: 'Roberto', deadline: 'Semana 12', status: 'not-started', progress: 0, priority: 'critical', daysStalled: 0 },
+                        { id: 'wp3-2', wp: 'WP3', task: 'Validación técnica', owner: 'Roberto', deadline: 'Semana 13', status: 'not-started', progress: 0, priority: 'high', daysStalled: 0 },
+                        { id: 'wp3-3', wp: 'WP3', task: 'Validación emocional', owner: 'Elena', deadline: 'Semana 13', status: 'not-started', progress: 0, priority: 'high', daysStalled: 0 }
+                    ],
+                    team: [
+                        { name: 'Elena', role: 'IA + Arquitectura', load: 87, tasksActive: 2, tasksTotal: 5, status: 'overload', trend: '+7%' },
+                        { name: 'Roberto', role: 'Integración', load: 40, tasksActive: 0, tasksTotal: 3, status: 'ok', trend: '-5%' },
+                        { name: 'William', role: 'Datos', load: 35, tasksActive: 1, tasksTotal: 2, status: 'ok', trend: '+5%' },
+                        { name: 'Carlos', role: 'Dirección', load: 20, tasksActive: 0, tasksTotal: 1, status: 'ok', trend: '0%' },
+                        { name: 'Meisel', role: 'Coordinación', load: 42, tasksActive: 0, tasksTotal: 0, status: 'ok', trend: '+2%' }
+                    ],
+                    health: { overall: 31, wp2: 39, wp3: 0 },
+                    prediction: { weeksToComplete: 14, onTrack: true, delayWeeks: 0, confidence: 68, projectedVelocity: '9.2' },
+                    historical: [
+                        { week: 'S1', wp2: 20, wp3: 0, overall: 15, velocity: 3 },
+                        { week: 'S2', wp2: 28, wp3: 0, overall: 21, velocity: 4 },
+                        { week: 'S3', wp2: 35, wp3: 0, overall: 26, velocity: 3 },
+                        { week: 'S4', wp2: 39, wp3: 0, overall: 31, velocity: 2 }
+                    ],
+                    alerts: [
+                        { id: 1, type: 'critical', category: 'Sobrecarga Equipo', message: 'Elena con 87% de carga (2 tareas críticas activas)', action: 'Redistribuir motor de personalización', emailSent: true },
+                        { id: 2, type: 'warning', category: 'Tarea Estancada', message: 'Ingesta de datos sin avance hace 4 días', action: 'Reunión William + definir bloqueadores', emailSent: true },
+                        { id: 3, type: 'warning', category: 'WP3 Sin Iniciar', message: 'WP3 con 0% de avance, deadline en 8 semanas', action: 'Planificar inicio inmediato', emailSent: false }
+                    ],
+                    stats: { totalTasks: 8, activeTasks: 3, completedTasks: 0, blockedTasks: 2 }
+                };
+            },
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        };
+
+        // Componente de gráfica con Chart.js
+        function ChartComponent({ data, type, title }) {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+
+            useEffect(() => {
+                if (!canvasRef.current) return;
+
+                const ctx = canvasRef.current.getContext('2d');
+                
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                if (type === 'area') {
+                    chartRef.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.map(d => d.week),
+                            datasets: [
+                                {
+                                    label: 'General',
+                                    data: data.map(d => d.overall),
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                    fill: true
+                                },
+                                {
+                                    label: 'WP2',
+                                    data: data.map(d => d.wp2),
+                                    borderColor: '#8b5cf6',
+                                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                                    fill: true
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'top' } },
+                            scales: {
+                                y: { beginAtZero: true, max: 100 }
+                            }
+                        }
+                    });
+                } else if (type === 'bar') {
+                    chartRef.current = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.map(d => d.week),
+                            datasets: [{
+                                label: 'Tareas/semana',
+                                data: data.map(d => d.velocity),
+                                backgroundColor: '#3b82f6'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [data, type]);
+
+            return (
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
+                    <div style={{ height: '250px' }}>
+                        <canvas ref={canvasRef}></canvas>
+                    </div>
+                </div>
+            );
+        }
+
+        // Dashboard Principal
+        function NextmedDashboard() {
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [syncing, setSyncing] = useState(false);
+            const [lastUpdate, setLastUpdate] = useState(null);
+            const [selectedWP, setSelectedWP] = useState('all');
+            const [showAlerts, setShowAlerts] = useState(true);
+
+            useEffect(() => {
+                loadData();
+                const interval = setInterval(loadData, 60000);
+                return () => clearInterval(interval);
+            }, []);
+
+            async function loadData() {
+                setLoading(true);
+                const result = await BackendSimulator.getData();
+                setData(result);
+                setLastUpdate(new Date());
+                setLoading(false);
+            }
+
+            async function handleSync() {
+                setSyncing(true);
+                await BackendSimulator.delay(2000);
+                await loadData();
+                setSyncing(false);
+            }
+
+            if (loading && !data) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-600">Cargando dashboard...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            const { tasks = [], team = [], health = {}, prediction = {}, historical = [], alerts = [], stats = {} } = data || {};
+            const filteredTasks = selectedWP === 'all' ? tasks : tasks.filter(t => t.wp === selectedWP);
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-6">
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        
+                        {/* Header */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-900">NEXTMED_IA</h1>
+                                    <p className="text-gray-600 mt-1">Dashboard Ejecutivo CTO — Sistema Integrado</p>
+                                    {lastUpdate && (
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Última actualización: {lastUpdate.toLocaleTimeString('es-ES')}
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={handleSync}
+                                        disabled={syncing}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        <span className={syncing ? 'animate-spin' : ''}>🔄</span>
+                                        {syncing ? 'Sincronizando...' : 'Sincronizar'}
+                                    </button>
+                                    <div className="text-right">
+                                        <div className="text-sm text-gray-600">Salud</div>
+                                        <div className="text-3xl font-bold text-blue-600">{health.overall}%</div>
+                                    </div>
+                                    <div className={`px-4 py-2 rounded-lg font-semibold ${prediction.onTrack ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {prediction.onTrack ? 'En plazo' : 'Retraso'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="bg-white rounded-lg shadow-sm border p-6">
+                                <div className="text-sm text-gray-600">Total Tareas</div>
+                                <div className="text-2xl font-bold text-gray-900">{stats.totalTasks}</div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-sm border p-6">
+                                <div className="text-sm text-gray-600">En Progreso</div>
+                                <div className="text-2xl font-bold text-blue-600">{stats.activeTasks}</div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-sm border p-6">
+                                <div className="text-sm text-gray-600">Completadas</div>
+                                <div className="text-2xl font-bold text-green-600">{stats.completedTasks}</div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-sm border p-6">
+                                <div className="text-sm text-gray-600">Bloqueadas</div>
+                                <div className="text-2xl font-bold text-red-600">{stats.blockedTasks}</div>
+                            </div>
+                        </div>
+
+                        {/* Alertas */}
+                        {showAlerts && alerts.length > 0 && (
+                            <div className="bg-white rounded-lg shadow-sm border p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-bold text-gray-900">🔔 Alertas Automáticas ({alerts.length})</h2>
+                                    <button onClick={() => setShowAlerts(false)} className="text-sm text-gray-600 hover:text-gray-900">Ocultar</button>
+                                </div>
+                                <div className="space-y-3">
+                                    {alerts.map(alert => (
+                                        <div key={alert.id} className={`border-l-4 rounded-lg p-4 ${alert.type === 'critical' ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}`}>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-gray-900 mb-1">{alert.category}</div>
+                                                    <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
+                                                    <div className="text-sm font-medium text-gray-900">→ {alert.action}</div>
+                                                </div>
+                                                {alert.emailSent && (
+                                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded ml-2">📧 Enviado</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Predicción */}
+                        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200 p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">📊 Predicción ML</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="text-sm text-gray-600 mb-1">Semanas</div>
+                                    <div className="text-3xl font-bold text-gray-900">{prediction.weeksToComplete}</div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="text-sm text-gray-600 mb-1">Estado</div>
+                                    <div className={`text-2xl font-bold ${prediction.onTrack ? 'text-green-600' : 'text-red-600'}`}>
+                                        {prediction.onTrack ? 'EN PLAZO' : 'RETRASO'}
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="text-sm text-gray-600 mb-1">Velocidad</div>
+                                    <div className="text-3xl font-bold text-blue-600">{prediction.projectedVelocity}</div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="text-sm text-gray-600 mb-1">Confianza</div>
+                                    <div className="text-3xl font-bold text-purple-600">{prediction.confidence}%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Gráficas */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <ChartComponent data={historical} type="area" title="Progreso por Semana" />
+                            <ChartComponent data={historical} type="bar" title="Velocidad (tareas/semana)" />
+                        </div>
+
+                        {/* Tareas */}
+                        <div className="bg-white rounded-lg shadow-sm border p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">📋 Tareas</h2>
+                                <div className="flex gap-2">
+                                    {['all', 'WP2', 'WP3'].map(wp => (
+                                        <button 
+                                            key={wp}
+                                            onClick={() => setSelectedWP(wp)}
+                                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedWP === wp ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                        >
+                                            {wp === 'all' ? 'Todas' : wp}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                {filteredTasks.map(task => (
+                                    <div key={task.id} className={`border rounded-lg p-4 transition-all ${task.daysStalled >= 3 ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:shadow-md'}`}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3 flex-1">
+                                                <span className="text-xs font-semibold bg-gray-100 px-2 py-1 rounded">{task.wp}</span>
+                                                <span className="font-semibold text-gray-900">{task.task}</span>
+                                                {task.daysStalled >= 3 && (
+                                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-medium">⏰ {task.daysStalled}d</span>
+                                                )}
+                                            </div>
+                                            <span className={`text-xs font-semibold px-3 py-1 rounded whitespace-nowrap ml-2 ${
+                                                task.priority === 'critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                                            }`}>
+                                                {task.priority === 'critical' ? 'CRÍTICA' : 'ALTA'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm mb-2">
+                                            <span className="text-gray-600">👤 {task.owner} • 📅 {task.deadline}</span>
+                                            <span className="font-semibold text-blue-600">{task.progress}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div 
+                                                className={`h-2 rounded-full transition-all ${
+                                                    task.status === 'in-progress' ? 'bg-blue-500' : 
+                                                    task.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-400'
+                                                }`} 
+                                                style={{width: `${task.progress}%`}}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Equipo */}
+                        <div className="bg-white rounded-lg shadow-sm border p-6">
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">👥 Carga del Equipo</h2>
+                            <div className="space-y-4">
+                                {team.map(member => (
+                                    <div key={member.name} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div>
+                                                <span className="font-semibold text-gray-900">{member.name}</span>
+                                                <span className="text-sm text-gray-600 ml-2">— {member.role}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-sm text-gray-600">{member.tasksActive}/{member.tasksTotal} tareas</span>
+                                                <span className={`text-xs font-medium px-2 py-1 rounded ${
+                                                    member.trend.startsWith('+') ? 'bg-red-100 text-red-700' : 
+                                                    member.trend.startsWith('-') ? 'bg-green-100 text-green-700' : 
+                                                    'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {member.trend}
+                                                </span>
+                                                <span className={`font-semibold ${
+                                                    member.load > 80 ? 'text-red-600' : 
+                                                    member.load > 60 ? 'text-orange-600' : 
+                                                    'text-green-600'
+                                                }`}>
+                                                    {member.load}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div 
+                                                className={`h-3 rounded-full transition-all ${
+                                                    member.load > 80 ? 'bg-red-500' : 
+                                                    member.load > 60 ? 'bg-orange-500' : 
+                                                    'bg-green-500'
+                                                }`} 
+                                                style={{width: `${member.load}%`}}
+                                            ></div>
+                                        </div>
+                                        {member.status === 'overload' && (
+                                            <div className="mt-2 text-sm text-red-600 font-medium">⚠️ SOBRECARGA DETECTADA — Email enviado</div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<NextmedDashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+SOy PTF, Predigo el Futuro de las tecnologías (dispositivos hardware y software) en los territorios rurales

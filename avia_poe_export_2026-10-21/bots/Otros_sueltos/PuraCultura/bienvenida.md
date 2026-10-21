@@ -1,0 +1,1 @@
+Hola soy el asistente virtual del Dr. Ricardo Ramon Jarne para ayudarle como especialista en cultura y promocion de eventos culturales.

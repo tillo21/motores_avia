@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ControlNextMed IA v1.2 — Gestión Científico-Médica</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <!-- [HIPÓTESIS] Producción: reemplazar CDN por build local Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body          { font-family:'Inter',system-ui,sans-serif; }
+    .login-bg     { background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#0369a1 100%); }
+    .header-bg    { background:linear-gradient(90deg,#0f172a 0%,#1e3a8a 60%,#0369a1 100%); }
+    /* KPI Cards — orden estricto: rojo, verde, amarillo, azul */
+    .kpi-rojo     { background:linear-gradient(135deg,#ef4444,#b91c1c); }
+    .kpi-verde    { background:linear-gradient(135deg,#22c55e,#15803d); }
+    .kpi-amarillo { background:linear-gradient(135deg,#f59e0b,#b45309); }
+    .kpi-azul     { background:linear-gradient(135deg,#3b82f6,#1d4ed8); }
+    .tab-active   { border-bottom:3px solid #1e40af; color:#1e40af!important; font-weight:700; }
+    .fade-in      { animation:fadeIn .3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
+    .card-s       { box-shadow:0 4px 24px rgba(0,0,0,.08); }
+    /* Risk & Status */
+    .risk-alto    { background:#fee2e2;color:#dc2626;border:1px solid #fca5a5; }
+    .risk-medio   { background:#fef9c3;color:#92400e;border:1px solid #fcd34d; }
+    .risk-bajo    { background:#dcfce7;color:#15803d;border:1px solid #86efac; }
+    .st-activo    { background:#dbeafe;color:#1e40af; }
+    .st-revision  { background:#fef9c3;color:#92400e; }
+    .st-riesgo    { background:#fee2e2;color:#dc2626; }
+    .st-completo  { background:#f3e8ff;color:#7c3aed; }
+    /* Task status */
+    .ts-pendiente { background:#f1f5f9;color:#64748b; }
+    .ts-progreso  { background:#dbeafe;color:#1e40af; }
+    .ts-hecho     { background:#dcfce7;color:#15803d; }
+    /* Priority */
+    .p-alta       { color:#dc2626;font-weight:700; }
+    .p-media      { color:#d97706;font-weight:600; }
+    .p-baja       { color:#15803d;font-weight:600; }
+    /* Progress bars */
+    .pbar         { transition:width .7s cubic-bezier(.4,0,.2,1); }
+    /* Avatars */
+    .av           { border-radius:50%;display:flex;align-items:center;
+                    justify-content:center;font-weight:700;color:#fff;flex-shrink:0; }
+    /* Modal */
+    #overlayModal { backdrop-filter:blur(4px); }
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px;}
+    @media(max-width:640px){.hide-sm{display:none;}}
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- ══════════════════════════════════════════
+     BLOQUE 1 — UTILS, AUTH, MOCK DATA
+══════════════════════════════════════════ -->
+<script>
+/* ── Almacenamiento seguro (FIX E-02) ── */
+const storage=(()=>{
+  let m={};
+  const ok=(()=>{try{localStorage.setItem('_t','1');localStorage.removeItem('_t');return true;}catch{return false;}})();
+  return{
+    set:(k,v)=>{try{ok?localStorage.setItem(k,v):(m[k]=v);}catch{m[k]=v;}},
+    get:(k)  =>{try{return ok?localStorage.getItem(k):(m[k]??null);}catch{return m[k]??null;}},
+    del:(k)  =>{try{ok?localStorage.removeItem(k):delete m[k];}catch{delete m[k];}}
+  };
+})();
+
+/* ── ID único ── */
+let _uid=Date.now(); const genId=()=>++_uid;
+
+/* ── Sanitizador XSS (FIX E-03) ── */
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ── Autenticación (FIX E-01) ──
+   [HIPÓTESIS] Producción: backend con bcrypt + JWT */
+const AUTH_USERS={
+  'ip.principal':{pass:'aviamed2025',role:'IP Principal',  name:'Dr. Carlos Ramírez'},
+  'coordinadora':{pass:'coordmed25', role:'Coordinadora',  name:'Elena Martínez'},
+  'admin':       {pass:'admin123',   role:'Admin Sistema', name:'Admin Sistema'}
+};
+const SESSION_TTL=3_600_000; // 1 hora
+
+const Auth={
+  login(){
+    const u=(document.getElementById('lu')?.value||'').trim();
+    const p=document.getElementById('lp')?.value||'';
+    const m=AUTH_USERS[u];
+    if(m&&m.pass===p){
+      storage.set('cnm_s',JSON.stringify({u,role:m.role,name:m.name,ts:Date.now()}));
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('loginError').classList.add('hidden');
+      document.getElementById('hUser').textContent=`👤 ${m.name}`;
+      document.getElementById('hRole').textContent=m.role;
+      App.boot();
+    }else{
+      document.getElementById('loginError').classList.remove('hidden');
+    }
+  },
+  check(){
+    const raw=storage.get('cnm_s');
+    if(!raw)return false;
+    try{
+      const s=JSON.parse(raw);
+      if(Date.now()-s.ts>SESSION_TTL){storage.del('cnm_s');return false;}
+      document.getElementById('hUser').textContent=`👤 ${s.name}`;
+      document.getElementById('hRole').textContent=s.role;
+      return true;
+    }catch{return false;}
+  },
+  logout(){storage.del('cnm_s');location.reload();}
+};
+
+/* ══════════ MOCK DATA ══════════
+   [HIPÓTESIS] Reemplazar por API REST con Express + Prisma + PostgreSQL */
+const MOCK_PROJECTS=[
+  {id:1001,code:'BIO-AVIA-25',
+   title:'Biomarcadores en Neurodegeneración AVIA',
+   desc:'Identificación y validación de biomarcadores tempranos de Alzheimer y Parkinson mediante IA predictiva multimodal.',
+   status:'activo',risk:'bajo',progress:65,
+   start:'2025-01-15',end:'2026-06-30',
+   budget:450000,spent:189500,teamIds:[1,2,3],phase:'Fase II — Validación',pubs:2},
+  {id:1002,code:'NEUROCOG-B3',
+   title:'Protocolo NeuroCog — Deterioro Cognitivo',
+   desc:'Protocolo clínico para detección temprana de deterioro cognitivo mediante análisis neurocognitivo asistido por IA.',
+   status:'revision',risk:'medio',progress:38,
+   start:'2025-03-01',end:'2026-12-31',
+   budget:280000,spent:95200,teamIds:[1,2,5],phase:'Fase I — Diseño',pubs:0},
+  {id:1003,code:'CARDIO-FII',
+   title:'Ensayo Clínico FaseII — CardioAVIA',
+   desc:'Ensayo clínico controlado aleatorizado para evaluación de biomarcadores cardíacos con IA predictiva de riesgo.',
+   status:'riesgo',risk:'alto',progress:22,
+   start:'2025-02-01',end:'2027-01-31',
+   budget:720000,spent:342000,teamIds:[1,4,5],phase:'Reclutamiento',pubs:1}
+];
+
+const MOCK_TASKS=[
+  {id:2001,pid:1001,title:'Análisis estadístico biomarcadores',aid:5,status:'hecho',    priority:'alta', due:'2025-07-15'},
+  {id:2002,pid:1001,title:'Redacción artículo JNeurosci',       aid:2,status:'progreso',priority:'alta', due:'2025-08-01'},
+  {id:2003,pid:1001,title:'Revisión ética CEI',                 aid:1,status:'pendiente',priority:'media',due:'2025-09-10'},
+  {id:2004,pid:1002,title:'Diseño protocolo NeuroCog-B3',       aid:2,status:'progreso',priority:'alta', due:'2025-07-20'},
+  {id:2005,pid:1002,title:'Reclutamiento pacientes Fase I',     aid:4,status:'pendiente',priority:'media',due:'2025-10-01'},
+  {id:2006,pid:1002,title:'Validación cuestionarios MoCA',      aid:3,status:'pendiente',priority:'baja', due:'2025-11-15'},
+  {id:2007,pid:1003,title:'⚠️ Informe DSMB — URGENTE',         aid:1,status:'pendiente',priority:'alta', due:'2025-07-08'},
+  {id:2008,pid:1003,title:'Revisión protocolo EMA/AEMPS',       aid:2,status:'progreso',priority:'alta', due:'2025-07-12'},
+  {id:2009,pid:1003,title:'Análisis interim seguridad Q2',      aid:5,status:'pendiente',priority:'alta', due:'2025-07-20'},
+];
+
+const MOCK_TEAM=[
+  {id:1,name:'Dr. Carlos Ramírez', role:'IP Principal',        spec:'Cardiología',       email:'c.ramirez@hospital.es',av:'CR',col:'#1e40af'},
+  {id:2,name:'Dra. Ana García',    role:'Co-Investigadora',    spec:'Neurología',        email:'a.garcia@hospital.es', av:'AG',col:'#7c3aed'},
+  {id:3,name:'Dr. Pedro López',    role:'Investigador Sénior', spec:'Biomarcadores',     email:'p.lopez@hospital.es',  av:'PL',col:'#0891b2'},
+  {id:4,name:'Elena Martínez',     role:'Coordinadora Ensayo', spec:'Gestión CRO',       email:'e.martinez@hospital.es',av:'EM',col:'#059669'},
+  {id:5,name:'Dr. Tomás Ruiz',     role:'Bioestadístico',      spec:'Bioestadística IA', email:'t.ruiz@hospital.es',   av:'TR',col:'#d97706'},
+];
+
+const MOCK_MS=[
+  {id:3001,pid:1001,title:'Publicación JNeurosci aceptada',   date:'2025-09-01',status:'pendiente'},
+  {id:3002,pid:1001,title:'Análisis Final Fase II',           date:'2025-12-31',status:'pendiente'},
+  {id:3003,pid:1002,title:'Aprobación Comité Ético CEI',      date:'2025-08-15',status:'pendiente'},
+  {id:3004,pid:1002,title:'Inicio Reclutamiento Pacientes',   date:'2025-10-15',status:'pendiente'},
+  {id:3005,pid:1003,title:'Informe DSMB Q2 entregado',        date:'2025-07-10',status:'pendiente'},
+  {id:3006,pid:1003,title:'Análisis Interim de Seguridad',    date:'2025-09-30',status:'pendiente'},
+];
+
+const MOCK_ACT=[
+  {text:'ControlNextMed IA v1.2 iniciado correctamente', time:'Ahora',     icon:'🚀'},
+  {text:'ALERTA: CardioAVIA-FII — DSMB pendiente urgente',time:'Hoy 09:00',icon:'🔴'},
+  {text:'Tarea completada: Análisis estadístico biomarcadores',time:'Hoy 08:30',icon:'✅'},
+  {text:'Artículo enviado a JNeurosci — BIO-AVIA-25',    time:'Ayer 16:45',icon:'📄'},
+  {text:'Reunión DSMB programada 08/07/2025',            time:'Ayer 14:00',icon:'📅'},
+];
+</script>
+
+<!-- ══════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════ -->
+<div id="loginScreen" class="login-bg fixed inset-0 flex items-center justify-center z-50">
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-full mx-4 fade-in" style="max-width:400px">
+    <div class="text-center mb-6">
+      <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+        <span class="text-3xl">🔬</span>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-800">ControlNextMed IA</h1>
+      <p class="text-sm text-gray-400 mt-1">Sistema de Gestión Científico-Médica · v1.2</p>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label for="lu" class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+        <input id="lu" type="text" autocomplete="username" placeholder="ip.principal"
+          class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300"
+          onkeydown="if(event.key==='Enter')Auth.login()"/>
+      </div>
+      <div>
+        <label for="lp" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+        <input id="lp" type="password" autocomplete="current-password" placeholder="••••••••"
+          class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300"
+          onkeydown="if(event.key==='Enter')Auth.login()"/>
+      </div>
+      <p id="loginError" class="text-red-500 text-xs hidden" role="alert">
+        ❌ Credenciales incorrectas. Intenta de nuevo.
+      </p>
+      <button onclick="Auth.login()"
+        class="w-full text-white py-2.5 rounded-lg font-semibold hover:opacity-90 transition mt-1"
+        style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+        Acceder al Sistema
+      </button>
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 space-y-1">
+        <p class="font-bold mb-1">👤 Usuarios demo:</p>
+        <p>🔬 <code class="bg-white px-1 rounded">ip.principal</code> / <code class="bg-white px-1 rounded">aviamed2025</code></p>
+        <p>👩‍💼 <code class="bg-white px-1 rounded">coordinadora</code> / <code class="bg-white px-1 rounded">coordmed25</code></p>
+        <p>⚙️ <code class="bg-white px-1 rounded">admin</code> / <code class="bg-white px-1 rounded">admin123</code></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════ -->
+<header class="header-bg text-white shadow-xl sticky top-0 z-40">
+  <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+        <span class="text-xl" aria-hidden="true">🔬</span>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold leading-tight">ControlNextMed IA</h1>
+        <p class="text-xs opacity-70">v1.2 · Gestión Científico-Médica · AVIA</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="text-right hide-sm">
+        <p class="text-sm font-medium" id="hUser" aria-live="polite">👤 —</p>
+        <p class="text-xs opacity-70 bg-white bg-opacity-20 px-2 py-0.5 rounded-full mt-0.5"
+           id="hRole">—</p>
+      </div>
+      <button onclick="App.logout()" aria-label="Cerrar sesión"
+        class="bg-white text-blue-900 px-3 py-1.5 rounded-lg text-sm
+               font-semibold hover:bg-blue-50 transition">
+        Salir
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════
+     NAVEGACIÓN
+══════════════════════════════════════════ -->
+<nav class="bg-white border-b shadow-sm" aria-label="Navegación principal">
+  <div class="container mx-auto px-4 flex overflow-x-auto">
+    <button class="tab-btn tab-active py-4 px-4 text-sm whitespace-nowrap transition"
+      data-tab="dashboard" onclick="App.tab('dashboard')" aria-controls="tab-dashboard">
+      📊 Dashboard
+    </button>
+    <button class="tab-btn py-4 px-4 text-sm text-gray-500 whitespace-nowrap transition"
+      data-tab="projects" onclick="App.tab('projects')" aria-controls="tab-projects">
+      🔬 Proyectos
+    </button>
+    <button class="tab-btn py-4 px-4 text-sm text-gray-500 whitespace-nowrap transition"
+      data-tab="tasks" onclick="App.tab('tasks')" aria-controls="tab-tasks">
+      ✅ Tareas
+    </button>
+    <button class="tab-btn py-4 px-4 text-sm text-gray-500 whitespace-nowrap transition"
+      data-tab="team" onclick="App.tab('team')" aria-controls="tab-team">
+      👥 Equipo
+    </button>
+    <button class="tab-btn py-4 px-4 text-sm text-gray-500 whitespace-nowrap transition"
+      data-tab="reports" onclick="App.tab('reports')" aria-controls="tab-reports">
+      📈 Reportes
+    </button>
+    <button class="tab-btn py-4 px-4 text-sm text-gray-500 whitespace-nowrap transition"
+      data-tab="settings" onclick="App.tab('settings')" aria-controls="tab-settings">
+      ⚙️ Config
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+══════════════════════════════════════════ -->
+<main class="container mx-auto px-4 py-8">
+
+  <!-- ── DASHBOARD ── -->
+  <section id="tab-dashboard" class="tab-content fade-in" aria-label="Dashboard principal">
+
+    <!-- Banner de alertas críticas -->
+    <div id="alertBanner" class="hidden bg-red-50 border border-red-200
+      rounded-xl px-5 py-3 mb-6" role="alert">
+      <p class="text-red-700 font-bold text-sm">🚨 Alertas Críticas Activas</p>
+      <ul id="alertList" class="text-red-600 text-xs mt-1 space-y-0.5 list-disc list-inside"></ul>
+    </div>
+
+    <!-- KPI Cards: ROJO · VERDE · AMARILLO · AZUL -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div class="kpi-rojo rounded-2xl p-5 text-white card-s">
+        <p class="text-xs font-semibold uppercase opacity-80 mb-2">⚠️ Alertas / Riesgo</p>
+        <p class="text-4xl font-extrabold" id="kpi-r-val">—</p>
+        <p class="text-xs opacity-75 mt-1" id="kpi-r-sub">proyectos en riesgo</p>
+      </div>
+      <div class="kpi-verde rounded-2xl p-5 text-white card-s">
+        <p class="text-xs font-semibold uppercase opacity-80 mb-2">✅ Proyectos Activos</p>
+        <p class="text-4xl font-extrabold" id="kpi-g-val">—</p>
+        <p class="text-xs opacity-75 mt-1" id="kpi-g-sub">en progreso</p>
+      </div>
+      <div class="kpi-amarillo rounded-2xl p-5 text-white card-s">
+        <p class="text-xs font-semibold uppercase opacity-80 mb-2">📋 Tareas Pendientes</p>
+        <p class="text-4xl font-extrabold" id="kpi-y-val">—</p>
+        <p class="text-xs opacity-75 mt-1" id="kpi-y-sub">sin completar</p>
+      </div>
+      <div class="kpi-azul rounded-2xl p-5 text-white card-s">
+        <p class="text-xs font-semibold uppercase opacity-80 mb-2">💶 Presupuesto Total</p>
+        <p class="text-4xl font-extrabold" id="kpi-b-val">—</p>
+        <p class="text-xs opacity-75 mt-1" id="kpi-b-sub">asignado</p>
+      </div>
+    </div>
+
+    <!-- Proyectos (mini) + Actividad -->
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="font-bold text-gray-800">Resumen de Proyectos</h2>
+          <button onclick="App.tab('projects')"
+            class="text-blue-600 text-sm hover:underline">Ver todos →</button>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-3" id="dash-projects"></div>
+      </div>
+      <div class="bg-white rounded-2xl card-s p-5">
+        <h2 class="font-bold text-gray-800 mb-4">Actividad Reciente</h2>
+        <ul id="activityLog" class="space-y-3" aria-live="polite"></ul>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── PROYECTOS ── -->
+  <section id="tab-projects" class="tab-content hidden fade-in"
+    aria-label="Gestión de proyectos de investigación">
+    <div class="bg-white rounded-2xl card-s p-6">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="font-bold text-gray-800 text-lg">Proyectos de Investigación</h2>
+        <button onclick="Modal.open('addProject')" aria-label="Añadir nuevo proyecto"
+          class="text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
+          style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+          + Nuevo Proyecto
+        </button>
+      </div>
+      <div class="mb-5">
+        <label for="projSearch" class="sr-only">Buscar proyectos</label>
+        <input id="projSearch" type="search"
+          placeholder="🔍  Buscar por título, código o estado…"
+          class="w-full px-4 py-2 border rounded-lg text-sm outline-none
+                 focus:ring-2 focus:ring-blue-200"
+          oninput="Render.projects(this.value)"/>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" id="projectsContainer"></div>
+    </div>
+  </section>
+
+  <!-- ── TAREAS ── -->
+  <section id="tab-tasks" class="tab-content hidden fade-in"
+    aria-label="Gestión de tareas y actividades">
+    <div class="bg-white rounded-2xl card-s p-6">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="font-bold text-gray-800 text-lg">Tareas del Proyecto</h2>
+        <button onclick="Modal.open('addTask')" aria-label="Añadir nueva tarea"
+          class="text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
+          style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+          + Nueva Tarea
+        </button>
+      </div>
+      <!-- Filtros (FIX E-06) -->
+      <div class="grid sm:grid-cols-3 gap-3 mb-5">
+        <div>
+          <label for="fProj" class="sr-only">Filtrar por proyecto</label>
+          <select id="fProj"
+            class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-200"
+            onchange="Render.tasks()">
+            <option value="">Todos los proyectos</option>
+          </select>
+        </div>
+        <div>
+          <label for="fStatus" class="sr-only">Filtrar por estado</label>
+          <select id="fStatus"
+            class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-200"
+            onchange="Render.tasks()">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="progreso">En Progreso</option>
+            <option value="hecho">Completado</option>
+          </select>
+        </div>
+        <div>
+          <label for="fPrio" class="sr-only">Filtrar por prioridad</label>
+          <select id="fPrio"
+            class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-200"
+            onchange="Render.tasks()">
+            <option value="">Todas las prioridades</option>
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" aria-label="Tabla de tareas del proyecto">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+            <tr>
+              <th class="px-4 py-3 text-left">Tarea</th>
+              <th class="px-4 py-3 text-left hide-sm">Proyecto</th>
+              <th class="px-4 py-3 text-left hide-sm">Responsable</th>
+              <th class="px-4 py-3 text-left">Prioridad</th>
+              <th class="px-4 py-3 text-left">Estado</th>
+              <th class="px-4 py-3 text-left hide-sm">Vence</th>
+              <th class="px-4 py-3 text-left">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tasksTable" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── EQUIPO ── -->
+  <section id="tab-team" class="tab-content hidden fade-in"
+    aria-label="Gestión del equipo investigador">
+    <div class="bg-white rounded-2xl card-s p-6">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="font-bold text-gray-800 text-lg">Equipo Investigador</h2>
+        <button onclick="Modal.open('addMember')" aria-label="Añadir miembro al equipo"
+          class="text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
+          style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+          + Añadir Miembro
+        </button>
+      </div>
+      <div class="mb-5">
+        <label for="teamSearch" class="sr-only">Buscar en equipo</label>
+        <input id="teamSearch" type="search"
+          placeholder="🔍  Buscar por nombre, rol o especialidad…"
+          class="w-full px-4 py-2 border rounded-lg text-sm outline-none
+                 focus:ring-2 focus:ring-blue-200"
+          oninput="Render.team(this.value)"/>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" id="teamContainer"></div>
+    </div>
+  </section>
+
+  <!-- ── REPORTES ── -->
+  <section id="tab-reports" class="tab-content hidden fade-in"
+    aria-label="Reportes e indicadores científicos">
+    <div class="bg-white rounded-2xl card-s p-6">
+      <h2 class="font-bold text-gray-800 text-lg mb-2">Reportes e Indicadores</h2>
+      <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200
+                 rounded-lg px-4 py-3 mb-6">
+        ⚠️ [HIPÓTESIS] Gráficas avanzadas (Chart.js) requieren integración con API real.
+        Los KPIs se calculan en tiempo real desde datos mock locales.
+      </p>
+      <div id="reportsContent"></div>
+    </div>
+  </section>
+
+  <!-- ── CONFIGURACIÓN ── -->
+  <section id="tab-settings" class="tab-content hidden fade-in"
+    aria-label="Configuración del sistema">
+    <div class="bg-white rounded-2xl card-s p-6" style="max-width:520px">
+      <h2 class="font-bold text-gray-800 text-lg mb-6">Configuración del Sistema</h2>
+      <div class="space-y-4">
+        <div>
+          <label for="settInst" class="block text-sm font-medium text-gray-700 mb-1">
+            Institución / Hospital
+          </label>
+          <input id="settInst" type="text"
+            class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300"/>
+        </div>
+        <div>
+          <label for="settCity" class="block text-sm font-medium text-gray-700 mb-1">
+            Ciudad / País
+          </label>
+          <input id="settCity" type="text"
+            class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300"/>
+        </div>
+        <div>
+          <label for="settEmail" class="block text-sm font-medium text-gray-700 mb-1">
+            Email de Investigación
+          </label>
+          <input id="settEmail" type="email"
+            class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300"/>
+        </div>
+        <div>
+          <label for="settLang" class="block text-sm font-medium text-gray-700 mb-1">Idioma</label>
+          <select id="settLang"
+            class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <button onclick="App.saveSettings()" id="btnSaveSett"
+          class="text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition text-sm"
+          style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">
+          Guardar Configuración
+        </button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════
+     MODAL (FIX E-04: sin confirm() nativo)
+══════════════════════════════════════════ -->
+<div id="overlayModal"
+  class="hidden fixed inset-0 flex items-center justify-center z-50"
+  style="background:rgba(0,0,0,.5)"
+  role="dialog" aria-modal="true" aria-labelledby="modalTitle"
+  onclick="if(event.target===this)Modal.close()">
+  <div id="modalContent"
+    class="bg-white rounded-2xl p-6 w-full mx-4 fade-in overflow-y-auto"
+    style="max-width:500px;max-height:92vh"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     TOAST
+══════════════════════════════════════════ -->
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"
+  style="max-width:320px" aria-live="polite" aria-atomic="false"></div>
+
+
+<!-- ══════════════════════════════════════════
+     BLOQUE 2 — LÓGICA PRINCIPAL
+══════════════════════════════════════════ -->
+<script>
+
+/* ════════════════════════════════════════
+   ESTADO GLOBAL
+════════════════════════════════════════ */
+const State={
+  projects  :[],
+  tasks     :[],
+  team      :[],
+  milestones:[],
+  activities:[],
+  editing   :{ project:null, task:null, member:null }
+};
+
+/* ════════════════════════════════════════
+   DB — CAPA DE PERSISTENCIA (FIX E-02)
+════════════════════════════════════════ */
+const DB={
+  _parse(key,fallback){
+    try{ const v=JSON.parse(storage.get(key)); return(v&&Array.isArray(v)&&v.length)?v:fallback; }
+    catch{ return fallback; }
+  },
+  load(){
+    State.projects  =this._parse('cnm_p',  MOCK_PROJECTS);
+    State.tasks     =this._parse('cnm_t',  MOCK_TASKS);
+    State.team      =this._parse('cnm_m',  MOCK_TEAM);
+    State.milestones=this._parse('cnm_ms', MOCK_MS);
+    State.activities=this._parse('cnm_a',  MOCK_ACT);
+    /* Settings */
+    const cfg=(() => {
+      try { return JSON.parse(storage.get('cnm_cfg')) || {}; } catch { return {}; }
+    })();
+    const q=id=>document.getElementById(id);
+    if(q('settInst'))  q('settInst').value  = cfg.inst  || 'Hospital AVIA';
+    if(q('settCity'))  q('settCity').value  = cfg.city  || 'Madrid, España';
+    if(q('settEmail')) q('settEmail').value = cfg.email || 'investigacion@avia.es';
+    if(q('settLang'))  q('settLang').value  = cfg.lang  || 'es';
+    /* Populate project filter in tasks tab */
+    const fp=document.getElementById('fProj');
+    if(fp){
+      fp.innerHTML='<option value="">Todos los proyectos</option>'+
+        State.projects.map(p=>`<option value="${p.id}">${esc(p.code)} — ${esc(p.title)}</option>`).join('');
+    }
+  },
+  save(){
+    storage.set('cnm_p',  JSON.stringify(State.projects));
+    storage.set('cnm_t',  JSON.stringify(State.tasks));
+    storage.set('cnm_m',  JSON.stringify(State.team));
+    storage.set('cnm_ms', JSON.stringify(State.milestones));
+    storage.set('cnm_a',  JSON.stringify(State.activities));
+  }
+};
+
+/* ════════════════════════════════════════
+   RENDER
+════════════════════════════════════════ */
+const Render={
+  all(){ this.dashboard(); this.projects(); this.tasks(); this.team(); this.reports(); },
+
+  /* ── Dashboard ── */
+  dashboard(){
+    const today=new Date().toISOString().split('T')[0];
+    const riesgo   =State.projects.filter(p=>p.status==='riesgo').length;
+    const activos  =State.projects.filter(p=>p.status==='activo').length;
+    const pend     =State.tasks.filter(t=>t.status==='pendiente').length;
+    const totalB   =State.projects.reduce((s,p)=>s+p.budget,0);
+    const totalSpent=State.projects.reduce((s,p)=>s+p.spent,0);
+    const vencidas =State.tasks.filter(t=>t.status!=='hecho'&&t.due<today).length;
+    const urgentes =State.tasks.filter(t=>t.status==='pendiente'&&t.priority==='alta'&&t.due<=today);
+
+    /* KPIs */
+    const kv=id=>document.getElementById(id);
+    kv('kpi-r-val').textContent = riesgo + (vencidas>0?` +${vencidas}`:'' );
+    kv('kpi-r-sub').textContent = vencidas>0?`⚠️ ${vencidas} tarea(s) vencida(s)`:'Sin alertas adicionales';
+    kv('kpi-g-val').textContent = activos;
+    kv('kpi-g-sub').textContent = `de ${State.projects.length} proyectos totales`;
+    kv('kpi-y-val').textContent = pend;
+    kv('kpi-y-sub').textContent = `${State.tasks.filter(t=>t.status==='progreso').length} en progreso`;
+    kv('kpi-b-val').textContent = '€'+(totalB/1e6).toFixed(2)+'M';
+    kv('kpi-b-sub').textContent = `Ejecutado: €${(totalSpent/1e3).toFixed(0)}K`;
+
+    /* Banner de alertas */
+    const banner=document.getElementById('alertBanner');
+    const alertList=document.getElementById('alertList');
+    if(urgentes.length){
+      banner.classList.remove('hidden');
+      alertList.innerHTML=urgentes.map(t=>{
+        const p=State.projects.find(x=>x.id===t.pid);
+        return`<li>🔴 ${esc(t.title)} — ${esc(p?.code||'—')} · Vence: ${esc(t.due)}</li>`;
+      }).join('');
+    }else banner.classList.add('hidden');
+
+    /* Mini-tarjetas de proyectos */
+    const dp=document.getElementById('dash-projects');
+    if(dp){
+      const stCls={activo:'st-activo',revision:'st-revision',riesgo:'st-riesgo',completo:'st-completo'};
+      const stLbl={activo:'Activo',revision:'En Revisión',riesgo:'⚠️ Riesgo',completo:'✅ Completo'};
+      dp.innerHTML=State.projects.map(p=>`
+        <div class="bg-white border rounded-xl p-4 card-s hover:shadow-lg transition cursor-pointer"
+          onclick="App.tab('projects')">
+          <div class="flex justify-between items-start mb-2">
+            <span class="text-xs font-mono font-semibold text-blue-600">${esc(p.code)}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium ${stCls[p.status]||''}">${stLbl[p.status]||p.status}</span>
+          </div>
+          <p class="font-semibold text-gray-800 text-sm mb-3 leading-tight">${esc(p.title)}</p>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-gray-400">Progreso</span>
+            <span class="text-xs font-bold ${p.progress<30?'text-red-500':p.progress<60?'text-amber-500':'text-green-600'}">${p.progress}%</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2">
+            <div class="pbar h-2 rounded-full ${p.progress<30?'bg-red-400':p.progress<60?'bg-amber-400':'bg-green-500'}"
+              style="width:${p.progress}%"></div>
+          </div>
+        </div>`).join('');
+    }
+
+    /* Log de actividad */
+    const al=document.getElementById('activityLog');
+    if(al){
+      al.innerHTML=State.activities.length
+        ?State.activities.slice(-6).reverse().map(a=>`
+          <li class="flex items-start gap-3 p-2 hover:bg-gray-50 rounded-lg transition">
+            <span class="text-base mt-0.5" aria-hidden="true">${esc(a.icon)}</span>
+            <div>
+              <p class="text-sm text-gray-800">${esc(a.text)}</p>
+              <p class="text-xs text-gray-400">${esc(a.time)}</p>
+            </div>
+          </li>`).join('')
+        :'<li class="text-sm text-gray-400">Sin actividad registrada.</li>';
+    }
+  },
+
+  /* ── Proyectos (FIX E-09) ── */
+  projects(filter=''){
+    const q=filter.toLowerCase();
+    const list=q
+      ?State.projects.filter(p=>
+          p.title.toLowerCase().includes(q)||
+          p.code.toLowerCase().includes(q)||
+          p.status.includes(q))
+      :State.projects;
+
+    const ct=document.getElementById('projectsContainer');
+    if(!ct)return;
+
+    if(!list.length){
+      ct.innerHTML=`<div class="col-span-3 text-center py-16 text-gray-400">
+        <p class="text-5xl mb-3">🔬</p>
+        <p>Sin proyectos para "<strong>${esc(filter)}</strong>"</p></div>`;
+      return;
+    }
+
+    const rkCls={alto:'risk-alto',medio:'risk-medio',bajo:'risk-bajo'};
+    const rkLbl={alto:'Riesgo Alto',medio:'Riesgo Medio',bajo:'Riesgo Bajo'};
+    const stCls={activo:'st-activo',revision:'st-revision',riesgo:'st-riesgo',completo:'st-completo'};
+    const stLbl={activo:'🟢 Activo',revision:'🟡 Revisión',riesgo:'🔴 Riesgo',completo:'✅ Completo'};
+
+    ct.innerHTML=list.map(p=>{
+      const bPct=Math.round(p.spent/p.budget*100);
+      const pTasks=State.tasks.filter(t=>t.pid===p.id);
+      const done=pTasks.filter(t=>t.status==='hecho').length;
+      const teamHtml=p.teamIds.map(id=>{
+        const m=State.team.find(t=>t.id===id);
+        return m?`<span class="av text-xs"
+          style="background:${esc(m.col)};width:28px;height:28px;font-size:10px;border:2px solid white">${esc(m.av)}</span>`:'';
+      }).join('');
+
+      return`
+        <article class="bg-white rounded-2xl p-5 card-s hover:shadow-xl transition fade-in flex flex-col">
+          <!-- Header -->
+          <div class="flex justify-between items-start mb-3 gap-2">
+            <span class="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">${esc(p.code)}</span>
+            <div class="flex gap-1.5 flex-wrap justify-end">
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium ${rkCls[p.risk]||''}">${rkLbl[p.risk]||p.risk}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium ${stCls[p.status]||''}">${stLbl[p.status]||p.status}</span>
+            </div>
+          </div>
+
+          <h3 class="font-bold text-gray-800 text-sm mb-1 leading-snug">${esc(p.title)}</h3>
+          <p class="text-xs text-gray-500 mb-2 leading-relaxed flex-1">${esc(p.desc)}</p>
+          <p class="text-xs text-gray-400 mb-4">📍 ${esc(p.phase)}</p>
+
+          <!-- Progreso científico -->
+          <div class="mb-3">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-gray-500">Progreso científico</span>
+              <span class="font-bold ${p.progress<30?'text-red-500':p.progress<60?'text-amber-500':'text-green-600'}">${p.progress}%</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2.5">
+              <div class="pbar h-2.5 rounded-full ${p.progress<30?'bg-red-400':p.progress<60?'bg-amber-400':'bg-green-500'}"
+                style="width:${p.progress}%"></div>
+            </div>
+          </div>
+
+          <!-- Presupuesto -->
+          <div class="mb-3">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-gray-500">Presupuesto ejecutado</span>
+              <span class="font-semibold ${bPct>85?'text-red-500':bPct>65?'text-amber-500':'text-gray-600'}">${bPct}%</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-1.5">
+              <div class="pbar h-1.5 rounded-full ${bPct>85?'bg-red-400':bPct>65?'bg-amber-400':'bg-blue-400'}"
+                style="width:${bPct}%"></div>
+            </div>
+            <div class="flex justify-between text-xs mt-1 text-gray-400">
+              <span>€${(p.spent/1e3).toFixed(0)}K gastado</span>
+              <span>Total: €${(p.budget/1e3).toFixed(0)}K</span>
+            </div>
+          </div>
+
+          <!-- Metadatos -->
+          <div class="grid grid-cols-2 gap-1.5 text-xs text-gray-500 mb-4">
+            <div>📅 <span class="text-gray-700">${esc(p.start)}</span></div>
+            <div>🏁 <span class="text-gray-700">${esc(p.end)}</span></div>
+            <div>📋 Tareas: <span class="font-semibold text-gray-700">${done}/${pTasks.length}</span></div>
+            <div>📄 Publicaciones: <span class="font-semibold text-gray-700">${p.pubs}</span></div>
+          </div>
+
+          <!-- Team + Acciones -->
+          <div class="flex items-center justify-between mt-auto">
+            <div class="flex -space-x-2">${teamHtml}</div>
+            <div class="flex gap-2">
+              <button onclick="Modal.editProject(${p.id})"
+                aria-label="Editar proyecto ${esc(p.title)}"
+                class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs
+                       hover:bg-blue-100 transition">✏️ Editar</button>
+              <button onclick="App.deleteProject(${p.id})"
+                aria-label="Eliminar proyecto ${esc(p.title)}"
+                class="bg-red-50 text-red-500 px-2 py-1.5 rounded-lg text-xs
+                       hover:bg-red-100 transition">🗑️</button>
+            </div>
+          </div>
+        </article>`;
+    }).join('');
+  },
+
+  /* ── Tareas (FIX E-06) ── */
+  tasks(){
+    const fPid   =parseInt(document.getElementById('fProj')?.value)||0;
+    const fStatus=document.getElementById('fStatus')?.value||'';
+    const fPrio  =document.getElementById('fPrio')?.value||'';
+    const today  =new Date().toISOString().split('T')[0];
+
+    let list=State.tasks;
+    if(fPid)    list=list.filter(t=>t.pid===fPid);
+    if(fStatus) list=list.filter(t=>t.status===fStatus);
+    if(fPrio)   list=list.filter(t=>t.priority===fPrio);
+
+    const tb=document.getElementById('tasksTable');
+    if(!tb)return;
+
+    if(!list.length){
+      tb.innerHTML=`<tr><td colspan="7" class="text-center py-12 text-gray-400 text-sm">
+        Sin tareas con los filtros seleccionados.</td></tr>`;
+      return;
+    }
+
+    const stCls={pendiente:'ts-pendiente',progreso:'ts-progreso',hecho:'ts-hecho'};
+    const stLbl={pendiente:'Pendiente',progreso:'En Progreso',hecho:'✓ Hecho'};
+
+    tb.innerHTML=list.map(t=>{
+      const proj=State.projects.find(p=>p.id===t.pid);
+      const mem =State.team.find(m=>m.id===t.aid);
+      const over=t.status!=='hecho'&&t.due<today;
+      return`
+        <tr class="hover:bg-gray-50 transition ${over?'bg-red-50':''}" >
+          <td class="px-4 py-3">
+            <span class="text-sm font-medium text-gray-800">${esc(t.title)}</span>
+            ${over?'<span class="ml-1 text-xs text-red-500">⚠️ Vencida</span>':''}
+          </td>
+          <td class="px-4 py-3 hide-sm">
+            <span class="text-xs font-mono font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+              ${esc(proj?.code||'—')}
+            </span>
+          </td>
+          <td class="px-4 py-3 hide-sm">
+            ${mem?`<div class="flex items-center gap-2">
+              <span class="av text-xs" style="background:${esc(mem.col)};width:26px;height:26px;font-size:10px">${esc(mem.av)}</span>
+              <span class="text-xs text-gray-600">${esc(mem.name.split(' ').slice(0,2).join(' '))}</span>
+            </div>`:'<span class="text-gray-400 text-xs">—</span>'}
+          </td>
+          <td class="px-4 py-3">
+            <span class="p-${esc(t.priority)} text-xs capitalize">${esc(t.priority)}</span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium ${stCls[t.status]||''}">
+              ${stLbl[t.status]||t.status}
+            </span>
+          </td>
+          <td class="px-4 py-3 hide-sm">
+            <span class="text-xs ${over?'text-red-600 font-bold':'text-gray-500'}">${esc(t.due)}</span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex gap-1.5">
+              <button onclick="Modal.editTask(${t.id})" aria-label="Editar tarea"
+                class="text-blue-500 hover:text-blue-700 text-base transition">✏️</button>
+              <button onclick="App.deleteTask(${t.id})" aria-label="Eliminar tarea"
+                class="text-red-400 hover:text-red-600 text-base transition">🗑️</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  },
+
+  /* ── Equipo ── */
+  team(filter=''){
+    const q=filter.toLowerCase();
+    const list=q
+      ?State.team.filter(m=>
+          m.name.toLowerCase().includes(q)||
+          m.role.toLowerCase().includes(q)||
+          m.spec.toLowerCase().includes(q))
+      :State.team;
+
+    const ct=document.getElementById('teamContainer');
+    if(!ct)return;
+
+    if(!list.length){
+      ct.innerHTML=`<div class="col-span-3 text-center py-16 text-gray-400">
+        <p class="text-5xl mb-3">👥</p>
+        <p>Sin resultados para "<strong>${esc(filter)}</strong>"</p></div>`;
+      return;
+    }
+
+    ct.innerHTML=list.map(m=>{
+      const mProjs=State.projects.filter(p=>p.teamIds.includes(m.id));
+      const mTasks=State.tasks.filter(t=>t.aid===m.id&&t.status!=='hecho').length;
+      return`
+        <article class="bg-white rounded-2xl p-5 card-s hover:shadow-xl transition fade-in">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="av" style="background:${esc(m.col)};width:52px;height:52px;font-size:17px">
+              ${esc(m.av)}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-gray-800 text-sm truncate">${esc(m.name)}</h3>
+              <p class="text-xs text-blue-700 font-semibold">${esc(m.role)}</p>
+              <p class="text-xs text-gray-400">${esc(m.spec)}</p>
+            </div>
+          </div>
+          <div class="space-y-1.5 mb-4 text-xs text-gray-500">
+            <p>📧 <a href="mailto:${esc(m.email)}"
+              class="text-blue-500 hover:underline">${esc(m.email)}</a></p>
+            <p>🔬 Proyectos:
+              <span class="font-medium text-gray-700">
+                ${mProjs.map(p=>esc(p.code)).join(', ')||'—'}
+              </span>
+            </p>
+            <p>📋 Tareas activas:
+              <span class="font-semibold ${mTasks>3?'text-amber-600':'text-gray-700'}">${mTasks}</span>
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="Modal.editMember(${m.id})"
+              aria-label="Editar a ${esc(m.name)}"
+              class="flex-1 bg-blue-50 text-blue-600 py-1.5 rounded-lg text-xs
+                     hover:bg-blue-100 transition">✏️ Editar</button>
+            <button onclick="App.deleteMember(${m.id})"
+              aria-label="Eliminar a ${esc(m.name)}"
+              class="bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-xs
+                     hover:bg-red-100 transition">🗑️</button>
+          </div>
+        </article>`;
+    }).join('');
+  },
+
+  /* ── Reportes ── */
+  reports(){
+    const el=document.getElementById('reportsContent');
+    if(!el)return;
+    const today=new Date().toISOString().split('T')[0];
+    const tB=State.projects.reduce((s,p)=>s+p.budget,0);
+    const tS=State.projects.reduce((s,p)=>s+p.spent,0);
+    const tPubs=State.projects.reduce((s,p)=>s+p.pubs,0);
+    const done=State.tasks.filter(t=>t.status==='hecho').length;
+    const total=State.tasks.length||1;
+    const sortedMS=[...State.milestones].sort((a,b)=>a.date.localeCompare(b.date));
+    const in14=new Date(Date.now()+14*864e5).toISOString().split('T')[0];
+
+    el.innerHTML=`
+      <!-- KPIs financieros -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p class="text-xs text-blue-600 font-bold uppercase">Presupuesto Total</p>
+          <p class="text-2xl font-extrabold text-blue-800 mt-1">€${(tB/1e3).toFixed(0)}K</p>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p class="text-xs text-amber-600 font-bold uppercase">Ejecutado</p>
+          <p class="text-2xl font-extrabold text-amber-800 mt-1">€${(tS/1e3).toFixed(0)}K</p>
+          <p class="text-xs text-amber-600 mt-0.5">${Math.round(tS/tB*100)}% del total</p>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+          <p class="text-xs text-green-600 font-bold uppercase">Publicaciones</p>
+          <p class="text-2xl font-extrabold text-green-800 mt-1">${tPubs}</p>
+        </div>
+        <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <p class="text-xs text-purple-600 font-bold uppercase">Tareas Completadas</p>
+          <p class="text-2xl font-extrabold text-purple-800 mt-1">${done}/${total}</p>
+          <p class="text-xs text-purple-600 mt-0.5">${Math.round(done/total*100)}%</p>
+        </div>
+      </div>
+
+      <!-- Presupuesto por proyecto -->
+      <h3 class="font-bold text-gray-700 mb-4">💰 Presupuesto por Proyecto</h3>
+      <div class="space-y-3 mb-8">
+        ${State.projects.map(p=>{
+          const pct=Math.round(p.spent/p.budget*100);
+          return`
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div class="flex justify-between items-center mb-2">
+                <div>
+                  <span class="font-semibold text-sm text-gray-800">${esc(p.title)}</span>
+                  <span class="ml-2 text-xs font-mono text-blue-600">${esc(p.code)}</span>
+                </div>
+                <span class="text-sm font-bold ${pct>85?'text-red-600':pct>65?'text-amber-600':'text-gray-600'}">${pct}%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3">
+                <div class="pbar h-3 rounded-full ${pct>85?'bg-red-500':pct>65?'bg-amber-400':'bg-blue-500'}"
+                  style="width:${pct}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>€${(p.spent/1e3).toFixed(0)}K gastado</span>
+                <span>€${((p.budget-p.spent)/1e3).toFixed(0)}K restante</span>
+                <span>Total: €${(p.budget/1e3).toFixed(0)}K</span>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Hitos / Timeline -->
+      <h3 class="font-bold text-gray-700 mb-4">🏁 Hitos del Proyecto</h3>
+      <div class="space-y-2">
+        ${sortedMS.map(ms=>{
+          const proj=State.projects.find(p=>p.id===ms.pid);
+          const past  =ms.date<today;
+          const urgent=!past&&ms.date<=in14;
+          return`
+            <div class="flex items-center gap-4 p-3 rounded-xl border transition
+              ${past?'border-gray-200 bg-gray-50':urgent?'border-amber-200 bg-amber-50':'border-blue-100 bg-blue-50'}">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold
+                ${past?'bg-gray-400':urgent?'bg-amber-500':'bg-blue-500'}">
+                ${past?'✓':urgent?'⚡':'📍'}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-800">${esc(ms.title)}</p>
+                <p class="text-xs text-gray-500">${esc(proj?.code||'—')} · ${esc(ms.date)}</p>
+              </div>
+              ${urgent?'<span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold shrink-0">Próximo</span>':''}
+              ${past  ?'<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full shrink-0">Pasado</span>':''}
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+};
+
+/* ════════════════════════════════════════
+   MODAL (FIX E-04, E-05)
+════════════════════════════════════════ */
+const Modal={
+  _ic:'w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-300 text-sm',
+  _show(){ document.getElementById('overlayModal').classList.remove('hidden'); },
+  close(){
+    document.getElementById('overlayModal').classList.add('hidden');
+    State.editing={project:null,task:null,member:null};
+  },
+
+  _btns(saveFn,saveLabel='Guardar'){
+    return`<div class="flex gap-3 pt-3">
+      <button onclick="${saveFn}"
+        class="flex-1 text-white py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
+        style="background:linear-gradient(135deg,#1e3a8a,#0369a1)">${saveLabel}</button>
+      <button onclick="Modal.close()"
+        class="flex-1 bg-gray-100 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
+        Cancelar</button></div>`;
+  },
+
+  /* ── Confirmar (FIX E-04: sin confirm nativo) ── */
+  confirm(msg,onOk,title='⚠️ Confirmar acción',okLabel='Eliminar',okBg='bg-red-600 hover:bg-red-700'){
+    document.getElementById('modalContent').innerHTML=`
+      <h3 id="modalTitle" class="text-lg font-bold mb-3">${esc(title)}</h3>
+      <p class="text-gray-600 text-sm mb-5">${esc(msg)}</p>
+      <div class="flex gap-3">
+        <button id="_cOk" class="flex-1 ${okBg} text-white py-2 rounded-lg text-sm font-semibold transition">
+          ${esc(okLabel)}</button>
+        <button onclick="Modal.close()"
+          class="flex-1 bg-gray-100 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
+          Cancelar</button>
+      </div>`;
+    this._show();
+    document.getElementById('_cOk').onclick=()=>{this.close();onOk();};
+  },
+
+  /* ── Abrir modal genérico ── */
+  open(type){
+    const c=document.getElementById('modalContent');
+    if(type==='addProject'){
+      c.innerHTML=`
+        <h3 id="modalTitle" class="text-lg font-bold mb-4">🔬 Nuevo Proyecto</h3>
+        <div class="space-y-3">
+          <input id="mPCode"  type="text"  placeholder="Código (ej. BIO-2025)" class="${this._ic}"/>
+          <input id="mPTitle" type="text"  placeholder="Título del proyecto"   class="${this._ic}"/>
+          <textarea id="mPDesc" rows="2"   placeholder="Descripción breve"
+            class="${this._ic} resize-none"></textarea>
+          <div class="grid grid-cols-2 gap-3">
+            <select id="mPStatus" class="${this._ic}">
+              <option value="activo">Activo</option>
+              <option value="revision">En Revisión</option>
+              <option value="riesgo">En Riesgo</option>
+              <option value="completo">Completado</option>
+            </select>
+            <select id="mPRisk" class="${this._ic}">
+              <option value="bajo">Riesgo Bajo</option>
+              <option value="medio">Riesgo Medio</option>
+              <option value="alto">Riesgo Alto</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500">Inicio</label>
+              <input id="mPStart" type="date" class="${this._ic}"/>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">Fin previsto</label>
+              <input id="mPEnd"   type="date" class="${this._ic}"/>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500">Presupuesto (€)</label>
+              <input id="mPBudget" type="number" min="0" placeholder="450000" class="${this._ic}"/>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">Gastado (€)</label>
+              <input id="mPSpent" type="number"  min="0" placeholder="0"      class="${this._ic}"/>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500">Progreso (%)</label>
+              <input id="mPProg" type="number" min="0" max="100" placeholder="0" class="${this._ic}"/>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">Publicaciones</label>
+              <input id="mPPubs" type="number" min="0" placeholder="0" class="${this._ic}"/>
+            </div>
+          </div>
+          <input id="mPPhase" type="text" placeholder="Fase (ej. Fase I — Diseño)" class="${this._ic}"/>
+          ${this._btns('App.saveProject()')}
+        </div>`;
+    } else if(type==='addTask'){
+      const projOpts=State.projects.map(p=>`<option value="${p.id}">${esc(p.code)} — ${esc(p.title)}</option>`).join('');
+      const memOpts =State.team.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+      c.innerHTML=`
+        <h3 id="modalTitle" class="text-lg font-bold mb-4">✅ Nueva Tarea</h3>
+        <div class="space-y-3">
+          <input id="mTTitle" type="text" placeholder="Título de la tarea" class="${this._ic}"/>
+          <div class="grid grid-cols-2 gap-3">
+            <select id="mTPid" class="${this._ic}">${projOpts}</select>
+            <select id="mTAid" class="${this._ic}">${memOpts}</select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <select id="mTPrio" class="${this._ic}">
+              <option value="alta">Alta</option>
+              <option value="media">Media</option>
+              <option value="baja">Baja</option>
+            </select>
+            <select id="mTStatus" class="${this._ic}">
+              <option value="pendiente">Pendiente</option>
+              <option value="progreso">En Progreso</option>
+              <option value="hecho">Completado</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">Fecha de vencimiento</label>
+            <input id="mTDue" type="date" class="${this._ic}"/>
+          </div>
+          ${this._btns('App.saveTask()')}
+        </div>`;
+    } else if(type==='addMember'){
+      c.innerHTML=`
+        <h3 id="modalTitle" class="text-lg font-bold mb-4">👥 Nuevo Miembro</h3>
+        <div class="space-y-3">
+          <input id="mMName"  type="text"  placeholder="Nombre completo"      class="${this._ic}"/>
+          <div class="grid grid-cols-2 gap-3">
+            <input id="mMRole" type="text" placeholder="Rol (ej. IP Principal)" class="${this._ic}"/>
+            <input id="mMSpec" type="text" placeholder="Especialidad"           class="${this._ic}"/>
+          </div>
+          <input id="mMEmail" type="email" placeholder="correo@hospital.es"   class="${this._ic}"/>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Color de avatar</label>
+            <select id="mMCol" class="${this._ic}">
+              <option value="#1e40af">Azul oscuro</option>
+              <option value="#7c3aed">Violeta</option>
+              <option value="#0891b2">Cian</option>
+              <option value="#059669">Verde</option>
+              <option value="#d97706">Ámbar</option>
+              <option value="#dc2626">Rojo</option>
+            </select>
+          </div>
+          ${this._btns('App.saveMember()')}
+        </div>`;
+    }
+    this._show();
+  },
+
+  /* ── Edit Project (FIX E-05) ── */
+  editProject(id){
+    const p=State.projects.find(x=>x.id===id); if(!p)return;
+    State.editing.project=id;
+    const c=document.getElementById('modalContent');
+    c.innerHTML=`
+      <h3 id="modalTitle" class="text-lg font-bold mb-4">✏️ Editar Proyecto</h3>
+      <div class="space-y-3">
+        <input id="mPCode"  type="text" value="${esc(p.code)}"  class="${this._ic}" readonly
+          style="background:#f8fafc;color:#64748b"/>
+        <input id="mPTitle" type="text" value="${esc(p.title)}" class="${this._ic}"/>
+        <textarea id="mPDesc" rows="2"  class="${this._ic} resize-none">${esc(p.desc)}</textarea>
+        <div class="grid grid-cols-2 gap-3">
+          <select id="mPStatus" class="${this._ic}">
+            ${['activo','revision','riesgo','completo'].map(s=>
+              `<option value="${s}" ${p.status===s?'selected':''}>${{activo:'Activo',revision:'En Revisión',riesgo:'En Riesgo',completo:'Completado'}[s]}</option>`
+            ).join('')}
+          </select>
+          <select id="mPRisk" class="${this._ic}">
+            ${['bajo','medio','alto'].map(r=>
+              `<option value="${r}" ${p.risk===r?'selected':''}>${{bajo:'Riesgo Bajo',medio:'Riesgo Medio',alto:'Riesgo Alto'}[r]}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs text-gray-500">Inicio</label>
+            <input id="mPStart" type="date" value="${esc(p.start)}" class="${this._ic}"/></div>
+          <div><label class="text-xs text-gray-500">Fin</label>
+            <input id="mPEnd"   type="date" value="${esc(p.end)}"   class="${this._ic}"/></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs text-gray-500">Presupuesto (€)</label>
+            <input id="mPBudget" type="number" value="${p.budget}" min="0" class="${this._ic}"/></div>
+          <div><label class="text-xs text-gray-500">Gastado (€)</label>
+            <input id="mPSpent"  type="number" value="${p.spent}"  min="0" class="${this._ic}"/></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs text-gray-500">Progreso (%)</label>
+            <input id="mPProg" type="number" value="${p.progress}" min="0" max="100" class="${this._ic}"/></div>
+          <div><label class="text-xs text-gray-500">Publicaciones</label>
+            <input id="mPPubs" type="number" value="${p.pubs}" min="0" class="${this._ic}"/></div>
+        </div>
+        <input id="mPPhase" type="text" value="${esc(p.phase)}" class="${this._ic}"/>
+        ${this._btns('App.saveProject(true)','Actualizar')}
+      </div>`;
+    this._show();
+  },
+
+  /* ── Edit Task ── */
+  editTask(id){
+    const t=State.tasks.find(x=>x.id===id); if(!t)return;
+    State.editing.task=id;
+    const projOpts=State.projects.map(p=>
+      `<option value="${p.id}" ${p.id===t.pid?'selected':''}>${esc(p.code)} — ${esc(p.title)}</option>`).join('');
+    const memOpts=State.team.map(m=>
+      `<option value="${m.id}" ${m.id===t.aid?'selected':''}>${esc(m.name)}</option>`).join('');
+    document.getElementById('modalContent').innerHTML=`
+      <h3 id="modalTitle" class="text-lg font-bold mb-4">✏️ Editar Tarea</h3>
+      <div class="space-y-3">
+        <input id="mTTitle" type="text" value="${esc(t.title)}" class="${this._ic}"/>
+        <div class="grid grid-cols-2 gap-3">
+          <select id="mTPid"  class="${this._ic}">${projOpts}</select>
+          <select id="mTAid"  class="${this._ic}">${memOpts}</select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <select id="mTPrio" class="${this._ic}">
+            ${['alta','media','baja'].map(v=>`<option value="${v}" ${t.priority===v?'selected':''}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join('')}
+          </select>
+          <select id="mTStatus" class="${this._ic}">
+            ${[['pendiente','Pendiente'],['progreso','En Progreso'],['hecho','Completado']].map(([v,l])=>
+              `<option value="${v}" ${t.status===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="text-xs text-gray-500">Fecha de vencimiento</label>
+          <input id="mTDue" type="date" value="${esc(t.due)}" class="${this._ic}"/></div>
+        ${this._btns('App.saveTask(true)','Actualizar')}
+      </div>`;
+    this._show();
+  },
+
+  /* ── Edit Member ── */
+  editMember(id){
+    const m=State.team.find(x=>x.id===id); if(!m)return;
+    State.editing.member=id;
+    document.getElementById('modalContent').innerHTML=`
+      <h3 id="modalTitle" class="text-lg font-bold mb-4">✏️ Editar Miembro</h3>
+      <div class="space-y-3">
+        <input id="mMName"  type="text"  value="${esc(m.name)}" class="${this._ic}"/>
+        <div class="grid grid-cols-2 gap-3">
+          <input id="mMRole" type="text" value="${esc(m.role)}" class="${this._ic}"/>
+          <input id="mMSpec" type="text" value="${esc(m.spec)}" class="${this._ic}"/>
+        </div>
+        <input id="mMEmail" type="email" value="${esc(m.email)}" class="${this._ic}"/>
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">Color de avatar</label>
+          <select id="mMCol" class="${this._ic}">
+            ${[['#1e40af','Azul oscuro'],['#7c3aed','Violeta'],['#0891b2','Cian'],
+               ['#059669','Verde'],['#d97706','Ámbar'],['#dc2626','Rojo']].map(([v,l])=>
+              `<option value="${v}" ${m.col===v?'selected':''}>${l}</option>`).join('')}
+          </select>
+        </div>
+        ${this._btns('App.saveMember(true)','Actualizar')}
+      </div>`;
+    this._show();
+  }
+};
+
+/* ════════════════════════════════════════
+   APP LOGIC
+════════════════════════════════════════ */
+const App={
+  boot(){
+    DB.load();
+    Render.all();
+    const hash=window.location.hash.replace('#','');
+    const tabs=['dashboard','projects','tasks','team','reports','settings'];
+    this.tab(tabs.includes(hash)?hash:'dashboard');
+    Toast.show('ControlNextMed IA v1.2 listo ✅','success');
+  },
+
+  tab(name){
+    document.querySelectorAll('.tab-content').forEach(s=>s.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.classList.remove('tab-active');
+      b.classList.add('text-gray-500');
+    });
+    const s=document.getElementById(`tab-${name}`);
+    const b=document.querySelector(`[data-tab="${name}"]`);
+    if(s)s.classList.remove('hidden');
+    if(b){b.classList.add('tab-active');b.classList.remove('text-gray-500');}
+    window.location.hash=name;
+    if(name==='reports')Render.reports();
+  },
+
+  _log(text,icon='📝'){
+    const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    State.activities.push({text,icon,time:now});
+    DB.save(); Render.dashboard();
+  },
+
+  /* ── Guardar Proyecto ── */
+  saveProject(isEdit=false){
+    const g=id=>document.getElementById(id)?.value?.trim()||'';
+    const code   =g('mPCode');
+    const title  =g('mPTitle');
+    const desc   =g('mPDesc');
+    const status =g('mPStatus');
+    const risk   =g('mPRisk');
+    const start  =g('mPStart');
+    const end    =g('mPEnd');
+    const budget =parseFloat(g('mPBudget'));
+    const spent  =parseFloat(g('mPSpent'));
+    const prog   =parseInt(g('mPProg'));
+    const pubs   =parseInt(g('mPPubs'));
+    const phase  =g('mPPhase');
+
+    if(!title){Toast.show('El título es obligatorio','error');return;}
+    if(isNaN(budget)||budget<0){Toast.show('Presupuesto inválido','error');return;}
+    if(isNaN(spent)||spent<0) {Toast.show('Gasto inválido','error');return;}
+    if(spent>budget){Toast.show('El gasto no puede superar el presupuesto','error');return;}
+    if(isNaN(prog)||prog<0||prog>100){Toast.show('Progreso debe ser 0–100','error');return;}
+
+    if(isEdit){
+      const p=State.projects.find(x=>x.id===State.editing.project);
+      if(p)Object.assign(p,{title,desc,status,risk,start,end,budget,spent,progress:prog,pubs,phase});
+      this._log(`Proyecto actualizado: ${title}`,'✏️');
+      Toast.show('Proyecto actualizado ✅','success');
+    }else{
+      const id=genId();
+      State.projects.push({id,code:code||`PRY-${id}`,title,desc,status,risk,
+        progress:prog,start,end,budget,spent,teamIds:[],phase,pubs});
+      /* Actualizar filtro de tareas */
+      const fp=document.getElementById('fProj');
+      if(fp)fp.innerHTML='<option value="">Todos los proyectos</option>'+
+        State.projects.map(p=>`<option value="${p.id}">${esc(p.code)} — ${esc(p.title)}</option>`).join('');
+      this._log(`Nuevo proyecto: ${title}`,'🔬');
+      Toast.show('Proyecto creado ✅','success');
+    }
+    DB.save(); Render.projects(); Render.dashboard(); Modal.close();
+  },
+
+  /* ── Guardar Tarea ── */
+  saveTask(isEdit=false){
+    const g=id=>document.getElementById(id)?.value||'';
+    const title =g('mTTitle').trim();
+    const pid   =parseInt(g('mTPid'));
+    const aid   =parseInt(g('mTAid'));
+    const prio  =g('mTPrio');
+    const status=g('mTStatus');
+    const due   =g('mTDue');
+
+    if(!title){Toast.show('El título es obligatorio','error');return;}
+    if(!pid)  {Toast.show('Selecciona un proyecto','error');return;}
+    if(!due)  {Toast.show('La fecha de vencimiento es obligatoria','error');return;}
+
+    if(isEdit){
+      const t=State.tasks.find(x=>x.id===State.editing.task);
+      if(t)Object.assign(t,{title,pid,aid,priority:prio,status,due});
+      this._log(`Tarea actualizada: ${title}`,'✏️');
+      Toast.show('Tarea actualizada ✅','success');
+    }else{
+      State.tasks.push({id:genId(),pid,title,aid,status,priority:prio,due});
+      this._log(`Nueva tarea: ${title}`,'✅');
+      Toast.show('Tarea creada ✅','success');
+    }
+    DB.save(); Render.tasks(); Render.dashboard(); Modal.close();
+  },
+
+  /* ── Guardar Miembro ── */
+  saveMember(isEdit=false){
+    const g=id=>document.getElementById(id)?.value||'';
+    const name =g('mMName').trim();
+    const role =g('mMRole').trim();
+    const spec =g('mMSpec').trim();
+    const email=g('mMEmail').trim();
+    const col  =g('mMCol');
+
+    if(!name ){Toast.show('El nombre es obligatorio','error');return;}
+    if(!email){Toast.show('El email es obligatorio','error');return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      Toast.show('Formato de email inválido','error');return;
+    }
+    const av=name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'??';
+
+    if(isEdit){
+      const m=State.team.find(x=>x.id===State.editing.member);
+      if(m)Object.assign(m,{name,role,spec,email,col,av});
+      this._log(`Miembro actualizado: ${name}`,'✏️');
+      Toast.show('Miembro actualizado ✅','success');
+    }else{
+      State.team.push({id:genId(),name,role,spec,email,col,av,status:'activo'});
+      this._log(`Nuevo miembro: ${name}`,'👤');
+      Toast.show('Miembro añadido ✅','success');
+    }
+    DB.save(); Render.team(); Modal.close();
+  },
+
+  /* ── Eliminaciones ── */
+  deleteProject(id){
+    const p=State.projects.find(x=>x.id===id);
+    Modal.confirm(
+      `¿Eliminar el proyecto "${p?.title}"? Se eliminarán también sus tareas asociadas.`,
+      ()=>{
+        State.tasks=State.tasks.filter(t=>t.pid!==id);
+        State.projects=State.projects.filter(x=>x.id!==id);
+        this._log(`Proyecto eliminado: ${p?.title}`,'🗑️');
+        DB.save(); Render.projects(); Render.tasks(); Render.dashboard();
+        Toast.show('Proyecto eliminado','success');
+      },'🗑️ Eliminar Proyecto','Eliminar'
+    );
+  },
+
+  deleteTask(id){
+    const t=State.tasks.find(x=>x.id===id);
+    Modal.confirm(
+      `¿Eliminar la tarea "${t?.title}"?`,
+      ()=>{
+        State.tasks=State.tasks.filter(x=>x.id!==id);
+        this._log(`Tarea eliminada: ${t?.title}`,'🗑️');
+        DB.save(); Render.tasks(); Render.dashboard();
+        Toast.show('Tarea eliminada','success');
+      }
+    );
+  },
+
+  deleteMember(id){
+    const m=State.team.find(x=>x.id===id);
+    Modal.confirm(
+      `¿Eliminar a "${m?.name}" del equipo? Se desvinculará de todos los proyectos.`,
+      ()=>{
+        State.projects.forEach(p=>{p.teamIds=p.teamIds.filter(tid=>tid!==id);});
+        State.team=State.team.filter(x=>x.id!==id);
+        this._log(`Miembro eliminado: ${m?.name}`,'🗑️');
+        DB.save(); Render.team(); Render.projects();
+        Toast.show('Miembro eliminado','success');
+      }
+    );
+  },
+
+  /* ── Configuración ── */
+  saveSettings(){
+    const cfg={
+      inst : document.getElementById('settInst')?.value||'',
+      city : document.getElementById('settCity')?.value||'',
+      email: document.getElementById('settEmail')?.value||'',
+      lang : document.getElementById('settLang')?.value||'es'
+    };
+    storage.set('cnm_cfg',JSON.stringify(cfg));
+    this._log('Configuración actualizada','⚙️');
+    Toast.show('Configuración guardada ✅','success');
+    const btn=document.getElementById('btnSaveSett');
+    if(btn){
+      const orig=btn.textContent;
+      btn.textContent='✅ Guardado'; btn.disabled=true;
+      setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2000);
+    }
+  },
+
+  logout(){
+    Modal.confirm(
+      '¿Cerrar sesión y volver a la pantalla de acceso?',
+      ()=>Auth.logout(),
+      '🔐 Confirmar cierre de sesión',
+      'Salir',
+      'bg-blue-700 hover:bg-blue-800'
+    );
+  }
+};
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+const Toast={
+  _cls:{success:'bg-green-600',error:'bg-red-600',info:'bg-blue-600',warn:'bg-amber-500'},
+  show(msg,type='info'){
+    const t=document.createElement('div');
+    t.className=`${this._cls[type]||this._cls.info} text-white text-sm
+      px-5 py-3 rounded-xl shadow-xl fade-in cursor-pointer select-none`;
+    t.setAttribute('role','alert');
+    t.textContent=msg;
+    t.onclick=()=>t.remove();
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';
+      setTimeout(()=>t.remove(),400);},3500);
+  }
+};
+
+/* ════════════════════════════════════════
+   BOOTSTRAP
+════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded',()=>{
+  if(Auth.check()){
+    document.getElementById('loginScreen').classList.add('hidden');
+    App.boot();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>AVIA — HTML31 Explicabilidad del Modelo</title>
+<style>
+/* ── AVIA PERSISTENCIA CONTEXT ──────────────────────────
+   PROYECTO: AVIA-Dashboard
+   ARTEFACTO: HTML31-XAI
+   NO MEZCLAR CON: presentaciones, slides, pitch decks
+───────────────────────────────────────────────────────── */
+
+:root {
+  --bg:       #F7F7F5;
+  --card:     #FFFFFF;
+  --green:    #2D5A27;
+  --green-lt: #C8D6B9;
+  --text:     #1a1a1a;
+  --muted:    #666;
+  --border:   #ddd;
+  --red:      #CC3333;
+  --amber:    #E8A000;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 24px;
+}
+
+h1 {
+  font-size: 20px;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── GRID ─────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.card h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+}
+
+/* ── SELECTOR DE DECISIÓN ─────────────────────────────── */
+.selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.dec-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dec-btn:hover { border-color: var(--green); }
+.dec-btn.active {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+
+/* ── EXPLICACIÓN PRINCIPAL ────────────────────────────── */
+.decision-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.decision-box.producir { background: #e8f5e2; border-left: 4px solid var(--green); }
+.decision-box.esperar  { background: #fff3e0; border-left: 4px solid var(--amber); }
+.decision-box.revisar  { background: #fdecea; border-left: 4px solid var(--red);   }
+
+.decision-label {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.decision-conf {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── FACTORES (barras XAI) ────────────────────────────── */
+.factor-list { display: flex; flex-direction: column; gap: 10px; }
+
+.factor {
+  font-size: 12px;
+}
+
+.factor-name {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.factor-bar-bg {
+  background: var(--bg);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.factor-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.factor-bar-fill.pos { background: var(--green); }
+.factor-bar-fill.neg { background: var(--red); }
+.factor-bar-fill.neu { background: var(--amber); }
+
+.factor-direction {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ── NARRATIVA XAI ────────────────────────────────────── */
+.xai-narrative {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  border-left: 3px solid var(--green-lt);
+  color: var(--text);
+}
+
+/* ── TABLA DE CONTRAFACTUAL ───────────────────────────── */
+.cf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.cf-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cf-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cf-table tr:last-child td { border-bottom: none; }
+
+.change-pos { color: var(--green); font-weight: 600; }
+.change-neg { color: var(--red);   font-weight: 600; }
+
+/* ── COMPARADOR DE ESCENARIOS ─────────────────────────── */
+.scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.scenario-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.scenario-card:hover { border-color: var(--green); }
+.scenario-card.active { border-color: var(--green); background: #f0f6ee; }
+
+.scenario-card .sc-label {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.scenario-card .sc-decision {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  margin: 6px 0;
+}
+
+.sc-decision.producir { background: #e8f5e2; color: var(--green); }
+.sc-decision.esperar  { background: #fff3e0; color: var(--amber); }
+.sc-decision.revisar  { background: #fdecea; color: var(--red);   }
+
+/* ── HISTORIAL XAI ────────────────────────────────────── */
+.log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.log-entry:last-child { border-bottom: none; }
+
+.log-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.log-dot.p { background: var(--green); }
+.log-dot.e { background: var(--amber); }
+.log-dot.r { background: var(--red); }
+
+.log-time { color: var(--muted); font-size: 11px; }
+.log-reason { color: var(--muted); margin-top: 2px; }
+
+/* ── FOOTER ───────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<h1>AVIA — Explicabilidad del Modelo</h1>
+<p class="subtitle">HTML 31 · XAI · Por qué el sistema decide lo que decide</p>
+
+<!-- SELECTOR -->
+<div class="selector" id="decSelector"></div>
+
+<div class="grid">
+
+  <!-- DECISIÓN + CONFIANZA -->
+  <div class="card">
+    <h2>Decisión explicada</h2>
+    <div id="decisionBox" class="decision-box producir">
+      <div>
+        <div class="decision-label" id="decLabel">—</div>
+        <div class="decision-conf" id="decConf">—</div>
+      </div>
+    </div>
+    <div class="xai-narrative" id="xaiNarrative">—</div>
+  </div>
+
+  <!-- FACTORES XAI -->
+  <div class="card">
+    <h2>Factores influyentes</h2>
+    <div class="factor-list" id="factorList"></div>
+  </div>
+
+  <!-- CONTRAFACTUAL -->
+  <div class="card">
+    <h2>¿Qué cambiaría la decisión?</h2>
+    <table class="cf-table" id="cfTable">
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Valor actual</th>
+          <th>Valor umbral</th>
+          <th>Cambio</th>
+        </tr>
+      </thead>
+      <tbody id="cfBody"></tbody>
+    </table>
+  </div>
+
+  <!-- COMPARADOR DE ESCENARIOS -->
+  <div class="card">
+    <h2>Comparador de escenarios</h2>
+    <div class="scenario-grid" id="scenarioGrid"></div>
+  </div>
+
+</div>
+
+<!-- HISTORIAL XAI -->
+<div class="card" style="margin-bottom:20px;">
+  <h2>Historial de decisiones explicadas</h2>
+  <div id="xaiLog"></div>
+</div>
+
+<div class="footer">
+  AVIA-Dashboard · HTML31 XAI ·
+  R7-AVIA-PERSISTENCIA activa ·
+  Proyecto: AVIA-Dashboard ·
+  Siguiente: HTML32-Auditoría
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   R7 — AVIA PERSISTENCIA
+   ════════════════════════════════════════════════════════ */
+var AVIA_CONTEXT = {
+  proyecto:   'AVIA-Dashboard',
+  artefacto:  'HTML31-XAI',
+  objetivo:   'Explicabilidad del modelo de decisión',
+  siguiente:  'HTML32-Auditoria',
+  bloqueado:  false
+};
+
+function AVIA_guardFocus(label) {
+  var externos = ['presentacion','slides','pitch','jgc','ppt','portada'];
+  var hay = externos.some(function(k) {
+    return label.toLowerCase().indexOf(k) !== -1;
+  });
+  if (hay) {
+    console.warn('[R7-AVIA-PERSISTENCIA] Conflicto ignorado: "'
+      + label + '" — foco activo: ' + AVIA_CONTEXT.artefacto);
+    return false;
+  }
+  return true;
+}
+
+/* ════════════════════════════════════════════════════════
+   DATOS REALES (heredados de HTML27–30)
+   ════════════════════════════════════════════════════════ */
+var AVIA_DECISIONS = [
+  {
+    id: 'D-001',
+    tiempo: '08:14',
+    decision: 'PRODUCIR',
+    confianza: 92,
+    clase: 'producir',
+    datos: { demanda: 145, clima: 'óptimo', stock: 12, precio: 1.08 },
+    factores: [
+      { nombre: 'Demanda prevista',  peso: 0.42, tipo: 'pos' },
+      { nombre: 'Clima favorable',   peso: 0.31, tipo: 'pos' },
+      { nombre: 'Precio de venta',   peso: 0.18, tipo: 'pos' },
+      { nombre: 'Stock disponible',  peso: -0.09, tipo: 'neg' }
+    ],
+    narrativa: 'La demanda prevista (145 u.) supera el umbral de activación en un 21%. El clima óptimo amplifica la confianza. El stock bajo no es limitante a este nivel de demanda.',
+    cf: [
+      { variable: 'Demanda', actual: 145, umbral: 119, cambio: -26 },
+      { variable: 'Clima',   actual: 'óptimo', umbral: 'riesgo', cambio: '—' },
+      { variable: 'Precio',  actual: 1.08, umbral: 0.94, cambio: -0.14 }
+    ],
+    escenarios: [
+      { nombre: 'Base',      demanda: 145, clima: 'óptimo', decision: 'producir', conf: 92 },
+      { nombre: 'Demanda -20%', demanda: 116, clima: 'óptimo', decision: 'esperar', conf: 61 },
+      { nombre: 'Clima riesgo', demanda: 145, clima: 'riesgo', decision: 'esperar', conf: 54 }
+    ]
+  },
+  {
+    id: 'D-002',
+    tiempo: '09:51',
+    decision: 'ESPERAR',
+    confianza: 74,
+    clase: 'esperar',
+    datos: { demanda: 88, clima: 'nublado', stock: 34, precio: 0.96 },
+    factores: [
+      { nombre: 'Demanda prevista',  peso: -0.38, tipo: 'neg' },
+      { nombre: 'Stock alto',        peso: -0.29, tipo: 'neg' },
+      { nombre: 'Precio bajo',       peso: -0.22, tipo: 'neg' },
+      { nombre: 'Clima neutro',      peso: 0.11,  tipo: 'neu' }
+    ],
+    narrativa: 'La demanda (88 u.) está un 26% por debajo del umbral. El stock elevado (34 u.) reduce urgencia. El precio actual no justifica producción adicional.',
+    cf: [
+      { variable: 'Demanda', actual: 88,  umbral: 120, cambio: +32 },
+      { variable: 'Stock',   actual: 34,  umbral: 15,  cambio: -19 },
+      { variable: 'Precio',  actual: 0.96, umbral: 1.05, cambio: +0.09 }
+    ],
+    escenarios: [
+      { nombre: 'Base',          demanda: 88,  clima: 'nublado', decision: 'esperar', conf: 74 },
+      { nombre: 'Demanda +35%',  demanda: 119, clima: 'nublado', decision: 'producir', conf: 67 },
+      { nombre: 'Stock vacío',   demanda: 88,  clima: 'nublado', decision: 'producir', conf: 71 }
+    ]
+  },
+  {
+    id: 'D-003',
+    tiempo: '11:22',
+    decision: 'REVISAR',
+    confianza: 48,
+    clase: 'revisar',
+    datos: { demanda: 112, clima: 'tormenta', stock: 8, precio: 1.02 },
+    factores: [
+      { nombre: 'Clima adverso',     peso: -0.44, tipo: 'neg' },
+      { nombre: 'Demanda borderline',peso: 0.28,  tipo: 'neu' },
+      { nombre: 'Stock crítico',     peso: -0.19, tipo: 'neg' },
+      { nombre: 'Precio correcto',   peso: 0.09,  tipo: 'pos' }
+    ],
+    narrativa: 'Situación ambigua. Demanda cercana al umbral (112 u.) pero clima de tormenta introduce incertidumbre alta. Stock crítico (8 u.) exige decisión manual supervisada.',
+    cf: [
+      { variable: 'Clima',   actual: 'tormenta', umbral: 'nublado', cambio: '—' },
+      { variable: 'Stock',   actual: 8,    umbral: 20,   cambio: +12 },
+      { variable: 'Demanda', actual: 112,  umbral: 125,  cambio: +13 }
+    ],
+    escenarios: [
+      { nombre: 'Base',          demanda: 112, clima: 'tormenta', decision: 'revisar',  conf: 48 },
+      { nombre: 'Sin tormenta',  demanda: 112, clima: 'óptimo',   decision: 'producir', conf: 83 },
+      { nombre: 'Stock +15',     demanda: 112, clima: 'tormenta', decision: 'esperar',  conf: 62 }
+    ]
+  }
+];
+
+/* ════════════════════════════════════════════════════════
+   ESTADO
+   ════════════════════════════════════════════════════════ */
+var activeId = 'D-001';
+
+function getActive() {
+  return AVIA_DECISIONS.find(function(d) { return d.id === activeId; });
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER SELECTOR
+   ════════════════════════════════════════════════════════ */
+function renderSelector() {
+  var el = document.getElementById('decSelector');
+  el.innerHTML = AVIA_DECISIONS.map(function(d) {
+    return '<button class="dec-btn' + (d.id === activeId ? ' active' : '')
+      + '" onclick="selectDecision(\'' + d.id + '\')">'
+      + d.id + ' · ' + d.decision
+      + '</button>';
+  }).join('');
+}
+
+function selectDecision(id) {
+  if (!AVIA_guardFocus(id)) return;
+  activeId = id;
+  renderAll();
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER DECISIÓN
+   ════════════════════════════════════════════════════════ */
+function renderDecision() {
+  var d = getActive();
+
+  var box = document.getElementById('decisionBox');
+  box.className = 'decision-box ' + d.clase;
+
+  document.getElementById('decLabel').textContent = d.decision;
+  document.getElementById('decConf').textContent
+    = 'Confianza: ' + d.confianza + '%  ·  ' + d.tiempo + '  ·  ' + d.id;
+
+  document.getElementById('xaiNarrative').textContent = d.narrativa;
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER FACTORES
+   ════════════════════════════════════════════════════════ */
+function renderFactors() {
+  var d = getActive();
+  var el = document.getElementById('factorList');
+
+  var maxPeso = Math.max.apply(null,
+    d.factores.map(function(f) { return Math.abs(f.peso); })
+  );
+
+  el.innerHTML = d.factores.map(function(f) {
+    var pct = Math.round((Math.abs(f.peso) / maxPeso) * 100);
+    var dir = f.peso > 0 ? '↑ Impulsa decisión' : '↓ Frena decisión';
+    if (f.tipo === 'neu') dir = '→ Efecto neutro';
+    return '<div class="factor">'
+      + '<div class="factor-name">'
+      +   '<span>' + f.nombre + '</span>'
+      +   '<span>' + Math.round(Math.abs(f.peso) * 100) + '%</span>'
+      + '</div>'
+      + '<div class="factor-bar-bg">'
+      +   '<div class="factor-bar-fill ' + f.tipo + '" style="width:' + pct + '%"></div>'
+      + '</div>'
+      + '<div class="factor-direction">' + dir + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER CONTRAFACTUAL
+   ════════════════════════════════════════════════════════ */
+function renderCF() {
+  var d = getActive();
+  var tbody = document.getElementById('cfBody');
+
+  tbody.innerHTML = d.cf.map(function(row) {
+    var cambioVal = typeof row.cambio === 'number'
+      ? (row.cambio > 0 ? '+' + row.cambio : row.cambio)
+      : row.cambio;
+
+    var cls = typeof row.cambio === 'number'
+      ? (row.cambio > 0 ? 'change-pos' : 'change-neg')
+      : '';
+
+    return '<tr>'
+      + '<td>' + row.variable + '</td>'
+      + '<td>' + row.actual + '</td>'
+      + '<td>' + row.umbral + '</td>'
+      + '<td class="' + cls + '">' + cambioVal + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER ESCENARIOS
+   ════════════════════════════════════════════════════════ */
+function renderScenarios() {
+  var d = getActive();
+  var el = document.getElementById('scenarioGrid');
+
+  el.innerHTML = d.escenarios.map(function(s, i) {
+    return '<div class="scenario-card' + (i === 0 ? ' active' : '') + '">'
+      + '<div class="sc-label">' + s.nombre + '</div>'
+      + '<div class="sc-decision ' + s.decision + '">'
+      +   s.decision.toUpperCase()
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--muted)">Confianza: ' + s.conf + '%</div>'
+      + '<div style="font-size:10px;margin-top:4px;color:var(--muted)">'
+      +   'Dem: ' + s.demanda + ' · ' + s.clima
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER HISTORIAL XAI
+   ════════════════════════════════════════════════════════ */
+function renderLog() {
+  var el = document.getElementById('xaiLog');
+
+  el.innerHTML = AVIA_DECISIONS.map(function(d) {
+    var dotCls = { producir: 'p', esperar: 'e', revisar: 'r' }[d.clase] || 'e';
+    return '<div class="log-entry">'
+      + '<div class="log-dot ' + dotCls + '"></div>'
+      + '<div style="flex:1">'
+      +   '<div><strong>' + d.id + '</strong>'
+      +   ' · <span class="log-time">' + d.tiempo + '</span>'
+      +   ' · <strong>' + d.decision + '</strong>'
+      +   ' (' + d.confianza + '%)</div>'
+      +   '<div class="log-reason">' + d.narrativa.substring(0, 90) + '…</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════════
+   RENDER ALL
+   ════════════════════════════════════════════════════════ */
+function renderAll() {
+  renderSelector();
+  renderDecision();
+  renderFactors();
+  renderCF();
+  renderScenarios();
+  renderLog();
+}
+
+/* ════════════════════════════════════════════════════════
+   INIT — R7 guard activo
+   ════════════════════════════════════════════════════════ */
+(function init() {
+  if (!AVIA_guardFocus(AVIA_CONTEXT.artefacto)) return;
+  renderAll();
+  console.log('[AVIA-R7] Contexto activo: ' + AVIA_CONTEXT.artefacto
+    + ' · Siguiente: ' + AVIA_CONTEXT.siguiente);
+})();
+</script>
+</body>
+</html>

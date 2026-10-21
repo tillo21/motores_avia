@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIACreatorHub + VideoLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/marked@9.0.0/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #e50914;
+            --primary-glow: rgba(229, 9, 20, 0.4);
+            --secondary: #831010;
+            --accent: #ff4444;
+            --bg-deep: #0a0a0a;
+            --bg-surface: #141414;
+            --bg-elevated: #1f1f1f;
+            --bg-card: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #666666;
+            --border: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --purple: #8b5cf6;
+            --gradient-hero: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a0a 100%);
+            --gradient-card: linear-gradient(145deg, #1f1f1f 0%, #141414 100%);
+            --gradient-accent: linear-gradient(135deg, #e50914 0%, #831010 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-nav { flex: 1; padding: 1rem; overflow-y: auto; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: var(--gradient-accent); color: white; }
+        .nav-item i { width: 1.25rem; text-align: center; }
+
+        .nav-section {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 1rem 1rem 0.5rem;
+        }
+
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+        @media (max-width: 1024px) { .main-content { margin-left: 0; } }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title { font-size: 1.125rem; font-weight: 600; }
+        .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary { background: var(--gradient-accent); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--primary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { color: var(--primary); background: rgba(255,255,255,0.05); }
+        .btn-icon { width: 2.25rem; height: 2.25rem; padding: 0; }
+
+        .content-area { padding: 1.5rem; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover { border-color: rgba(255,255,255,0.1); }
+
+        /* Engine Cards */
+        .engine-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .engine-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+
+        .engine-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .engine-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .engine-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+        }
+
+        .stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 0.813rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 600;
+        }
+
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+        @media (max-width: 1280px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hero-subtitle { font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.open .modal-content { transform: scale(1); }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23666' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Production Queue */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-elevated);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .queue-thumb {
+            width: 80px;
+            height: 45px;
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .queue-info { flex: 1; }
+        .queue-title { font-weight: 600; font-size: 0.875rem; }
+        .queue-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .progress-bar {
+            height: 0.375rem;
+            background: var(--bg-card);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: 9999px;
+            transition: width 0.5s ease;
+        }
+
+        .badge-success { background: var(--success); color: white; }
+        .badge-warning { background: var(--warning); color: black; }
+        .badge-info { background: var(--info); color: white; }
+        .badge-purple { background: var(--purple); color: white; }
+        .badge-error { background: var(--error); color: white; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: var(--success); color: white; }
+        .notification.error { background: var(--error); color: white; }
+        .notification.info { background: var(--info); color: white; }
+        .notification.warning { background: var(--warning); color: black; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .menu-toggle { display: none; }
+        @media (max-width: 1024px) { .menu-toggle { display: flex; } }
+
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+        .sidebar-overlay.show { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeIn 0.3s ease forwards; }
+
+        .version-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            z-index: 50;
+        }
+
+        /* Prose output for Markdown content */
+        .prose-output { text-align: left; line-height: 1.7; font-size: 0.875rem; color: var(--text-secondary); }
+        .prose-output h1, .prose-output h2, .prose-output h3 { color: var(--text-primary); font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+        .prose-output h2 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+        .prose-output h3 { font-size: 0.95rem; }
+        .prose-output p { margin-bottom: 0.75rem; }
+        .prose-output ul, .prose-output ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .prose-output li { margin-bottom: 0.25rem; }
+        .prose-output strong { color: var(--text-primary); }
+        .prose-output code { background: var(--bg-elevated); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.8rem; }
+        .prose-output pre { background: var(--bg-elevated); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; }
+        .prose-output blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .prose-output hr { border-color: var(--border); margin: 1rem 0; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        /* Light mode overrides */
+        html:not(.dark) :root {
+            --bg-deep: #f5f5f5;
+            --bg-surface: #ffffff;
+            --bg-elevated: #f0f0f0;
+            --bg-card: #e8e8e8;
+            --text-primary: #111111;
+            --text-secondary: #444444;
+            --text-muted: #888888;
+            --border: #d4d4d4;
+            --gradient-hero: linear-gradient(135deg, #f5f5f5 0%, #fff0f0 50%, #f5f5f5 100%);
+            --gradient-card: linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%);
+        }
+
+        /* AVIA Protocol Status Badge */
+        .avia-protocol-badge {
+            position: fixed;
+            bottom: 3.5rem;
+            right: 1rem;
+            z-index: 300;
+            animation: fadeIn 0.4s ease;
+        }
+        .avia-protocol-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #0f3460;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #e94560;
+            box-shadow: 0 4px 20px rgba(233,69,96,0.2);
+        }
+        .avia-pulse {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: protocolPulse 2s ease-in-out infinite;
+        }
+        .avia-pulse.error { background: #ef4444; }
+        .avia-pulse.warning { background: #f59e0b; }
+        .avia-pulse.correcting { background: #3b82f6; animation: protocolPulse 0.5s ease-in-out infinite; }
+
+        @keyframes protocolPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* ========================================
+           ATOMIC DESIGN TOKENS (Libro Blanco)
+           Atoms → Molecules → Organisms
+           ======================================== */
+        .atom-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .atom-dot--live { background: var(--success); animation: protocolPulse 1.5s ease-in-out infinite; }
+        .atom-dot--idle { background: var(--text-muted); }
+        .atom-dot--warn { background: var(--warning); animation: protocolPulse 0.8s ease-in-out infinite; }
+        .atom-dot--error { background: var(--error); }
+
+        .atom-tag {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.2rem 0.6rem; border-radius: 9999px;
+            font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em; white-space: nowrap;
+        }
+        .atom-tag--success { background: rgba(34,197,94,0.15); color: var(--success); }
+        .atom-tag--warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .atom-tag--error { background: rgba(239,68,68,0.15); color: var(--error); }
+        .atom-tag--info { background: rgba(59,130,246,0.15); color: var(--info); }
+        .atom-tag--purple { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+        .mol-agent-card {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.25rem; position: relative;
+            transition: all 0.3s ease; overflow: hidden;
+        }
+        .mol-agent-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--gradient-accent); opacity: 0; transition: opacity 0.3s;
+        }
+        .mol-agent-card:hover::before { opacity: 1; }
+        .mol-agent-card.mol-agent-card--active { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); }
+        .mol-agent-card.mol-agent-card--active::before { opacity: 1; }
+
+        .mol-consensus-meter { display: flex; gap: 2px; height: 2rem; border-radius: 0.5rem; overflow: hidden; }
+        .mol-consensus-meter__bar {
+            flex: 1; transition: all 0.5s ease; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 700; color: white;
+        }
+
+        .org-consensus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+
+        .org-roadmap { position: relative; padding-left: 2rem; }
+        .org-roadmap::before {
+            content: ''; position: absolute; left: 0.75rem; top: 0; bottom: 0;
+            width: 2px; background: linear-gradient(to bottom, var(--primary), var(--purple), var(--info));
+        }
+        .org-roadmap__phase {
+            position: relative; margin-bottom: 1.5rem; padding-left: 1.5rem;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        .org-roadmap__phase::before {
+            content: ''; position: absolute; left: -1.35rem; top: 0.4rem;
+            width: 12px; height: 12px; border-radius: 50%;
+            border: 2px solid var(--primary); background: var(--bg-surface);
+        }
+        .org-roadmap__phase--done::before { background: var(--success); border-color: var(--success); }
+        .org-roadmap__phase--active::before { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
+        .org-roadmap__phase--pending::before { background: var(--bg-elevated); border-color: var(--text-muted); }
+
+        .org-snapshot-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem; background: var(--bg-elevated);
+            border-radius: 0.75rem; border: 1px solid var(--border); transition: all 0.2s;
+        }
+        .org-snapshot-item:hover { border-color: var(--primary); }
+
+        .filter-bar {
+            display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;
+            padding: 0.75rem; background: var(--bg-elevated);
+            border-radius: 0.75rem; margin-bottom: 1rem;
+        }
+        .filter-btn {
+            padding: 0.4rem 0.9rem; border-radius: 9999px;
+            font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; border: 1px solid var(--border);
+            background: transparent; color: var(--text-secondary); transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--primary); color: var(--text-primary); }
+        .filter-btn.active { background: var(--gradient-accent); color: white; border-color: transparent; }
+
+        .consensus-response {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 0.75rem; padding: 1rem; transition: all 0.2s;
+        }
+        .consensus-response.consensus-winner { border-color: var(--success); box-shadow: 0 0 12px rgba(34,197,94,0.2); }
+
+        .error-log-entry {
+            display: flex; align-items: flex-start; gap: 0.5rem;
+            padding: 0.5rem 0.75rem; border-left: 3px solid var(--error);
+            background: rgba(239,68,68,0.05); border-radius: 0 0.5rem 0.5rem 0;
+            margin-bottom: 0.5rem; font-size: 0.75rem;
+        }
+        .error-log-entry.log-warning { border-left-color: var(--warning); background: rgba(245,158,11,0.05); }
+        .error-log-entry.log-info { border-left-color: var(--info); background: rgba(59,130,246,0.05); }
+        .error-log-entry.log-success { border-left-color: var(--success); background: rgba(34,197,94,0.05); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.4s ease forwards; }
+
+        .search-input-wrap { position: relative; flex: 1; min-width: 200px; }
+        .search-input-wrap i { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; }
+        .search-input-wrap input {
+            width: 100%; padding: 0.6rem 0.75rem 0.6rem 2.25rem;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 9999px; color: var(--text-primary);
+            font-size: 1rem; font-family: inherit;
+        }
+        .search-input-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+
+        /* Custom modal dialog (no alert/confirm) */
+        .custom-dialog-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px); display: flex;
+            align-items: center; justify-content: center; z-index: 500;
+            animation: fadeIn 0.2s ease;
+        }
+        .custom-dialog {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: 1rem; padding: 1.5rem; max-width: 400px; width: 90%;
+        }
+        /* ========================================
+           AVIA-NÓMADA MODE
+           Accessible interface for marginalized communities
+           Project Jaima / Solidarity Projects
+           ======================================== */
+        [dir="rtl"] .sidebar { right:0;left:auto;border-right:none;border-left:1px solid var(--border);transform:translateX(100%); }
+        [dir="rtl"] .sidebar.open { transform:translateX(0); }
+        [dir="rtl"] .main-content { margin-left:0;margin-right:260px; }
+        @media(max-width:1024px){[dir="rtl"] .main-content{margin-right:0;} [dir="rtl"] .sidebar{transform:translateX(100%);}}
+        [dir="rtl"] .nav-item { flex-direction: row-reverse; }
+        [dir="rtl"] .flex { /* keep default */ }
+
+        .nomada-container{max-width:600px;margin:0 auto;}
+        .nomada-lang-bar{display:flex;gap:0.5rem;justify-content:center;padding:0.75rem;background:var(--bg-elevated);border-radius:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+        .nomada-lang-btn{padding:0.5rem 1rem;border-radius:0.75rem;font-size:1rem;font-weight:600;cursor:pointer;border:2px solid var(--border);background:transparent;color:var(--text-secondary);transition:all 0.2s;min-width:54px;text-align:center;font-family:inherit;}
+        .nomada-lang-btn:hover{border-color:var(--primary);}
+        .nomada-lang-btn.active{background:var(--gradient-accent);color:white;border-color:transparent;transform:scale(1.05);}
+        .nomada-tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;}
+        @media(max-width:400px){.nomada-tpl-grid{grid-template-columns:1fr;}}
+        .nomada-tpl{background:var(--bg-elevated);border:2px solid var(--border);border-radius:1.25rem;padding:1.5rem;text-align:center;cursor:pointer;transition:all 0.3s ease;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;}
+        .nomada-tpl:hover{border-color:var(--primary);transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,0.3);}
+        .nomada-tpl:active{transform:scale(0.97);}
+        .nomada-tpl .tpl-icon{font-size:2.5rem;line-height:1;}
+        .nomada-tpl .tpl-name{font-size:1rem;font-weight:600;color:var(--text-primary);}
+        .nomada-tpl .tpl-desc{font-size:0.75rem;color:var(--text-muted);}
+        .nomada-step-bar{display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:1.5rem;}
+        .nomada-dot{width:14px;height:14px;border-radius:50%;background:var(--border);transition:all 0.3s;}
+        .nomada-dot.on{background:var(--primary);transform:scale(1.3);box-shadow:0 0 12px var(--primary-glow);}
+        .nomada-dot.ok{background:var(--success);}
+        .nomada-ln{width:36px;height:3px;background:var(--border);border-radius:2px;}
+        .nomada-ln.ok{background:var(--success);}
+        .nomada-panel{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;animation:fadeIn 0.4s ease;}
+        .nomada-input{width:100%;padding:1rem 1.25rem;background:var(--bg-card);border:2px solid var(--border);border-radius:1rem;color:var(--text-primary);font-size:1.125rem;font-family:inherit;transition:all 0.2s;}
+        .nomada-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow);}
+        .nomada-input::placeholder{color:var(--text-muted);}
+        .nomada-btn{display:flex;align-items:center;justify-content:center;gap:0.75rem;width:100%;padding:1rem;border-radius:1rem;font-size:1.125rem;font-weight:700;cursor:pointer;border:none;transition:all 0.2s;font-family:inherit;min-height:56px;}
+        .nomada-btn--go{background:var(--gradient-accent);color:white;}
+        .nomada-btn--go:hover{transform:translateY(-2px);box-shadow:0 8px 25px var(--primary-glow);}
+        .nomada-btn--alt{background:var(--bg-card);color:var(--text-primary);border:2px solid var(--border);}
+        .nomada-btn--alt:hover{border-color:var(--primary);}
+        .nomada-btn--ok{background:var(--success);color:white;}
+        .nomada-spinner-lg{width:64px;height:64px;border:5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1.5rem;}
+        .nomada-result{background:var(--bg-elevated);border:2px solid var(--success);border-radius:1.25rem;padding:1.5rem;text-align:center;animation:fadeIn 0.5s ease;}
+        .nomada-header-icon{font-size:3rem;margin-bottom:0.5rem;display:block;text-align:center;}
+        .nomada-section-title{font-size:1.5rem;font-weight:700;text-align:center;margin-bottom:0.25rem;}
+        .nomada-section-sub{font-size:0.9rem;color:var(--text-muted);text-align:center;margin-bottom:1.5rem;}
+
+        .senior-card{background:var(--bg-elevated);border:2px solid var(--border);border-radius:1.25rem;padding:1.25rem;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:1rem;}
+        .senior-card:hover{border-color:var(--purple);}
+        .senior-card.active{border-color:var(--purple);box-shadow:0 0 20px rgba(139,92,246,0.3);}
+        .senior-chat-box{background:var(--bg-card);border-radius:1rem;padding:1rem;max-height:350px;overflow-y:auto;margin-bottom:1rem;min-height:120px;}
+        .senior-msg{padding:0.75rem 1rem;border-radius:0.75rem;margin-bottom:0.5rem;font-size:0.9rem;max-width:85%;animation:fadeIn 0.3s ease;word-wrap:break-word;}
+        .senior-msg--user{background:var(--primary);color:white;margin-left:auto;}
+        .senior-msg--bot{background:var(--bg-elevated);color:var(--text-primary);margin-right:auto;}
+        .senior-input-row{display:flex;gap:0.5rem;}
+        .senior-input-row input{flex:1;}
+
+        /* ========================================
+           MULTI-AGENT COMMAND CENTER
+           ======================================== */
+        .ma-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;}
+        @media(max-width:900px){.ma-grid{grid-template-columns:1fr;}}
+        .ma-mission{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;overflow:hidden;transition:all 0.3s;}
+        .ma-mission.running{border-color:var(--warning);animation:maPulse 2s ease-in-out infinite;}
+        .ma-mission.done{border-color:var(--success);}
+        .ma-mission.error{border-color:var(--error);}
+        @keyframes maPulse{0%,100%{box-shadow:0 0 0 rgba(245,158,11,0);}50%{box-shadow:0 0 20px rgba(245,158,11,0.15);}}
+        .ma-mission-header{padding:1rem 1.25rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--border);}
+        .ma-mission-icon{width:40px;height:40px;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+        .ma-mission-info{flex:1;min-width:0;}
+        .ma-mission-info h4{font-size:0.875rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .ma-mission-info .ma-bot{font-size:0.7rem;color:var(--text-muted);display:flex;align-items:center;gap:0.35rem;margin-top:0.15rem;}
+        .ma-mission-status{font-size:0.65rem;font-weight:700;padding:0.2rem 0.5rem;border-radius:9999px;text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0;}
+        .ma-mission-status.idle{background:var(--bg-card);color:var(--text-muted);}
+        .ma-mission-status.running{background:rgba(245,158,11,0.15);color:var(--warning);}
+        .ma-mission-status.done{background:rgba(34,197,94,0.15);color:var(--success);}
+        .ma-mission-status.error{background:rgba(239,68,68,0.15);color:var(--error);}
+        .ma-mission-body{padding:1rem 1.25rem;max-height:280px;overflow-y:auto;font-size:0.8rem;color:var(--text-secondary);line-height:1.6;}
+        .ma-mission-body .prose-output{font-size:0.8rem;}
+        .ma-mission-body .prose-output h2{font-size:0.95rem;}
+        .ma-mission-body .prose-output h3{font-size:0.85rem;}
+        .ma-ctrl-bar{display:flex;align-items:center;gap:0.75rem;padding:1rem 1.5rem;background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;margin-bottom:1.5rem;}
+        .ma-ctrl-bar .ma-live-dot{width:10px;height:10px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+        .ma-ctrl-bar .ma-live-dot.live{background:var(--success);box-shadow:0 0 8px rgba(34,197,94,0.5);animation:protocolPulse 1.5s infinite;}
+        .ma-custom-prompt{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;padding:1.25rem;margin-top:1.5rem;}
+
+        /* ═══════════════════════════════════════════
+           VIDEOLAB LARGO — Long-Form Video Composer
+           ═══════════════════════════════════════════ */
+        .largo-hero{background:linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);border-radius:1.25rem;padding:2rem;margin-bottom:1.5rem;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
+        .largo-hero::before{content:'';position:absolute;top:-50%;right:-30%;width:60%;height:200%;background:radial-gradient(ellipse,rgba(139,92,246,0.15) 0%,transparent 70%);pointer-events:none;}
+        .largo-hero-title{font-size:1.5rem;font-weight:800;background:linear-gradient(90deg,#c084fc,#818cf8,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.25rem;}
+        .largo-hero-sub{color:rgba(255,255,255,0.6);font-size:0.85rem;}
+        .largo-stats-row{display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;}
+        .largo-stat{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:0.75rem;padding:0.6rem 1rem;text-align:center;flex:1;min-width:80px;}
+        .largo-stat-val{font-size:1.1rem;font-weight:700;color:#c084fc;font-family:'Space Mono',monospace;}
+        .largo-stat-lbl{font-size:0.65rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em;margin-top:0.15rem;}
+        .largo-phase{display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+        .largo-phase-btn{padding:0.5rem 1rem;border-radius:2rem;font-size:0.75rem;font-weight:600;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-muted);cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:0.4rem;}
+        .largo-phase-btn.active{background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;border-color:transparent;box-shadow:0 2px 12px rgba(124,58,237,0.3);}
+        .largo-phase-btn.done{background:rgba(34,197,94,0.15);color:var(--success);border-color:rgba(34,197,94,0.3);}
+        .largo-phase-btn i{font-size:0.7rem;}
+        .largo-scene{background:var(--bg-elevated);border:1px solid var(--border);border-radius:1rem;overflow:hidden;transition:all 0.3s;position:relative;}
+        .largo-scene:hover{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple);}
+        .largo-scene-header{display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:rgba(124,58,237,0.08);border-bottom:1px solid var(--border);cursor:grab;}
+        .largo-scene-num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0;}
+        .largo-scene-title{flex:1;font-size:0.8rem;font-weight:600;color:var(--text-primary);}
+        .largo-scene-dur{font-size:0.7rem;color:var(--purple);font-family:'Space Mono',monospace;background:rgba(124,58,237,0.12);padding:0.2rem 0.5rem;border-radius:0.5rem;}
+        .largo-scene-actions{display:flex;gap:0.25rem;}
+        .largo-scene-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0.25rem;font-size:0.75rem;border-radius:0.25rem;transition:color 0.2s;}
+        .largo-scene-actions button:hover{color:var(--primary);}
+        .largo-scene-body{padding:1rem;}
+        .largo-scene-prompt{font-size:0.75rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0.5rem;}
+        .largo-scene-status{display:inline-flex;align-items:center;gap:0.3rem;font-size:0.65rem;padding:0.2rem 0.6rem;border-radius:1rem;font-weight:600;}
+        .largo-scene-status.pending{background:rgba(255,255,255,0.05);color:var(--text-muted);}
+        .largo-scene-status.generating{background:rgba(124,58,237,0.15);color:#a78bfa;animation:protocolPulse 1.5s infinite;}
+        .largo-scene-status.done{background:rgba(34,197,94,0.12);color:var(--success);}
+        .largo-scene-status.error{background:rgba(239,68,68,0.12);color:var(--error);}
+        .largo-scene-thumb{width:100%;height:80px;border-radius:0.5rem;background:var(--bg-card);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-top:0.5rem;}
+        .largo-scene-thumb video{width:100%;height:100%;object-fit:cover;border-radius:0.5rem;}
+        .largo-scene-thumb i{font-size:1.5rem;color:var(--text-muted);}
+        .largo-progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:1rem 0;}
+        .largo-progress-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#38bdf8);border-radius:3px;transition:width 0.5s ease;}
+        .largo-final-preview{background:linear-gradient(135deg,#0f0c29,#302b63);border-radius:1rem;padding:1.5rem;border:1px solid rgba(139,92,246,0.3);text-align:center;}
+        .largo-final-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.5rem;margin:1rem 0;}
+        .largo-final-clip{border-radius:0.5rem;overflow:hidden;position:relative;aspect-ratio:16/9;background:#000;cursor:pointer;}
+        .largo-final-clip video{width:100%;height:100%;object-fit:cover;}
+        .largo-final-clip .clip-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:0.3rem 0.5rem;font-size:0.6rem;color:#fff;}
+        .largo-input-script{width:100%;min-height:120px;background:var(--bg-card);border:1px solid var(--border);border-radius:0.75rem;padding:1rem;font-family:'Outfit',sans-serif;font-size:0.85rem;color:var(--text-primary);resize:vertical;transition:border-color 0.2s;}
+        .largo-input-script:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px rgba(124,58,237,0.15);}
+        .largo-config-row{display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0;}
+        .largo-config-item{flex:1;min-width:120px;}
+        .largo-config-item label{display:block;font-size:0.7rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem;}
+        .largo-config-item select,.largo-config-item input{width:100%;padding:0.5rem 0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:0.5rem;color:var(--text-primary);font-size:0.8rem;}
+        @media(max-width:768px){
+            .largo-hero-title{font-size:1.2rem;}
+            .largo-stats-row{gap:0.5rem;}
+            .largo-config-row{flex-direction:column;}
+            .largo-final-grid{grid-template-columns:repeat(2,1fr);}
+        }
+
+        /* ═══════════════════════════════════════════
+           AUTO-STORYBOARD VISUAL — Preview before gen
+           ═══════════════════════════════════════════ */
+        .storyboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;margin:1rem 0;}
+        .storyboard-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;overflow:hidden;transition:all 0.3s;position:relative;}
+        .storyboard-card:hover{border-color:#a78bfa;transform:translateY(-2px);box-shadow:0 4px 16px rgba(124,58,237,0.15);}
+        .storyboard-card-img{width:100%;aspect-ratio:16/9;background:#1a1a2e;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+        .storyboard-card-img img{width:100%;height:100%;object-fit:cover;}
+        .storyboard-card-img .sb-placeholder{color:var(--text-muted);font-size:1.5rem;}
+        .storyboard-card-img .sb-generating{color:#a78bfa;animation:protocolPulse 1.5s infinite;}
+        .storyboard-card-img .sb-num{position:absolute;top:0.3rem;left:0.3rem;width:22px;height:22px;border-radius:50%;background:rgba(124,58,237,0.85);display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:#fff;}
+        .storyboard-card-body{padding:0.5rem 0.7rem;}
+        .storyboard-card-body .sb-title{font-size:0.7rem;font-weight:600;color:var(--text-primary);margin-bottom:0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .storyboard-card-body .sb-dur{font-size:0.6rem;color:var(--text-muted);font-family:'Space Mono',monospace;}
+        .storyboard-card-actions{display:flex;gap:0.25rem;position:absolute;top:0.3rem;right:0.3rem;}
+        .storyboard-card-actions button{width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.6);border:none;color:#fff;font-size:0.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s;}
+        .storyboard-card-actions button:hover{background:rgba(124,58,237,0.8);}
+        .sb-progress-row{display:flex;align-items:center;gap:0.5rem;margin:0.75rem 0;padding:0.5rem 0.75rem;background:rgba(124,58,237,0.06);border-radius:0.5rem;}
+        .sb-progress-row .sb-prog-fill{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;}
+        .sb-progress-row .sb-prog-fill span{display:block;height:100%;background:linear-gradient(90deg,#a78bfa,#38bdf8);border-radius:2px;transition:width 0.5s;}
+
+        /* ═══════════════════════════════════════════
+           VISUAL CONSISTENCY ENGINE
+           ═══════════════════════════════════════════ */
+        .consistency-ref{display:flex;gap:1rem;align-items:center;padding:1rem;background:var(--bg-elevated);border:1px dashed rgba(124,58,237,0.3);border-radius:0.75rem;margin:0.75rem 0;}
+        .consistency-ref-img{width:100px;height:56px;border-radius:0.5rem;overflow:hidden;background:#1a1a2e;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+        .consistency-ref-img img{width:100%;height:100%;object-fit:cover;}
+
+        /* ═══════════════════════════════════════════
+           SMART DASHBOARD — Predictive Metrics
+           ═══════════════════════════════════════════ */
+        .metric-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;padding:0.75rem;position:relative;overflow:hidden;}
+        .metric-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--purple));}
+        .metric-sparkline{height:30px;display:flex;align-items:flex-end;gap:2px;margin-top:0.5rem;}
+        .metric-sparkline .bar{flex:1;background:linear-gradient(to top,rgba(124,58,237,0.3),rgba(124,58,237,0.6));border-radius:1px 1px 0 0;min-height:2px;transition:height 0.3s;}
+        .metric-prediction{font-size:0.65rem;color:#38bdf8;margin-top:0.25rem;display:flex;align-items:center;gap:0.3rem;}
+        .metric-prediction i{font-size:0.55rem;}
+
+        /* ═══════════════════════════════════════════
+           REMIX MODE
+           ═══════════════════════════════════════════ */
+        .remix-option{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;padding:0.75rem;cursor:pointer;transition:all 0.2s;text-align:center;}
+        .remix-option:hover{border-color:#a78bfa;background:rgba(124,58,237,0.06);}
+        .remix-option.selected{border-color:#a78bfa;background:rgba(124,58,237,0.12);box-shadow:0 0 0 2px rgba(124,58,237,0.2);}
+        .remix-option i{font-size:1.2rem;display:block;margin-bottom:0.3rem;}
+
+        /* ═══════════════════════════════════════════
+           DIRECTOR MODE
+           ═══════════════════════════════════════════ */
+        .director-input{width:100%;min-height:80px;background:linear-gradient(135deg,rgba(124,58,237,0.05),rgba(56,189,248,0.05));border:2px solid rgba(124,58,237,0.2);border-radius:1rem;padding:1.25rem;font-family:'Outfit',sans-serif;font-size:0.9rem;color:var(--text-primary);resize:vertical;transition:border-color 0.3s;}
+        .director-input:focus{outline:none;border-color:#a78bfa;box-shadow:0 0 0 4px rgba(124,58,237,0.1);}
+        .director-timeline{display:flex;gap:0.5rem;overflow-x:auto;padding:0.5rem 0;scrollbar-width:thin;}
+        .director-step{min-width:100px;padding:0.5rem;background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.5rem;text-align:center;font-size:0.65rem;flex-shrink:0;transition:all 0.3s;}
+        .director-step.active{border-color:#a78bfa;background:rgba(124,58,237,0.1);}
+        .director-step.done{border-color:var(--success);background:rgba(34,197,94,0.1);}
+        .director-step i{font-size:0.9rem;display:block;margin-bottom:0.25rem;}
+
+        /* ═══════════════════════════════════════════
+           v13.0 — SRE ALERT SIMULATION
+           ═══════════════════════════════════════════ */
+        .sre-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;padding:1rem;position:relative;overflow:hidden;transition:all 0.3s;}
+        .sre-card.alert-active{border-color:var(--error);animation:sreFlash 2s infinite;}
+        .sre-card.alert-resolved{border-color:var(--success);}
+        @keyframes sreFlash{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0);}50%{box-shadow:0 0 20px 4px rgba(239,68,68,0.3);}}
+        .sre-semaphore{width:14px;height:14px;border-radius:50%;display:inline-block;margin-right:0.5rem;flex-shrink:0;}
+        .sre-semaphore.green{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.5);}
+        .sre-semaphore.yellow{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,0.5);}
+        .sre-semaphore.red{background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,0.5);}
+        .sre-incident-log{max-height:200px;overflow-y:auto;scrollbar-width:thin;}
+        .sre-incident{display:flex;gap:0.5rem;align-items:flex-start;padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.7rem;}
+        .sre-incident:last-child{border-bottom:none;}
+        .sre-incident-time{font-family:'Space Mono',monospace;color:var(--text-muted);flex-shrink:0;min-width:60px;}
+        .sre-gauge{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-top:0.5rem;}
+        .sre-gauge-fill{height:100%;border-radius:3px;transition:width 0.5s,background 0.3s;}
+
+        /* ═══════════════════════════════════════════
+           CONCATENADOR DE CLIPS — Timeline Editor
+           ═══════════════════════════════════════════ */
+        .concat-timeline{background:linear-gradient(135deg,var(--bg-elevated),rgba(124,58,237,0.03));border:1px solid var(--border);border-radius:0.75rem;padding:1rem;min-height:80px;position:relative;}
+        .concat-track{display:flex;gap:4px;align-items:center;overflow-x:auto;padding:0.5rem 0;scrollbar-width:thin;}
+        .concat-clip{min-width:80px;height:50px;background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(56,189,248,0.2));border:1px solid rgba(124,58,237,0.3);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;cursor:grab;font-size:0.6rem;font-weight:600;color:#c084fc;position:relative;flex-shrink:0;transition:all 0.2s;user-select:none;}
+        .concat-clip:hover{border-color:#a78bfa;transform:scale(1.05);}
+        .concat-clip.dragging{opacity:0.5;transform:scale(0.95);}
+        .concat-clip .clip-dur{position:absolute;bottom:2px;right:4px;font-size:0.5rem;color:var(--text-muted);font-family:'Space Mono',monospace;}
+        .concat-transition{width:24px;height:24px;border-radius:50%;background:var(--bg-card);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:var(--text-muted);cursor:pointer;flex-shrink:0;}
+        .concat-transition:hover{border-color:#a78bfa;color:#a78bfa;}
+        .concat-controls{display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;}
+
+        /* ═══════════════════════════════════════════
+           SUBTÍTULOS AUTOMÁTICOS — SRT Editor
+           ═══════════════════════════════════════════ */
+        .srt-editor{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;padding:1rem;}
+        .srt-line{display:grid;grid-template-columns:60px 1fr 40px;gap:0.5rem;align-items:center;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.75rem;}
+        .srt-line:last-child{border-bottom:none;}
+        .srt-timecode{font-family:'Space Mono',monospace;font-size:0.65rem;color:#38bdf8;}
+        .srt-text-input{background:transparent;border:1px solid transparent;color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:0.35rem;font-size:0.75rem;width:100%;transition:border-color 0.2s;}
+        .srt-text-input:focus{outline:none;border-color:rgba(124,58,237,0.4);background:rgba(124,58,237,0.04);}
+
+        /* ═══════════════════════════════════════════
+           EXPORTACIÓN MULTI-FORMATO
+           ═══════════════════════════════════════════ */
+        .export-format{background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;padding:0.75rem;cursor:pointer;transition:all 0.2s;text-align:center;}
+        .export-format:hover{border-color:#38bdf8;}
+        .export-format.selected{border-color:#38bdf8;background:rgba(56,189,248,0.08);box-shadow:0 0 0 2px rgba(56,189,248,0.15);}
+        .export-format i{font-size:1.4rem;display:block;margin-bottom:0.3rem;}
+        .export-preset{display:flex;gap:0.5rem;align-items:center;padding:0.5rem 0.75rem;background:var(--bg-card);border:1px solid var(--border);border-radius:0.5rem;cursor:pointer;transition:all 0.2s;font-size:0.75rem;}
+        .export-preset:hover{border-color:#38bdf8;}
+        .export-preset.selected{border-color:#38bdf8;background:rgba(56,189,248,0.06);}
+        .export-preset i{color:#38bdf8;}
+
+        /* ═══════════════════════════════════════════
+           QUALITY VALIDATION — Vision AI
+           ═══════════════════════════════════════════ */
+        .qa-score-ring{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;position:relative;}
+        .qa-score-ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:4px solid rgba(255,255,255,0.06);}
+        .qa-score-ring.excellent{color:#22c55e;background:rgba(34,197,94,0.1);border:3px solid #22c55e;}
+        .qa-score-ring.good{color:#f59e0b;background:rgba(245,158,11,0.1);border:3px solid #f59e0b;}
+        .qa-score-ring.poor{color:#ef4444;background:rgba(239,68,68,0.1);border:3px solid #ef4444;}
+        .qa-check-row{display:flex;align-items:center;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.75rem;}
+        .qa-check-row:last-child{border-bottom:none;}
+
+        /* ═══════════════════════════════════════════
+           CREDITS SYSTEM — VideoLab Pro
+           ═══════════════════════════════════════════ */
+        .credits-bar{display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(251,191,36,0.04));border:1px solid rgba(245,158,11,0.2);border-radius:0.75rem;margin-bottom:0.75rem;}
+        .credits-icon{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:#fff;flex-shrink:0;}
+        .credits-meter{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+        .credits-meter-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:3px;transition:width 0.5s;}
+        .credits-amount{font-family:'Space Mono',monospace;font-size:0.8rem;font-weight:700;color:#fbbf24;}
+
+        /* ═══════════════════════════════════════════
+           CONSULTORÍA PRO — Missions Panel
+           ═══════════════════════════════════════════ */
+        .consul-card{background:linear-gradient(145deg,var(--bg-elevated),rgba(56,189,248,0.03));border:1px solid var(--border);border-radius:0.75rem;padding:1.25rem;transition:all 0.3s;cursor:pointer;}
+        .consul-card:hover{border-color:#38bdf8;transform:translateY(-2px);box-shadow:0 4px 20px rgba(56,189,248,0.1);}
+        .consul-card.running{border-color:#a78bfa;animation:protocolPulse 2s infinite;}
+        .consul-card.complete{border-color:var(--success);}
+        .consul-icon{width:40px;height:40px;border-radius:0.75rem;display:flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:0.75rem;}
+        .consul-response{background:var(--bg-card);border-radius:0.75rem;padding:1rem;margin-top:1rem;max-height:400px;overflow-y:auto;font-size:0.8rem;line-height:1.6;scrollbar-width:thin;}
+        .consul-response h1,.consul-response h2,.consul-response h3{color:var(--text-primary);margin:0.75rem 0 0.4rem;font-weight:700;}
+        .consul-response h1{font-size:1.1rem;}
+        .consul-response h2{font-size:0.95rem;}
+        .consul-response h3{font-size:0.85rem;}
+        .consul-response p{margin:0.4rem 0;color:var(--text-secondary);}
+        .consul-response code{background:rgba(124,58,237,0.12);padding:0.15rem 0.4rem;border-radius:0.25rem;font-family:'Space Mono',monospace;font-size:0.72rem;color:#c084fc;}
+        .consul-response pre{background:var(--bg-deep);border-radius:0.5rem;padding:0.75rem;overflow-x:auto;margin:0.5rem 0;font-size:0.7rem;}
+        .consul-response pre code{background:transparent;padding:0;color:#e2e8f0;}
+        .consul-response ul,.consul-response ol{padding-left:1.25rem;margin:0.3rem 0;}
+        .consul-response li{margin:0.2rem 0;color:var(--text-secondary);}
+        .consul-response strong{color:var(--text-primary);}
+        .consul-response blockquote{border-left:3px solid #a78bfa;padding-left:0.75rem;color:var(--text-muted);margin:0.5rem 0;}
+
+        /* ═══════════════════════════════════════════
+           v14.0 — WEBGL PREVIEW SYSTEM
+           ═══════════════════════════════════════════ */
+        .webgl-container{position:relative;border-radius:0.75rem;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:420px;}
+        .webgl-canvas{width:100%;height:100%;display:block;border-radius:0.75rem;}
+        .webgl-overlay{position:absolute;bottom:0;left:0;right:0;padding:0.75rem 1rem;background:linear-gradient(transparent,rgba(0,0,0,0.85));display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;}
+        .webgl-effect-btn{padding:0.35rem 0.75rem;border-radius:0.5rem;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#e2e8f0;font-size:0.7rem;cursor:pointer;transition:all 0.2s;backdrop-filter:blur(8px);}
+        .webgl-effect-btn:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3);}
+        .webgl-effect-btn.active{background:linear-gradient(135deg,#7c3aed,#a78bfa);border-color:#a78bfa;color:#fff;box-shadow:0 0 12px rgba(167,139,250,0.4);}
+        .webgl-stats{position:absolute;top:0.5rem;right:0.5rem;background:rgba(0,0,0,0.6);padding:0.3rem 0.6rem;border-radius:0.4rem;font-family:'Space Mono',monospace;font-size:0.6rem;color:#4ade80;backdrop-filter:blur(4px);}
+        .webgl-scene-strip{display:flex;gap:0.4rem;padding:0.75rem;overflow-x:auto;scrollbar-width:thin;}
+        .webgl-scene-thumb{min-width:64px;height:40px;border-radius:0.35rem;cursor:pointer;transition:all 0.2s;border:2px solid transparent;display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:700;color:#fff;}
+        .webgl-scene-thumb:hover{transform:scale(1.08);}
+        .webgl-scene-thumb.active{border-color:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,0.5);}
+        .webgl-slider-row{display:flex;align-items:center;gap:0.75rem;padding:0 0.75rem;margin-bottom:0.5rem;}
+        .webgl-slider-row label{font-size:0.7rem;color:var(--text-muted);min-width:70px;}
+        .webgl-slider-row input[type="range"]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:rgba(255,255,255,0.1);border-radius:2px;outline:none;}
+        .webgl-slider-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#a78bfa;cursor:pointer;box-shadow:0 0 6px rgba(167,139,250,0.5);}
+        .webgl-slider-row span{font-family:'Space Mono',monospace;font-size:0.65rem;color:#a78bfa;min-width:32px;text-align:right;}
+
+        /* ═══════════════════════════════════════════
+           v14.0 — PREMIERE PRO EXPORT
+           ═══════════════════════════════════════════ */
+        .premiere-export-btn{display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border-radius:0.5rem;background:linear-gradient(135deg,rgba(0,120,215,0.15),rgba(0,162,255,0.08));border:1px solid rgba(0,120,215,0.3);color:#38bdf8;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.3s;width:100%;justify-content:center;}
+        .premiere-export-btn:hover{background:linear-gradient(135deg,rgba(0,120,215,0.25),rgba(0,162,255,0.15));border-color:rgba(0,162,255,0.5);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,120,215,0.15);}
+        .premiere-export-btn i{font-size:1rem;}
+
+        /* ═══════════════════════════════════════════
+           v14.0 — SUPABASE RLS PANEL
+           ═══════════════════════════════════════════ */
+        .rls-policy-card{background:linear-gradient(145deg,var(--bg-elevated),rgba(34,197,94,0.03));border:1px solid var(--border);border-radius:0.75rem;padding:1rem;margin-bottom:0.5rem;transition:border-color 0.3s;}
+        .rls-policy-card:hover{border-color:#22c55e;}
+        .rls-policy-card .policy-name{font-weight:700;font-size:0.8rem;color:var(--text-primary);}
+        .rls-policy-card .policy-sql{background:var(--bg-deep);padding:0.5rem 0.75rem;border-radius:0.4rem;font-family:'Space Mono',monospace;font-size:0.65rem;color:#4ade80;margin-top:0.5rem;overflow-x:auto;}
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+                        <i class="fas fa-film text-white"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm">AVIA VideoLab</div>
+                        <div class="text-xs text-[var(--text-muted)]">v13.0 Resiliencia</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="produccion">
+                    <i class="fas fa-video"></i>
+                    <span>Producción</span>
+                </div>
+                <div class="nav-item" data-section="biblioteca">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Biblioteca</span>
+                </div>
+
+                <div class="nav-item" data-section="largo">
+                    <i class="fas fa-photo-video" style="color:#a78bfa;"></i>
+                    <span>VideoLab Largo</span>
+                </div>
+
+                <div class="nav-section">Herramientas</div>
+
+                <div class="nav-item" data-section="editor">
+                    <i class="fas fa-pen-fancy"></i>
+                    <span>Editor Guion</span>
+                </div>
+                <div class="nav-item" data-section="validador">
+                    <i class="fas fa-check-double"></i>
+                    <span>Validador</span>
+                </div>
+                <div class="nav-item" data-section="timeline">
+                    <i class="fas fa-film"></i>
+                    <span>Timeline</span>
+                </div>
+
+                <div class="nav-section">Inteligencia</div>
+
+                <div class="nav-item" data-section="multiagent">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Multi-Agente</span>
+                </div>
+                <div class="nav-item" data-section="consenso">
+                    <i class="fas fa-brain"></i>
+                    <span>Consenso IA</span>
+                </div>
+                <div class="nav-item" data-section="libroblanco">
+                    <i class="fas fa-book"></i>
+                    <span>Libro Blanco</span>
+                </div>
+
+                <div class="nav-section">Configuración</div>
+
+                <div class="nav-item" data-section="carlos">
+                    <i class="fas fa-user-tie"></i>
+                    <span>AVIA-Clon-Carlos</span>
+                </div>
+                <div class="nav-item" data-section="protocol">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>AVIA Protocol</span>
+                </div>
+
+                <div class="nav-section">Solidario</div>
+
+                <div class="nav-item" data-section="nomada">
+                    <i class="fas fa-globe-africa"></i>
+                    <span>AVIA-Nómada</span>
+                </div>
+                <div class="nav-item" data-section="senior">
+                    <i class="fas fa-hands-helping"></i>
+                    <span>AVIA-Senior v3.2</span>
+                </div>
+
+                <div class="nav-section">Pro</div>
+
+                <div class="nav-item" data-section="sre">
+                    <i class="fas fa-heartbeat" style="color:#ef4444;"></i>
+                    <span>SRE Monitor</span>
+                </div>
+                <div class="nav-item" data-section="consultoria">
+                    <i class="fas fa-gem" style="color:#38bdf8;"></i>
+                    <span>Consultoría Pro</span>
+                </div>
+                <div class="nav-item" data-section="webglpreview">
+                    <i class="fas fa-cube" style="color:#f472b6;"></i>
+                    <span>WebGL Preview</span>
+                    <span class="badge" style="margin-left:auto;background:linear-gradient(135deg,#ec4899,#a855f7);">NEW</span>
+                </div>
+
+                <div class="nav-section">Sistema</div>
+
+                <div class="nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Ajustes</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-[var(--border)] cursor-pointer hover:bg-[rgba(255,255,255,0.03)]" onclick="navigateTo('settings')" title="Ver Ajustes y Perfil">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-sm font-bold">C</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">Carlos Creator</div>
+                        <div class="text-xs text-[var(--text-muted)]">Plan Pro · <span id="sidebarCredits">500</span> créditos</div>
+                    </div>
+                    <i class="fas fa-chevron-right text-xs text-[var(--text-muted)]"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="flex items-center gap-4">
+                    <button class="btn btn-ghost btn-icon menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="header-title" id="headerTitle">Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost btn-icon" onclick="exportProject()">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon" onclick="toggleNotifPanel()" id="bellBtn" style="position:relative;">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--error);border-radius:50%;"></span>
+                    </button>
+                    <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;top:56px;right:80px;width:320px;max-height:360px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:0.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:200;overflow-y:auto;scrollbar-width:thin;">
+                        <div style="padding:0.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+                            <span class="text-sm font-bold">Notificaciones</span>
+                            <button class="btn btn-ghost text-xs" onclick="clearNotifications()" style="padding:0.2rem 0.5rem;">Limpiar</button>
+                        </div>
+                        <div id="notifList" style="padding:0.5rem;"></div>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('newProduction')">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Producción</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- DASHBOARD -->
+                <section class="section active" id="section-dashboard">
+                    <div class="mb-8">
+                        <h1 class="hero-title">
+                            AVIACreatorHub + VideoLab
+                            <span class="text-3xl">🎬</span>
+                        </h1>
+                        <p class="hero-subtitle">Sistema Multi-Motor: Veo-v3.1 • Sora-2 (Integración Real)</p>
+                    </div>
+
+                    <!-- Engine Cards -->
+                    <div class="grid-3 mb-6">
+                        <div class="engine-card selected" onclick="selectEngine('veo')">
+                            <div class="engine-icon" style="background: rgba(139, 92, 246, 0.2);">🎬</div>
+                            <h3 class="font-semibold mb-1">Veo-v3.1</h3>
+                            <span class="engine-badge badge-purple">AUDIO NATIVO</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Audio integrado • Alta calidad • Google AI</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('sora')">
+                            <div class="engine-icon" style="background: rgba(239, 68, 68, 0.2);">🎥</div>
+                            <h3 class="font-semibold mb-1">Sora-2</h3>
+                            <span class="engine-badge badge-error">MAYOR DURACIÓN</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Hasta 12s • OpenAI • Narrativa compleja</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('pro')">
+                            <div class="engine-icon" style="background: rgba(245, 158, 11, 0.2);">⚡</div>
+                            <h3 class="font-semibold mb-1">Modo PRO</h3>
+                            <span class="engine-badge badge-warning">2 MOTORES</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Genera con Veo + Sora • Compara resultados</p>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid-4 mb-6">
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">En Cola</span>
+                                <span class="stat-badge badge-info" id="queueBadge">0</span>
+                            </div>
+                            <div class="stat-value" id="queueCount">0</div>
+                            <div class="stat-label">vídeos pendientes</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Completados Hoy</span>
+                                <span class="stat-badge badge-success">+12%</span>
+                            </div>
+                            <div class="stat-value" id="completedToday">2</div>
+                            <div class="stat-label">vídeos generados</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Versiones</span>
+                                <span class="stat-badge badge-info" id="versionBadge">1</span>
+                            </div>
+                            <div class="stat-value" id="versionCount">1</div>
+                            <div class="stat-label">exportadas</div>
+                        </div>
+
+                        <div class="stat-card" style="border-top:2px solid var(--error);">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium"><i class="fas fa-shield-alt text-[var(--error)] mr-1"></i>ErrorGuard</span>
+                                <span class="stat-badge badge-success" id="errorGuardDashBadge">OK</span>
+                            </div>
+                            <div class="stat-value" id="errorGuardDashCount">0</div>
+                            <div class="stat-label">errores interceptados</div>
+                            <div class="text-xs mt-2" style="color:var(--text-muted);">
+                                <span id="errorGuardDashRules">8</span> reglas activas
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Credits Bar -->
+                    <div class="credits-bar" id="creditsBar">
+                        <div class="credits-icon"><i class="fas fa-coins"></i></div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-semibold" style="color:var(--text-primary);">Créditos VideoLab Pro</span>
+                                <span class="credits-amount" id="creditsAmount">500 / 500</span>
+                            </div>
+                            <div class="credits-meter">
+                                <div class="credits-meter-fill" id="creditsFill" style="width:100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SRE Quick Status -->
+                    <div class="card mb-6" id="sreDashCard" style="border-left:3px solid var(--success);">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="sre-semaphore green" id="sreDashSemaphore"></span>
+                                <span class="text-sm font-semibold">SRE Status</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs">
+                                <span style="color:var(--text-muted);">Latencia: <span id="sreDashLatency" style="color:var(--success);">OK</span></span>
+                                <span style="color:var(--text-muted);">Errores: <span id="sreDashErrors" style="color:var(--success);">0%</span></span>
+                                <span style="color:var(--text-muted);">Mem: <span id="sreDashMem" style="color:var(--success);">OK</span></span>
+                                <button class="btn btn-ghost text-xs" onclick="navigateTo('sre')" style="padding:0.2rem 0.5rem;">Ver Monitor</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Smart Dashboard — Predictive Metrics -->
+                    <div class="card mb-6" id="smartMetricsCard">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-semibold flex items-center gap-2">
+                                <i class="fas fa-chart-line text-blue-400"></i>
+                                Métricas Predictivas
+                            </h3>
+                            <span class="text-xs text-[var(--text-muted)]" id="metricsTimestamp">Actualizado ahora</span>
+                        </div>
+                        <div class="grid-4 gap-3">
+                            <div class="metric-card">
+                                <div class="text-xs text-[var(--text-muted)]">Latencia Media</div>
+                                <div class="text-lg font-bold" style="color:var(--text-primary);" id="metricLatency">0s</div>
+                                <div class="metric-sparkline" id="sparkLatency"></div>
+                                <div class="metric-prediction" id="predLatency"><i class="fas fa-brain"></i> Sin datos aún</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="text-xs text-[var(--text-muted)]">Tasa de Éxito</div>
+                                <div class="text-lg font-bold" style="color:var(--success);" id="metricSuccess">100%</div>
+                                <div class="metric-sparkline" id="sparkSuccess"></div>
+                                <div class="metric-prediction" id="predSuccess"><i class="fas fa-brain"></i> Sin datos aún</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="text-xs text-[var(--text-muted)]">Tokens Usados</div>
+                                <div class="text-lg font-bold" style="color:#a78bfa;" id="metricTokens">0</div>
+                                <div class="metric-sparkline" id="sparkTokens"></div>
+                                <div class="metric-prediction" id="predTokens"><i class="fas fa-brain"></i> Sin datos aún</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="text-xs text-[var(--text-muted)]">ETA Proyecto</div>
+                                <div class="text-lg font-bold" style="color:#38bdf8;" id="metricETA">—</div>
+                                <div class="metric-sparkline" id="sparkETA"></div>
+                                <div class="metric-prediction" id="predETA"><i class="fas fa-brain"></i> Sin proyecto activo</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Director Mode Quick Launch -->
+                    <div class="card mb-6" style="background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(56,189,248,0.06));border:1px dashed rgba(124,58,237,0.3);">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#7c3aed,#38bdf8);">
+                                <i class="fas fa-film text-white"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-sm">🎬 Director Mode</div>
+                                <div class="text-xs text-[var(--text-muted)]">Describe tu idea y la IA lo hace todo automáticamente</div>
+                            </div>
+                        </div>
+                        <textarea class="director-input" id="directorInput" placeholder="Ej: Un documental de 3 minutos sobre la artesanía amazigh del Sáhara, estilo cinematográfico con narración en español..."></textarea>
+                        <div class="director-timeline mt-3 mb-3" id="directorTimeline">
+                            <div class="director-step" id="dirStep1"><i class="fas fa-pen-alt"></i> Guion</div>
+                            <div class="director-step" id="dirStep2"><i class="fas fa-cut"></i> Escenas</div>
+                            <div class="director-step" id="dirStep3"><i class="fas fa-images"></i> Storyboard</div>
+                            <div class="director-step" id="dirStep4"><i class="fas fa-video"></i> Clips</div>
+                            <div class="director-step" id="dirStep5"><i class="fas fa-music"></i> Audio</div>
+                            <div class="director-step" id="dirStep6"><i class="fas fa-check-circle"></i> Listo</div>
+                        </div>
+                        <button class="btn btn-primary w-full" onclick="directorLaunch()">
+                            <i class="fas fa-rocket"></i> Lanzar Director Mode — Creación Automática Completa
+                        </button>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold">Actividad Reciente</h3>
+                            <button class="btn btn-ghost btn-icon text-sm"><i class="fas fa-ellipsis-h"></i></button>
+                        </div>
+                        <div id="recentActivity">
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Video TOOC Promo</div>
+                                    <div class="queue-meta">Veo-v3.1 • 8s • Completado hace 2h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(1)"><i class="fas fa-play"></i></button>
+                            </div>
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Demo Feature X</div>
+                                    <div class="queue-meta">RunwayML • 5s • Completado hace 4h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(2)"><i class="fas fa-play"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PRODUCCIÓN -->
+                <section class="section" id="section-produccion">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Cola de Producción</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Gestiona tus vídeos en proceso</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('newProduction')">
+                            <i class="fas fa-plus"></i> Nuevo Vídeo
+                        </button>
+                    </div>
+
+                    <!-- Modos de Creación (Opción A) -->
+                    <div class="grid-4 mb-6">
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('newProduction')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-700/20 flex items-center justify-center">
+                                    <i class="fas fa-magic text-xl text-purple-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Cero</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Escribe un prompt y genera</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromScript')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-700/20 flex items-center justify-center">
+                                    <i class="fas fa-file-alt text-xl text-blue-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Guion</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Sube guion o enlace Drive</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromImage')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-green-500/20 to-green-700/20 flex items-center justify-center">
+                                    <i class="fas fa-image text-xl text-green-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Imagen</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Anima una foto/fotograma</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('improveVideo')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-700/20 flex items-center justify-center">
+                                    <i class="fas fa-wand-magic-sparkles text-xl text-orange-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Mejorar Video</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Edita video existente</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="productionQueue">
+                        <div class="card text-center py-12">
+                            <i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i>
+                            <p class="text-[var(--text-muted)]">No hay vídeos en cola</p>
+                            <button class="btn btn-primary mt-4" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Crear primero
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BIBLIOTECA -->
+                <section class="section" id="section-biblioteca">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Biblioteca</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Todos tus vídeos generados</p>
+                        </div>
+                    </div>
+                    <div class="grid-3" id="libraryGrid">
+                        <div class="card text-center py-8">
+                            <i class="fas fa-photo-video text-3xl text-[var(--text-muted)] mb-3"></i>
+                            <p class="text-sm text-[var(--text-muted)]">Tus vídeos aparecerán aquí</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EDITOR -->
+                <section class="section" id="section-editor">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Editor de Guion</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Escribe y valida tu guion</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Guion</h3>
+                            <textarea class="form-input form-textarea" style="min-height: 300px;" placeholder="Escribe tu guion aquí..." id="scriptContent"></textarea>
+                            <div class="flex justify-between items-center mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="wordCount">0</span> palabras</span>
+                                <button class="btn btn-primary" onclick="validateScript()">
+                                    <i class="fas fa-check-double"></i> Validar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Análisis</h3>
+                            <div id="scriptAnalysis" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-magic text-3xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Validar"</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VALIDADOR -->
+                <section class="section" id="section-validador">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Validador Visual</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Analiza coherencia visual, viabilidad técnica y calidad del guion con IA</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-pen text-[var(--info)]"></i> Guion / Prompt a Validar
+                            </h3>
+                            <textarea class="form-input form-textarea" style="min-height: 220px;" placeholder="Pega tu guion o prompt de video aquí para analizar su coherencia visual, viabilidad técnica y calidad narrativa..." id="validatorInput"></textarea>
+                            <div class="flex items-center justify-between mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="validatorWordCount">0</span> palabras</span>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary" onclick="loadScriptToValidator()">
+                                        <i class="fas fa-file-import"></i> Desde Editor
+                                    </button>
+                                    <button class="btn btn-primary" onclick="validateScriptAI()">
+                                        <i class="fas fa-brain"></i> Analizar con IA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-chart-bar text-[var(--success)]"></i> Análisis
+                            </h3>
+                            <div id="validatorLoading" class="hidden text-center py-8">
+                                <div class="inline-block w-8 h-8 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3"></div>
+                                <p class="text-sm text-[var(--text-muted)]">Claude está analizando tu guion...</p>
+                            </div>
+                            <div id="validatorOutput" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-eye text-4xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Analizar con IA"</p>
+                                <p class="text-xs mt-2">Se evaluará: coherencia visual, viabilidad técnica, pacing, y sugerencias de mejora</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TIMELINE -->
+                <section class="section" id="section-timeline">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Timeline de Proyecto</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Visualiza y reproduce tus clips en secuencia</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-secondary" onclick="refreshTimeline()">
+                                <i class="fas fa-sync-alt"></i> Actualizar
+                            </button>
+                            <button class="btn btn-primary" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Añadir Clip
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Preview Player -->
+                    <div class="card mb-4">
+                        <div class="aspect-video bg-[var(--bg-elevated)] rounded-lg flex items-center justify-center mb-4 overflow-hidden relative" id="timelinePreview">
+                            <div class="text-center text-[var(--text-muted)]" id="timelinePreviewEmpty">
+                                <i class="fas fa-play-circle text-5xl mb-3"></i>
+                                <p class="text-sm">Selecciona un clip del timeline para reproducir</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 mb-3 text-sm">
+                            <span class="text-[var(--text-muted)]">Clips totales: <strong class="text-white" id="timelineClipCount">0</strong></span>
+                            <span class="text-[var(--text-muted)]">|</span>
+                            <span class="text-[var(--text-muted)]">Duración total: <strong class="text-white" id="timelineTotalDuration">0s</strong></span>
+                            <span class="text-[var(--text-muted)]">|</span>
+                            <span class="text-[var(--text-muted)]">En cola: <strong class="text-white" id="timelineQueueCount">0</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Track -->
+                    <div class="card">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-film text-[var(--primary)]"></i> Timeline
+                        </h3>
+                        <div class="flex gap-2 p-3 bg-[var(--bg-elevated)] rounded-lg overflow-x-auto" id="dynamicTimelineTrack">
+                            <div class="min-w-[120px] h-16 bg-[var(--bg-card)] rounded-lg border border-dashed border-[var(--border)] flex flex-col items-center justify-center cursor-pointer" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus text-sm text-[var(--text-muted)]"></i>
+                                <span class="text-xs mt-1 text-[var(--text-muted)]">Añadir clip</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CARLOS -->
+                <section class="section" id="section-carlos">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">AVIA-Clon-Carlos</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configura la personalidad y genera contenido con el estilo de Carlos</p>
+                    </div>
+                    <div class="grid-2 mb-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-user-cog text-[var(--purple)]"></i> Perfil de Voz
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label">Tono</label>
+                                    <select class="form-input form-select" id="carlosTone">
+                                        <option value="entusiasta">Entusiasta</option>
+                                        <option value="profesional">Profesional</option>
+                                        <option value="casual">Casual</option>
+                                        <option value="inspirador">Inspirador</option>
+                                        <option value="educativo">Educativo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Muletillas</label>
+                                    <input type="text" class="form-input" id="carlosCatchphrases" value="¡Vamos!, Increíble, Mira esto, ¡Esto es brutal!">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Estilo de presentación</label>
+                                    <select class="form-input form-select" id="carlosStyle">
+                                        <option value="youtuber">YouTuber / Creador</option>
+                                        <option value="presentador">Presentador TV</option>
+                                        <option value="profesor">Profesor / Tutorial</option>
+                                        <option value="narrador">Narrador Documental</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Contexto / Marca</label>
+                                    <input type="text" class="form-input" id="carlosBrand" value="AVIA Creator Hub" placeholder="Ej: TOOC, AVIA, Mi marca...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-eye text-[var(--success)]"></i> Vista Previa Persona
+                            </h3>
+                            <div class="bg-[var(--bg-elevated)] rounded-lg p-4 text-sm mb-4" style="line-height: 1.8;" id="carlosPreview">
+                                <p class="mb-3">¡Vamos! Hoy te voy a mostrar algo <strong>increíble</strong> que va a cambiar tu forma de trabajar...</p>
+                                <p class="text-[var(--success)] text-xs mt-2">[TONO: Entusiasta | ESTILO: YouTuber | MARCA: AVIA Creator Hub]</p>
+                            </div>
+                            <button class="btn btn-secondary w-full mb-3" onclick="updateCarlosPreview()">
+                                <i class="fas fa-sync-alt"></i> Actualizar Vista Previa
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Generador con Persona Carlos -->
+                    <div class="card">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-magic text-[var(--warning)]"></i> Generador con Estilo Carlos
+                        </h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4">Escribe un tema o idea y Carlos generará un guion/prompt con su personalidad única</p>
+                        <div class="form-group">
+                            <textarea class="form-input form-textarea" id="carlosInputText" placeholder="Ej: Presenta las nuevas funciones de AVIA VideoLab para la audiencia de YouTube..."></textarea>
+                        </div>
+                        <div class="flex gap-3">
+                            <button class="btn btn-primary flex-1" onclick="generateWithCarlos('script')">
+                                <i class="fas fa-pen"></i> Generar Guion
+                            </button>
+                            <button class="btn btn-secondary flex-1" onclick="generateWithCarlos('prompt')">
+                                <i class="fas fa-video"></i> Generar Prompt Video
+                            </button>
+                            <button class="btn btn-secondary flex-1" onclick="generateWithCarlos('narration')">
+                                <i class="fas fa-microphone"></i> Generar Narración
+                            </button>
+                        </div>
+                        <div id="carlosLoading" class="hidden text-center py-4 mt-4">
+                            <div class="inline-block w-6 h-6 border-3 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <p class="text-sm text-[var(--text-muted)]">Carlos está creando contenido...</p>
+                        </div>
+                        <div id="carlosOutput" class="mt-4"></div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <!-- 🛡️ AVIA PROTOCOL SECTION -->
+                <section class="section" id="section-protocol">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-shield-alt" style="color: var(--primary)"></i>
+                            AVIA Protocol System
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Siesta + Persist + AutoCorrector — Regla Universal Anti-Token-Limit</p>
+                    </div>
+
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="stat-badge badge-success mb-2"><i class="fas fa-sync-alt mr-1"></i> Siesta</div>
+                            <div class="stat-value" id="protocolRetries">0</div>
+                            <div class="stat-label">Reintentos auto</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-badge badge-info mb-2"><i class="fas fa-magic mr-1"></i> AutoCorrector</div>
+                            <div class="stat-value" id="protocolCorrections">0</div>
+                            <div class="stat-label">Correcciones</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-badge badge-purple mb-2"><i class="fas fa-database mr-1"></i> Persist</div>
+                            <div class="stat-value" id="protocolSnapshots">0</div>
+                            <div class="stat-label">Snapshots</div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-scroll text-[var(--warning)]"></i>
+                            Regla Universal AVIA
+                        </h3>
+                        <div class="space-y-3 text-sm text-[var(--text-secondary)]">
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">1️⃣</span>
+                                <div><strong class="text-white">AutoCorrector (Pre-envío):</strong> Antes de cada llamada, valida el prompt. Si excede ~450 chars o contiene patrones que provocan respuestas largas, lo reduce automáticamente cortando por oración completa.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">2️⃣</span>
+                                <div><strong class="text-white">Persist (Snapshot):</strong> Antes de cada envío, guarda un snapshot del estado completo. Si ocurre un error, puede restaurar al estado anterior sin perder datos.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">3️⃣</span>
+                                <div><strong class="text-white">Siesta (Retry inteligente):</strong> Si detecta "Output token limit reached", espera 2s/5s/10s (backoff exponencial), reduce el prompt un 30% adicional, y reintenta hasta 3 veces.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <span class="text-lg">4️⃣</span>
+                                <div><strong class="text-white">Consenso (Post-respuesta):</strong> Si la respuesta del bot llega con error de token limit, el handler detecta el patrón, reduce el prompt un 40%, y reintenta automáticamente con un delay de 3s.</div>
+                            </div>
+                            <div class="flex gap-3 items-start p-3 rounded-lg" style="background:var(--bg-elevated);border-left:3px solid var(--error);">
+                                <span class="text-lg">5️⃣</span>
+                                <div><strong class="text-white">ErrorGuard (Runtime):</strong> Intercepta errores de sintaxis en tiempo real (<code>SyntaxError</code>, <code>Unexpected token '...'</code>, <code>?.</code>, <code>=></code>). Clasifica por 8 reglas (spread, optional chaining, nullish coalescing, template literals, arrow functions, destructuring, const/let, async/await) y notifica con fix sugerido. Incluye utilidades <code>safe()</code> y <code>safeCall()</code> para acceso seguro a propiedades.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ErrorGuard Report -->
+                    <div class="card mb-4" style="border-color:var(--error);">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-bug text-[var(--error)]"></i>
+                            ErrorGuard — Reglas de Auto-Corrección
+                        </h3>
+                        <div class="grid-2 gap-3 mb-4">
+                            <div class="p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <div class="text-xs text-[var(--text-muted)] mb-1">Reglas activas</div>
+                                <div class="text-2xl font-bold" style="font-family:Space Mono;color:var(--success);" id="errorGuardRuleCount">8</div>
+                            </div>
+                            <div class="p-3 rounded-lg" style="background:var(--bg-elevated)">
+                                <div class="text-xs text-[var(--text-muted)] mb-1">Errores interceptados</div>
+                                <div class="text-2xl font-bold" style="font-family:Space Mono;" id="errorGuardCatchCount">0</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2" id="errorGuardRules">
+                            <!-- Populated by JS on section load -->
+                        </div>
+                        <button class="btn btn-secondary mt-3 w-full" onclick="refreshErrorGuard()">
+                            <i class="fas fa-sync-alt"></i> Actualizar Reporte
+                        </button>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-tools text-[var(--info)]"></i>
+                            Configuración del Protocolo
+                        </h3>
+                        <div class="grid-2 gap-4">
+                            <div class="form-group">
+                                <label class="form-label">Max Chars por Prompt</label>
+                                <input type="number" class="form-input" id="cfgMaxChars" value="450" onchange="AVIAProtocol.config.maxPromptChars = parseInt(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Reintentos</label>
+                                <input type="number" class="form-input" id="cfgMaxRetries" value="3" onchange="AVIAProtocol.config.maxRetries = parseInt(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Factor de Reducción</label>
+                                <input type="number" class="form-input" id="cfgReduction" value="0.7" step="0.1" min="0.3" max="1" onchange="AVIAProtocol.config.reductionFactor = parseFloat(this.value)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Acciones</label>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-secondary flex-1" onclick="refreshProtocolStats()">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                    <button class="btn btn-primary flex-1" onclick="AVIAProtocol.Persist.restoreLatest()">
+                                        <i class="fas fa-undo"></i> Restaurar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-terminal text-[var(--success)]"></i>
+                            Log de Errores
+                        </h3>
+                        <div id="protocolErrorLog" class="text-xs font-mono text-[var(--text-muted)]" style="max-height: 200px; overflow-y: auto;">
+                            Sin errores registrados. El protocolo está funcionando correctamente.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     MULTI-AGENT COMMAND CENTER
+                     Parallel bot orchestration
+                     ======================================== -->
+                <section class="section" id="section-multiagent">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-satellite-dish" style="color:var(--warning)"></i>
+                            Centro de Mando Multi-Agente
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Orquesta misiones paralelas con múltiples bots — Despacho simultáneo</p>
+                    </div>
+
+                    <!-- Control Bar -->
+                    <div class="ma-ctrl-bar">
+                        <div class="ma-live-dot" id="maLiveDot"></div>
+                        <div class="flex-1">
+                            <span class="text-sm font-semibold" id="maStatusText">En espera</span>
+                            <span class="text-xs text-[var(--text-muted)] ml-2" id="maCounter">0/7 misiones</span>
+                        </div>
+                        <button class="btn btn-primary" id="maLaunchBtn" onclick="maLaunchAll()">
+                            <i class="fas fa-rocket"></i> Lanzar Todas
+                        </button>
+                        <button class="btn btn-secondary" onclick="maResetAll()">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+
+                    <!-- Mission Grid -->
+                    <div class="ma-grid" id="maMissionGrid">
+                        <!-- Mission 1: Grok Multi-Agent -->
+                        <div class="ma-mission" id="maMission0">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(245,158,11,0.15);">
+                                    <i class="fas fa-network-wired" style="color:var(--warning);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Orquestación Multi-Agente</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Grok-4.20-Multi-Agent</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus0">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody0">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-network-wired text-2xl mb-2" style="display:block;"></i>
+                                    <p>Coordinación estratégica multi-agente</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 2: Strategic Objectives -->
+                        <div class="ma-mission" id="maMission1">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(139,92,246,0.15);">
+                                    <i class="fas fa-chess-king" style="color:var(--purple);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Objetivos Estratégicos — Semana 2</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus1">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody1">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-chess-king text-2xl mb-2" style="display:block;"></i>
+                                    <p>Hitos clave de la segunda semana de AVIA</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 3: PagerDuty Alert -->
+                        <div class="ma-mission" id="maMission2">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(59,130,246,0.15);">
+                                    <i class="fas fa-bell" style="color:var(--info);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Alerta PagerDuty — SRE</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus2">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody2">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-bell text-2xl mb-2" style="display:block;"></i>
+                                    <p>Configuración de alertas automáticas de rendimiento</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 4: Multi-Region Scaling -->
+                        <div class="ma-mission" id="maMission3">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(239,68,68,0.15);">
+                                    <i class="fas fa-globe" style="color:var(--error);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Cuellos de Botella — Multi-Región</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus3">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody3">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-globe text-2xl mb-2" style="display:block;"></i>
+                                    <p>Análisis de escalabilidad multi-región</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 5: Full HTML Integration Code -->
+                        <div class="ma-mission" id="maMission4">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(34,197,94,0.15);">
+                                    <i class="fas fa-code" style="color:var(--success);"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Código HTML — Integraciones Completas</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus4">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody4">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-code text-2xl mb-2" style="display:block;"></i>
+                                    <p>Generación de código HTML con todas las integraciones</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 6: Async Validator Explanation -->
+                        <div class="ma-mission" id="maMission5">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(168,85,247,0.15);">
+                                    <i class="fas fa-sync-alt" style="color:#a855f7;"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Validador Async — Scripts Dinámicos</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus5">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody5">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-sync-alt text-2xl mb-2" style="display:block;"></i>
+                                    <p>Validación de scripts cargados dinámicamente en AVIA</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mission 7: Stat Card Integration -->
+                        <div class="ma-mission" id="maMission6">
+                            <div class="ma-mission-header">
+                                <div class="ma-mission-icon" style="background:rgba(251,146,60,0.15);">
+                                    <i class="fas fa-chart-bar" style="color:#fb923c;"></i>
+                                </div>
+                                <div class="ma-mission-info">
+                                    <h4>Stat Card — Panel de Control</h4>
+                                    <div class="ma-bot"><i class="fas fa-robot"></i> Claude-Sonnet-4.5</div>
+                                </div>
+                                <span class="ma-mission-status idle" id="maStatus6">Idle</span>
+                            </div>
+                            <div class="ma-mission-body" id="maBody6">
+                                <div style="text-align:center;padding:1rem;color:var(--text-muted);">
+                                    <i class="fas fa-chart-bar text-2xl mb-2" style="display:block;"></i>
+                                    <p>Integración de stat card ErrorGuard en el dashboard</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Mission -->
+                    <div class="ma-custom-prompt">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-plus-circle text-[var(--info)]"></i> Misión Personalizada
+                        </h3>
+                        <div class="flex gap-3 mb-3">
+                            <select class="form-input form-select" style="width:220px;" id="maCustomBot">
+                                <option value="Claude-Sonnet-4.5">Claude-Sonnet-4.5</option>
+                                <option value="GPT-5.2">GPT-5.2</option>
+                                <option value="Gemini-3-Flash">Gemini-3-Flash</option>
+                                <option value="Grok-4.1-Fast-Reasoning">Grok-4.1 Reasoning</option>
+                                <option value="Grok-4.1-Fast-Non-Reasoning">Grok-4.1 Non-Reasoning</option>
+                            </select>
+                            <input type="text" class="form-input flex-1" id="maCustomName" placeholder="Nombre de la misión...">
+                        </div>
+                        <textarea class="form-input form-textarea" id="maCustomPrompt" placeholder="Escribe el prompt para esta misión..." style="min-height:80px;"></textarea>
+                        <button class="btn btn-primary mt-3" onclick="maLaunchCustom()">
+                            <i class="fas fa-paper-plane"></i> Lanzar Misión
+                        </button>
+                    </div>
+                </section>
+
+                <!-- CONSENSO IA -->
+                <section class="section" id="section-consenso">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-brain" style="color: var(--purple)"></i>
+                            Constelación de Agentes de Consenso
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Multi-agente económico profesional — Validación cruzada con IA</p>
+                    </div>
+
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--purple mb-2"><i class="fas fa-users mr-1"></i> Agentes</div>
+                            <div class="stat-value" id="consensusAgentCount">3</div>
+                            <div class="stat-label">modelos activos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--success mb-2"><i class="fas fa-check-double mr-1"></i> Consensos</div>
+                            <div class="stat-value" id="consensusCount">0</div>
+                            <div class="stat-label">validaciones completadas</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--info mb-2"><i class="fas fa-percentage mr-1"></i> Acuerdo</div>
+                            <div class="stat-value" id="consensusAgreement">—</div>
+                            <div class="stat-label">tasa de consenso</div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-satellite-dish text-[var(--purple)]"></i>
+                            Panel de Agentes
+                        </h3>
+                        <div class="org-consensus-grid mb-4" id="agentCardsGrid">
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center"><i class="fas fa-robot text-purple-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">Claude-Sonnet-4.5</div>
+                                        <span class="atom-tag atom-tag--purple">Anthropic</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Razonamiento profundo, código y análisis creativo</p>
+                            </div>
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center"><i class="fas fa-brain text-blue-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">GPT-5.2</div>
+                                        <span class="atom-tag atom-tag--info">OpenAI</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Análisis extenso, visión y resolución avanzada</p>
+                            </div>
+                            <div class="mol-agent-card mol-agent-card--active">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center"><i class="fas fa-bolt text-red-400"></i></div>
+                                    <div>
+                                        <div class="font-semibold text-sm">Gemini-3-Flash</div>
+                                        <span class="atom-tag atom-tag--error">Google</span>
+                                    </div>
+                                    <span class="atom-dot atom-dot--live ml-auto"></span>
+                                </div>
+                                <p class="text-xs text-[var(--text-muted)]">Velocidad excepcional, contexto largo, multimodal</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-gavel text-[var(--warning)]"></i>
+                            Validación por Consenso
+                        </h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4">Envía un prompt o guion a los 3 agentes simultáneamente. El sistema AVIA compara respuestas, detecta discrepancias y genera un veredicto de consenso.</p>
+                        <div class="form-group">
+                            <label class="form-label">Prompt / Guion a validar</label>
+                            <textarea class="form-input form-textarea" id="consensusInput" placeholder="Escribe un prompt de video, guion o pregunta para que los 3 agentes la evalúen..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de validación</label>
+                            <select class="form-input form-select" id="consensusType">
+                                <option value="prompt">Optimización de Prompt de Video</option>
+                                <option value="script">Análisis de Guion</option>
+                                <option value="strategy">Estrategia de Contenido</option>
+                                <option value="technical">Viabilidad Técnica</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary w-full" onclick="runConsensus()" id="consensusBtn">
+                            <i class="fas fa-play"></i> Lanzar Consenso Multi-Agente
+                        </button>
+                    </div>
+
+                    <div id="consensusLoading" class="hidden card mb-4 text-center py-8">
+                        <div class="inline-block w-8 h-8 border-4 border-[var(--purple)] border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <p class="text-sm text-[var(--text-muted)]" id="consensusLoadingText">Consultando agentes...</p>
+                        <div class="mol-consensus-meter mt-4 mx-auto" style="max-width:400px;" id="consensusMeter">
+                            <div class="mol-consensus-meter__bar" style="background:var(--purple);opacity:0.3;">Claude</div>
+                            <div class="mol-consensus-meter__bar" style="background:var(--info);opacity:0.3;">GPT</div>
+                            <div class="mol-consensus-meter__bar" style="background:var(--error);opacity:0.3;">Gemini</div>
+                        </div>
+                    </div>
+
+                    <div id="consensusResults" class="space-y-4"></div>
+                </section>
+
+                <!-- LIBRO BLANCO -->
+                <section class="section" id="section-libroblanco">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold flex items-center gap-3">
+                            <i class="fas fa-book" style="color: var(--warning)"></i>
+                            Libro Blanco — Plan de Desarrollo
+                        </h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Auditoría, roadmap y estado de implementación (Atomic Design + AVIA Protocol)</p>
+                    </div>
+
+                    <div class="grid-4 mb-6">
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--success mb-2">Completado</div>
+                            <div class="stat-value text-[var(--success)]">39</div>
+                            <div class="stat-label">módulos activos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--warning mb-2">En Progreso</div>
+                            <div class="stat-value text-[var(--warning)]">5</div>
+                            <div class="stat-label">en desarrollo</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--info mb-2">Planificado</div>
+                            <div class="stat-value text-[var(--info)]">3</div>
+                            <div class="stat-label">próximas fases</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="atom-tag atom-tag--purple mb-2">Cobertura</div>
+                            <div class="stat-value text-[var(--purple)]">88%</div>
+                            <div class="stat-label">implementado</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-route text-[var(--primary)]"></i>
+                                Roadmap de Implementación
+                            </h3>
+                            <div class="org-roadmap" id="roadmapContainer">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-clipboard-check text-[var(--success)]"></i>
+                                Auditoría de Módulos
+                            </h3>
+                            <div class="space-y-2" id="auditModules">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-6">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-atom text-[var(--purple)]"></i>
+                            Arquitectura Atomic Design
+                        </h3>
+                        <div class="grid-3">
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--success)]"><i class="fas fa-circle text-xs mr-1"></i> Átomos</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Botones (btn-primary, btn-secondary, btn-ghost)</li>
+                                    <li>• Inputs (form-input, form-select)</li>
+                                    <li>• Tags (atom-tag variantes)</li>
+                                    <li>• Dots de estado (atom-dot)</li>
+                                    <li>• Badges (engine-badge, stat-badge)</li>
+                                    <li>• Tipografía (Outfit + Space Mono)</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--info)]"><i class="fas fa-puzzle-piece text-xs mr-1"></i> Moléculas</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Agent Card (mol-agent-card)</li>
+                                    <li>• Consensus Meter (mol-consensus-meter)</li>
+                                    <li>• Engine Card (engine-card)</li>
+                                    <li>• Queue Item (queue-item)</li>
+                                    <li>• Stat Card (stat-card)</li>
+                                    <li>• Form Group (form-group + label)</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 rounded-lg" style="background:var(--bg-elevated);">
+                                <h4 class="text-sm font-bold mb-2 text-[var(--purple)]"><i class="fas fa-layer-group text-xs mr-1"></i> Organismos</h4>
+                                <ul class="text-xs text-[var(--text-muted)] space-y-1">
+                                    <li>• Dashboard (stats + engines + activity)</li>
+                                    <li>• Producción (queue + creation modes)</li>
+                                    <li>• Consenso (agents + validation + results)</li>
+                                    <li>• Pipeline (4 steps wizard)</li>
+                                    <li>• Roadmap (phases timeline)</li>
+                                    <li>• AVIA Protocol (siesta + persist + auto)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS ENHANCED -->
+                <section class="section" id="section-settings">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Ajustes</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configuración completa de la aplicación</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-download text-[var(--info)]"></i>
+                                Exportar / Importar
+                            </h3>
+                            <div class="flex gap-3">
+                                <button class="btn btn-secondary flex-1" onclick="exportProject()">
+                                    <i class="fas fa-download"></i> Exportar
+                                </button>
+                                <label class="btn btn-secondary flex-1 cursor-pointer">
+                                    <i class="fas fa-upload"></i> Importar
+                                    <input type="file" accept=".json" class="hidden" onchange="importProject(event)">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-[var(--purple)]"></i>
+                                Acerca de
+                            </h3>
+                            <div class="text-sm text-[var(--text-muted)] space-y-1">
+                                <p><strong class="text-[var(--text-primary)]">App:</strong> AVIACreatorHub + VideoLab</p>
+                                <p><strong class="text-[var(--text-primary)]">Versión:</strong> v13.0 Resiliencia Operativa</p>
+                                <p><strong class="text-[var(--text-primary)]">Protocolo:</strong> AVIA Full Stack (Siesta + Persist + AutoCorrector + Consenso)</p>
+                                <p><strong class="text-[var(--text-primary)]">Solidario:</strong> AVIA-Nómada (i18n: ES/FR/AR/ⵜⵎⵣⵖ) + Senior v3.2</p>
+                                <p><strong class="text-[var(--text-primary)]">Diseño:</strong> Atomic Design System</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-6">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-database text-[var(--success)]"></i>
+                            Snapshots Guardados (AVIA Persist)
+                        </h3>
+                        <div id="snapshotBrowser" class="space-y-2">
+                            <p class="text-sm text-[var(--text-muted)]">No hay snapshots guardados aún.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-[var(--warning)]"></i>
+                            Diagnóstico AVIA Protocol
+                        </h3>
+                        <div id="protocolDiagnostics" class="grid-3">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================
+                     AVIA-NÓMADA: Simplified Mode
+                     For marginalized communities & Project Jaima
+                     ======================================== -->
+                <section class="section" id="section-nomada">
+                    <div class="nomada-container">
+                        <!-- Language Bar -->
+                        <div class="nomada-lang-bar" id="nomadaLangBar">
+                            <button class="nomada-lang-btn active" onclick="nomadaSetLang('es')">🇪🇸 ES</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('fr')">🇫🇷 FR</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('ar')">🇲🇦 عربي</button>
+                            <button class="nomada-lang-btn" onclick="nomadaSetLang('zgh')">ⵣ ⵜⵎⵣⵖ</button>
+                        </div>
+
+                        <!-- Header -->
+                        <div style="text-align:center;margin-bottom:1.5rem;">
+                            <span class="nomada-header-icon">🌍</span>
+                            <h1 class="nomada-section-title" id="nomadaTitle">Bienvenido a AVIA-Nómada</h1>
+                            <p class="nomada-section-sub" id="nomadaSub">Crea vídeos fácilmente</p>
+                        </div>
+
+                        <!-- Step Indicator -->
+                        <div class="nomada-step-bar" id="nomadaStepBar">
+                            <div class="nomada-dot on" id="nomadaDot1"></div>
+                            <div class="nomada-ln" id="nomadaLn1"></div>
+                            <div class="nomada-dot" id="nomadaDot2"></div>
+                            <div class="nomada-ln" id="nomadaLn2"></div>
+                            <div class="nomada-dot" id="nomadaDot3"></div>
+                        </div>
+
+                        <!-- STEP 1: Choose Template -->
+                        <div id="nomadaStep1">
+                            <h2 class="text-lg font-bold text-center mb-4" id="nomadaChooseLabel">¿Qué quieres crear?</h2>
+                            <div class="nomada-tpl-grid" id="nomadaTemplateGrid">
+                                <!-- Populated by JS -->
+                            </div>
+               ...

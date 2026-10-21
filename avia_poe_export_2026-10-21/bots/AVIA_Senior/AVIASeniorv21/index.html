@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Ontología — T-01</title>
+<style>
+  :root {
+    --color-bg: #0f1117;
+    --color-surface: #1a1d27;
+    --color-card: #22263a;
+    --color-border: #2e3250;
+    --color-accent: #6c63ff;
+    --color-accent2: #00d4aa;
+    --color-warn: #f59e0b;
+    --color-error: #ef4444;
+    --color-success: #10b981;
+    --color-text: #e2e8f0;
+    --color-muted: #64748b;
+    --font-mono: 'Courier New', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* === ATOMS === */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .badge-block  { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+  .badge-done   { background: #10b98122; color: #10b981; border: 1px solid #10b98144; }
+  .badge-wip    { background: #6c63ff22; color: #a5a0ff; border: 1px solid #6c63ff44; }
+  .badge-pend   { background: #64748b22; color: #94a3b8; border: 1px solid #64748b44; }
+  .badge-warn   { background: #f59e0b22; color: #fbbf24; border: 1px solid #f59e0b44; }
+
+  .type-chip {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    background: #6c63ff33; color: #a5a0ff; border: 1px solid #6c63ff55;
+  }
+  .rel-chip {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 11px;
+    background: #00d4aa22; color: #00d4aa; border: 1px solid #00d4aa44;
+  }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green  { background: #10b981; box-shadow: 0 0 6px #10b981; }
+  .dot-red    { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+  .dot-yellow { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+  .dot-purple { background: #6c63ff; box-shadow: 0 0 6px #6c63ff; }
+  .dot-gray   { background: #64748b; }
+
+  /* === MOLECULES === */
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--color-muted); margin-bottom: 12px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--color-border);
+  }
+
+  .entity-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .entity-card:hover { border-color: var(--color-accent); }
+  .entity-card.blocking { border-left: 3px solid var(--color-error); }
+  .entity-card.active   { border-left: 3px solid var(--color-accent); }
+  .entity-card.done     { border-left: 3px solid var(--color-success); }
+
+  .entity-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .entity-name {
+    font-weight: 700; font-size: 15px; color: #fff;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .entity-props {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .prop-tag {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--color-muted); background: var(--color-surface);
+    padding: 2px 8px; border-radius: 4px; border: 1px solid var(--color-border);
+  }
+  .prop-tag span { color: #e2e8f0; }
+
+  .rel-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--color-border);
+    font-size: 12px;
+  }
+  .rel-row:last-child { border-bottom: none; }
+  .rel-arrow { color: var(--color-muted); }
+
+  /* === ORGANISMS === */
+  .top-bar {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .logo span { color: var(--color-accent); }
+
+  .pipeline-bar {
+    display: flex; align-items: stretch; gap: 0;
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: 10px; overflow: hidden; margin-bottom: 20px;
+  }
+  .pipe-step {
+    flex: 1; padding: 12px 10px; text-align: center;
+    border-right: 1px solid var(--color-border); position: relative;
+    transition: background 0.2s;
+  }
+  .pipe-step:last-child { border-right: none; }
+  .pipe-step.done     { background: #10b98112; }
+  .pipe-step.active   { background: #6c63ff1a; }
+  .pipe-step.blocked  { background: #ef444412; }
+  .pipe-step.pending  { background: transparent; }
+  .pipe-step-id { font-family: var(--font-mono); font-size: 11px; color: var(--color-muted); }
+  .pipe-step-name { font-size: 11px; font-weight: 600; margin-top: 3px; color: var(--color-text); }
+
+  .progress-track {
+    background: var(--color-border); border-radius: 10px;
+    height: 6px; overflow: hidden; margin: 6px 0;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 10px;
+    background: linear-gradient(90deg, var(--color-accent), var(--color-accent2));
+    transition: width 0.8s ease;
+  }
+
+  /* === TEMPLATES === */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .col-full { grid-column: 1 / -1; }
+
+  .panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px; padding: 18px;
+  }
+
+  /* === LOG === */
+  .log-stream {
+    font-family: var(--font-mono); font-size: 12px;
+    background: #090b10; border-radius: 8px; padding: 14px;
+    max-height: 200px; overflow-y: auto; border: 1px solid var(--color-border);
+  }
+  .log-line { padding: 3px 0; border-bottom: 1px solid #1a1d2788; }
+  .log-line:last-child { border-bottom: none; }
+  .log-ts { color: var(--color-muted); margin-right: 8px; }
+  .log-ok  { color: var(--color-success); }
+  .log-blk { color: var(--color-error); }
+  .log-wip { color: #a5a0ff; }
+  .log-inf { color: var(--color-warn); }
+
+  /* === GRAPH VISUAL === */
+  .onto-graph {
+    position: relative;
+    background: #090b10;
+    border-radius: 10px; border: 1px solid var(--color-border);
+    overflow: hidden;
+  }
+  .onto-graph svg { display: block; width: 100%; height: 280px; }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .pipeline-bar { flex-direction: column; }
+    .pipe-step { border-right: none; border-bottom: 1px solid var(--color-border); }
+    .pipe-step:last-child { border-bottom: none; }
+  }
+
+  @keyframes blink {
+    0%,100%{opacity:1} 50%{opacity:0.3}
+  }
+  .blink { animation: blink 1.5s infinite; }
+
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid var(--color-border); font-size: 12px;
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-val { font-weight: 700; font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div class="logo"><span>AVIA</span> Senior</div>
+    <div class="badge badge-wip blink">⚡ T-01 EN EJECUCIÓN</div>
+    <div class="badge badge-block">⛔ T-00→T-02 BLOQUEANTES</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <span class="badge badge-warn">AVIA-Auditor ACTIVO</span>
+    <span style="font-family:var(--font-mono);font-size:11px;color:var(--color-muted)" id="clock"></span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- PIPELINE COMPLETO -->
+  <div class="col-full">
+    <div class="pipeline-bar">
+      <div class="pipe-step done">
+        <div class="pipe-step-id">T-00</div>
+        <div class="pipe-step-name">Bootstrap</div>
+        <div style="margin-top:4px"><span class="badge badge-done">✓ DONE</span></div>
+      </div>
+      <div class="pipe-step active">
+        <div class="pipe-step-id">T-01</div>
+        <div class="pipe-step-name">Ontología</div>
+        <div style="margin-top:4px"><span class="badge badge-wip blink">▶ WIP</span></div>
+      </div>
+      <div class="pipe-step blocked">
+        <div class="pipe-step-id">T-02</div>
+        <div class="pipe-step-name">Pipeline Formal</div>
+        <div style="margin-top:4px"><span class="badge badge-block">⛔ BLOQ</span></div>
+      </div>
+      <div class="pipe-step pending">
+        <div class="pipe-step-id">F-1</div>
+        <div class="pipe-step-name">Agentes Core</div>
+        <div style="margin-top:4px"><span class="badge badge-pend">PEND</span></div>
+      </div>
+      <div class="pipe-step pending">
+        <div class="pipe-step-id">F-2</div>
+        <div class="pipe-step-name">Orquestación</div>
+        <div style="margin-top:4px"><span class="badge badge-pend">PEND</span></div>
+      </div>
+      <div class="pipe-step pending">
+        <div class="pipe-step-id">F-3</div>
+        <div class="pipe-step-name">Dashboard</div>
+        <div style="margin-top:4px"><span class="badge badge-pend">PEND</span></div>
+      </div>
+      <div class="pipe-step pending">
+        <div class="pipe-step-id">F-4</div>
+        <div class="pipe-step-name">Validación</div>
+        <div style="margin-top:4px"><span class="badge badge-pend">PEND</span></div>
+      </div>
+      <div class="pipe-step pending">
+        <div class="pipe-step-id">F-5</div>
+        <div class="pipe-step-name">Producción</div>
+        <div style="margin-top:4px"><span class="badge badge-pend">PEND</span></div>
+      </div>
+    </div>
+
+    <!-- Global Progress -->
+    <div class="panel" style="margin-bottom:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="section-title" style="margin-bottom:0">PROGRESO GLOBAL — AVIA Senior</span>
+        <span style="font-family:var(--font-mono);font-size:13px;color:#a5a0ff;font-weight:700">12.5%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="globalBar" style="width:12.5%"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--color-muted)"><span class="dot dot-green" style="margin-right:4px"></span>Completado: T-00</span>
+        <span style="font-size:11px;color:var(--color-muted)"><span class="dot dot-purple blink" style="margin-right:4px"></span>En curso: T-01</span>
+        <span style="font-size:11px;color:var(--color-muted)"><span class="dot dot-red" style="margin-right:4px"></span>Bloqueados: T-02</span>
+        <span style="font-size:11px;color:var(--color-muted)"><span class="dot dot-gray" style="margin-right:4px"></span>Pendientes: F-1 → F-5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONTOLOGÍA: ENTIDADES -->
+  <div class="panel">
+    <div class="section-title">📐 T-01 · Entidades Tipadas (Atomic Design)</div>
+
+    <div class="entity-card active">
+      <div class="entity-header">
+        <div class="entity-name"><span class="dot dot-purple"></span> Agente</div>
+        <span class="badge badge-wip">ATOM</span>
+      </div>
+      <div class="type-chip">interface IAgente</div>
+      <div class="entity-props">
+        <span class="prop-tag">id: <span>UUID</span></span>
+        <span class="prop-tag">nombre: <span>string</span></span>
+        <span class="prop-tag">rol: <span>RolEnum</span></span>
+        <span class="prop-tag">capacidades: <span>ICapacidad[]</span></span>
+        <span class="prop-tag">estado: <span>EstadoEnum</span></span>
+      </div>
+    </div>
+
+    <div class="entity-card active">
+      <div class="entity-header">
+        <div class="entity-name"><span class="dot dot-purple"></span> Capacidad</div>
+        <span class="badge badge-wip">ATOM</span>
+      </div>
+      <div class="type-chip">interface ICapacidad</div>
+      <div class="entity-props">
+        <span class="prop-tag">tipo: <span>CapTipoEnum</span></span>
+        <span class="prop-tag">nivel: <span>1..5</span></span>
+        <span class="prop-tag">restringida_por: <span>IRegla[]</span></span>
+      </div>
+    </div>
+
+    <div class="entity-card active">
+      <div class="entity-header">
+        <div class="entity-name"><span class="dot dot-purple"></span> Tarea</div>
+        <span class="badge badge-wip">MOLECULE</span>
+      </div>
+      <div class="type-chip">interface ITarea</div>
+      <div class="entity-props">
+        <span class="prop-tag">id: <span>T-XX</span></span>
+        <span class="prop-tag">fase: <span>FaseEnum</span></span>
+        <span class="prop-tag">bloquea: <span>ITarea[]</span></span>
+        <span class="prop-tag">bloqueada_por: <span>ITarea[]</span></span>
+        <span class="prop-tag">asignada_a: <span>IAgente</span></span>
+        <span class="prop-tag">prioridad: <span>PrioEnum</span></span>
+      </div>
+    </div>
+
+    <div class="entity-card active">
+      <div class="entity-header">
+        <div class="entity-name"><span class="dot dot-purple"></span> Flujo</div>
+        <span class="badge badge-wip">ORGANISM</span>
+      </div>
+      <div class="type-chip">interface IFlujo</div>
+      <div class="entity-props">
+        <span class="prop-tag">etapas: <span>ITarea[]</span></span>
+        <span class="prop-tag">orquestador: <span>IAgente</span></span>
+        <span class="prop-tag">auditor: <span>IAgente</span></span>
+        <span class="prop-tag">estado: <span>FlujoEstadoEnum</span></span>
+      </div>
+    </div>
+
+    <div class="entity-card" style="border-left:3px solid var(--color-warn)">
+      <div class="entity-header">
+        <div class="entity-name"><span class="dot dot-yellow"></span> Regla</div>
+        <span class="badge badge-warn">ATOM</span>
+      </div>
+      <div class="type-chip">interface IRegla</div>
+      <div class="entity-props">
+        <span class="prop-tag">origen: <span>LibroEnum</span></span>
+        <span class="prop-tag">codigo: <span>string</span></span>
+        <span class="prop-tag">severidad: <span>HARD|SOFT</span></span>
+        <span class="prop-tag">aplica_a: <span>IAgente|IFlujo</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONTOLOGÍA: RELACIONES + ENUMS -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <div class="panel">
+      <div class="section-title">🔗 Relaciones Tipadas</div>
+      <div class="rel-row">
+        <span class="type-chip">IAgente</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">orquesta</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">IAgente[]</span>
+      </div>
+      <div class="rel-row">
+        <span class="type-chip">IAgente</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">delega</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">ITarea</span>
+      </div>
+      <div class="rel-row">
+        <span class="type-chip">ITarea</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">bloquea</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">ITarea[]</span>
+      </div>
+      <div class="rel-row">
+        <span class="type-chip">IFlujo</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">contiene</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">ITarea[]</span>
+      </div>
+      <div class="rel-row">
+        <span class="type-chip">IRegla</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">restringe</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">ICapacidad</span>
+      </div>
+      <div class="rel-row">
+        <span class="type-chip">AVIA-Auditor</span>
+        <span class="rel-arrow">→</span>
+        <span class="rel-chip">valida</span>
+        <span class="rel-arrow">→</span>
+        <span class="type-chip">IFlujo</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">📋 Enumeraciones Core</div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">RolEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">ORQUESTADOR | AUDITOR | PIPELINE | ONTOLOGIA | SENSOR</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">EstadoEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">ACTIVO | INACTIVO | ERROR | DEGRADADO</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">FaseEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">T00 | T01 | T02 | F1..F5</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">PrioEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">CRITICA | ALTA | MEDIA | BAJA</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">LibroEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">LIBRO_BLANCO | PIPELINE | ONTOLOGIA</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">CapTipoEnum</span>
+        <span class="stat-val" style="font-size:11px;color:#a5a0ff">ORQUESTACION | DECISION | COORD | PRIOR | DELEG</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">📊 Métricas T-01</div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">Entidades definidas</span>
+        <span class="stat-val" style="color:var(--color-accent2)" id="entCount">5 / 8</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">Relaciones tipadas</span>
+        <span class="stat-val" style="color:var(--color-accent2)">6 / 9</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">Enumeraciones</span>
+        <span class="stat-val" style="color:var(--color-accent2)">6 / 6</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">Cobertura Libro Blanco</span>
+        <span class="stat-val" style="color:var(--color-warn)">68%</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--color-muted)">Deuda técnica</span>
+        <span class="stat-val" style="color:var(--color-success)">0 (fundacional)</span>
+      </div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-muted);margin-bottom:4px">
+          <span>T-01 Progreso</span><span id="t01pct">62%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="t01bar" style="width:62%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAFO VISUAL -->
+  <div class="col-full panel">
+    <div class="section-title">🕸️ Grafo Ontológico AVIA — Vista Constelación</div>
+    <div class="onto-graph">
+      <svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" id="ontoSvg">
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#6c63ff88"/>
+          </marker>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#00d4aa88"/>
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Edges -->
+        <!-- Agente → orquesta → Agente -->
+        <line x1="200" y1="140" x2="450" y2="140" stroke="#6c63ff55" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- Agente → delega → Tarea -->
+        <line x1="200" y1="155" x2="200" y2="240" stroke="#6c63ff55" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- Flujo → contiene → Tarea -->
+        <line x1="700" y1="155" x2="700" y2="240" stroke="#00d4aa55" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+        <!-- Tarea → bloquea → Tarea -->
+        <path d="M250,250 Q400,220 530,250" stroke="#ef444488" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <!-- Regla → restringe → Capacidad -->
+        <line x1="450" y1="50" x2="700" y2="50" stroke="#f59e0b55" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+        <!-- Auditor → valida → Flujo -->
+        <line x1="450" y1="220" x2="650" y2="140" stroke="#00d4aa55" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+
+        <!-- Labels on edges -->
+        <text x="310" y="132" fill="#6c63ff99" font-size="10" font-family="monospace">orquesta</text>
+        <text x="145" y="205" fill="#6c63ff99" font-size="10" font-family="monospace">delega</text>
+        <text x="718" y="205" fill="#00d4aa99" font-size="10" font-family="monospace">contiene</text>
+        <text x="360" y="225" fill="#ef444499" font-size="10" font-family="monospace">bloquea</text>
+        <text x="555" y="42" fill="#f59e0b99" font-size="10" font-family="monospace">restringe</text>
+        <text x="510" y="175" fill="#00d4aa99" font-size="10" font-family="monospace">valida</text>
+
+        <!-- Node: Agente (Orquestador) -->
+        <circle cx="200" cy="140" r="38" fill="#6c63ff22" stroke="#6c63ff" stroke-width="2" filter="url(#glow)"/>
+        <text x="200" y="136" text-anchor="middle" fill="#a5a0ff" font-size="11" font-weight="700" font-family="monospace">IAgente</text>
+        <text x="200" y="152" text-anchor="middle" fill="#6c63ff99" font-size="10" font-family="monospace">ORQUESTADOR</text>
+
+        <!-- Node: Flujo -->
+        <circle cx="700" cy="140" r="38" fill="#00d4aa22" stroke="#00d4aa" stroke-width="2" filter="url(#glow)"/>
+        <text x="700" y="136" text-anchor="middle" fill="#00d4aa" font-size="11" font-weight="700" font-family="monospace">IFlujo</text>
+        <text x="700" y="152" text-anchor="middle" fill="#00d4aa88" font-size="10" font-family="monospace">PIPELINE</text>
+
+        <!-- Node: Tarea -->
+        <rect x="162" y="230" width="76" height="36" rx="8" fill="#ef444422" stroke="#ef4444" stroke-width="1.5"/>
+        <text x="200" y="250" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="700" font-family="monospace">ITarea</text>
+        <text x="200" y="262" text-anchor="middle" fill="#ef444488" font-size="10" font-family="monospace">BLOQUEANTE</text>
+
+        <!-- Node: Tarea 2 (general) -->
+        <rect x="554" y="230" width="76" height="36" rx="8" fill="#ef444422" stroke="#ef444488" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <text x="592" y="250" text-anchor="middle" fill="#ef444499" font-size="11" font-weight="700" font-family="monospace">ITarea</text>
+        <text x="592" y="262" text-anchor="middle" fill="#ef444466" font-size="10" font-family="monospace">FASE 1-5</text>
+
+        <!-- Node: Regla -->
+        <rect x="412" y="28" width="76" height="36" rx="8" fill="#f59e0b22" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="450" y="48" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700" font-family="monospace">IRegla</text>
+        <text x="450" y="60" text-anchor="middle" fill="#f59e0b88" font-size="10" font-family="monospace">LIBRO BLANCO</text>
+
+        <!-- Node: Capacidad -->
+        <rect x="662" y="28" width="76" height="36" rx="8" fill="#10b98122" stroke="#10b981" stroke-width="1.5"/>
+        <text x="700" y="48" text-anchor="middle" fill="#10b981" font-size="11" font-weight="700" font-family="monospace">ICapacidad</text>
+        <text x="700" y="60" text-anchor="middle" fill="#10b98188" font-size="10" font-family="monospace">TYPED</text>
+
+        <!-- Node: AVIA-Auditor -->
+        <ellipse cx="450" cy="210" rx="55" ry="26" fill="#f59e0b1a" stroke="#f59e0b" stroke-width="1.5" filter="url(#glow)"/>
+        <text x="450" y="207" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700" font-family="monospace">AVIA-Auditor</text>
+        <text x="450" y="220" text-anchor="middle" fill="#f59e0b88" font-size="10" font-family="monospace">ORCHESTRATOR</text>
+
+        <!-- Node: Agente clones -->
+        <circle cx="450" cy="140" r="32" fill="#22263a" stroke="#6c63ff66" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="450" y="136" text-anchor="middle" fill="#6c63ff88" font-size="10" font-family="monospace">IAgente[]</text>
+        <text x="450" y="150" text-anchor="middle" fill="#6c63ff66" font-size="9" font-family="monospace">CLONES</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- LOG STREAM -->
+  <div class="col-full panel">
+    <div class="section-title">📟 AVIA-Auditor · Stream de Ejecución</div>
+    <div class="log-stream" id="logStream"></div>
+  </div>
+
+  <!-- PRÓXIMA ACCIÓN -->
+  <div class="col-full panel" style="border:1px solid var(--color-accent);background:#6c63ff0a">
+    <div class="section-title" style="color:var(--color-accent)">⚡ PRÓXIMA ACCIÓN RECOMENDADA</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <div>
+        <div style="font-size:11px;color:var(--color-muted);margin-bottom:4px">AHORA → T-01</div>
+        <div style="font-weight:700;color:#fff">Completar Ontología</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-top:4px">Faltan: IEvento, IDecision, IContexto + validación Libro Blanco</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--color-muted);margin-bottom:4px">SIGUIENTE → T-02</div>
+        <div style="font-weight:700;color:#a5a0ff">Pipeline Formal</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-top:4px">Definir DAG de fases, contratos de interfaces, validadores</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--color-muted);margin-bottom:4px">LUEGO → F-1</div>
+        <div style="font-weight:700;color:var(--color-muted)">Agentes Core</div>
+        <div style="font-size:12px;color:var(--color-muted);margin-top:4px">Instanciar clones con ontología tipada. Sin T-01+T-02 = deuda técnica</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Clock
+  function tick() {
+    const n = new Date();
+    document.getElementById('clock').textContent =
+      n.toLocaleDateString('es-ES') + ' ' + n.toLocaleTimeString('es-ES');
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Log stream
+  const LOGS = [
+    { t: 'wip', m: '[AVIA-Auditor] Iniciando T-01: Definición Ontología AVIA' },
+    { t: 'ok',  m: '[T-01] Entidad IAgente → tipada ✓ (ATOM)' },
+    { t: 'ok',  m: '[T-01] Entidad ICapacidad → tipada ✓ (ATOM)' },
+    { t: 'ok',  m: '[T-01] Entidad ITarea → tipada ✓ (MOLECULE)' },
+    { t: 'ok',  m: '[T-01] Entidad IFlujo → tipada ✓ (ORGANISM)' },
+    { t: 'ok',  m: '[T-01] Entidad IRegla → tipada ✓ (ATOM) — origen: LibroEnum' },
+    { t: 'wip', m: '[T-01] Pendiente: IEvento, IDecision, IContexto' },
+    { t: 'blk', m: '[T-02] BLOQUEADO: requiere T-01 completado (100%)' },
+    { t: 'blk', m: '[F-1..F-5] BLOQUEADOS: requieren T-01 + T-02' },
+    { t: 'inf', m: '[AVIA-Auditor] Regla #47 SafeFetch: ACTIVA en todos los flujos' },
+    { t: 'inf', m: '[AVIA-Auditor] Deuda técnica acumulada: 0 — fundación correcta' },
+    { t: 'ok',  m: '[Constelación] 6 Enumeraciones core: COMPLETADAS ✓' },
+    { t: 'ok',  m: '[Constelación] 6 Relaciones tipadas: COMPLETADAS (9 target)' },
+    { t: 'wip', m: '[AVIA-Auditor] Cobertura Libro Blanco: 68% → target 100%' },
+  ];
+
+  const stream = document.getElementById('logStream');
+  let idx = 0;
+
+  function addLog() {
+    if (idx >= LOGS.length) return;
+    const entry = LOGS[idx++];
+    const ts = new Date().toLocaleTimeString('es-ES');
+    const div = document.createElement('div');
+    div.className = 'log-line';
+    const cls = entry.t === 'ok' ? 'log-ok' : entry.t === 'blk' ? 'log-blk'
+      : entry.t === 'wip' ? 'log-wip' : 'log-inf';
+    div.innerHTML = `<span class="log-ts">[${ts}]</span><span class="${cls}">${entry.m}</span>`;
+    stream.appendChild(div);
+    stream.scrollTop = stream.scrollHeight;
+  }
+
+  LOGS.forEach((_, i) => setTimeout(addLog, i * 350));
+
+  // Animate progress
+  setTimeout(() => {
+    document.getElementById('t01bar').style.width = '62%';
+    document.getElementById('globalBar').style.width = '12.5%';
+  }, 500);
+</script>
+</body>
+</html>

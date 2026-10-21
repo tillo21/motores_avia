@@ -1,0 +1,1 @@
+https://chatgpt.com/g/g-6958983716fc8191b8e530d7f578515f-arquitecto-de-bots

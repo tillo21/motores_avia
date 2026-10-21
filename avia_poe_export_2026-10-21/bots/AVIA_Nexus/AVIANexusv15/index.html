@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AVIA Nexus — Gestión de Proyectos (Demo sandbox-safe)</title>
+
+  <style>
+    :root{
+      --primary:#1e40af;
+      --primary2:#3b82f6;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --success:#10b981;
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --shadow: rgba(2,6,23,.08);
+    }
+    [data-theme="dark"]{
+      --primary:#60a5fa;
+      --primary2:#3b82f6;
+      --danger:#f87171;
+      --warning:#fbbf24;
+      --success:#34d399;
+      --bg:#0b1220;
+      --card:#0f1b32;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --border:#24324a;
+      --shadow: rgba(0,0,0,.35);
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .container{ max-width:1200px; margin:0 auto; padding:18px; }
+    header{
+      position:sticky; top:0; z-index:50;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid var(--border);
+    }
+    .header-inner{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:14px 18px;
+      max-width:1200px; margin:0 auto;
+    }
+
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{
+      width:42px; height:42px; border-radius:12px;
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      display:flex; align-items:center; justify-content:center;
+      color:white; font-weight:900;
+    }
+    .brand h1{ font-size:16px; line-height:1.1; }
+    .brand p{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+    .right{
+      display:flex; align-items:center; gap:10px;
+    }
+
+    .pill{
+      padding:8px 10px; border:1px solid var(--border); border-radius:999px;
+      color:var(--muted); font-size:12px; background: color-mix(in srgb, var(--card) 70%, transparent);
+    }
+
+    .icon-btn{
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 80%, transparent);
+      color: var(--text);
+      border-radius:12px;
+      width:42px; height:42px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .icon-btn:hover{ box-shadow:0 6px 18px var(--shadow); transform: translateY(-1px); transition: all .15s; }
+
+    .badge{
+      position:absolute;
+      top:6px; right:6px;
+      background: var(--danger); color:white;
+      border-radius:999px;
+      min-width:18px; height:18px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px;
+      padding:0 6px;
+      font-weight:800;
+      pointer-events:none;
+    }
+
+    .bell-wrap{ position:relative; }
+    .dropdown{
+      position:absolute; right:18px; top:64px;
+      width:min(440px, calc(100vw - 32px));
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow: 0 20px 60px var(--shadow);
+      display:none;
+      overflow:hidden;
+    }
+    .dropdown.active{ display:block; }
+    .dropdown-head{
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .dropdown-head h3{ font-size:13px; }
+    .dropdown-head button{
+      border:1px solid var(--border);
+      border-radius:10px; padding:8px 10px;
+      background: transparent; cursor:pointer;
+      color: var(--primary);
+      font-weight:700; font-size:12px;
+    }
+    .dropdown-list{
+      max-height:300px; overflow:auto;
+      padding:6px;
+    }
+    .notif-item{
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid transparent;
+      cursor:pointer;
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .notif-item:hover{ background: rgba(59,130,246,.08); border-color: rgba(59,130,246,.22); }
+    .notif-item.unread{ background: rgba(59,130,246,.10); }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      margin-top:5px; background: var(--primary2);
+      flex:0 0 auto;
+    }
+    .notif-body{ flex:1; min-width:0; }
+    .notif-title{ font-size:13px; font-weight:800; }
+    .notif-msg{ margin-top:3px; font-size:12px; color:var(--muted); line-height:1.35; }
+    .notif-time{ margin-top:6px; font-size:11px; color:var(--muted); }
+
+    .section{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:16px;
+      margin-top:18px;
+    }
+    .grid-4{
+      display:grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:12px;
+    }
+    @media (max-width: 900px){
+      .grid-4{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 520px){
+      .grid-4{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: 0 10px 35px var(--shadow);
+      padding:14px;
+    }
+    .kpi{
+      display:flex; justify-content:space-between; gap:10px; align-items:flex-start;
+      min-height:86px;
+    }
+    .kpi .num{ font-size:26px; font-weight:900; }
+    .kpi .lbl{ color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; }
+    .kpi .trend{
+      font-size:12px; font-weight:900;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      align-self:flex-start;
+      white-space:nowrap;
+    }
+    .trend.up{ color: var(--success); border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.12); }
+    .trend.down{ color: var(--danger); border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.10); }
+    .trend.neutral{ color: var(--primary2); border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.10); }
+
+    .layout{
+      display:grid; grid-template-columns: 1.1fr .9fr; gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .layout{ grid-template-columns: 1fr; }
+    }
+
+    .tabs{ display:flex; gap:10px; flex-wrap:wrap; }
+    .tab{
+      border:1px solid var(--border);
+      background: transparent;
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800; font-size:13px;
+      color:var(--muted);
+    }
+    .tab.active{
+      border-color: rgba(59,130,246,.35);
+      background: rgba(59,130,246,.10);
+      color: var(--text);
+    }
+
+    .row-actions{ display:flex; gap:8px; }
+    .btn{
+      border:1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:13px;
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      border-color: transparent;
+      color:white;
+    }
+    .btn.danger{
+      background: rgba(239,68,68,.10);
+      border-color: rgba(239,68,68,.35);
+      color: var(--danger);
+    }
+    .btn:hover{ transform: translateY(-1px); transition: all .15s; }
+
+    input, textarea, select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 80%, transparent);
+      color: var(--text);
+      outline:none;
+    }
+    textarea{ resize: vertical; min-height:84px; }
+    input:focus, textarea:focus, select:focus{
+      border-color: rgba(59,130,246,.45);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    }
+    .form-grid{ display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 620px){ .form-grid{ grid-template-columns: 1fr; } }
+    label{ display:block; font-size:12px; font-weight:900; color: var(--muted); margin-bottom:6px; }
+
+    .table{
+      width:100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius:16px;
+      border:1px solid var(--border);
+      background: var(--card);
+    }
+    .table th, .table td{
+      padding:10px 10px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+      font-size:13px;
+    }
+    .table th{ color:var(--muted); font-size:12px; text-transform:uppercase; }
+    .table tr:hover td{ background: rgba(59,130,246,.06); }
+
+    .muted{ color:var(--muted); }
+    .small{ font-size:12px; }
+
+    /* Toasts */
+    .toast-container{
+      position:fixed;
+      top:16px; right:16px;
+      z-index:9999;
+      display:flex; flex-direction:column;
+      gap:10px;
+      width:min(420px, calc(100vw - 32px));
+      pointer-events:none;
+    }
+    .toast{
+      pointer-events:auto;
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow: 0 18px 60px var(--shadow);
+      padding:12px 12px;
+      display:flex; gap:10px; align-items:flex-start;
+      animation: toastIn .2s ease-out;
+    }
+    @keyframes toastIn{ from{ transform: translateY(-8px); opacity:.0;} to{ transform: translateY(0); opacity:1;} }
+    .t-icon{ width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; color:white; }
+    .t-success .t-icon{ background: var(--success); }
+    .t-error .t-icon{ background: var(--danger); }
+    .t-info .t-icon{ background: var(--primary2); }
+    .t-warning .t-icon{ background: var(--warning); }
+    .toast h4{ font-size:13px; font-weight:900; }
+    .toast p{ font-size:12px; color: var(--muted); margin-top:3px; line-height:1.35; }
+
+    /* Modal */
+    .modal-overlay{
+      position:fixed; inset:0; z-index:1000;
+      background: rgba(2,6,23,.55);
+      display:none;
+      align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .modal-overlay.active{ display:flex; }
+    .modal{
+      width:min(820px, 100%);
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: 0 30px 90px var(--shadow);
+      overflow:hidden;
+    }
+    .modal-head{
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), transparent);
+    }
+    .modal-head h2{ font-size:15px; font-weight:1000; }
+    .modal-body{ padding:14px; }
+    .modal-foot{
+      padding:12px 14px;
+      border-top:1px solid var(--border);
+      display:flex; justify-content:flex-end; gap:10px;
+      background: color-mix(in srgb, var(--card) 85%, transparent);
+    }
+
+    /* Anti-blank panel */
+    .render-status{
+      margin-top:14px;
+      border-radius:16px;
+      border:1px dashed rgba(59,130,246,.35);
+      background: rgba(59,130,246,.08);
+      padding:12px;
+      font-size:12px;
+      color: var(--muted);
+    }
+    .render-status strong{ color: var(--text); }
+    .render-status pre{
+      white-space:pre-wrap; word-break:break-word;
+      margin-top:8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:11px;
+      color: var(--muted);
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{ scroll-behavior:auto !important; }
+      .toast{ animation:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="logo">A</div>
+        <div>
+          <h1>AVIA Nexus</h1>
+          <p>Gestión de proyectos (demo sandbox-safe)</p>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="pill" id="sessionPill">Sesión: demo</div>
+
+        <div class="bell-wrap">
+          <button class="icon-btn" id="bellBtn" aria-label="Abrir centro de notificaciones" type="button">🔔</button>
+          <div class="badge" id="notifBadge" style="display:none;">0</div>
+
+          <div class="dropdown" id="notifDropdown" role="dialog" aria-label="Centro de notificaciones">
+            <div class="dropdown-head">
+              <h3>Notificaciones</h3>
+              <button id="markAllReadBtn" type="button">Marcar todas</button>
+            </div>
+            <div class="dropdown-list" id="notifList"></div>
+            <div style="padding:12px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+              <button class="btn" id="closeNotifBtn" type="button">Cerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="icon-btn" id="themeBtn" aria-label="Cambiar tema" type="button">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Render status -->
+    <div class="render-status" id="renderStatus" role="status" aria-live="polite">
+      <strong>Estado del render:</strong> <span id="renderStatusText">Inicializando…</span>
+      <pre id="renderStatusDetail"></pre>
+    </div>
+
+    <div class="section">
+      <div class="grid-4" id="kpiGrid">
+        <!-- KPI cards -->
+      </div>
+
+      <div class="layout">
+        <div class="card">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+            <div>
+              <h2 style="font-size:18px; font-weight:1000;">Proyectos</h2>
+              <div class="small muted">CRUD completo en memoria (demo)</div>
+            </div>
+
+            <div class="row-actions">
+              <button class="btn" id="refreshBtn" type="button" title="Recargar demo">↻</button>
+              <button class="btn primary" id="openCreateProjectBtn" type="button">➕ Nuevo</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <div style="flex:1; min-width:240px;">
+              <label for="projectSearch">Buscar (título o código)</label>
+              <input id="projectSearch" type="search" placeholder="Ej: BIO-AVIA-25" />
+            </div>
+
+            <div style="min-width:220px;">
+              <label for="projectStatusFilter">Filtrar por estado</label>
+              <select id="projectStatusFilter">
+                <option value="all">Todos</option>
+                <option value="activo">Activo</option>
+                <option value="revision">En Revisión</option>
+                <option value="riesgo">En Riesgo</option>
+                <option value="completo">Completado</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="overflow:auto;">
+            <table class="table" aria-label="Tabla de proyectos">
+              <thead>
+                <tr>
+                  <th style="width:170px;">Código</th>
+                  <th>Proyecto</th>
+                  <th style="width:150px;">Estado</th>
+                  <th style="width:170px;">Progreso</th>
+                  <th style="width:170px;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="projectsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="font-size:18px; font-weight:1000; margin-bottom:10px;">Resumen rápido</h2>
+          <div id="summaryBox" class="small muted"></div>
+
+          <div style="height:12px;"></div>
+
+          <h3 style="font-size:14px; font-weight:1000; margin-bottom:10px;">Actividad reciente</h3>
+          <div id="activityList" class="small muted" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+          <div style="height:12px;"></div>
+
+          <div class="small muted">
+            <strong>Nota:</strong> esta demo evita <code>localStorage</code> por compatibilidad sandbox.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle">Nuevo proyecto</h2>
+        <button class="btn" id="modalCloseBtn" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="projectForm">
+          <div class="form-grid">
+            <div>
+              <label for="pCode">Código</label>
+              <input id="pCode" type="text" placeholder="Ej: BIO-AVIA-25" required />
+            </div>
+            <div>
+              <label for="pStatus">Estado</label>
+              <select id="pStatus">
+                <option value="activo">Activo</option>
+                <option value="revision">En Revisión</option>
+                <option value="riesgo">En Riesgo</option>
+                <option value="completo">Completado</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="height:12px;"></div>
+
+          <div class="form-grid">
+            <div style="grid-column: 1 / -1;">
+              <label for="pTitle">Título</label>
+              <input id="pTitle" type="text" placeholder="Biomarcadores en Neurodegeneración AVIA" required />
+            </div>
+          </div>
+
+          <div style="height:12px;"></div>
+
+          <div>
+            <label for="pDesc">Descripción</label>
+            <textarea id="pDesc" placeholder="Resumen del proyecto…"></textarea>
+          </div>
+
+          <div style="height:12px;"></div>
+
+          <div class="form-grid">
+            <div>
+              <label for="pProgress">Progreso (%)</label>
+              <input id="pProgress" type="number" min="0" max="100" value="0" required />
+            </div>
+            <div>
+              <label for="pDeadline">Fecha límite</label>
+              <input id="pDeadline" type="date" />
+            </div>
+          </div>
+
+          <input type="hidden" id="editingProjectId" value="" />
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="modalCancelBtn" type="button">Cancelar</button>
+        <button class="btn primary" id="modalSaveBtn" type="submit" form="projectForm">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Anti-Blanco / Render contract
+    // =========================
+    (function antiBlankSetup(){
+      const statusText = document.getElementById('renderStatusText');
+      const statusDetail = document.getElementById('renderStatusDetail');
+
+      const pushDetail = (msg) => {
+        try{
+          const line = `[${new Date().toISOString()}] ${msg}`;
+          statusDetail.textContent = (statusDetail.textContent ? statusDetail.textContent + "\n" : "") + line;
+        }catch(e){}
+      };
+
+      window.onerror = function(message, source, lineno, colno, error){
+        pushDetail(`ERROR: ${message} (${source}:${lineno}:${colno})`);
+        if(statusText) statusText.textContent = "Fallo en runtime (ver detalle)";
+      };
+
+      pushDetail("Anti-Blanco activado. Preparando init…");
+    })();
+
+    // =========================
+    // Datos (en memoria)
+    // =========================
+    const AppState = {
+      theme: 'light',
+      projects: [],
+      activity: [],
+      notifications: [],
+      notifDropdownOpen: false
+    };
+
+    const genId = () => String(Date.now() + Math.floor(Math.random()*1000));
+
+    const nowIso = () => new Date().toISOString();
+    const timeAgo = (iso) => {
+      const d = new Date(iso).getTime();
+      const diffMs = Date.now() - d;
+      const sec = Math.max(0, Math.floor(diffMs/1000));
+      if(sec < 60) return 'Ahora';
+      const min = Math.floor(sec/60);
+      if(min < 60) return `Hace ${min} min`;
+      const hr = Math.floor(min/60);
+      if(hr < 24) return `Hace ${hr} h`;
+      const days = Math.floor(hr/24);
+      return `Hace ${days} d`;
+    };
+
+    const esc = (s) => String(s ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+
+    // =========================
+    // Toasts
+    // =========================
+    function toast(type, title, message){
+      const container = document.getElementById('toastContainer');
+      if(!container) return;
+
+      const t = document.createElement('div');
+      t.className = `toast t-${type}`;
+      t.setAttribute('role','status');
+
+      const icon = ({
+        success:'✅', error:'❌', warning:'⚠️', info:'ℹ️'
+      })[type] || 'ℹ️';
+
+      t.innerHTML = `
+        <div class="t-icon">${icon}</div>
+        <div>
+          <h4>${esc(title)}</h4>
+          <p>${esc(message)}</p>
+        </div>
+      `;
+
+      container.appendChild(t);
+
+      setTimeout(() => {
+        try{ t.remove(); }catch(e){}
+      }, 3200);
+    }
+
+    // =========================
+    // Notificaciones (in-memory)
+    // =========================
+    function notifTypeToLabel(type){
+      const map = {
+        task:'🧩', document:'📄', user:'👤', system:'⚙️'
+      };
+      return map[type] || '🔔';
+    }
+
+    function addNotification({type='system', title='Notificación', message='Sin mensaje'}){
+      AppState.notifications.unshift({
+        id: genId(),
+        type,
+        title,
+        message,
+        read: false,
+        time: nowIso()
+      });
+      renderNotificationBadge();
+      renderNotificationDropdownList();
+
+      // toast “leve”
+      toast('info', title, message);
+    }
+
+    function markAllRead(){
+      AppState.notifications.forEach(n => n.read = true);
+      renderNotificationBadge();
+      renderNotificationDropdownList();
+      toast('success', 'Actualizado', 'Todas las notificaciones se marcaron como leídas');
+    }
+
+    function markOneRead(id){
+      const n = AppState.notifications.find(x => x.id === id);
+      if(n && !n.read){
+        n.read = true;
+        renderNotificationBadge();
+        renderNotificationDropdownList();
+      }
+    }
+
+    function getUnreadCount(){
+      return AppState.notifications.filter(n => !n.read).length;
+    }
+
+    function renderNotificationBadge(){
+      const badge = document.getElementById('notifBadge');
+      if(!badge) return;
+      const unread = getUnreadCount();
+      if(unread > 0){
+        badge.style.display = 'flex';
+        badge.textContent = unread > 99 ? '99+' : String(unread);
+      }else{
+        badge.style.display = 'none';
+      }
+    }
+
+    function getNotificationIcon(type){
+      return notifTypeToLabel(type);
+    }
+
+    function renderNotificationDropdownList(){
+      const list = document.getElementById('notifList');
+      if(!list) return;
+
+      const unread = AppState.notifications.filter(n => !n.read);
+      const toShow = AppState.notifications.slice(0, 8);
+
+      if(toShow.length === 0){
+        list.innerHTML = `<div class="notif-item" style="cursor:default;">
+          <div class="dot" style="opacity:.3; background: var(--muted);"></div>
+          <div class="notif-body">
+            <div class="notif-title">Sin notificaciones</div>
+            <div class="notif-msg">Cuando ocurran eventos, aparecerán aquí.</div>
+          </div>
+        </div>`;
+        return;
+      }
+
+      list.innerHTML = toShow.map(n => `
+        <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}">
+          ${n.read ? '' : '<div class="dot"></div>'}
+          ${n.read ? '<div class="dot" style="opacity:.25;"></div>' : ''}
+          <div class="notif-body">
+            <div class="notif-title">${esc(getNotificationIcon(n.type))} ${esc(n.title)}</div>
+            <div class="notif-msg">${esc(n.message)}</div>
+            <div class="notif-time">${esc(timeAgo(n.time))}</div>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.notif-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const id = item.getAttribute('data-id');
+          markOneRead(id);
+        });
+      });
+    }
+
+    // =========================
+    // CRUD Proyectos (en memoria)
+    // =========================
+    const statusClass = (status) => {
+      const map = {
+        activo: {border:'#10b981', bg:'rgba(16,185,129,.12)', text:'rgb(16 185 129 / 1)'},
+        revision: {border:'#f59e0b', bg:'rgba(245,158,11,.12)', text:'rgb(217 119 6 / 1)'},
+        riesgo: {border:'#ef4444', bg:'rgba(239,68,68,.10)', text:'rgb(239 68 68 / 1)'},
+        completo: {border:'#7c3aed', bg:'rgba(124,58,237,.12)', text:'rgb(124 58 237 / 1)'}
+      };
+      return map[status] || map.activo;
+    };
+
+    function seed(){
+      AppState.projects = [
+        { id: 1, code:'BIO-AVIA-25', title:'Biomarcadores en Neurodegeneración AVIA', status:'activo', progress:65, desc:'IA multimodal para validación de biomarcadores tempranos.', deadline:'2026-06-30' },
+        { id: 2, code:'NEUROCOG-B3', title:'Protocolo NeuroCog — Deterioro Cognitivo', status:'revision', progress:38, desc:'Protocolo clínico con análisis neurocognitivo asistido.', deadline:'2026-12-31' },
+        { id: 3, code:'CARDIO-FII', title:'Ensayo Clínico FaseII — CardioAVIA', status:'riesgo', progress:22, desc:'Evaluación de biomarcadores cardíacos con IA predictiva de riesgo.', deadline:'2027-01-31' }
+      ];
+
+      AppState.activity = [
+        { id: genId(), icon:'🚀', text:'Demo iniciada y módulos cargados', time: timeAgo(nowIso()) }
+      ];
+
+      AppState.notifications = [
+        { id: genId(), type:'system', title:'Sistema listo', message:'Gestión de proyectos cargada en modo demo (sin persistencia).', read:false, time: nowIso() }
+      ];
+    }
+
+    function addActivity(icon, text){
+      AppState.activity.unshift({ id: genId(), icon, text, time: timeAgo(nowIso()) });
+      if(AppState.activity.length > 6) AppState.activity.pop();
+      renderActivity();
+    }
+
+    function filteredProjects(){
+      const q = (document.getElementById('projectSearch')?.value || '').trim().toLowerCase();
+      const st = document.getElementById('projectStatusFilter')?.value || 'all';
+
+      return AppState.projects.filter(p => {
+        const matchesQ = !q || p.title.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+        const matchesS = st === 'all' || p.status === st;
+        return matchesQ && matchesS;
+      });
+    }
+
+    function renderKPIs(){
+      const kpiGrid = document.getElementById('kpiGrid');
+      if(!kpiGrid) return;
+
+      const total = AppState.projects.length;
+      const riesgo = AppState.projects.filter(p => p.status === 'riesgo').length;
+      const revision = AppState.projects.filter(p => p.status === 'revision').length;
+      const activos = AppState.projects.filter(p => p.status === 'activo').length;
+      const completados = AppState.projects.filter(p => p.status === 'completo').length;
+
+      const pendiente = AppState.projects.filter(p => p.progress < 60 && p.status !== 'completo').length;
+
+      const productivity = total > 0
+        ? Math.round((AppState.projects.filter(p=>p.progress>=60).length / total) * 100)
+        : 0;
+
+      kpiGrid.innerHTML = [
+        kpiCard('⚠️ Proyectos en riesgo', riesgo, riesgo>0?'down':'neutral'),
+        kpiCard('🟢 Activos', activos, activos>0?'up':'neutral'),
+        kpiCard('📋 Pendientes', pendiente, pendiente>0?'down':'neutral'),
+        kpiCard('📈 Productividad', productivity + '%', productivity>=50?'up':'neutral')
+      ].join('');
+    }
+
+    function kpiCard(label, value, trend){
+      const trendClass = trend === 'up' ? 'up' : (trend === 'down' ? 'down' : 'neutral');
+      const arrow = trend === 'up' ? '↗' : (trend === 'down' ? '↘' : '•');
+      return `
+        <div class="card kpi">
+          <div>
+            <div class="lbl">${esc(label)}</div>
+            <div class="num">${esc(value)}</div>
+          </div>
+          <div class="trend ${trendClass}">${esc(arrow)} estado</div>
+        </div>
+      `;
+    }
+
+    function renderActivity(){
+      const box = document.getElementById('activityList');
+      if(!box) return;
+      const items = AppState.activity.slice(0,5);
+      if(items.length === 0){
+        box.innerHTML = `<div>No hay actividad.</div>`;
+        return;
+      }
+      box.innerHTML = items.map(a => `
+        <div class="card" style="padding:12px; border-radius:14px;">
+          <div style="display:flex; align-items:flex-start; gap:10px;">
+            <div style="font-size:18px; line-height:1;">${esc(a.icon)}</div>
+            <div>
+              <div style="font-weight:900; font-size:13px;">${esc(a.text)}</div>
+              <div class="small muted" style="margin-top:4px;">${esc(a.time)}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderProjects(){
+      const tbody = document.getElementById('projectsTbody');
+      if(!tbody) return;
+
+      const list = filteredProjects();
+      if(list.length === 0){
+        tbody.innerHTML = `
+          <tr><td colspan="5" class="muted" style="padding:20px;">
+            No hay proyectos con ese filtro.
+          </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(p => {
+        const s = statusClass(p.status);
+        const statusText = ({
+          activo:'Activo',
+          revision:'En Revisión',
+          riesgo:'En Riesgo',
+          completo:'Completado'
+        })[p.status] || p.status;
+
+        return `
+          <tr>
+            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+              <strong style="color:var(--primary);">${esc(p.code)}</strong>
+            </td>
+            <td>
+              <div style="font-weight:1000; margin-bottom:4px;">${esc(p.title)}</div>
+              <div class="small muted" title="${esc(p.desc || '')}">${esc(p.desc || '—')}</div>
+              ${p.deadline ? `<div class="small muted" style="margin-top:6px;">📅 ${esc(p.deadline)}</div>` : ''}
+            </td>
+            <td>
+              <span style="display:inline-block; padding:7px 10px; border:1px solid ${s.border}; background:${s.bg}; color:${s.text}; border-radius:999px; font-weight:1000; font-size:12px;">
+                ${esc(statusText)}
+              </span>
+            </td>
+            <td>
+              <div class="small muted" style="margin-bottom:6px;">${esc(p.progress)}%</div>
+              <div style="height:10px; background: rgba(100,116,139,.15); border-radius:999px; overflow:hidden; border:1px solid var(--border);">
+                <div style="height:100%; width:${esc(p.progress)}%; background: linear-gradient(135deg, var(--primary), var(--primary2));"></div>
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="btn" type="button" data-action="edit" data-id="${esc(p.id)}">Editar</button>
+                <button class="btn danger" type="button" data-action="delete" data-id="${esc(p.id)}">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('button[data-action="edit"]').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(String(btn.getAttribute('data-id'))));
+      });
+      tbody.querySelectorAll('button[data-action="delete"]').forEach(btn => {
+        btn.addEventListener('click', () => deleteProject(String(btn.getAttribute('data-id'))));
+      });
+    }
+
+    function deleteProject(id){
+      const idx = AppState.projects.findIndex(p => String(p.id) === String(id));
+      if(idx === -1) return;
+
+      const p = AppState.projects[idx];
+      AppState.projects.splice(idx, 1);
+
+      addActivity('🗑️', `Proyecto eliminado: ${p.code}`);
+      addNotification({ type:'system', title:'Proyecto eliminado', message:`${p.code} — ${p.title}` });
+
+      // render
+      renderProjects();
+      renderKPIs();
+    }
+
+    function openCreateModal(){
+      document.getElementById('modalTitle').textContent = 'Nuevo proyecto';
+      document.getElementById('editingProjectId').value = '';
+      document.getElementById('pCode').value = '';
+      document.getElementById('pTitle').value = '';
+      document.getElementById('pDesc').value = '';
+      document.getElementById('pStatus').value = 'activo';
+      document.getElementById('pProgress').value = '0';
+      document.getElementById('pDeadline').value = '';
+
+      openModal();
+    }
+
+    function openEditModal(id){
+      const p = AppState.projects.find(x => String(x.id) === String(id));
+      if(!p){
+        toast('error', 'Error', 'Proyecto no encontrado');
+        return;
+      }
+
+      document.getElementById('modalTitle').textContent = 'Editar proyecto';
+      document.getElementById('editingProjectId').value = String(p.id);
+      document.getElementById('pCode').value = p.code;
+      document.getElementById('pTitle').value = p.title;
+      document.getElementById('pDesc').value = p.desc || '';
+      document.getElementById('pStatus').value = p.status;
+      document.getElementById('pProgress').value = String(p.progress ?? 0);
+      document.getElementById('pDeadline').value = p.deadline || '';
+
+      openModal();
+    }
+
+    function openModal(){ document.getElementById('modalOverlay').classList.add('active'); }
+    function closeModal(){ document.getElementById('modalOverlay').classList.remove('active'); }
+
+    function validateProjectForm(form){
+      const code = form.pCode.value.trim();
+      const title = form.pTitle.value.trim();
+      const progress = Number(form.pProgress.value);
+      if(!code) return { ok:false, msg:'El código es obligatorio.' };
+      if(!title) return { ok:false, msg:'El título es obligatorio.' };
+      if(Number.isNaN(progress) || progress < 0 || progress > 100) return { ok:false, msg:'Progreso debe estar entre 0 y 100.' };
+      return { ok:true };
+    }
+
+    function upsertProject(){
+      const overlay = document.getElementById('modalOverlay');
+      const form = document.getElementById('projectForm');
+
+      const idRaw = document.getElementById('editingProjectId').value;
+      const code = document.getElementById('pCode').value.trim();
+      const title = document.getElementById('pTitle').value.trim();
+      const desc = document.getElementById('pDesc').value.trim();
+      const status = document.getElementById('pStatus').value;
+      const progress = Number(document.getElementById('pProgress').value);
+      const deadline = document.getElementById('pDeadline').value;
+
+      const validation = validateProjectForm({pCode: {value: code}, pTitle:{value:title}, pProgress:{value: String(progress)}});
+      if(!validation.ok){
+        toast('error','Validación', validation.msg);
+        return;
+      }
+
+      const editingId = idRaw ? String(idRaw) : '';
+      if(editingId){
+        const idx = AppState.projects.findIndex(p => String(p.id) === editingId);
+        if(idx !== -1){
+          const p = AppState.projects[idx];
+          p.code = code;
+          p.title = title;
+          p.desc = desc;
+          p.status = status;
+          p.progress = progress;
+          p.deadline = deadline;
+          addActivity('✏️', `Proyecto actualizado: ${code}`);
+          addNotification({ type:'system', title:'Proyecto actualizado', message:`${code} — ${title}`});
+          toast('success','OK', 'Proyecto actualizado.');
+        }
+      }else{
+        const newId = Math.max(0, ...AppState.projects.map(p=>Number(p.id))) + 1;
+        AppState.projects.unshift({
+          id: newId,
+          code,
+          title,
+          desc,
+          status,
+          progress,
+          deadline: deadline || ''
+        });
+        addActivity('➕', `Nuevo proyecto: ${code}`);
+        addNotification({ type:'system', title:'Proyecto creado', message:`${code} — ${title}`});
+        toast('success','OK', 'Proyecto creado.');
+      }
+
+      closeModal();
+      renderAll();
+    }
+
+    function renderAll(){
+      document.getElementById('renderStatusText').textContent = 'Renderizando…';
+      document.getElementById('renderStatusDetail').textContent = '';
+      try{
+        renderKPIs();
+        renderProjects();
+        renderActivity();
+        renderNotificationBadge();
+        document.getElementById('renderStatusText').textContent = 'Render OK';
+      }catch(e){
+        document.getElementById('renderStatusText').textContent = 'Fallo';
+        document.getElementById('renderStatusDetail').textContent = String(e && e.stack ? e.stack : e);
+      }
+    }
+
+    function applyTheme(theme){
+      AppState.theme = theme;
+      document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+    }
+
+    function init(){
+      // seed
+      seed();
+
+      // bind UI
+      document.getElementById('openCreateProjectBtn').addEventListener('click', () => openCreateModal());
+      document.getElementById('refreshBtn').addEventListener('click', () => { seed(); renderAll(); toast('info','Demo', 'Datos de demo recargados.'); });
+      document.getElementById('projectSearch').addEventListener('input', () => renderProjects());
+      document.getElementById('projectStatusFilter').addEventListener('change', () => renderProjects());
+      document.getElementById('themeBtn').addEventListener('click', () => {
+        const next = AppState.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        toast('info','Tema', next === 'dark' ? 'Modo oscuro activado' : 'Modo claro activado');
+      });
+
+      // notifications
+      const bellBtn = document.getElementById('bellBtn');
+      const dropdown = document.getElementById('notifDropdown');
+      const closeNotifBtn = document.getElementById('closeNotifBtn');
+      const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+      bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+      });
+      closeNotifBtn.addEventListener('click', () => dropdown.classList.remove('active'));
+      markAllReadBtn.addEventListener('click', markAllRead);
+      document.addEventListener('click', () => dropdown.classList.remove('active'));
+
+      // modal actions
+      document.getElementById('modalCancelBtn').addEventListener('click', () => closeModal());
+      document.getElementById('modalSaveBtn').addEventListener('click', (e) => { e.preventDefault(); upsertProject(); });
+
+      document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if(e.target && e.target.id === 'modalOverlay') closeModal();
+      });
+
+      // render
+      applyTheme('light');
+      renderAll();
+      document.getElementById('renderStatusText').textContent = 'Listo — Sin blanco ✅';
+      document.getElementById('renderStatusDetail').textContent = 'Si ves esto, el DOM y los listeners están OK.';
+      // show initial notif badge
+      renderNotificationBadge();
+    }
+
+    // Wiring: modal default close
+    function openCreateProject(){ openCreateModal(); }
+
+    // Actually open modal and load
+    function openCreateModal(){
+      document.getElementById('modalTitle').textContent = 'Nuevo proyecto';
+      document.getElementById('editingProjectId').value = '';
+      document.getElementById('pCode').value = '';
+      document.getElementById('pTitle').value = '';
+      document.getElementById('pDesc').value = '';
+      document.getElementById('pStatus').value = 'activo';
+      document.getElementById('pProgress').value = '0';
+      document.getElementById('pDeadline').value = '';
+      openModal();
+    }
+
+    // Start safe boot
+    document.addEventListener('DOMContentLoaded', init);
+
+  </script>
+</body>
+</html>

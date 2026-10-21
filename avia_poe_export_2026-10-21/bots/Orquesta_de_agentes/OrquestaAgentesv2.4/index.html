@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orquesta de Agentes v2.4 — Deployment Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #faf9f6;
+            --bg-card: #ffffff;
+            --bg-elevated: #f2f0eb;
+            --bg-code: #1a1b26;
+            --text-h: #1c1917;
+            --text-p: #57534e;
+            --text-dim: #a8a29e;
+            --accent: #c2410c;
+            --accent-hover: #ea580c;
+            --accent-soft: rgba(194,65,12,0.08);
+            --green: #16a34a;
+            --green-soft: rgba(22,163,74,0.1);
+            --green-glow: rgba(22,163,74,0.25);
+            --border: #e7e5e4;
+            --border-focus: #c2410c;
+            --code-fg: #c0caf5;
+            --code-comment: #565f89;
+            --code-kw: #bb9af7;
+            --code-str: #9ece6a;
+            --code-fn: #7aa2f7;
+            --shadow-s: 0 1px 2px rgba(28,25,23,0.04);
+            --shadow-m: 0 4px 12px rgba(28,25,23,0.06);
+            --shadow-l: 0 12px 40px rgba(28,25,23,0.1);
+            --radius: 16px;
+            --radius-s: 10px;
+            --ease: cubic-bezier(0.22,1,0.36,1);
+        }
+        html.dark {
+            --bg-base: #0f0f14;
+            --bg-card: #18181f;
+            --bg-elevated: #1e1e28;
+            --bg-code: #0d0d14;
+            --text-h: #ededed;
+            --text-p: #9ca3af;
+            --text-dim: #4b5563;
+            --accent: #f97316;
+            --accent-hover: #fb923c;
+            --accent-soft: rgba(249,115,22,0.1);
+            --green: #34d399;
+            --green-soft: rgba(52,211,153,0.1);
+            --green-glow: rgba(52,211,153,0.2);
+            --border: #27272f;
+            --border-focus: #f97316;
+            --shadow-s: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-m: 0 4px 12px rgba(0,0,0,0.25);
+            --shadow-l: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-p);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .backdrop {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 60% 50% at 10% 0%, var(--accent-soft) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 90% 100%, var(--green-soft) 0%, transparent 60%);
+        }
+        .wrap {
+            position: relative; z-index: 1;
+            max-width: 780px; margin: 0 auto;
+            padding: 20px 16px 64px;
+        }
+        
+        /* ─── HERO ────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 48px 8px 36px;
+            animation: heroIn 0.7s var(--ease) both;
+        }
+        @keyframes heroIn { from{opacity:0;transform:translateY(-18px)} to{opacity:1;transform:none} }
+        .hero-pill {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: var(--green-soft); color: var(--green);
+            font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+            padding: 5px 14px; border-radius: 100px; margin-bottom: 18px;
+        }
+        .hero-pill .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: blink 2s infinite; }
+        @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(30px,6vw,48px);
+            font-weight: 900; letter-spacing: -1.5px; line-height: 1.1;
+            color: var(--text-h); margin-bottom: 10px;
+        }
+        .hero h1 em { font-style: normal; color: var(--accent); }
+        .hero p { font-size: 15px; color: var(--text-dim); max-width: 440px; margin: 0 auto; font-weight: 400; }
+
+        /* ─── TOOLBAR ────────────────────────────── */
+        .toolbar {
+            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+            margin: 20px 0; animation: heroIn .7s var(--ease) .1s both;
+        }
+        .toolbar button {
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-p); font-size: 12px; font-weight: 600;
+            padding: 8px 14px; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 6px;
+            transition: all .2s;
+        }
+        .toolbar button:hover {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .toolbar button:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+        .storage-indicator {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            padding: 8px 14px; border-radius: 8px;
+            font-size: 11px; color: var(--text-dim);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .storage-indicator i { color: var(--green); }
+
+        /* ─── SEARCH MODAL ───────────────────────── */
+        .search-modal {
+            position: fixed; inset: 0; z-index: 999;
+            background: rgba(0,0,0,0.6);
+            display: none; align-items: flex-start; justify-content: center;
+            padding-top: 15vh;
+        }
+        .search-modal.active { display: flex; }
+        .search-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: 90%; max-width: 500px;
+            box-shadow: var(--shadow-l);
+            animation: searchIn .3s var(--ease);
+        }
+        @keyframes searchIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+        .search-input {
+            width: 100%;
+            padding: 16px 18px;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: var(--text-h);
+            outline: none;
+        }
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+        }
+        .search-item {
+            padding: 12px 18px;
+            cursor: pointer;
+            transition: background .2s;
+            border-bottom: 1px solid var(--border);
+        }
+        .search-item:hover { background: var(--bg-elevated); }
+        .search-item:last-child { border-bottom: none; }
+        .search-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-h);
+            margin-bottom: 2px;
+        }
+        .search-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* ─── PROGRESS ───────────────────────────── */
+        .prog { margin: 0 0 28px; animation: heroIn .7s var(--ease) .1s both; }
+        .prog-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        .prog-label { font-size: 13px; font-weight: 600; color: var(--text-dim); }
+        .prog-num { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent); }
+        .prog-track { height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; }
+        .prog-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); border-radius: 100px; transition: width .65s var(--ease); width: 0; }
+
+        /* ─── STEP CARDS ─────────────────────────── */
+        .step {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); margin-bottom: 14px;
+            box-shadow: var(--shadow-s); overflow: hidden;
+            transition: border-color .25s, box-shadow .25s;
+            animation: cardUp .45s var(--ease) both;
+        }
+        .step:hover { box-shadow: var(--shadow-m); }
+        .step.done { border-color: var(--green); }
+        .step.done .step-head { background: var(--green-soft); }
+        .step:focus-within {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+        @keyframes cardUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+        .step:nth-child(1){animation-delay:.15s}.step:nth-child(2){animation-delay:.22s}.step:nth-child(3){animation-delay:.29s}
+        .step:nth-child(4){animation-delay:.36s}.step:nth-child(5){animation-delay:.43s}.step:nth-child(6){animation-delay:.50s}
+        
+        .step-head {
+            display: flex; align-items: center; gap: 12px;
+            padding: 15px 18px; cursor: pointer; user-select: none;
+            transition: background .2s;
+        }
+        .step-head:hover { background: var(--bg-elevated); }
+        .step-head:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: -2px;
+        }
+        
+        .chk {
+            width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+            color: transparent; font-size: 12px; transition: all .25s var(--ease);
+            cursor: pointer; background: var(--bg-card);
+        }
+        .chk:hover { border-color: var(--accent); background: var(--accent-soft); }
+        .chk.on { background: var(--green); border-color: var(--green); color: #fff; }
+        
+        .step-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; font-weight: 700; color: var(--text-dim); min-width: 22px;
+        }
+        .step-title { flex: 1; font-weight: 600; font-size: 15px; color: var(--text-h); display: flex; align-items: center; gap: 9px; }
+        .step-title i { font-size: 15px; color: var(--accent); opacity: .7; }
+        
+        .chev { color: var(--text-dim); font-size: 12px; transition: transform .3s var(--ease); }
+        .step.open .chev { transform: rotate(180deg); }
+        
+        .step-body { max-height: 0; overflow: hidden; transition: max-height .4s var(--ease); }
+        .step.open .step-body { max-height: 3000px; }
+        .step-inner { padding: 0 18px 18px; }
+        .step-desc { font-size: 14px; color: var(--text-p); margin-bottom: 14px; line-height: 1.65; }
+
+        /* ─── SUB CHECKS ─────────────────────────── */
+        .subs { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        .sub {
+            display: flex; align-items: flex-start; gap: 9px;
+            padding: 9px 12px; background: var(--bg-elevated); border-radius: var(--radius-s);
+            font-size: 13px; color: var(--text-p); cursor: pointer; transition: all .2s;
+        }
+        .sub:hover { background: var(--accent-soft); }
+        .sub:focus {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+        .sub-chk {
+            width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+            border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: transparent; transition: all .25s; margin-top: 1px;
+        }
+        .sub.ok .sub-chk { background: var(--green); border-color: var(--green); color: #fff; }
+        .sub.ok { text-decoration: line-through; color: var(--text-dim); }
+
+        /* ─── CODE BLOCKS ────────────────────────── */
+        .codeblk { background: var(--bg-code); border-radius: var(--radius-s); margin-bottom: 10px; box-shadow: var(--shadow-s); overflow: hidden; }
+        .codeblk-top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+        .codeblk-lang { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--code-comment); text-transform: uppercase; letter-spacing: .5px; }
+        .cp-btn {
+            background: none; border: 1px solid rgba(255,255,255,.1); color: var(--code-comment);
+            font-size: 11px; font-family: 'JetBrains Mono', monospace; cursor: pointer;
+            padding: 3px 9px; border-radius: 6px; display: flex; align-items: center; gap: 5px; transition: all .2s;
+        }
+        .cp-btn:hover { background: rgba(255,255,255,.06); color: var(--code-fg); border-color: rgba(255,255,255,.18); }
+        .cp-btn.ok { color: var(--green); border-color: var(--green); }
+        .codeblk-body { padding: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .codeblk-body pre {
+            margin: 0; font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px; line-height: 1.7; color: var(--code-fg); white-space: pre; tab-size: 2;
+        }
+        .cm { color: var(--code-comment); } .kw { color: var(--code-kw); } .st { color: var(--code-str); } .fn { color: var(--code-fn); }
+
+        /* ─── SERVICES ───────────────────────────── */
+        .svc-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 8px; margin: 14px 0; }
+        .svc {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 11px 13px; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-s); font-size: 13px; transition: all .2s;
+        }
+        .svc:hover { border-color: var(--accent); background: var(--accent-soft); }
+        .svc-name { font-weight: 600; color: var(--text-h); }
+        .svc-port { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 100px; }
+
+        /* ─── CONSTELLATION ──────────────────────── */
+        .constellation { margin-top: 40px; animation: cardUp .5s var(--ease) .6s both; }
+        .const-title { display: flex; align-items: center; gap: 11px; font-size: 18px; font-weight: 700; color: var(--text-h); margin-bottom: 16px; }
+        .const-icon {
+            width: 34px; height: 34px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px;
+        }
+        .agent {
+            display: flex; gap: 13px; padding: 14px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius-s); margin-bottom: 8px; transition: all .2s;
+        }
+        .agent:hover { border-color: var(--green); box-shadow: var(--shadow-s); }
+        .agent-av {
+            width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 800; color: #fff;
+        }
+        .agent:nth-child(1) .agent-av { background: linear-gradient(135deg,#c2410c,#ea580c); }
+        .agent:nth-child(2) .agent-av { background: linear-gradient(135deg,#2563eb,#3b82f6); }
+        .agent:nth-child(3) .agent-av { background: linear-gradient(135deg,#7c3aed,#8b5cf6); }
+        .agent:nth-child(4) .agent-av { background: linear-gradient(135deg,#059669,#10b981); }
+        .agent:nth-child(5) .agent-av { background: linear-gradient(135deg,#d97706,#f59e0b); }
+        .agent-info { flex: 1; }
+        .agent-nm { font-weight: 700; font-size: 13px; color: var(--text-h); display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+        .agent-badge {
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+            background: var(--green-soft); color: var(--green); padding: 1px 8px; border-radius: 100px;
+        }
+        .agent-d { font-size: 12.5px; color: var(--text-p); line-height: 1.55; }
+
+        /* ─── FINAL ──────────────────────────────── */
+        .final {
+            margin-top: 30px; padding: 28px; text-align: center;
+            background: linear-gradient(135deg, var(--green-soft), var(--accent-soft));
+            border: 2px solid var(--green); border-radius: var(--radius);
+            animation: cardUp .5s var(--ease) .8s both;
+        }
+        .final-icon {
+            width: 52px; height: 52px; margin: 0 auto 14px;
+            background: var(--green); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: #fff;
+            animation: pop .45s var(--ease) 1s both;
+        }
+        @keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
+        .final h3 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; color: var(--text-h); margin-bottom: 5px; }
+        .final p { font-size: 13px; color: var(--text-p); }
+
+        /* ─── TOAST ──────────────────────────────── */
+        .toast-wrap {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(70px);
+            background: var(--bg-code); color: var(--code-fg);
+            padding: 10px 22px; border-radius: 100px;
+            font-size: 13px; font-weight: 500; box-shadow: var(--shadow-l);
+            z-index: 100; pointer-events: none;
+            display: flex; align-items: center; gap: 7px;
+            transition: transform .4s var(--ease);
+        }
+        .toast-wrap.vis { transform: translateX(-50%) translateY(0); }
+
+        /* ─── RESPONSIVE ─────────────────────────── */
+        @media(max-width:600px) {
+            .wrap { padding: 12px 10px 48px; }
+            .hero { padding: 28px 4px 24px; }
+            .step-head { padding: 13px 14px; gap: 9px; }
+            .step-inner { padding: 0 14px 14px; }
+            .step-title { font-size: 13.5px; }
+            .svc-grid { grid-template-columns: 1fr; }
+            .codeblk-body pre { font-size: 11.5px; }
+            .agent { padding: 11px; }
+            .toolbar { flex-direction: column; }
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="backdrop"></div>
+    <div class="wrap">
+        <header class="hero">
+            <div class="hero-pill"><span class="dot"></span>Producción Ready v2.4</div>
+            <h1>Orquesta de <em>Agentes</em> v2.4</h1>
+            <p>Guía interactiva de deployment — Docker, Nginx, SSL y monitoreo</p>
+        </header>
+
+        <div class="toolbar">
+            <button onclick="window._exportState()" aria-label="Exportar progreso">
+                <i class="fas fa-download"></i> Exportar
+            </button>
+            <button onclick="window._importState()" aria-label="Importar progreso">
+                <i class="fas fa-upload"></i> Importar
+            </button>
+            <button onclick="window._resetAll()" aria-label="Resetear progreso">
+                <i class="fas fa-rotate-left"></i> Reset
+            </button>
+            <button onclick="window._openSearch()" aria-label="Buscar (Ctrl+K)">
+                <i class="fas fa-search"></i> Buscar <kbd style="opacity:.6;font-size:10px">Ctrl+K</kbd>
+            </button>
+            <div class="storage-indicator">
+                <i class="fas fa-database"></i>
+                <span id="storageMode">localStorage</span>
+            </div>
+        </div>
+
+        <section class="prog" role="region" aria-label="Progreso del deployment">
+            <div class="prog-row">
+                <span class="prog-label">Progreso del Deployment</span>
+                <span class="prog-num" id="pNum" aria-live="polite">0 / 6</span>
+            </div>
+            <div class="prog-track"><div class="prog-bar" id="pBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
+        </section>
+
+        <div id="stepsRoot" role="main"></div>
+
+        <section class="constellation" role="region" aria-label="Constelación de agentes">
+            <div class="const-title">
+                <div class="const-icon"><i class="fas fa-satellite-dish"></i></div>
+                Consenso de la Constelación
+            </div>
+            <div id="agentsRoot"></div>
+        </section>
+
+        <div class="final">
+            <div class="final-icon"><i class="fas fa-check"></i></div>
+            <h3>Aplicación Lista para Producción</h3>
+            <p>Todos los bloques atómicos ejecutados y validados por la constelación AVIA.</p>
+        </div>
+    </div>
+
+    <div class="toast-wrap" id="toastEl" role="status" aria-live="polite">
+        <i class="fas fa-clipboard-check"></i>
+        <span id="toastTxt"></span>
+    </div>
+
+    <!-- SEARCH MODAL -->
+    <div class="search-modal" id="searchModal" role="dialog" aria-modal="true" aria-labelledby="searchTitle">
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="Buscar pasos..." aria-label="Campo de búsqueda">
+            <div class="search-results" id="searchResults"></div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        /* ── StorageManager ────────────────────── */
+        const StorageManager = {
+            type: 'memory',
+            mem: {},
+            
+            init() {
+                try {
+                    const test = '__storage_test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    this.type = 'localStorage';
+                    console.log('✅ localStorage disponible');
+                } catch(e) {
+                    this.type = 'memory';
+                    console.warn('⚠️ localStorage bloqueado. Usando memoria temporal.');
+                }
+                this.updateUI();
+                this.loadState();
+            },
+            
+            save(key, val) {
+                try {
+                    if(this.type === 'localStorage') {
+                        localStorage.setItem(key, JSON.stringify(val));
+                    } else {
+                        this.mem[key] = val;
+                    }
+                } catch(e) {
+                    this.mem[key] = val;
+                }
+            },
+            
+            load(key) {
+                try {
+                    if(this.type === 'localStorage') {
+                        const val = localStorage.getItem(key);
+                        return val ? JSON.parse(val) : null;
+                    }
+                    return this.mem[key] || null;
+                } catch(e) {
+                    return this.mem[key] || null;
+                }
+            },
+            
+            updateUI() {
+                const el = document.getElementById('storageMode');
+                if(el) {
+                    el.textContent = this.type === 'localStorage' ? 'Persistente' : 'Temporal';
+                    el.parentElement.style.opacity = this.type === 'localStorage' ? '1' : '0.6';
+                }
+            },
+            
+            saveState() {
+                this.save('orquestador_v24_state', { 
+                    version: '2.4',
+                    timestamp: new Date().toISOString(),
+                    doneSteps, 
+                    doneSubs 
+                });
+            },
+            
+            loadState() {
+                const state = this.load('orquestador_v24_state');
+                if(state && state.version === '2.4') {
+                    doneSteps = state.doneSteps || {};
+                    doneSubs = state.doneSubs || {};
+                    render();
+                    toast('✅ Progreso restaurado');
+                }
+            }
+        };
+
+        /* ── Dark Mode ─────────────────────────── */
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            document.documentElement.classList.toggle('dark', e.matches);
+        });
+
+        /* ── Data ──────────────────────────────── */
+        var STEPS = [
+            {
+                title: 'Preparación del Entorno',
+                icon: 'fa-gear',
+                desc: 'Clona el repositorio, configura las variables de entorno y genera certificados SSL para conexiones HTTPS seguras.',
+                subs: ['Clonar repositorio desde GitHub', 'Configurar archivo .env', 'Generar certificados SSL (RSA 2048)'],
+                blocks: [{
+                    lang: 'bash',
+                    raw: '# 1. Clonar repositorio\ngit clone https://github.com/tu-usuario/orquesta-agentes-v2.git\ncd orquesta-agentes-v2\n\n# 2. Configurar variables de entorno\ncp .env.example .env\n# Editar .env con tus configuraciones\n\n# 3. Generar certificados SSL (para HTTPS)\nmkdir -p nginx/ssl\nopenssl req -x509 -nodes -days 365 -newkey rsa:2048 \\\n  -keyout nginx/ssl/key.pem \\\n  -out nginx/ssl/cert.pem',
+                    html: '<span class="cm"># 1. Clonar repositorio</span>\ngit clone https://github.com/tu-usuario/orquesta-agentes-v2.git\ncd orquesta-agentes-v2\n\n<span class="cm"># 2. Configurar variables de entorno</span>\ncp .env.example .env\n<span class="cm"># Editar .env con tus configuraciones</span>\n\n<span class="cm"># 3. Generar certificados SSL (para HTTPS)</span>\nmkdir -p nginx/ssl\nopenssl req -x509 -nodes -days 365 -newkey rsa:2048 \\\n  -keyout nginx/ssl/key.pem \\\n  -out nginx/ssl/cert.pem'
+                }]
+            },
+            {
+                title: 'Deployment Local',
+                icon: 'fa-rocket',
+                desc: 'Levanta todos los servicios usando el script automatizado, Makefile o Docker Compose manualmente.',
+                subs: ['Opción 1: Script de deployment', 'Opción 2: Makefile', 'Opción 3: Docker Compose manual'],
+                blocks: [{
+                    lang: 'bash',
+                    raw: '# Opción 1: Usar script de deployment\nchmod +x deploy.sh\n./deploy.sh\n\n# Opción 2: Usar Makefile\nmake deploy\n\n# Opción 3: Manual\ndocker-compose build\ndocker-compose up -d',
+                    html: '<span class="cm"># Opción 1: Usar script de deployment</span>\nchmod +x deploy.sh\n./deploy.sh\n\n<span class="cm"># Opción 2: Usar Makefile</span>\n<span class="fn">make deploy</span>\n\n<span class="cm"># Opción 3: Manual</span>\ndocker-compose build\ndocker-compose up -d'
+                }]
+            },
+            {
+                title: 'Verificación',
+                icon: 'fa-circle-check',
+                desc: 'Confirma que todos los contenedores estén corriendo, revisa los logs y valida el endpoint de salud de la API.',
+                subs: ['Verificar servicios en ejecución', 'Revisar logs', 'Validar endpoint /health', 'Confirmar acceso a todos los puertos'],
+                blocks: [{
+                    lang: 'bash',
+                    raw: '# Verificar servicios en ejecución\ndocker-compose ps\n\n# Ver logs\ndocker-compose logs -f\n\n# Verificar salud de API\ncurl http://localhost:8000/health',
+                    html: '<span class="cm"># Verificar servicios en ejecución</span>\ndocker-compose ps\n\n<span class="cm"># Ver logs</span>\ndocker-compose logs -f\n\n<span class="cm"># Verificar salud de API</span>\ncurl <span class="st">http://localhost:8000/health</span>'
+                }],
+                services: [
+                    { name: 'API Docs', port: ':8000' },
+                    { name: 'Frontend', port: ':3000' },
+                    { name: 'Prometheus', port: ':9090' },
+                    { name: 'Grafana', port: ':3001' }
+                ]
+            },
+            {
+                title: 'Deployment en Servidor',
+                icon: 'fa-server',
+                desc: 'Instala Docker en tu VPS o instancia cloud, clona el repositorio y ejecuta el deployment con certificados Let\'s Encrypt.',
+                subs: ['Instalar Docker y Docker Compose', 'Clonar y configurar en servidor', 'Obtener certificado SSL (Let\'s Encrypt)', 'Ejecutar deployment de producción'],
+                blocks: [{
+                    lang: 'bash',
+                    raw: '# En el servidor\n# 1. Instalar Docker y Docker Compose\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsh get-docker.sh\nsudo usermod -aG docker $USER\n\n# 2. Clonar y configurar\ngit clone https://github.com/tu-usuario/orquesta-agentes-v2.git\ncd orquesta-agentes-v2\n\n# 3. Configurar dominio y SSL (con Let\'s Encrypt)\nsudo apt-get install certbot\nsudo certbot certonly --standalone -d tu-dominio.com\n\n# 4. Deployment\n./deploy.sh',
+                    html: '<span class="cm"># En el servidor</span>\n<span class="cm"># 1. Instalar Docker y Docker Compose</span>\ncurl -fsSL https://get.docker.com -o get-docker.sh\nsh get-docker.sh\nsudo usermod -aG docker $USER\n\n<span class="cm"># 2. Clonar y configurar</span>\ngit clone https://github.com/tu-usuario/orquesta-agentes-v2.git\ncd orquesta-agentes-v2\n\n<span class="cm"># 3. Configurar dominio y SSL (con Let\'s Encrypt)</span>\nsudo apt-get install certbot\nsudo certbot certonly --standalone -d <span class="st">tu-dominio.com</span>\n\n<span class="cm"># 4. Deployment</span>\n./deploy.sh'
+                }]
+            },
+            {
+                title: 'Configuración de Dominio',
+                icon: 'fa-globe',
+                desc: 'Actualiza la configuración de Nginx para apuntar a tu dominio con SSL y HTTP/2 habilitados.',
+                subs: ['Actualizar nginx.conf', 'Configurar rutas de certificados', 'Habilitar HTTP/2'],
+                blocks: [{
+                    lang: 'nginx',
+                    raw: '# Actualizar nginx/nginx.conf para producción\nserver {\n  listen 443 ssl http2;\n  server_name tu-dominio.com;\n\n  ssl_certificate /etc/letsencrypt/live/tu-dominio.com/fullchain.pem;\n  ssl_certificate_key /etc/letsencrypt/live/tu-dominio.com/privkey.pem;\n\n  # ... resto de configuración\n}',
+                    html: '<span class="cm"># Actualizar nginx/nginx.conf para producción</span>\n<span class="kw">server</span> {\n  listen <span class="fn">443</span> ssl http2;\n  server_name <span class="st">tu-dominio.com</span>;\n\n  ssl_certificate <span class="st">/etc/letsencrypt/live/tu-dominio.com/fullchain.pem</span>;\n  ssl_certificate_key <span class="st">/etc/letsencrypt/live/tu-dominio.com/privkey.pem</span>;\n\n  <span class="cm"># ... resto de configuración</span>\n}'
+                }]
+            },
+            {
+                title: 'Monitoreo y Mantenimiento',
+                icon: 'fa-chart-line',
+                desc: 'Programa backups automáticos con cron, monitorea logs en tiempo real y mantén la aplicación actualizada.',
+                subs: ['Configurar backups automáticos (cron)', 'Monitoreo de logs', 'Proceso de actualización'],
+                blocks: [{
+                    lang: 'bash',
+                    raw: '# Configurar backups automáticos\ncrontab -e\n# Agregar: 0 2 * * * /path/to/backup.sh\n\n# Logs y monitoreo\ndocker-compose logs --tail=100 -f api\ndocker stats\n\n# Actualizar aplicación\ngit pull origin main\ndocker-compose build\ndocker-compose up -d',
+                    html: '<span class="cm"># Configurar backups automáticos</span>\ncrontab -e\n<span class="cm"># Agregar: 0 2 * * * /path/to/backup.sh</span>\n\n<span class="cm"># Logs y monitoreo</span>\ndocker-compose logs --tail=100 -f api\n<span class="fn">docker stats</span>\n\n<span class="cm"># Actualizar aplicación</span>\ngit pull origin main\ndocker-compose build\ndocker-compose up -d'
+                }]
+            }
+        ];
+
+        var AGENTS = [
+            { name: 'AVIA Clon de Carlos', ab: 'CC', desc: 'Orquestación completada. Backend implementado con validación de schemas, servicios REST completos, frontend React + HTML, y configuración de deployment lista.' },
+            { name: 'AVIA Studio v5.2', ab: 'ST', desc: 'Arquitectura validada con patrones REST, separación de capas y containerización Docker.' },
+            { name: 'AVIA Persistencia', ab: 'PE', desc: 'Contexto mantenido. Sistema orquesta-de-agentes-v2 completo y funcional.' },
+            { name: 'AVIA Proyecto', ab: 'PR', desc: 'Todos los bloques atómicos ejecutados: schemas, servicios, endpoints, frontend y deployment.' },
+            { name: 'AVIA Auditor', ab: 'AU', desc: 'Código cumple con normas de oro: validación de datos, manejo de errores, separación de responsabilidades, documentación completa.' }
+        ];
+
+        /* ── State ─────────────────────────────── */
+        var doneSteps = {};
+        var doneSubs = {};
+        var currentStepFocus = 0;
+
+        function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+        /* ── Render ─────────────────────────────── */
+        function render() {
+            var root = document.getElementById('stepsRoot');
+            var h = '';
+            STEPS.forEach(function(s, i) {
+                var isDone = doneSteps[i] === true;
+                var isOpen = !isDone;
+                h += '<div class="step' + (isOpen ? ' open' : '') + (isDone ? ' done' : '') + '" data-i="' + i + '" role="article" aria-labelledby="step-title-' + i + '">';
+                h += '<div class="step-head" onclick="window._toggle(' + i + ')" tabindex="0" role="button" aria-expanded="' + isOpen + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \')window._toggle(' + i + ')">';
+                h += '<div class="chk' + (isDone ? ' on' : '') + '" onclick="event.stopPropagation();window._chk(' + i + ')" role="checkbox" aria-checked="' + isDone + '" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.stopPropagation();window._chk(' + i + ')}"><i class="fas fa-check"></i></div>';
+                h += '<span class="step-num">0' + (i + 1) + '</span>';
+                h += '<span class="step-title" id="step-title-' + i + '"><i class="fas ' + s.icon + '"></i>' + esc(s.title) + '</span>';
+                h += '<i class="fas fa-chevron-down chev"></i>';
+                h += '</div>';
+                h += '<div class="step-body"><div class="step-inner">';
+                h += '<p class="step-desc">' + esc(s.desc) + '</p>';
+                if (s.subs) {
+                    h += '<div class="subs">';
+                    s.subs.forEach(function(sub, j) {
+                        var sk = i + '-' + j;
+                        var ok = doneSubs[sk] === true;
+                        h += '<div class="sub' + (ok ? ' ok' : '') + '" onclick="window._sub(' + i + ',' + j + ')" tabindex="0" role="checkbox" aria-checked="' + ok + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \')window._sub(' + i + ',' + j + ')">';
+                        h += '<div class="sub-chk"><i class="fas fa-check"></i></div>';
+                        h += '<span>' + esc(sub) + '</span></div>';
+                    });
+                    h += '</div>';
+                }
+                if (s.blocks) {
+                    s.blocks.forEach(function(b, bi) {
+                        var cid = 'cb-' + i + '-' + bi;
+                        h += '<div class="codeblk"><div class="codeblk-top">';
+                        h += '<span class="codeblk-lang">' + esc(b.lang) + '</span>';
+                        h += '<button class="cp-btn" data-cid="' + cid + '" onclick="window._cp(this)" aria-label="Copiar código"><i class="fas fa-copy"></i> Copiar</button>';
+                        h += '</div>';
+                        h += '<div class="codeblk-body"><pre id="' + cid + '" data-raw="' + esc(b.raw).replace(/"/g, '&quot;') + '" tabindex="0">' + b.html + '</pre></div></div>';
+                    });
+                }
+                if (s.services) {
+                    h += '<div class="svc-grid">';
+                    s.services.forEach(function(sv) {
+                        h += '<div class="svc"><span class="svc-name">' + esc(sv.name) + '</span><span class="svc-port">' + esc(sv.port) + '</span></div>';
+                    });
+                    h += '</div>';
+                }
+                h += '</div></div></div>';
+            });
+            root.innerHTML = h;
+            updateProg();
+        }
+
+        function renderAgents() {
+            var root = document.getElementById('agentsRoot');
+            var h = '';
+            AGENTS.forEach(function(a) {
+                h += '<div class="agent"><div class="agent-av">' + esc(a.ab) + '</div>';
+                h += '<div class="agent-info"><div class="agent-nm">' + esc(a.name) + ' <span class="agent-badge">✓ Listo</span></div>';
+                h += '<div class="agent-d">' + esc(a.desc) + '</div></div></div>';
+            });
+            root.innerHTML = h;
+        }
+
+        function updateProg() {
+            var n = 0;
+            for (var k in doneSteps) { if (doneSteps[k]) n++; }
+            document.getElementById('pNum').textContent = n + ' / ' + STEPS.length;
+            var pct = (n / STEPS.length * 100);
+            document.getElementById('pBar').style.width = pct + '%';
+            document.getElementById('pBar').setAttribute('aria-valuenow', pct);
+            StorageManager.saveState();
+        }
+
+        /* ── Actions ───────────────────────────── */
+        window._toggle = function(i) {
+            var el = document.querySelector('.step[data-i="' + i + '"]');
+            if (el) {
+                var isOpen = el.classList.toggle('open');
+                el.querySelector('.step-head').setAttribute('aria-expanded', isOpen);
+            }
+        };
+
+        window._chk = function(i) {
+            doneSteps[i] = !doneSteps[i];
+            if (!doneSteps[i] && STEPS[i].subs) {
+                STEPS[i].subs.forEach(function(_, j) { doneSubs[i + '-' + j] = false; });
+            }
+            if (doneSteps[i] && STEPS[i].subs) {
+                STEPS[i].subs.forEach(function(_, j) { doneSubs[i + '-' + j] = true; });
+            }
+            render();
+        };
+
+        window._sub = function(si, sj) {
+            var k = si + '-' + sj;
+            doneSubs[k] = !doneSubs[k];
+            var step = STEPS[si];
+            if (step.subs) {
+                var all = true;
+                for (var j = 0; j < step.subs.length; j++) {
+                    if (!doneSubs[si + '-' + j]) { all = false; break; }
+                }
+                doneSteps[si] = all;
+            }
+            render();
+        };
+
+        /* ── Toast ──────────────────────────────── */
+        var toastTimer = null;
+        function toast(msg) {
+            var el = document.getElementById('toastEl');
+            document.getElementById('toastTxt').textContent = msg;
+            el.classList.add('vis');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function() { el.classList.remove('vis'); }, 2400);
+        }
+
+        /* ── Copy to Clipboard ──────────────────── */
+        window._cp = function(btn) {
+            var cid = btn.getAttribute('data-cid');
+            var pre = document.getElementById(cid);
+            var raw = pre.getAttribute('data-raw');
+            var ta = document.createElement('textarea');
+            ta.innerHTML = raw;
+            var decoded = ta.value;
+            
+            // Método robusto
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(decoded).then(function() { cpDone(btn); }).catch(function() { fallbackCopy(decoded, btn); });
+            } else {
+                fallbackCopy(decoded, btn);
+            }
+        };
+
+        function fallbackCopy(text, btn) {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                cpDone(btn);
+            } catch(e) {
+                toast('❌ No se pudo copiar');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function cpDone(btn) {
+            btn.classList.add('ok');
+            btn.innerHTML = '<i class="fas fa-check"></i> Copiado';
+            toast('✅ Código copiado al portapapeles');
+            setTimeout(function() {
+                btn.classList.remove('ok');
+                btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+            }, 2000);
+        }
+
+        /* ── Export/Import ──────────────────────── */
+        window._exportState = function() {
+            var data = {
+                version: '2.4',
+                timestamp: new Date().toISOString(),
+                doneSteps: doneSteps,
+                doneSubs: doneSubs
+            };
+            var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'orquestador-v24-backup-' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            toast('💾 Backup exportado');
+        };
+
+        window._importState = function() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        var data = JSON.parse(ev.target.result);
+                        if (data.version === '2.4') {
+                            doneSteps = data.doneSteps || {};
+                            doneSubs = data.doneSubs || {};
+                            render();
+                            StorageManager.saveState();
+                            toast('✅ Backup importado');
+                        } else {
+                            toast('❌ Versión incompatible');
+                        }
+                    } catch(err) {
+                        toast('❌ Archivo inválido');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        };
+
+        window._resetAll = function() {
+            if (confirm('¿Seguro que quieres resetear todo el progreso?')) {
+                doneSteps = {};
+                doneSubs = {};
+                render();
+                StorageManager.saveState();
+                toast('🔄 Progreso reseteado');
+            }
+        };
+
+        /* ── Search ─────────────────────────────── */
+        window._openSearch = function() {
+            document.getElementById('searchModal').classList.add('active');
+            document.getElementById('searchInput').focus();
+        };
+
+        window._closeSearch = function() {
+            document.getElementById('searchModal').classList.remove('active');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+        };
+
+        document.getElementById('searchModal').addEventListener('click', function(e) {
+            if (e.target === this) window._closeSearch();
+        });
+
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            var query = e.target.value.toLowerCase();
+            var results = document.getElementById('searchResults');
+            if (!query) {
+                results.innerHTML = '';
+                return;
+            }
+            var matches = [];
+            STEPS.forEach(function(s, i) {
+                if (s.title.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query)) {
+                    matches.push({i: i, title: s.title, desc: s.desc});
+                }
+            });
+            if (matches.length === 0) {
+                results.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim)">Sin resultados</div>';
+                return;
+            }
+            var h = '';
+            matches.forEach(function(m) {
+                h += '<div class="search-item" onclick="window._goToStep(' + m.i + ')">';
+                h += '<div class="search-title">' + esc(m.title) + '</div>';
+                h += '<div class="search-desc">' + esc(m.desc.substring(0, 80)) + '...</div>';
+                h += '</div>';
+            });
+            results.innerHTML = h;
+        });
+
+        window._goToStep = function(i) {
+            window._closeSearch();
+            var el = document.querySelector('.step[data-i="' + i + '"]');
+            if (el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                if (!el.classList.contains('open')) {
+                    window._toggle(i);
+                }
+                setTimeout(function() {
+                    el.querySelector('.step-head').focus();
+                }, 500);
+            }
+        };
+
+        /* ── Keyboard Navigation ────────────────── */
+        document.addEventListener('keydown', function(e) {
+            // Search: Ctrl+K
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                window._openSearch();
+                return;
+            }
+            // Reset: Ctrl+R (disabled default)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                window._resetAll();
+                return;
+            }
+            // Close search: Escape
+            if (e.key === 'Escape') {
+                if (document.getElementById('searchModal').classList.contains('active')) {
+                    window._closeSearch();
+                }
+                return;
+            }
+            // Next/Prev step: j/k
+            if (!document.getElementById('searchModal').classList.contains('active')) {
+                if (e.key === 'j') {
+                    currentStepFocus = Math.min(currentStepFocus + 1, STEPS.length - 1);
+                    focusStep(currentStepFocus);
+                }
+                if (e.key === 'k') {
+                    currentStepFocus = Math.max(currentStepFocus - 1, 0);
+                    focusStep(currentStepFocus);
+                }
+            }
+        });
+
+        function focusStep(i) {
+            var el = document.querySelector('.step[data-i="' + i + '"]');
+            if (el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'center'});
+                el.querySelector('.step-head').focus();
+            }
+        }
+
+        /* ── Init ──────────────────────────────── */
+        StorageManager.init();
+        render();
+        renderAgents();
+
+        console.log('%c🚀 Orquestador v2.4 Cargado', 'color:#16a34a;font-size:16px;font-weight:bold');
+        console.log('%c⌨️  Atajos: Ctrl+K (buscar), j/k (navegar), Ctrl+R (reset)', 'color:#9ca3af;font-size:12px');
+    })();
+    </script>
+</body>
+</html>

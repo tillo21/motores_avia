@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIACreatorHub + VideoLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/marked@9.0.0/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #e50914;
+            --primary-glow: rgba(229, 9, 20, 0.4);
+            --secondary: #831010;
+            --accent: #ff4444;
+            --bg-deep: #0a0a0a;
+            --bg-surface: #141414;
+            --bg-elevated: #1f1f1f;
+            --bg-card: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #666666;
+            --border: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --purple: #8b5cf6;
+            --gradient-hero: linear-gradient(135deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a0a 100%);
+            --gradient-card: linear-gradient(145deg, #1f1f1f 0%, #141414 100%);
+            --gradient-accent: linear-gradient(135deg, #e50914 0%, #831010 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-layout { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-nav { flex: 1; padding: 1rem; overflow-y: auto; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .nav-item.active { background: var(--gradient-accent); color: white; }
+        .nav-item i { width: 1.25rem; text-align: center; }
+
+        .nav-section {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 1rem 1rem 0.5rem;
+        }
+
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 260px; min-height: 100vh; }
+        @media (max-width: 1024px) { .main-content { margin-left: 0; } }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title { font-size: 1.125rem; font-weight: 600; }
+        .header-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary { background: var(--gradient-accent); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--primary-glow); }
+        .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--primary); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-ghost:hover { color: var(--primary); background: rgba(255,255,255,0.05); }
+        .btn-icon { width: 2.25rem; height: 2.25rem; padding: 0; }
+
+        .content-area { padding: 1.5rem; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover { border-color: rgba(255,255,255,0.1); }
+
+        /* Engine Cards */
+        .engine-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .engine-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        }
+
+        .engine-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .engine-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .engine-badge {
+            display: inline-block;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.25rem;
+        }
+
+        .stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 0.813rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.625rem;
+            font-weight: 600;
+        }
+
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+        @media (max-width: 1280px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hero-subtitle { font-size: 1rem; color: var(--text-secondary); margin-top: 0.5rem; }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.open { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal.open .modal-content { transform: scale(1); }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+        .form-textarea { min-height: 120px; resize: vertical; }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23666' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5H7z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Production Queue */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-elevated);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .queue-thumb {
+            width: 80px;
+            height: 45px;
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .queue-info { flex: 1; }
+        .queue-title { font-weight: 600; font-size: 0.875rem; }
+        .queue-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .progress-bar {
+            height: 0.375rem;
+            background: var(--bg-card);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-accent);
+            border-radius: 9999px;
+            transition: width 0.5s ease;
+        }
+
+        .badge-success { background: var(--success); color: white; }
+        .badge-warning { background: var(--warning); color: black; }
+        .badge-info { background: var(--info); color: white; }
+        .badge-purple { background: var(--purple); color: white; }
+        .badge-error { background: var(--error); color: white; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            z-index: 300;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: var(--success); color: white; }
+        .notification.error { background: var(--error); color: white; }
+        .notification.info { background: var(--info); color: white; }
+        .notification.warning { background: var(--warning); color: black; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .menu-toggle { display: none; }
+        @media (max-width: 1024px) { .menu-toggle { display: flex; } }
+
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+        .sidebar-overlay.show { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fadeIn 0.3s ease forwards; }
+
+        .version-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+                        <i class="fas fa-film text-white"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm">AVIA VideoLab</div>
+                        <div class="text-xs text-[var(--text-muted)]">v5.0 Pro</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" data-section="produccion">
+                    <i class="fas fa-video"></i>
+                    <span>Producción</span>
+                </div>
+                <div class="nav-item" data-section="biblioteca">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Biblioteca</span>
+                </div>
+
+                <div class="nav-section">Herramientas</div>
+
+                <div class="nav-item" data-section="editor">
+                    <i class="fas fa-pen-fancy"></i>
+                    <span>Editor Guion</span>
+                </div>
+                <div class="nav-item" data-section="validador">
+                    <i class="fas fa-check-double"></i>
+                    <span>Validador</span>
+                </div>
+                <div class="nav-item" data-section="timeline">
+                    <i class="fas fa-film"></i>
+                    <span>Timeline</span>
+                </div>
+
+                <div class="nav-section">Configuración</div>
+
+                <div class="nav-item" data-section="carlos">
+                    <i class="fas fa-user-tie"></i>
+                    <span>AVIA-Clon-Carlos</span>
+                </div>
+                <div class="nav-item" data-section="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Ajustes</span>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-[var(--border)]">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-sm font-bold">C</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate">Carlos Creator</div>
+                        <div class="text-xs text-[var(--text-muted)]">Plan Pro</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="flex items-center gap-4">
+                    <button class="btn btn-ghost btn-icon menu-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="header-title" id="headerTitle">Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost btn-icon" onclick="exportProject()">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-ghost btn-icon">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('newProduction')">
+                        <i class="fas fa-plus"></i>
+                        <span>Nueva Producción</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- DASHBOARD -->
+                <section class="section active" id="section-dashboard">
+                    <div class="mb-8">
+                        <h1 class="hero-title">
+                            AVIACreatorHub + VideoLab
+                            <span class="text-3xl">🎬</span>
+                        </h1>
+                        <p class="hero-subtitle">Sistema Multi-Motor: Veo-v3.1 • Sora-2 (Integración Real)</p>
+                    </div>
+
+                    <!-- Engine Cards -->
+                    <div class="grid-3 mb-6">
+                        <div class="engine-card selected" onclick="selectEngine('veo', this)">
+                            <div class="engine-icon" style="background: rgba(139, 92, 246, 0.2);">🎬</div>
+                            <h3 class="font-semibold mb-1">Veo-v3.1</h3>
+                            <span class="engine-badge badge-purple">AUDIO NATIVO</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Audio integrado • Alta calidad • Google AI</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('sora', this)">
+                            <div class="engine-icon" style="background: rgba(239, 68, 68, 0.2);">🎥</div>
+                            <h3 class="font-semibold mb-1">Sora-2</h3>
+                            <span class="engine-badge badge-error">MAYOR DURACIÓN</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Hasta 12s • OpenAI • Narrativa compleja</p>
+                        </div>
+
+                        <div class="engine-card" onclick="selectEngine('pro', this)">
+                            <div class="engine-icon" style="background: rgba(245, 158, 11, 0.2);">⚡</div>
+                            <h3 class="font-semibold mb-1">Modo PRO</h3>
+                            <span class="engine-badge badge-warning">2 MOTORES</span>
+                            <p class="text-xs text-[var(--text-muted)] mt-3">Genera con Veo + Sora • Compara resultados</p>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid-3 mb-6">
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">En Cola</span>
+                                <span class="stat-badge badge-info" id="queueBadge">0</span>
+                            </div>
+                            <div class="stat-value" id="queueCount">0</div>
+                            <div class="stat-label">vídeos pendientes</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Completados Hoy</span>
+                                <span class="stat-badge badge-success">+12%</span>
+                            </div>
+                            <div class="stat-value" id="completedToday">2</div>
+                            <div class="stat-label">vídeos generados</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium">Versiones</span>
+                                <span class="stat-badge badge-info" id="versionBadge">1</span>
+                            </div>
+                            <div class="stat-value" id="versionCount">1</div>
+                            <div class="stat-label">exportadas</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold">Actividad Reciente</h3>
+                            <button class="btn btn-ghost btn-icon text-sm"><i class="fas fa-ellipsis-h"></i></button>
+                        </div>
+                        <div id="recentActivity">
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Video TOOC Promo</div>
+                                    <div class="queue-meta">Veo-v3.1 • 8s • Completado hace 2h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(1)"><i class="fas fa-play"></i></button>
+                            </div>
+                            <div class="queue-item">
+                                <div class="queue-thumb"><i class="fas fa-check text-[var(--success)]"></i></div>
+                                <div class="queue-info">
+                                    <div class="queue-title">Demo Feature X</div>
+                                    <div class="queue-meta">RunwayML • 5s • Completado hace 4h</div>
+                                </div>
+                                <button class="btn btn-secondary btn-icon" onclick="playVideo(2)"><i class="fas fa-play"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PRODUCCIÓN -->
+                <section class="section" id="section-produccion">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Cola de Producción</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Gestiona tus vídeos en proceso</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openModal('newProduction')">
+                            <i class="fas fa-plus"></i> Nuevo Vídeo
+                        </button>
+                    </div>
+
+                    <!-- Modos de Creación (Opción A) -->
+                    <div class="grid-4 mb-6">
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('newProduction')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-700/20 flex items-center justify-center">
+                                    <i class="fas fa-magic text-xl text-purple-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Cero</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Escribe un prompt y genera</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromScript')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-700/20 flex items-center justify-center">
+                                    <i class="fas fa-file-alt text-xl text-blue-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Guion</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Sube guion o enlace Drive</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('fromImage')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-green-500/20 to-green-700/20 flex items-center justify-center">
+                                    <i class="fas fa-image text-xl text-green-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Desde Imagen</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Anima una foto/fotograma</p>
+                            </div>
+                        </div>
+                        <div class="card cursor-pointer hover:border-[var(--primary)] transition-all" onclick="openModal('improveVideo')">
+                            <div class="text-center">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-700/20 flex items-center justify-center">
+                                    <i class="fas fa-wand-magic-sparkles text-xl text-orange-400"></i>
+                                </div>
+                                <h4 class="font-semibold text-sm mb-1">Mejorar Video</h4>
+                                <p class="text-xs text-[var(--text-muted)]">Edita video existente</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="productionQueue">
+                        <div class="card text-center py-12">
+                            <i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i>
+                            <p class="text-[var(--text-muted)]">No hay vídeos en cola</p>
+                            <button class="btn btn-primary mt-4" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus"></i> Crear primero
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BIBLIOTECA -->
+                <section class="section" id="section-biblioteca">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 class="text-2xl font-bold">Biblioteca</h1>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">Todos tus vídeos generados</p>
+                        </div>
+                    </div>
+                    <div class="grid-3" id="libraryGrid">
+                        <div class="card text-center py-8">
+                            <i class="fas fa-photo-video text-3xl text-[var(--text-muted)] mb-3"></i>
+                            <p class="text-sm text-[var(--text-muted)]">Tus vídeos aparecerán aquí</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- EDITOR -->
+                <section class="section" id="section-editor">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Editor de Guion</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Escribe y valida tu guion</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Guion</h3>
+                            <textarea class="form-input form-textarea" style="min-height: 300px;" placeholder="Escribe tu guion aquí..." id="scriptContent"></textarea>
+                            <div class="flex justify-between items-center mt-4">
+                                <span class="text-sm text-[var(--text-muted)]"><span id="wordCount">0</span> palabras</span>
+                                <button class="btn btn-primary" onclick="validateScript()">
+                                    <i class="fas fa-check-double"></i> Validar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Análisis</h3>
+                            <div id="scriptAnalysis" class="text-center py-12 text-[var(--text-muted)]">
+                                <i class="fas fa-magic text-3xl mb-3"></i>
+                                <p>Escribe un guion y haz clic en "Validar"</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VALIDADOR -->
+                <section class="section" id="section-validador">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Validador Visual</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Analiza coherencia entre guion e indicador</p>
+                    </div>
+                    <div class="card text-center py-12">
+                        <i class="fas fa-eye text-4xl text-[var(--text-muted)] mb-4"></i>
+                        <p class="text-[var(--text-muted)]">Sube un guion para validar indicadores visuales</p>
+                    </div>
+                </section>
+
+                <!-- TIMELINE -->
+                <section class="section" id="section-timeline">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Timeline de Proyecto</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Organiza y edita tus clips</p>
+                    </div>
+                    <div class="card">
+                        <div class="aspect-video bg-[var(--bg-elevated)] rounded-lg flex items-center justify-center mb-4">
+                            <i class="fas fa-play-circle text-5xl text-[var(--text-muted)]"></i>
+                        </div>
+                        <div class="flex gap-2 p-3 bg-[var(--bg-elevated)] rounded-lg overflow-x-auto">
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border-2 border-[var(--primary)] flex flex-col items-center justify-center">
+                                <i class="fas fa-play text-xs"></i>
+                                <span class="text-xs mt-1">Intro</span>
+                            </div>
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border border-[var(--border)] flex flex-col items-center justify-center">
+                                <i class="fas fa-play text-xs text-[var(--text-muted)]"></i>
+                                <span class="text-xs mt-1">Escena 1</span>
+                            </div>
+                            <div class="min-w-[100px] h-14 bg-[var(--bg-card)] rounded-lg border border-dashed border-[var(--border)] flex flex-col items-center justify-center cursor-pointer" onclick="openModal('newProduction')">
+                                <i class="fas fa-plus text-xs text-[var(--text-muted)]"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CARLOS -->
+                <section class="section" id="section-carlos">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">AVIA-Clon-Carlos</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configura el estilo y personalidad</p>
+                    </div>
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Perfil de Voz</h3>
+                            <div class="space-y-4">
+                                <div class="form-group">
+                                    <label class="form-label">Tono</label>
+                                    <select class="form-input form-select">
+                                        <option>Entusiasta</option>
+                                        <option>Profesional</option>
+                                        <option>Casual</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Muletillas</label>
+                                    <input type="text" class="form-input" value="¡Vamos!, Increíble, Mira esto">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3 class="font-semibold mb-4">Vista Previa</h3>
+                            <div class="bg-[var(--bg-elevated)] rounded-lg p-4 text-sm" style="line-height: 1.8;">
+                                <p class="mb-3">¡Vamos! Hoy te voy a mostrar algo <strong>increíble</strong> que va a cambiar tu forma de trabajar...</p>
+                                <p class="text-[var(--success)]">[TONO: Entusiasta | RITMO: 1.1x]</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <section class="section" id="section-settings">
+                    <div class="mb-6">
+                        <h1 class="text-2xl font-bold">Ajustes</h1>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Configuración de la aplicación</p>
+                    </div>
+                    <div class="card">
+                        <h3 class="font-semibold mb-4">Exportar / Importar</h3>
+                        <div class="flex gap-3">
+                            <button class="btn btn-secondary" onclick="exportProject()">
+                                <i class="fas fa-download"></i> Exportar Proyecto
+                            </button>
+                            <label class="btn btn-secondary cursor-pointer">
+                                <i class="fas fa-upload"></i> Importar
+                                <input type="file" accept=".json" class="hidden" onchange="importProject(event)">
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- NEW PRODUCTION MODAL -->
+    <div class="modal" id="modal-newProduction">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Nueva Producción</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('newProduction')"><i class="fas fa-times"></i></button>
+            </div>
+
+            <form id="newProductionForm" class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label">Nombre del vídeo</label>
+                    <input type="text" class="form-input" placeholder="Ej: Promo TOOC v1" id="videoName">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Prompt / Indicador Visual</label>
+                    <textarea class="form-input form-textarea" placeholder="Describe la escena detalladamente..." id="videoPrompt"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Motor de Generación</label>
+                    <div class="grid-3 gap-3">
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--purple)]">
+                            <input type="radio" name="engine" value="veo" checked class="hidden">
+                            <span class="text-xl">🎬</span>
+                            <div>
+                                <div class="font-medium text-sm">Veo-v3.1</div>
+                                <div class="text-xs text-[var(--text-muted)]">~2min • Audio nativo</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--error)]">
+                            <input type="radio" name="engine" value="sora" class="hidden">
+                            <span class="text-xl">🎥</span>
+                            <div>
+                                <div class="font-medium text-sm">Sora-2</div>
+                                <div class="text-xs text-[var(--text-muted)]">~3min • OpenAI</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-[var(--warning)]">
+                            <input type="radio" name="engine" value="pro" class="hidden">
+                            <span class="text-xl">⚡</span>
+                            <div>
+                                <div class="font-medium text-sm">Modo PRO</div>
+                                <div class="text-xs text-[var(--text-muted)]">Veo + Sora</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Aspecto</label>
+                        <select class="form-input form-select" id="videoAspect">
+                            <option value="16:9">16:9 Horizontal</option>
+                            <option value="9:16">9:16 Vertical</option>
+                            <option value="1:1">1:1 Cuadrado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duración</label>
+                        <select class="form-input form-select" id="videoDuration">
+                            <option value="4s">4 segundos</option>
+                            <option value="6s">6 segundos</option>
+                            <option value="8s" selected>8 segundos</option>
+                            <option value="10s">10 segundos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-secondary flex-1" onclick="closeModal('newProduction')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary flex-1" onclick="addToQueue()"><i class="fas fa-list-ul"></i> A Cola</button>
+                    <button type="submit" class="btn btn-primary flex-1"><i class="fas fa-play"></i> Producir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DESDE GUION -->
+    <div class="modal" id="modal-fromScript">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-file-alt text-blue-400 mr-2"></i>Crear desde Guion</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('fromScript')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label">Nombre del proyecto</label>
+                    <input type="text" class="form-input" placeholder="Ej: Presentación AVIA UE" id="scriptProjectName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Opción 1: Subir archivo de guion</label>
+                    <div class="border-2 border-dashed border-[var(--border)] rounded-xl p-6 text-center hover:border-[var(--primary)] transition-all cursor-pointer" onclick="document.getElementById('scriptFileInput').click()">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-[var(--text-muted)] mb-2"></i>
+                        <p class="text-sm text-[var(--text-muted)]">Arrastra o haz clic para subir</p>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">.txt, .doc, .docx, .pdf</p>
+                        <input type="file" id="scriptFileInput" class="hidden" accept=".txt,.doc,.docx,.pdf" onchange="handleScriptFile(event)">
+                    </div>
+                    <div id="scriptFilePreview" class="hidden mt-3 p-3 bg-[var(--bg-elevated)] rounded-lg"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Opción 2: Enlace de Google Drive</label>
+                    <input type="url" class="form-input" placeholder="https://docs.google.com/document/d/..." id="scriptDriveLink">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Opción 3: Pegar guion directamente</label>
+                    <textarea class="form-input form-textarea" placeholder="Pega aquí el contenido del guion..." id="scriptDirectText"></textarea>
+                </div>
+
+                <!-- Calculadora de Costes (Opción B) -->
+                <div class="card bg-[var(--bg-elevated)] border-[var(--warning)]">
+                    <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <i class="fas fa-calculator text-[var(--warning)]"></i>
+                        Estimación de Costes (Libro Blanco AVIA)
+                    </h4>
+                    <div id="scriptCostEstimate" class="text-sm">
+                        <p class="text-[var(--text-muted)]">Sube un guion para calcular costes estimados...</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-secondary flex-1" onclick="closeModal('fromScript')">Cancelar</button>
+                    <button type="button" class="btn btn-primary flex-1" onclick="processScript()">
+                        <i class="fas fa-cogs"></i> Procesar Guion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DESDE IMAGEN -->
+    <div class="modal" id="modal-fromImage">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-image text-green-400 mr-2"></i>Crear desde Imagen</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('fromImage')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label">Nombre del video</label>
+                    <input type="text" class="form-input" placeholder="Ej: Animación Logo AVIA" id="imageVideoName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subir imagen / foto / fotograma</label>
+                    <div class="border-2 border-dashed border-[var(--border)] rounded-xl p-6 text-center hover:border-[var(--primary)] transition-all cursor-pointer" onclick="document.getElementById('imageFileInput').click()">
+                        <div id="imagePreviewContainer" class="hidden mb-3">
+                            <img id="imagePreview" class="max-h-48 mx-auto rounded-lg">
+                        </div>
+                        <i class="fas fa-image text-3xl text-[var(--text-muted)] mb-2" id="imageUploadIcon"></i>
+                        <p class="text-sm text-[var(--text-muted)]" id="imageUploadText">Arrastra o haz clic para subir imagen</p>
+                        <p class="text-xs text-[var(--text-muted)] mt-1">.jpg, .png, .webp</p>
+                        <input type="file" id="imageFileInput" class="hidden" accept="image/*" onchange="handleImageFile(event)">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción del movimiento</label>
+                    <textarea class="form-input form-textarea" placeholder="Describe cómo quieres que se anime la imagen. Ej: La persona camina hacia la cámara sonriendo..." id="imageMotionPrompt"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Motor</label>
+                        <select class="form-input form-select" id="imageEngine">
+                            <option value="veo">Veo-v3.1 (con audio)</option>
+                            <option value="sora">Sora-2 (más largo)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duración</label>
+                        <select class="form-input form-select" id="imageDuration">
+                            <option value="4">4 segundos</option>
+                            <option value="6">6 segundos</option>
+                            <option value="8" selected>8 segundos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Calculadora de Costes -->
+                <div class="card bg-[var(--bg-elevated)] border-[var(--warning)]">
+                    <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                        <i class="fas fa-coins text-[var(--warning)]"></i>
+                        Coste Estimado
+                    </h4>
+                    <div class="flex justify-between text-sm">
+                        <span>Generación imagen→video:</span>
+                        <span class="font-bold text-[var(--warning)]">~500-800 tokens</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-secondary flex-1" onclick="closeModal('fromImage')">Cancelar</button>
+                    <button type="button" class="btn btn-primary flex-1" onclick="generateFromImage()">
+                        <i class="fas fa-play"></i> Animar Imagen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MEJORAR VIDEO -->
+    <div class="modal" id="modal-improveVideo">
+        <div class="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-wand-magic-sparkles text-orange-400 mr-2"></i>Mejorar Video Existente</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('improveVideo')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="form-group">
+                    <label class="form-label">URL del video a mejorar</label>
+                    <input type="url" class="form-input" placeholder="https://..." id="improveVideoUrl">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">O selecciona de tu biblioteca</label>
+                    <select class="form-input form-select" id="improveVideoSelect">
+                        <option value="">-- Seleccionar video existente --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">¿Qué mejoras quieres aplicar?</label>
+                    <div class="grid-2 gap-3">
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer">
+                            <input type="checkbox" name="improve" value="audio" class="accent-[var(--primary)]">
+                            <div>
+                                <div class="font-medium text-sm">Añadir Audio</div>
+                                <div class="text-xs text-[var(--text-muted)]">Narración o música</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer">
+                            <input type="checkbox" name="improve" value="extend" class="accent-[var(--primary)]">
+                            <div>
+                                <div class="font-medium text-sm">Extender Duración</div>
+                                <div class="text-xs text-[var(--text-muted)]">Añadir más escenas</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer">
+                            <input type="checkbox" name="improve" value="style" class="accent-[var(--primary)]">
+                            <div>
+                                <div class="font-medium text-sm">Cambiar Estilo</div>
+                                <div class="text-xs text-[var(--text-muted)]">Filtros y efectos</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-lg cursor-pointer">
+                            <input type="checkbox" name="improve" value="subtitles" class="accent-[var(--primary)]">
+                            <div>
+                                <div class="font-medium text-sm">Añadir Subtítulos</div>
+                                <div class="text-xs text-[var(--text-muted)]">Texto superpuesto</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Instrucciones adicionales</label>
+                    <textarea class="form-input form-textarea" placeholder="Describe los cambios específicos que quieres..." id="improveInstructions"></textarea>
+                </div>
+
+                <div class="card bg-[var(--bg-elevated)] border-[var(--info)]">
+                    <h4 class="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <i class="fas fa-info-circle text-[var(--info)]"></i>
+                        Nota Importante
+                    </h4>
+                    <p class="text-xs text-[var(--text-muted)]">La mejora de videos existentes requiere procesar el video original. Algunas funciones como cambio de estilo regeneran el video completo.</p>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" class="btn btn-secondary flex-1" onclick="closeModal('improveVideo')">Cancelar</button>
+                    <button type="button" class="btn btn-primary flex-1" onclick="improveExistingVideo()">
+                        <i class="fas fa-magic"></i> Mejorar Video
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PIPELINE INTERACTIVO (Opción C) -->
+    <div class="modal" id="modal-pipeline">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-project-diagram text-purple-400 mr-2"></i>Pipeline de Producción</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('pipeline')"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div class="flex items-center justify-between mb-6 px-4">
+                <div class="flex flex-col items-center" id="pipelineStep1">
+                    <div class="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-white font-bold">1</div>
+                    <span class="text-xs mt-2">Guion</span>
+                </div>
+                <div class="flex-1 h-1 bg-[var(--border)] mx-2"></div>
+                <div class="flex flex-col items-center opacity-50" id="pipelineStep2">
+                    <div class="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--border)] flex items-center justify-center font-bold">2</div>
+                    <span class="text-xs mt-2">Storyboard</span>
+                </div>
+                <div class="flex-1 h-1 bg-[var(--border)] mx-2"></div>
+                <div class="flex flex-col items-center opacity-50" id="pipelineStep3">
+                    <div class="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--border)] flex items-center justify-center font-bold">3</div>
+                    <span class="text-xs mt-2">Timeline</span>
+                </div>
+                <div class="flex-1 h-1 bg-[var(--border)] mx-2"></div>
+                <div class="flex flex-col items-center opacity-50" id="pipelineStep4">
+                    <div class="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border-2 border-[var(--border)] flex items-center justify-center font-bold">4</div>
+                    <span class="text-xs mt-2">Generar</span>
+                </div>
+            </div>
+
+            <!-- Pipeline Content -->
+            <div id="pipelineContent">
+                <!-- Step 1: Guion -->
+                <div id="pipelineGuion" class="space-y-4">
+                    <h3 class="font-semibold">Paso 1: Guion</h3>
+                    <textarea class="form-input form-textarea" style="min-height: 200px;" placeholder="Escribe o pega tu guion aquí. Se dividirá automáticamente en escenas..." id="pipelineScriptText"></textarea>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-[var(--text-muted)]"><span id="pipelineWordCount">0</span> palabras</span>
+                        <button class="btn btn-primary" onclick="pipelineToStoryboard()">
+                            <i class="fas fa-arrow-right"></i> Generar Storyboard
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Storyboard -->
+                <div id="pipelineStoryboard" class="space-y-4 hidden">
+                    <h3 class="font-semibold">Paso 2: Storyboard</h3>
+                    <p class="text-sm text-[var(--text-muted)]">Revisa y edita las escenas generadas:</p>
+                    <div id="storyboardScenes" class="space-y-3"></div>
+                    <div class="flex justify-between">
+                        <button class="btn btn-secondary" onclick="pipelineBack(1)">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </button>
+                        <button class="btn btn-primary" onclick="pipelineToTimeline()">
+                            <i class="fas fa-arrow-right"></i> Crear Timeline
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Timeline -->
+                <div id="pipelineTimeline" class="space-y-4 hidden">
+                    <h3 class="font-semibold">Paso 3: Timeline</h3>
+                    <div class="bg-[var(--bg-elevated)] rounded-lg p-4">
+                        <div id="timelineTrack" class="flex gap-2 overflow-x-auto pb-2"></div>
+                        <div class="flex items-center gap-2 mt-3 text-xs text-[var(--text-muted)]">
+                            <i class="fas fa-clock"></i>
+                            <span>Duración total: <span id="totalDuration">0</span>s</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between">
+                        <button class="btn btn-secondary" onclick="pipelineBack(2)">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </button>
+                        <button class="btn btn-primary" onclick="pipelineToGenerate()">
+                            <i class="fas fa-arrow-right"></i> Revisar y Generar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Generate -->
+                <div id="pipelineGenerate" class="space-y-4 hidden">
+                    <h3 class="font-semibold">Paso 4: Generar Video</h3>
+
+                    <!-- Resumen de Costes -->
+                    <div class="card bg-[var(--bg-elevated)] border-[var(--warning)]">
+                        <h4 class="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <i class="fas fa-receipt text-[var(--warning)]"></i>
+                            Resumen de Costes (Libro Blanco AVIA)
+                        </h4>
+                        <div id="pipelineCostSummary" class="space-y-2 text-sm"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Motor de generación</label>
+                        <select class="form-input form-select" id="pipelineEngine">
+                            <option value="veo">Veo-v3.1 (recomendado)</option>
+                            <option value="sora">Sora-2</option>
+                            <option value="pro">Modo PRO (ambos)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <button class="btn btn-secondary" onclick="pipelineBack(3)">
+                            <i class="fas fa-arrow-left"></i> Volver
+                        </button>
+                        <button class="btn btn-primary" onclick="pipelineGenerateAll()">
+                            <i class="fas fa-film"></i> Generar Videos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PANEL DE PRUEBAS -->
+    <div class="modal" id="modal-testPanel">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold"><i class="fas fa-flask text-purple-400 mr-2"></i>Panel de Pruebas</h2>
+                <button class="btn btn-ghost btn-icon" onclick="closeModal('testPanel')"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Diagnóstico rápido -->
+                <div class="card bg-[var(--bg-elevated)] border-[var(--info)]">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1"><i class="fas fa-stethoscope mr-2"></i>Diagnóstico del Sistema</h4>
+                            <p class="text-xs text-[var(--text-muted)]">Verifica que todos los componentes funcionen correctamente</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="runFullDiagnostic()">
+                            <i class="fas fa-heartbeat"></i> Ejecutar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Prompts de prueba -->
+                <h4 class="font-semibold text-sm mt-4">🎬 Videos de Prueba</h4>
+                <p class="text-xs text-[var(--text-muted)] mb-3">Selecciona un tipo de video para probar la generación</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--primary)] transition-all" onclick="runTestVideo('cinematic')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-xl">🎬</div>
+                            <div>
+                                <div class="font-semibold text-sm">Cinemático</div>
+                                <div class="text-xs text-[var(--text-muted)]">Ciudad futurista • 8s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--primary)] transition-all" onclick="runTestVideo('nature')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center text-xl">🌿</div>
+                            <div>
+                                <div class="font-semibold text-sm">Naturaleza</div>
+                                <div class="text-xs text-[var(--text-muted)]">Bosque místico • 6s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--primary)] transition-all" onclick="runTestVideo('abstract')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-pink-500/20 flex items-center justify-center text-xl">🎨</div>
+                            <div>
+                                <div class="font-semibold text-sm">Abstracto</div>
+                                <div class="text-xs text-[var(--text-muted)]">Arte fluido • 4s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--primary)] transition-all" onclick="runTestVideo('product')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center text-xl">📦</div>
+                            <div>
+                                <div class="font-semibold text-sm">Producto</div>
+                                <div class="text-xs text-[var(--text-muted)]">Showcase premium • 6s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--primary)] transition-all" onclick="runTestVideo('character')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">👤</div>
+                            <div>
+                                <div class="font-semibold text-sm">Personaje</div>
+                                <div class="text-xs text-[var(--text-muted)]">Retrato documental • 8s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-[var(--bg-elevated)] cursor-pointer hover:border-[var(--warning)] transition-all border-dashed" onclick="openModal('newProduction'); closeModal('testPanel');">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-xl">✏️</div>
+                            <div>
+                                <div class="font-semibold text-sm">Personalizado</div>
+                                <div class="text-xs text-[var(--text-muted)]">Escribe tu propio prompt</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-yellow-500/10 border-yellow-500/30 mt-4">
+                    <p class="text-xs text-[var(--text-secondary)]">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Los videos de prueba usan <strong>Veo-v3.1</strong> con prompts optimizados.
+                        Cada generación consume tokens según la duración seleccionada.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+    <div class="version-indicator">AVIACreatorHub + VideoLab v5.3 TEST</div>
+
+    <script>
+        // ========================================
+        // AVIA CREATOR HUB + VIDEOLAB v5.2 COMPLETO
+        // Integración REAL con Poe Video Bots
+        // + Opción A: Múltiples modos de creación
+        // + Opción B: Calculadora de costes (Libro Blanco AVIA)
+        // + Opción C: Pipeline interactivo completo
+        // ========================================
+
+        const State = {
+            currentSection: 'dashboard',
+            selectedEngine: 'veo',
+            queue: [],
+            completed: [],
+            versions: 1
+        };
+
+        const Engines = {
+            veo: { name: 'Veo-v3.1', icon: '🎬', speed: '~2min', color: 'var(--purple)', bot: 'Veo-v3.1' },
+            sora: { name: 'Sora-2', icon: '🎥', speed: '~3min', color: 'var(--error)', bot: 'Sora-2' },
+            pro: { name: 'Modo PRO', icon: '⚡', speed: 'Variable', color: 'var(--warning)', bot: null }
+        };
+
+        // Registrar handlers para recibir videos
+        function initVideoHandlers() {
+            if (typeof window.Poe !== 'undefined' && window.Poe.registerHandler) {
+                window.Poe.registerHandler('video-handler', (result, context) => {
+                    const jobId = context.jobId;
+                    const job = State.queue.find(j => j.id === jobId);
+
+                    if (!job) return;
+
+                    result.responses.forEach(response => {
+                        if (response.status === 'error') {
+                            job.status = 'error';
+                            job.errorMessage = response.statusText || 'Error en la generación';
+                            job.progress = 0;
+                            renderQueue();
+                            notify(`Error en "${job.name}": ${job.errorMessage}`, 'error');
+                        } else if (response.status === 'incomplete') {
+                            job.status = 'processing';
+                            job.statusText = response.content || 'Generando...';
+                            // Estimar progreso basado en el contenido
+                            const match = response.content.match(/(\d+)s?\s*elapsed/i);
+                            if (match) {
+                                const elapsed = parseInt(match[1]);
+                                job.progress = Math.min(90, elapsed * 1.5);
+                            } else {
+                                job.progress = Math.min(job.progress + 5, 90);
+                            }
+                            renderQueue();
+                        } else if (response.status === 'complete') {
+                            // Buscar video en attachments
+                            const videoAttachment = response.attachments?.find(a =>
+                                a.mimeType?.startsWith('video/') || a.url?.includes('.mp4')
+                            );
+
+                            if (videoAttachment) {
+                                completeJobWithVideo(jobId, videoAttachment.url, videoAttachment.name);
+                            } else {
+                                // Puede que el contenido tenga un enlace
+                                job.status = 'error';
+                                job.errorMessage = 'No se recibió video';
+                                renderQueue();
+                                notify(`"${job.name}": No se recibió video`, 'warning');
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initNavigation();
+            initForms();
+            initVideoHandlers();
+            updateStats();
+            renderLibrary();
+            initTestPanel();
+        });
+
+        // ========================================
+        // 🧪 PANEL DE PRUEBAS Y DIAGNÓSTICO
+        // ========================================
+
+        const TestPrompts = {
+            cinematic: {
+                name: '🎬 Cinemático',
+                prompt: 'Cinematic aerial shot of a futuristic city at sunset. Flying cars weaving between glass skyscrapers with holographic billboards. Golden hour lighting, lens flares, smooth camera movement forward. Blade Runner aesthetic, professional cinematography, 4K ultra HD quality.',
+                duration: '8'
+            },
+            nature: {
+                name: '🌿 Naturaleza',
+                prompt: 'Slow motion macro shot of a dewdrop falling from a green leaf in a mystical forest. Sunbeams filtering through the canopy, particles of light dancing in the air. Peaceful atmosphere, vibrant colors, shallow depth of field, BBC nature documentary style.',
+                duration: '6'
+            },
+            abstract: {
+                name: '🎨 Abstracto',
+                prompt: 'Abstract fluid art animation. Vibrant neon colors flowing and merging like liquid metal. Electric blue, hot pink, and gold gradients interacting with each other. Hypnotic movement, high contrast, perfect for music visualization or intro sequences.',
+                duration: '4'
+            },
+            product: {
+                name: '📦 Producto',
+                prompt: 'Premium product showcase. Sleek smartphone rotating on a dark reflective surface. Dramatic rim lighting, subtle smoke effects, professional studio setup. Apple-style commercial aesthetics, clean and minimal, luxury feel.',
+                duration: '6'
+            },
+            character: {
+                name: '👤 Personaje',
+                prompt: 'Portrait of a confident tech entrepreneur in a modern office. Natural movement, looking towards camera then turning to look out the window. Soft natural lighting, bokeh background with city views. Documentary style, authentic emotion.',
+                duration: '8'
+            }
+        };
+
+        function initTestPanel() {
+            // Añadir botón de pruebas al header
+            const headerActions = document.querySelector('.header-actions');
+            if (headerActions) {
+                const testBtn = document.createElement('button');
+                testBtn.className = 'btn btn-ghost btn-icon';
+                testBtn.innerHTML = '<i class="fas fa-flask"></i>';
+                testBtn.title = 'Panel de Pruebas';
+                testBtn.onclick = () => openModal('testPanel');
+                headerActions.insertBefore(testBtn, headerActions.firstChild);
+            }
+        }
+
+        async function runTestVideo(testType) {
+            const test = TestPrompts[testType];
+            if (!test) {
+                notify('Tipo de prueba no válido', 'error');
+                return;
+            }
+
+            closeModal('testPanel');
+            navigateTo('produccion');
+
+            const job = {
+                id: Date.now(),
+                name: `🧪 Test: ${test.name}`,
+                prompt: test.prompt,
+                engine: 'veo',
+                duration: test.duration,
+                aspect: '16:9',
+                status: 'processing',
+                progress: 0,
+                statusText: '🔄 Iniciando prueba de conexión...'
+            };
+
+            State.queue.push(job);
+            updateStats();
+            renderQueue();
+
+            // Simular progreso inicial
+            await animateProgress(job, 10, 'Verificando API de Poe...');
+
+            try {
+                // Verificar disponibilidad de la API
+                if (typeof window.Poe === 'undefined' || !window.Poe.sendUserMessage) {
+                    throw new Error('API de Poe no disponible');
+                }
+
+                await animateProgress(job, 20, 'Conectando con Veo-v3.1...');
+
+                const botMessage = `@Veo-v3.1 ${test.prompt} --aspect 16:9 --duration ${test.duration}s`;
+
+                await window.Poe.sendUserMessage(botMessage, {
+                    handler: 'video-handler',
+                    stream: false,
+                    openChat: false,
+                    handlerContext: { jobId: job.id }
+                });
+
+                await animateProgress(job, 30, '✅ Solicitud enviada. Generando video...');
+                notify(`🧪 Prueba "${test.name}" enviada correctamente`, 'success');
+
+            } catch (err) {
+                console.error('Error en prueba:', err);
+                job.status = 'error';
+                job.errorMessage = err.message || 'Error desconocido';
+                job.progress = 0;
+                renderQueue();
+
+                // Mostrar diagnóstico detallado
+                showDiagnosticModal(err, test);
+            }
+        }
+
+        async function animateProgress(job, targetProgress, statusText) {
+            const step = 2;
+            while (job.progress < targetProgress && job.status !== 'error') {
+                job.progress += step;
+                job.statusText = statusText;
+                renderQueue();
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
+
+        function showDiagnosticModal(error, test) {
+            const modal = document.createElement('div');
+            modal.className = 'modal open';
+            modal.id = 'diagnosticModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-red-400"><i class="fas fa-exclamation-triangle mr-2"></i>Diagnóstico de Error</h2>
+                        <button class="btn btn-ghost btn-icon" onclick="document.getElementById('diagnosticModal').remove()"><i class="fas fa-times"></i></button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="card bg-red-500/10 border-red-500/30">
+                            <h4 class="font-semibold text-sm mb-2">❌ Error Detectado</h4>
+                            <code class="text-xs text-red-300 block p-2 bg-black/30 rounded">${error.message || 'Error desconocido'}</code>
+                        </div>
+
+                        <div class="card bg-[var(--bg-elevated)]">
+                            <h4 class="font-semibold text-sm mb-3">🔍 Verificaciones</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${typeof window.Poe !== 'undefined' ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'}"></i>
+                                    <span>API window.Poe disponible</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${typeof window.Poe?.sendUserMessage === 'function' ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'}"></i>
+                                    <span>Función sendUserMessage</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${typeof window.Poe?.registerHandler === 'function' ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'}"></i>
+                                    <span>Función registerHandler</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${navigator.onLine ? 'fa-check-circle text-green-400' : 'fa-times-circle text-red-400'}"></i>
+                                    <span>Conexión a Internet</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-blue-500/10 border-blue-500/30">
+                            <h4 class="font-semibold text-sm mb-2">💡 Posibles Soluciones</h4>
+                            <ul class="text-xs text-[var(--text-secondary)] space-y-1">
+                                <li>• Asegúrate de ejecutar esta app dentro de Poe Canvas</li>
+                                <li>• Verifica que tienes créditos/tokens disponibles</li>
+                                <li>• Comprueba que el bot Veo-v3.1 está accesible</li>
+                                <li>• Intenta recargar la página</li>
+                            </ul>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button class="btn btn-secondary flex-1" onclick="document.getElementById('diagnosticModal').remove()">Cerrar</button>
+                            <button class="btn btn-primary flex-1" onclick="document.getElementById('diagnosticModal').remove(); runTestVideo('abstract')">
+                                <i class="fas fa-redo"></i> Reintentar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function runFullDiagnostic() {
+            closeModal('testPanel');
+
+            const results = {
+                poeApi: typeof window.Poe !== 'undefined',
+                sendMessage: typeof window.Poe?.sendUserMessage === 'function',
+                registerHandler: typeof window.Poe?.registerHandler === 'function',
+                getTrigger: typeof window.Poe?.getTriggerMessage === 'function',
+                online: navigator.onLine,
+                timestamp: new Date().toISOString()
+            };
+
+            const allPassed = Object.values(results).every(v => v === true || typeof v === 'string');
+
+            const modal = document.createElement('div');
+            modal.className = 'modal open';
+            modal.id = 'fullDiagnosticModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold"><i class="fas fa-stethoscope mr-2"></i>Diagnóstico Completo</h2>
+                        <button class="btn btn-ghost btn-icon" onclick="document.getElementById('fullDiagnosticModal').remove()"><i class="fas fa-times"></i></button>
+                    </div>
+
+                    <div class="space-y-3">
+                        ${Object.entries(results).map(([key, value]) => `
+                            <div class="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-elevated)]">
+                                <span class="text-sm">${key}</span>
+                                <span class="text-sm font-mono ${value === true ? 'text-green-400' : typeof value === 'string' ? 'text-blue-400' : 'text-red-400'}">
+                                    ${value === true ? '✅ OK' : value === false ? '❌ FAIL' : value}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="mt-4 p-4 rounded-lg ${allPassed ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}">
+                        <p class="text-sm font-semibold ${allPassed ? 'text-green-400' : 'text-yellow-400'}">
+                            ${allPassed ? '✅ Sistema listo para generar videos' : '⚠️ Algunos componentes necesitan atención'}
+                        </p>
+                    </div>
+
+                    <button class="btn btn-primary w-full mt-4" onclick="document.getElementById('fullDiagnosticModal').remove()">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            notify(allPassed ? '✅ Diagnóstico: Todo OK' : '⚠️ Diagnóstico: Revisar resultados', allPassed ? 'success' : 'warning');
+        }
+
+        function initNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const section = item.dataset.section;
+                    if (section) navigateTo(section);
+                });
+            });
+        }
+
+        function navigateTo(sectionId) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector(`[data-section="${sectionId}"]`)?.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${sectionId}`)?.classList.add('active');
+            const titles = { dashboard: 'Dashboard', produccion: 'Producción', biblioteca: 'Biblioteca', editor: 'Editor de Guion', validador: 'Validador', timeline: 'Timeline', carlos: 'AVIA-Clon-Carlos', settings: 'Ajustes' };
+            document.getElementById('headerTitle').textContent = titles[sectionId] || sectionId;
+            State.currentSection = sectionId;
+            if (sectionId === 'biblioteca') renderLibrary();
+            closeSidebar();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('show');
+        }
+
+        function selectEngine(engine, element) {
+            State.selectedEngine = engine;
+            document.querySelectorAll('.engine-card').forEach(c => c.classList.remove('selected'));
+            if (element) element.classList.add('selected');
+            notify(`Motor seleccionado: ${Engines[engine]?.name || engine}`, 'info');
+        }
+
+        function openModal(id) { document.getElementById(`modal-${id}`)?.classList.add('open'); }
+        function closeModal(id) { document.getElementById(`modal-${id}`)?.classList.remove('open'); }
+
+        function initForms() {
+            document.getElementById('newProductionForm')?.addEventListener('submit', (e) => { e.preventDefault(); startProduction(); });
+            document.getElementById('scriptContent')?.addEventListener('input', (e) => {
+                const words = e.target.value.trim().split(/\s+/).filter(w => w).length;
+                document.getElementById('wordCount').textContent = words;
+            });
+        }
+
+        function addToQueue() {
+            const name = document.getElementById('videoName').value || `Video ${Date.now()}`;
+            const prompt = document.getElementById('videoPrompt').value;
+            const engine = document.querySelector('input[name="engine"]:checked')?.value || 'veo';
+            if (!prompt) { notify('Ingresa un prompt para el vídeo', 'warning'); return; }
+            State.queue.push({ id: Date.now(), name, prompt, engine, status: 'queued', progress: 0 });
+            updateStats(); renderQueue(); closeModal('newProduction'); notify(`"${name}" añadido a la cola`, 'success'); resetForm();
+        }
+
+        async function startProduction() {
+            const name = document.getElementById('videoName').value || `Video ${Date.now()}`;
+            const prompt = document.getElementById('videoPrompt').value;
+            const engine = document.querySelector('input[name="engine"]:checked')?.value || 'veo';
+            const aspect = document.getElementById('videoAspect').value;
+            const duration = document.getElementById('videoDuration').value.replace('s', '');
+
+            if (!prompt) { notify('Ingresa un prompt para el vídeo', 'warning'); return; }
+
+            closeModal('newProduction');
+            navigateTo('produccion');
+
+            if (engine === 'pro') {
+                // Modo PRO: generar con Veo y Sora simultáneamente
+                const engines = ['veo', 'sora'];
+                for (const eng of engines) {
+                    const job = {
+                        id: Date.now() + Math.random(),
+                        name: `${name} (${Engines[eng].icon})`,
+                        prompt,
+                        engine: eng,
+                        aspect,
+                        duration,
+                        status: 'processing',
+                        progress: 5,
+                        statusText: 'Iniciando generación...'
+                    };
+                    State.queue.push(job);
+                    await generateVideoReal(job);
+                }
+                notify('Modo PRO: Generando con Veo y Sora', 'info');
+            } else {
+                const job = {
+                    id: Date.now(),
+                    name,
+                    prompt,
+                    engine,
+                    aspect,
+                    duration,
+                    status: 'processing',
+                    progress: 5,
+                    statusText: 'Iniciando generación...'
+                };
+                State.queue.push(job);
+                await generateVideoReal(job);
+            }
+
+            updateStats();
+            renderQueue();
+            resetForm();
+        }
+
+        async function generateVideoReal(job) {
+            const engineConfig = Engines[job.engine];
+            if (!engineConfig || !engineConfig.bot) {
+                notify(`Motor ${job.engine} no disponible`, 'error');
+                return;
+            }
+
+            // Construir el mensaje para el bot
+            let botMessage = `@${engineConfig.bot} ${job.prompt}`;
+
+            // Añadir parámetros según el motor
+            if (job.engine === 'veo') {
+                // Veo usa 'aspect' y 'duration'
+                const veoAspect = job.aspect === '1:1' ? '16:9' : job.aspect; // Veo no soporta 1:1
+                botMessage += ` --aspect ${veoAspect}`;
+                if (job.duration && ['4', '6', '8'].includes(job.duration)) {
+                    botMessage += ` --duration ${job.duration}s`;
+                }
+            } else if (job.engine === 'sora') {
+                // Sora usa 'size' y 'duration'
+                const soraSize = job.aspect === '9:16' ? '720x1280' : '1280x720';
+                botMessage += ` --size ${soraSize}`;
+                if (job.duration && ['4', '8', '12'].includes(job.duration)) {
+                    botMessage += ` --duration ${job.duration}`;
+                }
+            }
+
+            try {
+                await window.Poe.sendUserMessage(botMessage, {
+                    handler: 'video-handler',
+                    stream: false,
+                    openChat: false,
+                    handlerContext: { jobId: job.id }
+                });
+                notify(`Generando "${job.name}" con ${engineConfig.name}...`, 'info');
+            } catch (err) {
+                job.status = 'error';
+                job.errorMessage = err.message || 'Error al enviar solicitud';
+                renderQueue();
+                notify(`Error: ${err.message}`, 'error');
+            }
+        }
+
+        function completeJobWithVideo(jobId, videoUrl, videoName) {
+            const idx = State.queue.findIndex(j => j.id === jobId);
+            if (idx === -1) return;
+
+            const job = State.queue[idx];
+            State.queue.splice(idx, 1);
+
+            State.completed.unshift({
+                id: job.id,
+                name: job.name,
+                engine: job.engine,
+                duration: job.duration + 's',
+                prompt: job.prompt,
+                date: new Date(),
+                videoUrl: videoUrl,
+                videoName: videoName || `${job.name}.mp4`
+            });
+
+            updateStats();
+            renderQueue();
+            renderLibrary();
+            renderRecentActivity();
+            notify(`¡"${job.name}" completado! Video listo para descargar`, 'success');
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('productionQueue');
+            if (!container) return;
+            if (State.queue.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><i class="fas fa-inbox text-4xl text-[var(--text-muted)] mb-4"></i><p class="text-[var(--text-muted)]">No hay vídeos en cola</p><button class="btn btn-primary mt-4" onclick="openModal('newProduction')"><i class="fas fa-plus"></i> Crear primero</button></div>`;
+                return;
+            }
+            container.innerHTML = State.queue.map(job => {
+                const eng = Engines[job.engine] || { name: job.engine, icon: '🎬', color: 'var(--purple)' };
+                const statusText = job.status === 'error'
+                    ? `<span style="color: var(--error)">Error: ${job.errorMessage}</span>`
+                    : (job.statusText || (job.status === 'processing' ? 'Procesando...' : 'En cola'));
+
+                return `
+                    <div class="queue-item animate-in">
+                        <div class="queue-thumb"><span class="text-2xl">${eng.icon}</span></div>
+                        <div class="queue-info">
+                            <div class="queue-title">${job.name}</div>
+                            <div class="queue-meta">${eng.name} • ${statusText}</div>
+                            ${job.status === 'processing' ? `<div class="progress-bar"><div class="progress-fill" style="width: ${job.progress}%"></div></div>` : ''}
+                        </div>
+                        ${job.status === 'error'
+                            ? `<button class="btn btn-secondary btn-icon" onclick="retryJob(${job.id})"><i class="fas fa-redo"></i></button>`
+                            : `<span class="text-sm font-bold" style="color: ${eng.color}">${Math.round(job.progress)}%</span>`
+                        }
+                    </div>`;
+            }).join('');
+        }
+
+        function renderLibrary() {
+            const container = document.getElementById('libraryGrid');
+            if (!container) return;
+
+            if (State.completed.length === 0) {
+                container.innerHTML = `<div class="card text-center py-8"><i class="fas fa-photo-video text-3xl text-[var(--text-muted)] mb-3"></i><p class="text-sm text-[var(--text-muted)]">Tus vídeos aparecerán aquí</p></div>`;
+                return;
+            }
+
+            container.innerHTML = State.completed.map(video => {
+                const eng = Engines[video.engine] || { icon: '🎬', name: video.engine };
+                const dateStr = video.date ? new Date(video.date).toLocaleDateString('es-ES') : 'Reciente';
+
+                return `
+                    <div class="card">
+                        <div class="aspect-video bg-[var(--bg-elevated)] rounded-lg flex items-center justify-center mb-3 relative overflow-hidden">
+                            ${video.videoUrl
+                                ? `<video src="${video.videoUrl}" class="w-full h-full object-cover" onclick="playVideoModal('${video.videoUrl}', '${video.name}')"></video>
+                                   <div class="absolute inset-0 flex items-center justify-center bg-black/40 cursor-pointer hover:bg-black/20 transition-all" onclick="playVideoModal('${video.videoUrl}', '${video.name}')">
+                                       <i class="fas fa-play-circle text-4xl text-white"></i>
+                                   </div>`
+                                : `<i class="fas fa-video text-3xl text-[var(--text-muted)]"></i>`
+                            }
+                        </div>
+                        <h4 class="font-semibold text-sm mb-1">${video.name}</h4>
+                        <div class="flex items-center justify-between text-xs text-[var(--text-muted)] mb-3">
+                            <span>${eng.icon} ${eng.name}</span>
+                            <span>${video.duration || '8s'} • ${dateStr}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            ${video.videoUrl
+                                ? `<a href="${video.videoUrl}" download="${video.videoName || video.name + '.mp4'}" class="btn btn-primary flex-1 text-xs">
+                                       <i class="fas fa-download"></i> Descargar
+                                   </a>
+                                   <button class="btn btn-secondary btn-icon" onclick="playVideoModal('${video.videoUrl}', '${video.name}')">
+                                       <i class="fas fa-play"></i>
+                                   </button>`
+                                : `<button class="btn btn-secondary flex-1 text-xs" disabled>
+                                       <i class="fas fa-clock"></i> Sin video
+                                   </button>`
+                            }
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderRecentActivity() {
+            const container = document.getElementById('recentActivity');
+            if (!container) return;
+
+            const recent = State.completed.slice(0, 3);
+            if (recent.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-[var(--text-muted)]"><i class="fas fa-clock text-2xl mb-2"></i><p class="text-sm">Sin actividad reciente</p></div>`;
+                return;
+            }
+
+            container.innerHTML = recent.map(video => {
+                const eng = Engines[video.engine] || { icon: '🎬', name: video.engine };
+                const timeAgo = getTimeAgo(video.date);
+
+                return `
+                    <div class="queue-item">
+                        <div class="queue-thumb">
+                            ${video.videoUrl
+                                ? `<i class="fas fa-check text-[var(--success)]"></i>`
+                                : `<i class="fas fa-video text-[var(--text-muted)]"></i>`
+                            }
+                        </div>
+                        <div class="queue-info">
+                            <div class="queue-title">${video.name}</div>
+                            <div class="queue-meta">${eng.name} • ${video.duration || '8s'} • ${timeAgo}</div>
+                        </div>
+                        ${video.videoUrl
+                            ? `<a href="${video.videoUrl}" download="${video.videoName || video.name + '.mp4'}" class="btn btn-primary btn-icon"><i class="fas fa-download"></i></a>`
+                            : `<button class="btn btn-secondary btn-icon" onclick="playVideo(${video.id})"><i class="fas fa-play"></i></button>`
+                        }
+                    </div>`;
+            }).join('');
+        }
+
+        function getTimeAgo(date) {
+            if (!date) return 'Reciente';
+            const now = new Date();
+            const d = new Date(date);
+            const diffMs = now - d;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+
+            if (diffMins < 1) return 'Ahora mismo';
+            if (diffMins < 60) return `Hace ${diffMins} min`;
+            if (diffHours < 24) return `Hace ${diffHours}h`;
+            return d.toLocaleDateString('es-ES');
+        }
+
+        function playVideoModal(videoUrl, videoName) {
+            const modal = document.createElement('div');
+            modal.className = 'modal open';
+            modal.id = 'videoPlayerModal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px; padding: 0; overflow: hidden;">
+                    <div class="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                        <h3 class="font-semibold">${videoName}</h3>
+                        <button class="btn btn-ghost btn-icon" onclick="closeVideoModal()"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="aspect-video bg-black">
+                        <video src="${videoUrl}" controls autoplay class="w-full h-full"></video>
+                    </div>
+                    <div class="p-4 flex gap-3">
+                        <a href="${videoUrl}" download="${videoName}.mp4" class="btn btn-primary flex-1">
+                            <i class="fas fa-download"></i> Descargar Video
+                        </a>
+                        <button class="btn btn-secondary" onclick="closeVideoModal()">Cerrar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function closeVideoModal() {
+            const modal = document.getElementById('videoPlayerModal');
+            if (modal) modal.remove();
+        }
+
+        async function retryJob(jobId) {
+            const job = State.queue.find(j => j.id === jobId);
+            if (!job) return;
+
+            job.status = 'processing';
+            job.progress = 5;
+            job.statusText = 'Reintentando...';
+            job.errorMessage = null;
+            renderQueue();
+
+            await generateVideoReal(job);
+        }
+
+        function resetForm() {
+            document.getElementById('videoName').value = '';
+            document.getElementById('videoPrompt').value = '';
+        }
+
+        function updateStats() {
+            document.getElementById('queueCount').textContent = State.queue.length;
+            document.getElementById('queueBadge').textContent = State.queue.length;
+            document.getElementById('completedToday').textContent = State.completed.length;
+            document.getElementById('versionCount').textContent = State.versions;
+            document.getElementById('versionBadge').textContent = State.versions;
+        }
+
+        function exportProject() {
+            const data = { version: '5.1.0', exportedAt: new Date().toISOString(), app: 'AVIACreatorHub+VideoLab', state: { queue: State.queue, completed: State.completed } };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `aviacreatorhub-v${++State.versions}.json`; a.click();
+            updateStats(); notify('Proyecto exportado', 'success');
+        }
+
+        function importProject(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data.state) { State.queue = data.state.queue || []; State.completed = data.state.completed || []; } updateStats(); renderQueue(); renderLibrary(); notify('Proyecto importado', 'success'); } catch (err) { notify('Error: ' + err.message, 'error'); } };
+            reader.readAsText(file);
+        }
+
+        function validateScript() {
+            const content = document.getElementById('scriptContent').value;
+            if (!content.trim()) { notify('Escribe un guion primero', 'warning'); return; }
+            const words = content.trim().split(/\s+/).length;
+            const score = Math.min(100, Math.round((words / 200) * 100));
+            document.getElementById('scriptAnalysis').innerHTML = `<div class="text-left"><div class="flex justify-between mb-4"><span>Puntuación</span><span class="text-2xl font-bold" style="color: ${score > 70 ? 'var(--success)' : 'var(--warning)'}">${score}/100</span></div><div class="progress-bar" style="height: 8px;"><div class="progress-fill" style="width: ${score}%;"></div></div><p class="mt-4 text-sm text-[var(--text-muted)]">${words} palabras detectadas</p></div>`;
+        }
+
+        function playVideo(id) {
+            const video = State.completed.find(v => v.id === id);
+            if (video && video.videoUrl) {
+                playVideoModal(video.videoUrl, video.name);
+            } else {
+                notify('Video no disponible', 'warning');
+            }
+        }
+
+        function notify(message, type = 'info') {
+            const el = document.getElementById('notification');
+            el.textContent = message;
+            el.className = `notification ${type} show`;
+            setTimeout(() => el.classList.remove('show'), 4000);
+        }
+
+        // ========================================
+        // OPCIÓN A: Múltiples modos de creación
+        // ========================================
+
+        let uploadedImage = null;
+        let pipelineScenes = [];
+
+        function handleScriptFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const preview = document.getElementById('scriptFilePreview');
+            preview.classList.remove('hidden');
+            preview.innerHTML = `<div class="flex items-center gap-3"><i class="fas fa-file-alt text-blue-400"></i><div><div class="font-medium text-sm">${file.name}</div><div class="text-xs text-[var(--text-muted)]">${(file.size / 1024).toFixed(1)} KB</div></div></div>`;
+
+            // Leer contenido si es .txt
+            if (file.name.endsWith('.txt')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('scriptDirectText').value = e.target.result;
+                    calculateScriptCost(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+            notify('Archivo cargado correctamente', 'success');
+        }
+
+        function calculateScriptCost(text) {
+            const words = text.trim().split(/\s+/).filter(w => w).length;
+            const estimatedScenes = Math.ceil(words / 50);
+            const estimatedDuration = estimatedScenes * 6;
+            const tokenCostPerScene = 600;
+            const totalTokens = estimatedScenes * tokenCostPerScene;
+
+            document.getElementById('scriptCostEstimate').innerHTML = `
+                <div class="space-y-2">
+                    <div class="flex justify-between"><span>Palabras detectadas:</span><span class="font-bold">${words}</span></div>
+                    <div class="flex justify-between"><span>Escenas estimadas:</span><span class="font-bold">${estimatedScenes}</span></div>
+                    <div class="flex justify-between"><span>Duración aprox.:</span><span class="font-bold">${estimatedDuration}s</span></div>
+                    <hr class="border-[var(--border)]">
+                    <div class="flex justify-between"><span>Tokens Veo-v3.1:</span><span class="font-bold text-[var(--warning)]">~${totalTokens}</span></div>
+                    <div class="flex justify-between"><span>Tokens Sora-2:</span><span class="font-bold text-[var(--warning)]">~${Math.round(totalTokens * 1.2)}</span></div>
+                    <div class="flex justify-between"><span>Modo PRO (ambos):</span><span class="font-bold text-[var(--error)]">~${Math.round(totalTokens * 2.2)}</span></div>
+                </div>
+            `;
+        }
+
+        document.getElementById('scriptDirectText')?.addEventListener('input', (e) => {
+            calculateScriptCost(e.target.value);
+        });
+
+        async function processScript() {
+            const name = document.getElementById('scriptProjectName').value || 'Proyecto desde Guion';
+            const text = document.getElementById('scriptDirectText').value;
+            const driveLink = document.getElementById('scriptDriveLink').value;
+
+            if (!text && !driveLink) {
+                notify('Proporciona un guion o enlace de Drive', 'warning');
+                return;
+            }
+
+            closeModal('fromScript');
+
+            // Si hay enlace de Drive, usar Claude para procesar
+            if (driveLink && !text) {
+                notify('Procesando enlace de Google Drive...', 'info');
+                // Aquí se podría integrar con Claude para leer el documento
+                // Por ahora simulamos
+                notify('Función de Drive requiere integración adicional', 'warning');
+                return;
+            }
+
+            // Abrir pipeline con el guion
+            document.getElementById('pipelineScriptText').value = text;
+            openModal('pipeline');
+            notify('Guion cargado en el Pipeline', 'success');
+        }
+
+        function handleImageFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            uploadedImage = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('imageUploadIcon').classList.add('hidden');
+                document.getElementById('imageUploadText').textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+            notify('Imagen cargada', 'success');
+        }
+
+        async function generateFromImage() {
+            const name = document.getElementById('imageVideoName').value || 'Video desde Imagen';
+            const motion = document.getElementById('imageMotionPrompt').value;
+            const engine = document.getElementById('imageEngine').value;
+            const duration = document.getElementById('imageDuration').value;
+
+            if (!uploadedImage) {
+                notify('Sube una imagen primero', 'warning');
+                return;
+            }
+
+            if (!motion) {
+                notify('Describe el movimiento deseado', 'warning');
+                return;
+            }
+
+            closeModal('fromImage');
+            navigateTo('produccion');
+
+            const job = {
+                id: Date.now(),
+                name,
+                prompt: motion,
+                engine,
+                duration,
+                aspect: '16:9',
+                status: 'processing',
+                progress: 5,
+                statusText: 'Procesando imagen...',
+                hasImage: true
+            };
+
+            State.queue.push(job);
+            updateStats();
+            renderQueue();
+
+            // Generar con imagen adjunta
+            const engineConfig = Engines[engine];
+            let botMessage = `@${engineConfig.bot} ${motion}`;
+
+            if (engine === 'veo') {
+                botMessage += ` --aspect 16:9 --duration ${duration}s`;
+            } else {
+                botMessage += ` --size 1280x720 --duration ${duration}`;
+            }
+
+            try {
+                await window.Poe.sendUserMessage(botMessage, {
+                    handler: 'video-handler',
+                    stream: false,
+                    openChat: false,
+                    handlerContext: { jobId: job.id },
+                    attachments: [uploadedImage]
+                });
+                notify(`Animando imagen con ${engineConfig.name}...`, 'info');
+            } catch (err) {
+                job.status = 'error';
+                job.errorMessage = err.message;
+                renderQueue();
+                notify(`Error: ${err.message}`, 'error');
+            }
+
+            uploadedImage = null;
+        }
+
+        function improveExistingVideo() {
+            const videoUrl = document.getElementById('improveVideoUrl').value;
+            const selectedVideo = document.getElementById('improveVideoSelect').value;
+            const improvements = Array.from(document.querySelectorAll('input[name="improve"]:checked')).map(c => c.value);
+            const instructions = document.getElementById('improveInstructions').value;
+
+            const url = videoUrl || selectedVideo;
+            if (!url) {
+                notify('Proporciona un video para mejorar', 'warning');
+                return;
+            }
+
+            if (improvements.length === 0) {
+                notify('Selecciona al menos una mejora', 'warning');
+                return;
+            }
+
+            closeModal('improveVideo');
+            notify('Función de mejora de video en desarrollo. Requiere procesamiento adicional.', 'info');
+
+            // Aquí se integraría con servicios de edición de video
+            // Por ahora mostramos información
+            console.log('Mejorar video:', { url, improvements, instructions });
+        }
+
+        // Poblar selector de videos existentes
+        function updateImproveVideoSelect() {
+            const select = document.getElementById('improveVideoSelect');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">-- Seleccionar video existente --</option>';
+            State.completed.forEach(video => {
+                if (video.videoUrl) {
+                    const option = document.createElement('option');
+                    option.value = video.videoUrl;
+                    option.textContent = video.name;
+                    select.appendChild(option);
+                }
+            });
+        }
+
+        // ========================================
+        // OPCIÓN C: Pipeline Interactivo
+        // ========================================
+
+        document.getElementById('pipelineScriptText')?.addEventListener('input', (e) => {
+            const words = e.target.value.trim().split(/\s+/).filter(w => w).length;
+            document.getElementById('pipelineWordCount').textContent = words;
+        });
+
+        function pipelineToStoryboard() {
+            const text = document.getElementById('pipelineScriptText').value;
+            if (!text.trim()) {
+                notify('Escribe un guion primero', 'warning');
+                return;
+            }
+
+            // Dividir en escenas (por párrafos o por puntos)
+            const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+            pipelineScenes = paragraphs.map((p, i) => ({
+                id: i + 1,
+                text: p.trim(),
+                duration: 6,
+                prompt: generateVisualPrompt(p.trim())
+            }));
+
+            // Si hay muy pocas escenas, dividir más
+            if (pipelineScenes.length < 2) {
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim());
+                pipelineScenes = sentences.slice(0, 10).map((s, i) => ({
+                    id: i + 1,
+                    text: s.trim(),
+                    duration: 6,
+                    prompt: generateVisualPrompt(s.trim())
+                }));
+            }
+
+            renderStoryboard();
+            showPipelineStep(2);
+        }
+
+        function generateVisualPrompt(text) {
+            // Generar prompt visual básico desde el texto
+            return `Cinematic shot: ${text.substring(0, 200)}. Professional lighting, high quality, 4K resolution.`;
+        }
+
+        function renderStoryboard() {
+            const container = document.getElementById('storyboardScenes');
+            container.innerHTML = pipelineScenes.map((scene, i) => `
+                <div class="card bg-[var(--bg-elevated)]">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-[var(--primary)] flex items-center justify-center text-white font-bold flex-shrink-0">${scene.id}</div>
+                        <div class="flex-1">
+                            <div class="text-sm mb-2">${scene.text}</div>
+                            <div class="form-group mb-2">
+                                <label class="form-label text-xs">Prompt Visual</label>
+                                <textarea class="form-input text-xs" style="min-height: 60px;" id="scenePrompt${i}" onchange="updateScenePrompt(${i}, this.value)">${scene.prompt}</textarea>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="text-xs text-[var(--text-muted)]">Duración:</label>
+                                <select class="form-input form-select text-xs py-1" style="width: auto;" onchange="updateSceneDuration(${i}, this.value)">
+                                    <option value="4" ${scene.duration === 4 ? 'selected' : ''}>4s</option>
+                                    <option value="6" ${scene.duration === 6 ? 'selected' : ''}>6s</option>
+                                    <option value="8" ${scene.duration === 8 ? 'selected' : ''}>8s</option>
+                                </select>
+                                <button class="btn btn-ghost btn-icon text-xs text-red-400" onclick="removeScene(${i})"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateScenePrompt(index, value) {
+            pipelineScenes[index].prompt = value;
+        }
+
+        function updateSceneDuration(index, value) {
+            pipelineScenes[index].duration = parseInt(value);
+        }
+
+        function removeScene(index) {
+            pipelineScenes.splice(index, 1);
+            pipelineScenes.forEach((s, i) => s.id = i + 1);
+            renderStoryboard();
+        }
+
+        function pipelineToTimeline() {
+            if (pipelineScenes.length === 0) {
+                notify('No hay escenas en el storyboard', 'warning');
+                return;
+            }
+
+            renderTimeline();
+            showPipelineStep(3);
+        }
+
+        function renderTimeline() {
+            const track = document.getElementById('timelineTrack');
+            let totalDuration = 0;
+
+            track.innerHTML = pipelineScenes.map((scene, i) => {
+                totalDuration += scene.duration;
+                const width = scene.duration * 15;
+                return `
+                    <div class="flex-shrink-0 h-16 rounded-lg border-2 border-[var(--primary)] bg-[var(--bg-card)] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--bg-elevated)] transition-all" style="width: ${width}px;">
+                        <span class="text-xs font-bold">E${scene.id}</span>
+                        <span class="text-xs text-[var(--text-muted)]">${scene.duration}s</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('totalDuration').textContent = totalDuration;
+        }
+
+        function pipelineToGenerate() {
+            // Calcular costes
+            const totalDuration = pipelineScenes.reduce((sum, s) => sum + s.duration, 0);
+            const numScenes = pipelineScenes.length;
+            const tokensVeo = numScenes * 600;
+            const tokensSora = numScenes * 720;
+
+            document.getElementById('pipelineCostSummary').innerHTML = `
+                <div class="flex justify-between"><span>Número de escenas:</span><span class="font-bold">${numScenes}</span></div>
+                <div class="flex justify-between"><span>Duración total:</span><span class="font-bold">${totalDuration}s</span></div>
+                <hr class="border-[var(--border)]">
+                <div class="flex justify-between"><span>Coste Veo-v3.1:</span><span class="font-bold text-purple-400">~${tokensVeo} tokens</span></div>
+                <div class="flex justify-between"><span>Coste Sora-2:</span><span class="font-bold text-red-400">~${tokensSora} tokens</span></div>
+                <div class="flex justify-between"><span>Coste PRO (ambos):</span><span class="font-bold text-[var(--warning)]">~${tokensVeo + tokensSora} tokens</span></div>
+                <hr class="border-[var(--border)]">
+                <p class="text-xs text-[var(--text-muted)] mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Según Libro Blanco AVIA: Los costes son estimados. El consumo real puede variar según la complejidad del prompt.
+                </p>
+            `;
+
+            showPipelineStep(4);
+        }
+
+        async function pipelineGenerateAll() {
+            const engine = document.getElementById('pipelineEngine').value;
+
+            closeModal('pipeline');
+            navigateTo('produccion');
+
+            notify(`Generando ${pipelineScenes.length} escenas...`, 'info');
+
+            for (const scene of pipelineScenes) {
+                const job = {
+                    id: Date.now() + scene.id,
+                    name: `Escena ${scene.id}`,
+                    prompt: scene.prompt,
+                    engine: engine === 'pro' ? 'veo' : engine,
+                    duration: scene.duration.toString(),
+                    aspect: '16:9',
+                    status: 'processing',
+                    progress: 5,
+                    statusText: 'En cola...'
+                };
+
+                State.queue.push(job);
+                updateStats();
+                renderQueue();
+
+                await generateVideoReal(job);
+
+                // Si es modo PRO, también generar con Sora
+                if (engine === 'pro') {
+                    const jobSora = { ...job, id: Date.now() + scene.id + 1000, name: `Escena ${scene.id} (Sora)`, engine: 'sora' };
+                    State.queue.push(jobSora);
+                    await generateVideoReal(jobSora);
+                }
+            }
+
+            notify('Todas las escenas enviadas a generación', 'success');
+        }
+
+        function showPipelineStep(step) {
+            // Ocultar todos los contenidos
+            document.getElementById('pipelineGuion').classList.add('hidden');
+            document.getElementById('pipelineStoryboard').classList.add('hidden');
+            document.getElementById('pipelineTimeline').classList.add('hidden');
+            document.getElementById('pipelineGenerate').classList.add('hidden');
+
+            // Mostrar el paso actual
+            if (step === 1) document.getElementById('pipelineGuion').classList.remove('hidden');
+            if (step === 2) document.getElementById('pipelineStoryboard').classList.remove('hidden');
+            if (step === 3) document.getElementById('pipelineTimeline').classList.remove('hidden');
+            if (step === 4) document.getElementById('pipelineGenerate').classList.remove('hidden');
+
+            // Actualizar indicadores
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById(`pipelineStep${i}`);
+                if (i <= step) {
+                    stepEl.classList.remove('opacity-50');
+                    stepEl.querySelector('div').classList.remove('bg-[var(--bg-elevated)]', 'border-2', 'border-[var(--border)]');
+                    stepEl.querySelector('div').classList.add('bg-[var(--primary)]', 'text-white');
+                } else {
+                    stepEl.classList.add('opacity-50');
+                    stepEl.querySelector('div').classList.add('bg-[var(--bg-elevated)]', 'border-2', 'border-[var(--border)]');
+                    stepEl.querySelector('div').classList.remove('bg-[var(--primary)]', 'text-white');
+                }
+            }
+        }
+
+        function pipelineBack(toStep) {
+            showPipelineStep(toStep);
+        }
+
+        // Añadir botón de Pipeline al Editor
+        const editorValidateBtn = document.querySelector('#section-editor .btn-primary');
+        if (editorValidateBtn) {
+            editorValidateBtn.insertAdjacentHTML('afterend', `
+                <button class="btn btn-secondary ml-2" onclick="openPipelineFromEditor()">
+                    <i class="fas fa-project-diagram"></i> Pipeline
+                </button>
+            `);
+        }
+
+        function openPipelineFromEditor() {
+            const content = document.getElementById('scriptContent').value;
+            if (content) {
+                document.getElementById('pipelineScriptText').value = content;
+            }
+            openModal('pipeline');
+        }
+
+        // Fallback para entorno sin Poe API
+        if (typeof window.Poe === 'undefined') {
+            window.Poe = {
+                sendUserMessage: async (msg, opts) => {
+                    console.log('Poe API no disponible. Mensaje:', msg);
+                    console.log('Opciones:', opts);
+                    return { success: true };
+                },
+                registerHandler: (name, fn) => {
+                    console.log('Handler registrado:', name);
+                },
+                getTriggerMessage: async () => ({ content: '', attachments: [] })
+            };
+        }
+
+        // Actualizar selector de videos al abrir modal de mejora
+        const originalOpenModal = openModal;
+        openModal = function(id) {
+            if (id === 'improveVideo') {
+                updateImproveVideoSelect();
+            }
+            originalOpenModal(id);
+        };
+    </script>
+</body>
+</html>
+

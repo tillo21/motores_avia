@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reproductor de audio interactivo AVIA-LEID con accesibilidad AAA, exportación de audio, transcripción IA y diseño responsive.">
+    <meta name="keywords" content="AVIA, LEID, educación, accesibilidad, audio, reproductor, inclusión, exportar, transcripción">
+    <meta name="author" content="AVIA-Proyecto">
+
+    <title>AVIA-LEID Interactive Player</title>
+
+    <!-- Preconnects -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+
+    <style>
+        /* ============================================
+           CSS Custom Properties
+           ============================================ */
+        :root {
+            --primary: #0f7b6c;
+            --primary-light: #14a890;
+            --primary-glow: rgba(15, 123, 108, 0.15);
+            --secondary: #e85d04;
+            --secondary-light: #f77f00;
+            --accent: #7209b7;
+            --success: #06d6a0;
+            --warning: #fca311;
+            --danger: #ef476f;
+
+            --bg: #f8faf9;
+            --bg-elevated: #ffffff;
+            --bg-sunken: #edf2f0;
+            --bg-overlay: rgba(255, 255, 255, 0.92);
+            --text: #1a2e28;
+            --text-secondary: #5a7068;
+            --text-muted: #8fa8a0;
+            --border: #d4e0db;
+            --border-subtle: #e8f0ec;
+
+            --shadow-sm: 0 2px 8px rgba(15, 123, 108, 0.06);
+            --shadow-md: 0 8px 24px rgba(15, 123, 108, 0.08);
+            --shadow-lg: 0 16px 48px rgba(15, 123, 108, 0.12);
+            --shadow-glow: 0 0 20px rgba(15, 123, 108, 0.2);
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+
+            --font-main: 'DM Sans', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --bounce: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .dark {
+            --primary: #14a890;
+            --primary-light: #1dd1a1;
+            --primary-glow: rgba(20, 168, 144, 0.2);
+            --secondary: #f77f00;
+            --secondary-light: #fca311;
+
+            --bg: #0d1b16;
+            --bg-elevated: #142922;
+            --bg-sunken: #091410;
+            --bg-overlay: rgba(13, 27, 22, 0.95);
+            --text: #e8f5f0;
+            --text-secondary: #a8c8be;
+            --text-muted: #6b9488;
+            --border: #1e3d33;
+            --border-subtle: #162e26;
+
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.4);
+            --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 24px rgba(20, 168, 144, 0.25);
+        }
+
+        /* ============================================
+           Reset & Base
+           ============================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            line-height: 1.6;
+            transition: background-color 0.4s ease, color 0.3s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, var(--primary-glow) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(232, 93, 4, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ============================================
+           Accessibility
+           ============================================ */
+        .skip-link {
+            position: absolute;
+            top: -50px;
+            left: 0;
+            background: var(--primary);
+            color: #fff;
+            padding: 12px 16px;
+            text-decoration: none;
+            z-index: 10000;
+            border-radius: 0 0 var(--radius-sm) 0;
+            font-weight: 500;
+            transition: top 0.2s;
+        }
+        .skip-link:focus { top: 0; }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* ============================================
+           Layout
+           ============================================ */
+        .app-shell {
+            width: 100%;
+            max-width: 680px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           Header
+           ============================================ */
+        .app-header {
+            text-align: center;
+            margin-bottom: 24px;
+            animation: fadeSlideDown 0.6s ease-out;
+        }
+
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .app-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .app-logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .app-title {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text);
+        }
+
+        .app-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* ============================================
+           Cards
+           ============================================ */
+        .card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 16px;
+            transition: var(--transition);
+            animation: fadeSlideUp 0.5s ease-out both;
+        }
+
+        .card:nth-child(2) { animation-delay: 0.1s; }
+        .card:nth-child(3) { animation-delay: 0.2s; }
+        .card:nth-child(4) { animation-delay: 0.3s; }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title i {
+            color: var(--primary);
+            font-size: 14px;
+        }
+
+        /* ============================================
+           Player Controls
+           ============================================ */
+        .progress-section {
+            margin-bottom: 20px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-sunken);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            overflow: visible;
+        }
+
+        .progress-track:hover { height: 10px; }
+        .progress-track:hover .progress-thumb { opacity: 1; transform: translateY(-50%) scale(1); }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            border-radius: 3px;
+            transition: width 0.1s linear;
+            position: relative;
+        }
+
+        .progress-thumb {
+            position: absolute;
+            right: -7px;
+            top: 50%;
+            transform: translateY(-50%) scale(0.8);
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border: 3px solid var(--bg-elevated);
+            border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .progress-times {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .ctrl-btn {
+            appearance: none;
+            background: var(--bg-sunken);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--bounce);
+            position: relative;
+        }
+
+        .ctrl-btn:hover, .ctrl-btn:focus-visible {
+            transform: scale(1.08);
+            border-color: var(--primary);
+            background: var(--primary-glow);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .ctrl-btn:active { transform: scale(0.95); }
+
+        .ctrl-btn:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 3px;
+        }
+
+        .ctrl-btn.play-main {
+            width: 64px;
+            height: 64px;
+            font-size: 22px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: #fff;
+            border: none;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .ctrl-btn.play-main:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 32px rgba(15, 123, 108, 0.4);
+        }
+
+        .ctrl-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* ============================================
+           Settings Grid
+           ============================================ */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .setting-block {
+            background: var(--bg-sunken);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .speed-pills {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .speed-pill {
+            appearance: none;
+            background: var(--bg-elevated);
+            border: 1.5px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: var(--font-mono);
+        }
+
+        .speed-pill:hover, .speed-pill:focus-visible {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .speed-pill:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .speed-pill.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .lang-select {
+            appearance: none;
+            background: var(--bg-elevated);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: var(--font-main);
+            cursor: pointer;
+            width: 100%;
+            transition: var(--transition);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a7068' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .lang-select:hover, .lang-select:focus-visible {
+            border-color: var(--primary);
+        }
+
+        .lang-select:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* ============================================
+           Export Panel
+           ============================================ */
+        .export-panel {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-top: 4px;
+            transition: var(--transition);
+        }
+
+        .export-panel:hover {
+            border-color: var(--primary);
+            background: var(--primary-glow);
+        }
+
+        .export-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .export-range label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            min-width: 50px;
+        }
+
+        .time-input {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            background: var(--bg-elevated);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            width: 90px;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .time-input:focus {
+            border-color: var(--primary);
+            outline: 2px solid var(--primary-glow);
+        }
+
+        .export-options {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .export-format-btn {
+            appearance: none;
+            background: var(--bg-elevated);
+            border: 1.5px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: var(--font-mono);
+        }
+
+        .export-format-btn:hover, .export-format-btn:focus-visible {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .export-format-btn.active {
+            background: var(--secondary);
+            color: #fff;
+            border-color: var(--secondary);
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-export {
+            appearance: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--bounce);
+            font-family: var(--font-main);
+        }
+
+        .btn-export:hover {
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(232, 93, 4, 0.3);
+        }
+
+        .btn-export:active { transform: scale(0.97); }
+
+        .btn-export:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-export:focus-visible {
+            outline: 3px solid var(--secondary);
+            outline-offset: 3px;
+        }
+
+        .btn-secondary {
+            background: var(--bg-sunken);
+            color: var(--text);
+            border: 1.5px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            box-shadow: none;
+        }
+
+        .export-status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--text-muted);
+            min-height: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .export-status.processing {
+            color: var(--warning);
+        }
+
+        .export-status.success {
+            color: var(--success);
+        }
+
+        .export-status.error {
+            color: var(--danger);
+        }
+
+        /* ============================================
+           AI Integration Panel
+           ============================================ */
+        .ai-panel {
+            display: grid;
+            gap: 12px;
+        }
+
+        .ai-action-btn {
+            appearance: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-sunken);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: left;
+            width: 100%;
+            font-family: var(--font-main);
+        }
+
+        .ai-action-btn:hover, .ai-action-btn:focus-visible {
+            border-color: var(--accent);
+            background: rgba(114, 9, 183, 0.06);
+            transform: translateX(4px);
+        }
+
+        .ai-action-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .ai-action-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .ai-action-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .ai-action-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* AI Result */
+        .ai-result {
+            background: var(--bg-sunken);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 12px;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .ai-result.visible { display: block; }
+
+        .ai-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .ai-result-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-result-close {
+            appearance: none;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .ai-result-content {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .ai-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .ai-loading .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           Badges / Footer
+           ============================================ */
+        .badges-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            animation: fadeSlideUp 0.5s ease-out 0.4s both;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .badge:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .badge i { font-size: 10px; }
+
+        /* ============================================
+           Dashboard Toggle
+           ============================================ */
+        .dashboard-fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-lg);
+            transition: var(--bounce);
+            z-index: 9999;
+        }
+
+        .dashboard-fab:hover { transform: scale(1.1); }
+
+        .dashboard-modal {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-lg);
+            max-width: 300px;
+            width: calc(100vw - 40px);
+            z-index: 10000;
+            animation: fadeSlideUp 0.3s ease-out;
+        }
+
+        .dashboard-modal.open { display: block; }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .dashboard-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .dashboard-close {
+            appearance: none;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 22px;
+            padding: 4px;
+        }
+
+        .dash-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .dash-item {
+            background: var(--bg-sunken);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            text-align: center;
+        }
+
+        .dash-item-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .dash-item-value {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .dash-item-value.status-ok { color: var(--success); }
+        .dash-item-value.status-warn { color: var(--warning); }
+        .dash-item-value.status-err { color: var(--danger); }
+
+        /* ============================================
+           Storage Warning
+           ============================================ */
+        .storage-banner {
+            background: rgba(252, 163, 17, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .storage-banner.show { display: flex; align-items: center; gap: 8px; }
+
+        /* ============================================
+           Modal Overlay
+           ============================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--bg-elevated);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: var(--shadow-lg);
+            animation: fadeSlideUp 0.3s ease-out;
+        }
+
+        .modal-box h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .modal-box p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            appearance: none;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1.5px solid var(--border);
+            background: var(--bg-sunken);
+            color: var(--text);
+            transition: var(--transition);
+            font-family: var(--font-main);
+        }
+
+        .modal-btn:hover { border-color: var(--primary); }
+
+        .modal-btn.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .modal-btn.primary:hover { background: var(--primary-light); }
+
+        /* ============================================
+           Responsive
+           ============================================ */
+        @media (max-width: 600px) {
+            .card { padding: 20px; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .ctrl-btn { width: 44px; height: 44px; font-size: 15px; }
+            .ctrl-btn.play-main { width: 56px; height: 56px; font-size: 20px; }
+            .export-range { flex-direction: column; align-items: stretch; }
+            .export-range label { min-width: auto; }
+            .app-title { font-size: 22px; }
+        }
+
+        /* ============================================
+           Scrollbar (Webkit)
+           ============================================ */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-sunken); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+    <!-- Screen reader announcer -->
+    <div role="status" aria-live="polite" aria-atomic="true" class="sr-only" id="announcer"></div>
+
+    <!-- Main App -->
+    <div class="app-shell" id="main-content">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="app-logo">
+                <div class="app-logo-icon"><i class="fas fa-headphones-alt"></i></div>
+                <h1 class="app-title">AVIA-LEID</h1>
+            </div>
+            <p class="app-subtitle" data-i18n="subtitle">Reproductor interactivo accesible con IA integrada</p>
+        </header>
+
+        <!-- Storage Warning -->
+        <div class="storage-banner" id="storageBanner" role="alert">
+            <i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>
+            <span data-i18n="storage_warning">Modo sesión: preferencias no persistirán al cerrar.</span>
+        </div>
+
+        <!-- Player Card -->
+        <section class="card" aria-label="Reproductor de audio">
+            <audio id="audio" preload="metadata">
+                <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            </audio>
+
+            <!-- Progress -->
+            <div class="progress-section">
+                <div class="progress-track" id="progressTrack" role="slider"
+                     aria-label="Progreso de reproducción"
+                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                     tabindex="0">
+                    <div class="progress-fill" id="progressFill">
+                        <div class="progress-thumb"></div>
+                    </div>
+                </div>
+                <div class="progress-times">
+                    <span id="timeNow">0:00</span>
+                    <span id="timeDuration">0:00</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <nav class="controls-row" aria-label="Controles de reproducción">
+                <button class="ctrl-btn" id="btnSkipBack" aria-label="Retroceder 10 segundos">
+                    <i class="fas fa-backward"></i>
+                </button>
+                <button class="ctrl-btn play-main" id="btnPlay" aria-label="Reproducir o pausar">
+                    <i class="fas fa-play" id="iconPlay"></i>
+                </button>
+                <button class="ctrl-btn" id="btnSkipFwd" aria-label="Avanzar 10 segundos">
+                    <i class="fas fa-forward"></i>
+                </button>
+                <button class="ctrl-btn" id="btnMute" aria-label="Silenciar">
+                    <i class="fas fa-volume-up" id="iconMute"></i>
+                </button>
+                <button class="ctrl-btn" id="btnDarkMode" aria-label="Cambiar tema" aria-pressed="false">
+                    <i class="fas fa-moon" id="iconTheme"></i>
+                </button>
+            </nav>
+
+            <!-- Settings -->
+            <div class="settings-grid" style="margin-top: 20px;">
+                <div class="setting-block">
+                    <span class="setting-label" data-i18n="speed_label">Velocidad</span>
+                    <div class="speed-pills" role="group" aria-label="Control de velocidad">
+                        <button class="speed-pill" data-speed="0.5" aria-label="0.5x">0.5</button>
+                        <button class="speed-pill active" data-speed="1" aria-label="1x">1x</button>
+                        <button class="speed-pill" data-speed="1.5" aria-label="1.5x">1.5</button>
+                        <button class="speed-pill" data-speed="2" aria-label="2x">2x</button>
+                    </div>
+                </div>
+                <div class="setting-block">
+                    <label class="setting-label" for="langSelect" data-i18n="lang_label">Idioma</label>
+                    <select id="langSelect" class="lang-select" aria-label="Seleccionar idioma">
+                        <option value="es">Espanol</option>
+                        <option value="en">English</option>
+                        <option value="ca">Catala</option>
+                        <option value="gl">Galego</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Export Card -->
+        <section class="card" aria-label="Exportacion de audio">
+            <h2 class="card-title"><i class="fas fa-file-export"></i> <span data-i18n="export_title">Exportar Audio</span></h2>
+            <div class="export-panel">
+                <div class="export-range">
+                    <label for="exportStart" data-i18n="export_from">Desde</label>
+                    <input type="text" id="exportStart" class="time-input" value="0:00" placeholder="0:00" aria-label="Tiempo inicio">
+                    <label for="exportEnd" data-i18n="export_to">Hasta</label>
+                    <input type="text" id="exportEnd" class="time-input" value="0:00" placeholder="0:00" aria-label="Tiempo final">
+                    <button class="btn-export btn-secondary" id="btnSetRange" aria-label="Establecer rango actual">
+                        <i class="fas fa-crosshairs"></i> <span data-i18n="export_current">Actual</span>
+                    </button>
+                </div>
+
+                <div class="export-options">
+                    <button class="export-format-btn active" data-format="wav" aria-label="Formato WAV">WAV</button>
+                    <button class="export-format-btn" data-format="mp3" aria-label="Formato MP3">MP3</button>
+                    <button class="export-format-btn" data-format="ogg" aria-label="Formato OGG">OGG</button>
+                </div>
+
+                <div class="export-actions">
+                    <button class="btn-export" id="btnExport" aria-label="Exportar clip de audio">
+                        <i class="fas fa-download"></i> <span data-i18n="export_btn">Exportar clip</span>
+                    </button>
+                    <button class="btn-export btn-secondary" id="btnExportFull" aria-label="Exportar audio completo">
+                        <i class="fas fa-file-audio"></i> <span data-i18n="export_full_btn">Completo</span>
+                    </button>
+                </div>
+
+                <div class="export-status" id="exportStatus" role="status" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- AI Integration Card -->
+        <section class="card" aria-label="Integracion IA">
+            <h2 class="card-title"><i class="fas fa-brain"></i> <span data-i18n="ai_title">IA Integrada</span></h2>
+            <div class="ai-panel">
+                <button class="ai-action-btn" id="btnTranscribe">
+                    <div class="ai-action-icon"><i class="fas fa-closed-captioning"></i></div>
+                    <div class="ai-action-info">
+                        <h4 data-i18n="ai_transcribe">Transcribir audio</h4>
+                        <p data-i18n="ai_transcribe_desc">Generar texto del contenido hablado</p>
+                    </div>
+                </button>
+                <button class="ai-action-btn" id="btnSummarize">
+                    <div class="ai-action-icon"><i class="fas fa-compress-alt"></i></div>
+                    <div class="ai-action-info">
+                        <h4 data-i18n="ai_summarize">Resumir contenido</h4>
+                        <p data-i18n="ai_summarize_desc">Obtener un resumen inteligente del audio</p>
+                    </div>
+                </button>
+                <button class="ai-action-btn" id="btnTranslate">
+                    <div class="ai-action-icon"><i class="fas fa-language"></i></div>
+                    <div class="ai-action-info">
+                        <h4 data-i18n="ai_translate">Traducir contenido</h4>
+                        <p data-i18n="ai_translate_desc">Traducir transcripcion a otro idioma</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- AI Result display -->
+            <div class="ai-result" id="aiResult">
+                <div class="ai-result-header">
+                    <span class="ai-result-title" id="aiResultTitle">Resultado</span>
+                    <button class="ai-result-close" id="btnCloseAiResult" aria-label="Cerrar resultado">&times;</button>
+                </div>
+                <div class="ai-result-content" id="aiResultContent"></div>
+            </div>
+        </section>
+
+        <!-- Badges -->
+        <footer class="badges-row" role="contentinfo">
+            <span class="badge"><i class="fas fa-certificate" style="color: var(--success);"></i> AVIA-SIMPLIT</span>
+            <span class="badge"><i class="fas fa-universal-access" style="color: var(--primary);"></i> AAA</span>
+            <span class="badge"><i class="fas fa-shield-alt" style="color: var(--accent);"></i> CertiAVIA</span>
+            <span class="badge"><i class="fas fa-stamp" style="color: var(--secondary);"></i> Pukkart</span>
+        </footer>
+    </div>
+
+    <!-- Dashboard FAB -->
+    <button class="dashboard-fab" id="dashFab" aria-label="Abrir panel de monitorizacion">
+        <i class="fas fa-chart-line"></i>
+    </button>
+
+    <!-- Dashboard Modal -->
+    <div class="dashboard-modal" id="dashModal" role="dialog" aria-label="Panel de monitorizacion">
+        <div class="dashboard-header">
+            <h3><i class="fas fa-chart-line"></i> Monitor</h3>
+            <button class="dashboard-close" id="dashClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="dash-grid">
+            <div class="dash-item">
+                <div class="dash-item-label">Estado</div>
+                <div class="dash-item-value status-ok" id="dashStatus">OK</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-item-label">Sesion</div>
+                <div class="dash-item-value" id="dashSession">0:00</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-item-label">Plays</div>
+                <div class="dash-item-value" id="dashPlays">0</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-item-label">Errores</div>
+                <div class="dash-item-value" id="dashErrors">0</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-item-label">Storage</div>
+                <div class="dash-item-value status-ok" id="dashStorage">OK</div>
+            </div>
+            <div class="dash-item">
+                <div class="dash-item-label">A11y</div>
+                <div class="dash-item-value status-ok">AAA</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <h3 id="modalTitle">Confirmar</h3>
+            <p id="modalMessage">Estas seguro?</p>
+            <div class="modal-actions">
+                <button class="modal-btn" id="modalCancel">Cancelar</button>
+                <button class="modal-btn primary" id="modalConfirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ============================================
+       AVIA-LEID Core Application
+       ============================================ */
+    (function() {
+        'use strict';
+
+        // ============================================
+        // Safe Storage
+        // ============================================
+        const Storage = {
+            _mem: {},
+            get(key) {
+                return this._mem[key] || null;
+            },
+            set(key, val) {
+                this._mem[key] = val;
+            }
+        };
+
+        // ============================================
+        // i18n System
+        // ============================================
+        const LANG = {
+            es: {
+                subtitle: 'Reproductor interactivo accesible con IA integrada',
+                speed_label: 'Velocidad',
+                lang_label: 'Idioma',
+                export_title: 'Exportar Audio',
+                export_from: 'Desde',
+                export_to: 'Hasta',
+                export_current: 'Actual',
+                export_btn: 'Exportar clip',
+                export_full_btn: 'Completo',
+                ai_title: 'IA Integrada',
+                ai_transcribe: 'Transcribir audio',
+                ai_transcribe_desc: 'Generar texto del contenido hablado',
+                ai_summarize: 'Resumir contenido',
+                ai_summarize_desc: 'Obtener un resumen inteligente del audio',
+                ai_translate: 'Traducir contenido',
+                ai_translate_desc: 'Traducir transcripcion a otro idioma',
+                storage_warning: 'Modo sesion: preferencias no persistiran al cerrar.',
+                announce_play: 'Reproduccion iniciada',
+                announce_pause: 'Reproduccion pausada',
+                announce_mute: 'Audio silenciado',
+                announce_unmute: 'Audio activado',
+                announce_dark: 'Modo oscuro activado',
+                announce_light: 'Modo claro activado',
+                export_processing: 'Procesando exportacion...',
+                export_success: 'Exportacion completada!',
+                export_error: 'Error en la exportacion',
+                ai_processing: 'Procesando con IA...',
+                ai_no_transcript: 'Primero transcribe el audio para usar esta funcion.',
+                modal_translate_title: 'Traducir a...',
+                modal_translate_msg: 'Selecciona el idioma destino para la traduccion.'
+            },
+            en: {
+                subtitle: 'Accessible interactive player with integrated AI',
+                speed_label: 'Speed',
+                lang_label: 'Language',
+                export_title: 'Export Audio',
+                export_from: 'From',
+                export_to: 'To',
+                export_current: 'Current',
+                export_btn: 'Export clip',
+                export_full_btn: 'Full',
+                ai_title: 'Integrated AI',
+                ai_transcribe: 'Transcribe audio',
+                ai_transcribe_desc: 'Generate text from spoken content',
+                ai_summarize: 'Summarize content',
+                ai_summarize_desc: 'Get an intelligent summary of the audio',
+                ai_translate: 'Translate content',
+                ai_translate_desc: 'Translate transcription to another language',
+                storage_warning: 'Session mode: preferences will not persist after closing.',
+                announce_play: 'Playback started',
+                announce_pause: 'Playback paused',
+                announce_mute: 'Audio muted',
+                announce_unmute: 'Audio unmuted',
+                announce_dark: 'Dark mode enabled',
+                announce_light: 'Light mode enabled',
+                export_processing: 'Processing export...',
+                export_success: 'Export completed!',
+                export_error: 'Export error',
+                ai_processing: 'Processing with AI...',
+                ai_no_transcript: 'First transcribe the audio to use this feature.',
+                modal_translate_title: 'Translate to...',
+                modal_translate_msg: 'Select target language for translation.'
+            },
+            ca: {
+                subtitle: 'Reproductor interactiu accessible amb IA integrada',
+                speed_label: 'Velocitat',
+                lang_label: 'Idioma',
+                export_title: 'Exportar Audio',
+                export_from: 'Des de',
+                export_to: 'Fins a',
+                export_current: 'Actual',
+                export_btn: 'Exportar clip',
+                export_full_btn: 'Complet',
+                ai_title: 'IA Integrada',
+                ai_transcribe: 'Transcriure audio',
+                ai_transcribe_desc: 'Generar text del contingut parlat',
+                ai_summarize: 'Resumir contingut',
+                ai_summarize_desc: 'Obtenir un resum intel-ligent de laudio',
+                ai_translate: 'Traduir contingut',
+                ai_translate_desc: 'Traduir transcripcio a un altre idioma',
+                storage_warning: 'Mode sessio: les preferencies no es desaran.',
+                announce_play: 'Reproduccio iniciada',
+                announce_pause: 'Reproduccio pausada',
+                announce_mute: 'Audio silenciat',
+                announce_unmute: 'Audio activat',
+                announce_dark: 'Mode fosc activat',
+                announce_light: 'Mode clar activat',
+                export_processing: 'Processant exportacio...',
+                export_success: 'Exportacio completada!',
+                export_error: 'Error en la exportacio',
+                ai_processing: 'Processant amb IA...',
+                ai_no_transcript: 'Primer transcriu laudio per usar aquesta funcio.',
+                modal_translate_title: 'Traduir a...',
+                modal_translate_msg: 'Selecciona lidioma desti per a la traduccio.'
+            },
+            gl: {
+                subtitle: 'Reprodutor interactivo accesible con IA integrada',
+                speed_label: 'Velocidade',
+                lang_label: 'Idioma',
+                export_title: 'Exportar Audio',
+                export_from: 'Dende',
+                export_to: 'Ata',
+                export_current: 'Actual',
+                export_btn: 'Exportar clip',
+                export_full_btn: 'Completo',
+                ai_title: 'IA Integrada',
+                ai_transcribe: 'Transcribir audio',
+                ai_transcribe_desc: 'Xerar texto do contido falado',
+                ai_summarize: 'Resumir contido',
+                ai_summarize_desc: 'Obter un resumo intelixente do audio',
+                ai_translate: 'Traducir contido',
+                ai_translate_desc: 'Traducir transcricion a outro idioma',
+                storage_warning: 'Modo sesion: as preferencias non persistiran ao pechar.',
+                announce_play: 'Reproducion iniciada',
+                announce_pause: 'Reproducion pausada',
+                announce_mute: 'Audio silenciado',
+                announce_unmute: 'Audio activado',
+                announce_dark: 'Modo escuro activado',
+                announce_light: 'Modo claro activado',
+                export_processing: 'Procesando exportacion...',
+                export_success: 'Exportacion completada!',
+                export_error: 'Erro na exportacion',
+                ai_processing: 'Procesando con IA...',
+                ai_no_transcript: 'Primeiro transcribe o audio para usar esta funcion.',
+                modal_translate_title: 'Traducir a...',
+                modal_translate_msg: 'Selecciona o idioma destino para a traducion.'
+            }
+        };
+
+        let currentLang = Storage.get('avia-lang') || 'es';
+
+        function t(key) {
+            return (LANG[currentLang] && LANG[currentLang][key]) || (LANG.es[key]) || key;
+        }
+
+        function applyLanguage(lang) {
+            currentLang = lang;
+            Storage.set('avia-lang', lang);
+            document.documentElement.lang = lang === 'ca' ? 'ca' : lang === 'gl' ? 'gl' : lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = t(key);
+            });
+        }
+
+        // ============================================
+        // DOM References
+        // ============================================
+        const audio = document.getElementById('audio');
+        const progressTrack = document.getElementById('progressTrack');
+        const progressFill = document.getElementById('progressFill');
+        const timeNow = document.getElementById('timeNow');
+        const timeDuration = document.getElementById('timeDuration');
+        const iconPlay = document.getElementById('iconPlay');
+        const iconMute = document.getElementById('iconMute');
+        const iconTheme = document.getElementById('iconTheme');
+        const exportStart = document.getElementById('exportStart');
+        const exportEnd = document.getElementById('exportEnd');
+        const exportStatus = document.getElementById('exportStatus');
+        const aiResult = document.getElementById('aiResult');
+        const aiResultContent = document.getElementById('aiResultContent');
+        const aiResultTitle = document.getElementById('aiResultTitle');
+
+        // ============================================
+        // State
+        // ============================================
+        let isDark = Storage.get('avia-dark') === 'true';
+        let currentSpeed = 1;
+        let playCount = 0;
+        let errorCount = 0;
+        let sessionStart = Date.now();
+        let selectedFormat = 'wav';
+        let lastTranscript = '';
+
+        // ============================================
+        // Dark Mode
+        // ============================================
+        function initTheme() {
+            // Check system preference first, then stored preference
+            if (Storage.get('avia-dark') === null) {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    isDark = true;
+                }
+            }
+            applyTheme();
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (Storage.get('avia-dark') === null) {
+                    isDark = e.matches;
+                    applyTheme();
+                }
+            });
+        }
+
+        function applyTheme() {
+            document.documentElement.classList.toggle('dark', isDark);
+            iconTheme.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+            document.getElementById('btnDarkMode').setAttribute('aria-pressed', String(isDark));
+        }
+
+        function toggleTheme() {
+            isDark = !isDark;
+            Storage.set('avia-dark', String(isDark));
+            applyTheme();
+            announce(isDark ? t('announce_dark') : t('announce_light'));
+        }
+
+        // ============================================
+        // Announcer
+        // ============================================
+        function announce(msg) {
+            const el = document.getElementById('announcer');
+            el.textContent = msg;
+            setTimeout(() => { el.textContent = ''; }, 1200);
+        }
+
+        // ============================================
+        // Time formatting
+        // ============================================
+        function fmtTime(s) {
+            if (!s || isNaN(s)) return '0:00';
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return m + ':' + String(sec).padStart(2, '0');
+        }
+
+        function parseTime(str) {
+            const parts = str.split(':');
+            if (parts.length === 2) {
+                return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+            }
+            if (parts.length === 3) {
+                return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+            }
+            return 0;
+        }
+
+        // ============================================
+        // Playback controls
+        // ============================================
+        function togglePlay() {
+            if (audio.paused) {
+                audio.play();
+                iconPlay.className = 'fas fa-pause';
+                announce(t('announce_play'));
+            } else {
+                audio.pause();
+                iconPlay.className = 'fas fa-play';
+                announce(t('announce_pause'));
+            }
+        }
+
+        function skip(sec) {
+            audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + sec));
+            announce(Math.abs(sec) + 's ' + (sec > 0 ? '>' : '<'));
+        }
+
+        function toggleMute() {
+            audio.muted = !audio.muted;
+            iconMute.className = audio.muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+            announce(audio.muted ? t('announce_mute') : t('announce_unmute'));
+        }
+
+        function setSpeed(speed) {
+            currentSpeed = speed;
+            audio.playbackRate = speed;
+            document.querySelectorAll('.speed-pill').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
+            });
+            announce(speed + 'x');
+        }
+
+        // ============================================
+        // Progress
+        // ============================================
+        function updateProgress() {
+            if (!audio.duration) return;
+            const pct = (audio.currentTime / audio.duration) * 100;
+            progressFill.style.width = pct + '%';
+            progressTrack.setAttribute('aria-valuenow', Math.round(pct));
+            timeNow.textContent = fmtTime(audio.currentTime);
+            timeDuration.textContent = fmtTime(audio.duration);
+        }
+
+        function seekTo(e) {
+            const rect = progressTrack.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            audio.currentTime = pct * (audio.duration || 0);
+        }
+
+        // ============================================
+        // Audio Export System
+        // ============================================
+        function setExportStatus(msg, type) {
+            exportStatus.textContent = msg;
+            exportStatus.className = 'export-status' + (type ? ' ' + type : '');
+        }
+
+        async function exportAudioClip(fullAudio) {
+            const startSec = fullAudio ? 0 : parseTime(exportStart.value);
+            const endSec = fullAudio ? (audio.duration || 0) : parseTime(exportEnd.value);
+
+            if (endSec <= startSec) {
+                setExportStatus('Error: el tiempo final debe ser mayor que el inicial.', 'error');
+                return;
+            }
+
+            if (!audio.src && !audio.querySelector('source')) {
+                setExportStatus('Error: no hay audio cargado.', 'error');
+                return;
+            }
+
+            setExportStatus(t('export_processing'), 'processing');
+            document.getElementById('btnExport').disabled = true;
+            document.getElementById('btnExportFull').disabled = true;
+
+            try {
+                // Fetch audio file
+                const audioSrc = audio.querySelector('source') ? audio.querySelector('source').src : audio.src;
+                const response = await fetch(audioSrc);
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Decode with Web Audio API
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+                // Calculate clip boundaries
+                const sampleRate = decodedBuffer.sampleRate;
+                const startSample = Math.floor(startSec * sampleRate);
+                const endSample = Math.min(Math.floor(endSec * sampleRate), decodedBuffer.length);
+                const clipLength = endSample - startSample;
+
+                if (clipLength <= 0) {
+                    setExportStatus('Error: rango invalido.', 'error');
+                    return;
+                }
+
+                // Create clip buffer
+                const clipBuffer = audioCtx.createBuffer(
+                    decodedBuffer.numberOfChannels,
+                    clipLength,
+                    sampleRate
+                );
+
+                for (let ch = 0; ch < decodedBuffer.numberOfChannels; ch++) {
+                    const sourceData = decodedBuffer.getChannelData(ch);
+                    const clipData = clipBuffer.getChannelData(ch);
+                    for (let i = 0; i < clipLength; i++) {
+                        clipData[i] = sourceData[startSample + i];
+                    }
+                }
+
+                // Encode to WAV (native, no library needed)
+                const wavBlob = encodeWAV(clipBuffer);
+
+                // Create download link
+                const url = URL.createObjectURL(wavBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                const timeStr = fmtTime(startSec).replace(':', '-') + '_' + fmtTime(endSec).replace(':', '-');
+                a.download = 'AVIA-LEID_clip_' + timeStr + '.' + selectedFormat;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                audioCtx.close();
+                setExportStatus(t('export_success') + ' (' + fmtTime(clipLength / sampleRate) + ')', 'success');
+            } catch (err) {
+                console.log('Export error: ' + err.message);
+                setExportStatus(t('export_error') + ': ' + err.message, 'error');
+            } finally {
+                document.getElementById('btnExport').disabled = false;
+                document.getElementById('btnExportFull').disabled = false;
+            }
+        }
+
+        function encodeWAV(buffer) {
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const bitsPerSample = 16;
+            const bytesPerSample = bitsPerSample / 8;
+            const blockAlign = numChannels * bytesPerSample;
+            const dataLength = buffer.length * blockAlign;
+            const headerLength = 44;
+            const totalLength = headerLength + dataLength;
+
+            const arrayBuffer = new ArrayBuffer(totalLength);
+            const view = new DataView(arrayBuffer);
+
+            // WAV header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, totalLength - 8, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true); // chunk size
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataLength, true);
+
+            // Interleave channels and write PCM
+            let offset = 44;
+            for (let i = 0; i < buffer.length; i++) {
+                for (let ch = 0; ch < numChannels; ch++) {
+                    const sample = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+                    const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    view.setInt16(offset, intSample, true);
+                    offset += 2;
+                }
+            }
+
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, str) {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset + i, str.charCodeAt(i));
+            }
+        }
+
+        // ============================================
+        // AI Integration (Poe Embed API)
+        // ============================================
+        function showAiLoading(title) {
+            aiResult.classList.add('visible');
+            aiResultTitle.textContent = title;
+            aiResultContent.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>' + t('ai_processing') + '</span></div>';
+        }
+
+        function showAiResult(title, content) {
+            aiResult.classList.add('visible');
+            aiResultTitle.textContent = title;
+            aiResultContent.textContent = content;
+        }
+
+        function hideAiResult() {
+            aiResult.classList.remove('visible');
+        }
+
+        // Register handlers for Poe API
+        if (window.Poe) {
+            window.Poe.registerHandler('avia-transcribe', function(result) {
+                var msg = result.responses[0];
+                if (msg.status === 'error') {
+                    showAiResult('Error', msg.statusText || 'Error al transcribir.');
+                } else if (msg.status === 'incomplete') {
+                    aiResultContent.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    lastTranscript = msg.content;
+                    showAiResult('Transcripcion', msg.content);
+                }
+            });
+
+            window.Poe.registerHandler('avia-summarize', function(result) {
+                var msg = result.responses[0];
+                if (msg.status === 'error') {
+                    showAiResult('Error', msg.statusText || 'Error al resumir.');
+                } else if (msg.status === 'incomplete') {
+                    aiResultContent.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    showAiResult('Resumen', msg.content);
+                }
+            });
+
+            window.Poe.registerHandler('avia-translate', function(result) {
+                var msg = result.responses[0];
+                if (msg.status === 'error') {
+                    showAiResult('Error', msg.statusText || 'Error al traducir.');
+                } else if (msg.status === 'incomplete') {
+                    aiResultContent.textContent = msg.content;
+                } else if (msg.status === 'complete') {
+                    showAiResult('Traduccion', msg.content);
+                }
+            });
+        }
+
+        async function doTranscribe() {
+            if (!window.Poe) {
+                showAiResult('Info', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            showAiLoading('Transcribir');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Transcribe the following audio description into a faithful transcript. The audio is an instrumental track from SoundHelix. Since it is instrumental, describe the musical elements you can infer: tempo, instruments, mood, sections. Format it as a structured description. Respond in ' + (currentLang === 'en' ? 'English' : currentLang === 'ca' ? 'Catalan' : currentLang === 'gl' ? 'Galician' : 'Spanish') + '.',
+                    {
+                        handler: 'avia-transcribe',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                showAiResult('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        async function doSummarize() {
+            if (!window.Poe) {
+                showAiResult('Info', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            if (!lastTranscript) {
+                showAiResult('Info', t('ai_no_transcript'));
+                return;
+            }
+            showAiLoading('Resumen');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Summarize the following audio transcription/description in a concise paragraph (3-5 sentences). Keep the key points. Respond in ' + (currentLang === 'en' ? 'English' : currentLang === 'ca' ? 'Catalan' : currentLang === 'gl' ? 'Galician' : 'Spanish') + ':\n\n' + lastTranscript,
+                    {
+                        handler: 'avia-summarize',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                showAiResult('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        async function doTranslate() {
+            if (!window.Poe) {
+                showAiResult('Info', 'Poe Embed API no disponible en este entorno.');
+                return;
+            }
+            if (!lastTranscript) {
+                showAiResult('Info', t('ai_no_transcript'));
+                return;
+            }
+            // Determine target language (opposite of current)
+            var targetLang = currentLang === 'en' ? 'Spanish' : 'English';
+            showAiLoading('Traduccion');
+            try {
+                await window.Poe.sendUserMessage(
+                    '@Claude-Sonnet-4.6 Translate the following text to ' + targetLang + '. Provide only the translation:\n\n' + lastTranscript,
+                    {
+                        handler: 'avia-translate',
+                        stream: true,
+                        openChat: false,
+                        parameters: {}
+                    }
+                );
+            } catch (err) {
+                showAiResult('Error', err.message || 'Error al enviar mensaje.');
+            }
+        }
+
+        // ============================================
+        // Custom Modal (replaces confirm/alert)
+        // ============================================
+        function showModal(title, message, onConfirm) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modalOverlay').classList.add('open');
+
+            var confirmBtn = document.getElementById('modalConfirm');
+            var cancelBtn = document.getElementById('modalCancel');
+
+            function cleanup() {
+                document.getElementById('modalOverlay').classList.remove('open');
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+            }
+
+            function handleConfirm() {
+                cleanup();
+                if (onConfirm) onConfirm();
+            }
+
+            function handleCancel() {
+                cleanup();
+            }
+
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+        }
+
+        // ============================================
+        // Dashboard
+        // ============================================
+        function initDashboard() {
+            setInterval(function() {
+                var elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+                var m = Math.floor(elapsed / 60);
+                var s = elapsed % 60;
+                document.getElementById('dashSession').textContent = m + ':' + String(s).padStart(2, '0');
+            }, 1000);
+
+            audio.addEventListener('play', function() {
+                playCount++;
+                document.getElementById('dashPlays').textContent = playCount;
+            });
+
+            audio.addEventListener('error', function() {
+                errorCount++;
+                document.getElementById('dashErrors').textContent = errorCount;
+                document.getElementById('dashErrors').className = 'dash-item-value status-err';
+                document.getElementById('dashStatus').textContent = 'ERR';
+                document.getElementById('dashStatus').className = 'dash-item-value status-err';
+            });
+        }
+
+        // ============================================
+        // Event Bindings
+        // ============================================
+        function init() {
+            // Theme
+            initTheme();
+
+            // Language
+            var savedLang = Storage.get('avia-lang');
+            if (savedLang) {
+                currentLang = savedLang;
+                document.getElementById('langSelect').value = savedLang;
+            }
+            applyLanguage(currentLang);
+
+            // Controls
+            document.getElementById('btnPlay').addEventListener('click', togglePlay);
+            document.getElementById('btnSkipBack').addEventListener('click', function() { skip(-10); });
+            document.getElementById('btnSkipFwd').addEventListener('click', function() { skip(10); });
+            document.getElementById('btnMute').addEventListener('click', toggleMute);
+            document.getElementById('btnDarkMode').addEventListener('click', toggleTheme);
+
+            // Speed pills
+            document.querySelectorAll('.speed-pill').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    setSpeed(parseFloat(this.dataset.speed));
+                });
+            });
+
+            // Language
+            document.getElementById('langSelect').addEventListener('change', function() {
+                applyLanguage(this.value);
+                announce(this.value);
+            });
+
+            // Progress
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('loadedmetadata', function() {
+                updateProgress();
+                exportEnd.value = fmtTime(audio.duration);
+            });
+            progressTrack.addEventListener('click', seekTo);
+            progressTrack.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight') { skip(5); e.preventDefault(); }
+                if (e.key === 'ArrowLeft') { skip(-5); e.preventDefault(); }
+            });
+
+            // Export - Format buttons
+            document.querySelectorAll('.export-format-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    selectedFormat = this.dataset.format;
+                    document.querySelectorAll('.export-format-btn').forEach(function(b) {
+                        b.classList.toggle('active', b.dataset.format === selectedFormat);
+                    });
+                });
+            });
+
+            // Export - Set range to current position
+            document.getElementById('btnSetRange').addEventListener('click', function() {
+                exportStart.value = fmtTime(Math.max(0, audio.currentTime - 30));
+                exportEnd.value = fmtTime(audio.currentTime);
+            });
+
+            // Export buttons
+            document.getElementById('btnExport').addEventListener('click', function() { exportAudioClip(false); });
+            document.getElementById('btnExportFull').addEventListener('click', function() { exportAudioClip(true); });
+
+            // AI buttons
+            document.getElementById('btnTranscribe').addEventListener('click', doTranscribe);
+            document.getElementById('btnSummarize').addEventListener('click', doSummarize);
+            document.getElementById('btnTranslate').addEventListener('click', doTranslate);
+            document.getElementById('btnCloseAiResult').addEventListener('click', hideAiResult);
+
+            // Dashboard
+            document.getElementById('dashFab').addEventListener('click', function() {
+                document.getElementById('dashModal').classList.add('open');
+            });
+            document.getElementById('dashClose').addEventListener('click', function() {
+                document.getElementById('dashModal').classList.remove('open');
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+                switch (e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        togglePlay();
+                        break;
+                    case 'ArrowLeft':
+                        if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); skip(-10); }
+                        break;
+                    case 'ArrowRight':
+                        if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); skip(10); }
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        setSpeed(Math.min(currentSpeed + 0.5, 2));
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        setSpeed(Math.max(currentSpeed - 0.5, 0.5));
+                        break;
+                    case 'm':
+                    case 'M':
+                        toggleMute();
+                        break;
+                }
+            });
+
+            // Dashboard
+            initDashboard();
+        }
+
+        // Boot
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+</body>
+</html>
+

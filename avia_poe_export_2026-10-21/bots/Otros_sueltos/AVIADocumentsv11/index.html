@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AVIADocuments - Gestión de Documentos (AVIA)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .av-tooltip{ position: relative; }
+    .av-tooltip:hover .av-tooltip-bubble{ display:block; }
+    .av-tooltip-bubble{ display:none; position:absolute; left:0; top:110%; z-index:50; }
+    .av-skel{ background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 37%,#f3f4f6 63%); background-size:400% 100%; animation: avShimmer 1.1s ease infinite; }
+    @keyframes avShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
+  </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-50 to-blue-50">
+  <!-- Toasts -->
+  <div id="aviaToastContainer" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50"></div>
+
+  <div class="min-h-screen p-4 md:p-8">
+    <!-- Header -->
+    <div class="mb-6">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+            </span>
+            AVIADocuments
+          </h1>
+          <p class="text-gray-600 mt-1">Gestión de documentos con persistencia, sincronización y ledger AVIA.</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-2">
+          <button id="btnAddDoc" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
+            Nuevo documento
+          </button>
+
+          <button id="btnExport" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium">
+            Exportar
+          </button>
+
+          <label class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium cursor-pointer">
+            Importar
+            <input id="fileImport" type="file" accept="application/json" class="hidden"/>
+          </label>
+
+          <button id="btnRollback" class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium">
+            Rollback
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+      <!-- Left: Filters -->
+      <section class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Filtros & Políticas</h2>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+            <input id="qSearch" type="text" placeholder="Título, autor, etiquetas..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+              <select id="selStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Todos</option>
+                <option value="draft">Borrador</option>
+                <option value="published">Publicado</option>
+                <option value="archived">Archivado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Prioridad</label>
+              <select id="selPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="all">Todas</option>
+                <option value="low">Baja</option>
+                <option value="med">Media</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Ordenar</label>
+            <select id="selSort" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="updated_desc">Actualización ↓</option>
+              <option value="updated_asc">Actualización ↑</option>
+              <option value="title_asc">Título A→Z</option>
+              <option value="title_desc">Título Z→A</option>
+            </select>
+          </div>
+
+          <div class="pt-2 border-t border-gray-100">
+            <h3 class="text-sm font-semibold text-gray-900 mb-2">Políticas AVIA (veto)</h3>
+            <ul class="text-sm text-gray-700 space-y-1">
+              <li>• Tamaño máximo de contenido: <b id="polMaxSize">64KB</b></li>
+              <li>• Extensiones permitidas: <b id="polAllowed">.txt .md .pdf</b></li>
+              <li>• Campos requeridos: <b>Título + Autor</b></li>
+              <li class="text-xs text-gray-500">Learning: si falla una validación, se registra para evitar recurrencia.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center: Documents -->
+      <section class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Documentos</h2>
+            <p id="docMeta" class="text-sm text-gray-600 mt-1">—</p>
+          </div>
+
+          <div class="flex flex-wrap gap-2 items-center">
+            <div class="av-tooltip">
+              <button id="btnSync" class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium">
+                Sincronizar
+              </button>
+              <div class="av-tooltip-bubble bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                BroadcastChannel + heartbeat + propose/vote/commit
+              </div>
+            </div>
+            <div class="text-sm text-gray-600">
+              Heartbeat: <b id="hbStatus">—</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-gray-100 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 border-b border-gray-100 p-3 grid grid-cols-10 gap-2 text-xs font-semibold text-gray-700">
+            <div class="col-span-4">Título</div>
+            <div class="col-span-2">Autor</div>
+            <div class="col-span-1">Estado</div>
+            <div class="col-span-1">Prioridad</div>
+            <div class="col-span-1">Acción</div>
+            <div class="col-span-1">Ledger</div>
+          </div>
+
+          <div id="docList" class="divide-y divide-gray-100">
+            <!-- items -->
+          </div>
+        </div>
+
+        <div id="docEmpty" class="hidden p-6 text-center text-gray-600">
+          No hay documentos para los filtros actuales. Crea uno nuevo.
+        </div>
+      </section>
+
+      <!-- Right: Ledger & Pipeline -->
+      <aside class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">AVIA Ledger & Pipeline</h2>
+
+        <div class="space-y-3">
+          <div class="p-3 rounded-lg bg-gray-50 border border-gray-100">
+            <div class="text-sm font-semibold text-gray-900">Último commit</div>
+            <div id="lastCommit" class="text-xs text-gray-600 mt-1">—</div>
+          </div>
+
+          <div class="p-3 rounded-lg bg-gray-50 border border-gray-100">
+            <div class="text-sm font-semibold text-gray-900">Ledger (últimos 8)</div>
+            <div id="ledgerBox" class="mt-2 space-y-2 max-h-64 overflow-auto pr-1">
+              <!-- entries -->
+            </div>
+          </div>
+
+          <div class="p-3 rounded-lg bg-gray-50 border border-gray-100">
+            <div class="text-sm font-semibold text-gray-900">Trace pipeline</div>
+            <div id="traceBox" class="mt-2 space-y-1 text-xs text-gray-700 max-h-40 overflow-auto pr-1">
+              <!-- trace -->
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal: Nuevo documento -->
+  <div id="modalDoc" class="hidden fixed inset-0 z-50">
+    <div class="fixed inset-0 bg-black bg-opacity-40" id="modalBackdrop"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"/>
+              </svg>
+            </span>
+            <div>
+              <div class="font-semibold text-gray-900">Nuevo documento</div>
+              <div class="text-xs text-gray-600">Creación con políticas AVIA + propuesta/commit</div>
+            </div>
+          </div>
+
+          <button id="btnCloseModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-4 space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Título *</label>
+              <input id="inTitle" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Autor *</label>
+              <input id="inAuthor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+              <select id="inStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="draft">Borrador</option>
+                <option value="published">Publicado</option>
+                <option value="archived">Archivado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Prioridad</label>
+              <select id="inPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="low">Baja</option>
+                <option value="med" selected>Media</option>
+                <option value="high">Alta</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Etiquetas (separadas por coma)</label>
+            <input id="inTags" type="text" placeholder="accesibilidad, salud, comunidad"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Contenido (máx. 64KB según políticas)</label>
+            <textarea id="inContent" rows="5"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Escribe el contenido del documento..."></textarea>
+
+            <div class="text-xs text-gray-500 mt-2">
+              Longitud actual: <b id="contentLen">0</b>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-3">
+            <button id="btnCreateDoc" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
+              Proponer y Commit
+            </button>
+
+            <button id="btnCancelModal" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium">
+              Cancelar
+            </button>
+          </div>
+
+          <div class="text-xs text-gray-500">
+            Operación: pipeline steps + propose/vote/commit + ledger hash. No usa alert/confirm/prompt.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================
+   AVIADocuments - AVIA Libro Blanco (ES5 + Atomic Design)
+   ========================================================= */
+
+(function () {
+  // ---------- Utilities ----------
+  function nowISO() { return new Date().toISOString(); }
+  function clampInt(x, min, max) { x = parseInt(x, 10); if (isNaN(x)) return min; return Math.max(min, Math.min(max, x)); }
+  function safeStr(s) { return (s === undefined || s === null) ? '' : String(s); }
+  function safeJSONParse(s) { try { return JSON.parse(s); } catch(e) { return null; } }
+
+  // Memory-safe serialization: bounded sizes for trace/ledger.
+  function boundedString(s, maxLen) {
+    s = safeStr(s);
+    if (s.length > maxLen) return s.slice(0, maxLen);
+    return s;
+  }
+
+  // Simple non-crypto hash (ledger needs hash; not cryptographic)
+  // Atomic: hashString -> deterministic.
+  function hashString(str) {
+    str = safeStr(str);
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    // hex
+    return ('00000000' + h.toString(16)).slice(-8);
+  }
+
+  function formatCompact(ts) {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return safeStr(ts);
+    return d.toLocaleString();
+  }
+
+  // ---------- Toast ----------
+  var toastTimer = null;
+  function toast(message, type) {
+    type = type || 'success';
+    var container = document.getElementById('aviaToastContainer');
+    var el = document.createElement('div');
+    var base = 'px-5 py-3 rounded-lg shadow-xl flex items-center gap-3 max-w-md mb-3 text-white';
+    var bg = (type === 'success') ? 'bg-green-600' : (type === 'error') ? 'bg-red-600' : 'bg-blue-600';
+    var icon = '';
+    if (type === 'success') {
+      icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+    } else if (type === 'error') {
+      icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+    } else {
+      icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"></path></svg>';
+    }
+    el.className = base + ' ' + bg + ' av-toast-notice';
+    el.innerHTML = icon + '<span class="font-medium">' + boundedString(message, 160) + '</span>';
+
+    container.appendChild(el);
+
+    // Remove previous if too many
+    if (container.childNodes.length > 4) {
+      while (container.childNodes.length > 2) container.removeChild(container.firstChild);
+    }
+
+    setTimeout(function () {
+      if (!el || !el.parentNode) return;
+      el.style.transition = 'opacity 200ms ease';
+      el.style.opacity = '0';
+      setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 220);
+    }, 3200);
+  }
+
+  // ---------- AVIA Persistence ----------
+  var Storage = (function () {
+    var KEY = 'avia.documents.v1';
+    var KEY_LEDGER = 'avia.documents.ledger.v1';
+    var KEY_VERSIONS = 'avia.documents.versions.v1';
+    var memoryFallback = { store: null };
+
+    function canLocalStorage() {
+      try {
+        if (!window.localStorage) return false;
+        var k = '__avia_test__' + Math.random().toString(16).slice(2);
+        window.localStorage.setItem(k, '1');
+        window.localStorage.removeItem(k);
+        return true;
+      } catch (e) { return false; }
+    }
+
+    var lsOk = canLocalStorage();
+
+    function readJSON(key) {
+      if (lsOk) {
+        var raw = window.localStorage.getItem(key);
+        if (!raw) return null;
+        return safeJSONParse(raw);
+      }
+      return memoryFallback.store && memoryFallback.store[key] ? memoryFallback.store[key] : null;
+    }
+
+    function writeJSON(key, obj) {
+      if (lsOk) {
+        window.localStorage.setItem(key, JSON.stringify(obj));
+        return;
+      }
+      if (!memoryFallback.store) memoryFallback.store = {};
+      memoryFallback.store[key] = obj;
+    }
+
+    function exportAll(state, ledger, versions) {
+      return {
+        schema: 'avia-documents',
+        version: 1,
+        exportedAt: nowISO(),
+        state: state,
+        ledger: ledger,
+        versions: versions
+      };
+    }
+
+    function importAll(payload) {
+      payload = payload || {};
+      if (payload.schema !== 'avia-documents') return { ok: false, reason: 'Schema inválido' };
+      if (!payload.state || !payload.ledger || !payload.versions) return { ok: false, reason: 'Datos incompletos' };
+      return { ok: true, state: payload.state, ledger: payload.ledger, versions: payload.versions };
+    }
+
+    return {
+      readState: function () { return readJSON(KEY); },
+      readLedger: function () { return readJSON(KEY_LEDGER); },
+      readVersions: function () { return readJSON(KEY_VERSIONS); },
+      writeAll: function (state, ledger, versions) {
+        writeJSON(KEY, state);
+        writeJSON(KEY_LEDGER, ledger);
+        writeJSON(KEY_VERSIONS, versions);
+      },
+      exportAll: exportAll,
+      importAll: importAll,
+      getStorageOk: function () { return lsOk; }
+    };
+  })();
+
+  // ---------- AVIA Learning & Policies (veto) ----------
+  var Policies = (function () {
+    // Nomada: adaptativo por learning.
+    var rules = {
+      maxContentSizeBytes: 64 * 1024,
+      allowedExt: ['.txt', '.md', '.pdf'],
+      requiredFields: ['title', 'author']
+    };
+
+    // learning: track last veto reasons to prevent recurrence (simple)
+    var learning = {
+      vetoCountByReason: {}
+    };
+
+    function byteLen(s) {
+      // approximate: JS string chars -> bytes approx in UTF-16; for sandbox, we approximate.
+      // Atomic: use char count as baseline.
+      return safeStr(s).length;
+    }
+
+    function extFromName(name) {
+      name = safeStr(name).toLowerCase();
+      var idx = name.lastIndexOf('.');
+      if (idx < 0) return '';
+      return name.slice(idx);
+    }
+
+    function validateDoc(doc, meta) {
+      meta = meta || {};
+      var reasons = [];
+
+      // required
+      if (!safeStr(doc.title).trim()) reasons.push('missing_title');
+      if (!safeStr(doc.author).trim()) reasons.push('missing_author');
+
+      // content
+      var content = safeStr(doc.content);
+      if (byteLen(content) > rules.maxContentSizeBytes) reasons.push('content_too_large');
+
+      // type/ext (doc.fileName optional)
+      if (doc.fileName && safeStr(doc.fileName).trim()) {
+        var ext = extFromName(doc.fileName);
+        if (!ext || rules.allowedExt.indexOf(ext) === -1) reasons.push('ext_not_allowed');
+      }
+
+      // Nomada fairness: if user is vulnerable (meta.vulnerable flag), relax nothing, but ensure trace.
+      // We keep policies strict, but we log a friendly reason.
+      var veto = reasons.length > 0;
+
+      return { ok: !veto, veto: veto, reasons: reasons };
+    }
+
+    function recordLearning(reasons) {
+      // atomic update
+      for (var i = 0; i < reasons.length; i++) {
+        var r = reasons[i];
+        learning.vetoCountByReason[r] = (learning.vetoCountByReason[r] || 0) + 1;
+      }
+    }
+
+    return {
+      getRules: function () { return rules; },
+      getLearning: function () { return learning; },
+      validateDoc: validateDoc,
+      recordLearning: recordLearning
+    };
+  })();
+
+  // ---------- AVIA Pipeline / Trace / Rollback ----------
+  var Pipeline = (function () {
+    function makeTraceEvent(step, status, detail) {
+      return {
+        ts: nowISO(),
+        step: step,
+        status: status,
+        detail: boundedString(detail || '', 220)
+      };
+    }
+
+    var trace = [];
+
+    function push(step, status, detail) {
+      trace.push(makeTraceEvent(step, status, detail));
+      if (trace.length > 40) trace.shift();
+      return trace[trace.length - 1];
+    }
+
+    function getTrace() { return trace.slice(); }
+
+    // rollback uses versions snapshots
+    function rollbackToVersion(versions, versionId) {
+      if (!versions || !versions.length) return null;
+      var snap = null;
+      for (var i = versions.length - 1; i >= 0; i--) {
+        if (versions[i].id === versionId) { snap = versions[i]; break; }
+      }
+      if (!snap) return null;
+      // snapshot: {state, ledger, versions, meta?}
+      return snap.snapshot || null;
+    }
+
+    return {
+      push: push,
+      getTrace: getTrace,
+      rollbackToVersion: rollbackToVersion
+    };
+  })();
+
+  // ---------- Ledger (hash chain) ----------
+  var Ledger = (function () {
+    function lastHash(ledger) {
+      if (!ledger || !ledger.length) return 'genesis';
+      return ledger[ledger.length - 1].hash;
+    }
+
+    function addEntry(ledger, entry) {
+      entry = entry || {};
+      entry.prev = lastHash(ledger);
+      var payload = [
+        entry.ts,
+        entry.actionType,
+        entry.docId || '',
+        entry.payloadHash || '',
+        entry.prev || ''
+      ].join('|');
+      entry.hash = hashString(payload);
+      ledger.push(entry);
+      if (ledger.length > 60) ledger.shift();
+      return entry;
+    }
+
+    function makeAction(doc, actionType, payload) {
+      return {
+        ts: nowISO(),
+        actionType: actionType,
+        docId: doc && doc.id ? doc.id : '',
+        payloadHash: hashString(JSON.stringify(payload || {}))
+      };
+    }
+
+    return {
+      addEntry: addEntry,
+      makeAction: makeAction
+    };
+  })();
+
+  // ---------- Constelación Económica de Consenso ----------
+  var Consensus = (function () {
+    // propose/vote/commit simulation local + across broadcast
+    // tokens: simple weight; highest vote wins.
+    function tokenForPeer(peerId) {
+      // Atomic deterministic weight based on hash
+      var seed = hashString(peerId);
+      var t = parseInt(seed, 16) % 100;
+      return 1 + t; // min 1
+    }
+
+    function makeConsensusId() {
+      return 'c_' + Math.random().toString(16).slice(2) + '_' + Date.now();
+    }
+
+    function quorumReached(votes, tokenTotal, requiredRatio) {
+      requiredRatio = requiredRatio || 0.6;
+      if (tokenTotal <= 0) return false;
+      var sum = 0;
+      for (var k in votes) {
+        if (!votes.hasOwnProperty(k)) continue;
+        sum += votes[k];
+      }
+      return (sum / tokenTotal) >= requiredRatio;
+    }
+
+    // In sandbox, we do a “micro-consensus”: if enough votes arrive or timeout.
+    function proposeAndCommit(ctx) {
+      return new Promise(function (resolve) {
+        var consensusId = ctx.consensusId;
+        var proposal = ctx.proposal; // {op, doc, ...}
+        var timeoutMs = ctx.timeoutMs || 1400;
+        var requiredRatio = ctx.requiredRatio || 0.6;
+
+        var myPeer = ctx.myPeer;
+        var peers = ctx.peers || [myPeer];
+        var tokenTotal = 0;
+        for (var i = 0; i < peers.length; i++) tokenTotal += tokenForPeer(peers[i]);
+
+        var votes = {}; // peerId -> tokenWeight
+        votes[myPeer] = tokenForPeer(myPeer);
+
+        // publish propose
+        ctx.publish({
+          type: 'CONSENSUS_PROPOSE',
+          consensusId: consensusId,
+          proposal: proposal,
+          from: myPeer
+        });
+
+        Pipeline.push('consensus_propose', 'ok', 'Propuesta emitida: ' + consensusId);
+
+        var timer = setTimeout(function () {
+          var ok = quorumReached(votes, tokenTotal, requiredRatio);
+          if (ok) {
+            // commit local
+            ctx.publish({
+              type: 'CONSENSUS_COMMIT',
+              consensusId: consensusId,
+              proposal: proposal,
+              from: myPeer
+            });
+            Pipeline.push('consensus_commit', 'ok', 'Commit local por quorum: ' + consensusId);
+            resolve({ ok: true, consensusId: consensusId, committed: true });
+          } else {
+            Pipeline.push('consensus_commit', 'veto', 'Quorum insuficiente: ' + consensusId);
+            resolve({ ok: false, consensusId: consensusId, committed: false });
+          }
+        }, timeoutMs);
+
+        // store interim
+        ctx._consensusState = ctx._consensusState || {};
+        ctx._consensusState[consensusId] = {
+          votes: votes,
+          tokenTotal: tokenTotal,
+          proposal: proposal,
+          requiredRatio: requiredRatio,
+          timer: timer
+        };
+      });
+    }
+
+    return {
+      makeConsensusId: makeConsensusId,
+      proposeAndCommit: proposeAndCommit,
+      tokenForPeer: tokenForPeer
+    };
+  })();
+
+  // ---------- AVIA Synchronization (BroadcastChannel + heartbeat) ----------
+  var Sync = (function () {
+    var bc = null;
+    var channelName = 'avia-documents-sync-v1';
+    var hbTimer = null;
+    var hbIntervalMs = 1200;
+    var lastHb = {};
+    var peerId = null;
+
+    function supportsBroadcast() {
+      return typeof BroadcastChannel !== 'undefined';
+    }
+
+    function init(myPeer) {
+      peerId = myPeer;
+      if (supportsBroadcast()) {
+        bc = new BroadcastChannel(channelName);
+        bc.onmessage = function (ev) { handleMessage(ev.data); };
+      } else {
+        bc = null;
+      }
+    }
+
+    var handlers = null;
+    function setHandlers(h) { handlers = h; }
+
+    function publish(msg) {
+      msg = msg || {};
+      msg.from = msg.from || peerId;
+      msg.ts = msg.ts || nowISO();
+      if (bc) bc.postMessage(msg);
+    }
+
+    function startHeartbeat() {
+      // send hb + request peers
+      if (hbTimer) clearInterval(hbTimer);
+
+      hbTimer = setInterval(function () {
+        lastHb[peerId] = nowISO();
+        if (handlers && handlers.onHeartbeat) handlers.onHeartbeat(lastHb, peerId);
+        publish({ type: 'HEARTBEAT', peer: peerId });
+      }, hbIntervalMs);
+    }
+
+    function handleMessage(data) {
+      if (!data || !data.type) return;
+      if (handlers && handlers.onMessage) handlers.onMessage(data);
+    }
+
+    return {
+      init: init,
+      publish: publish,
+      startHeartbeat: startHeartbeat,
+      setHandlers: setHandlers
+    };
+  })();
+
+  // ---------- Documents State (atomic reducers) ----------
+  var DocStore = (function () {
+    var state = {
+      docs: [],
+      meta: {
+        updatedAt: nowISO(),
+        vulnerableMode: false // placeholder; can be set by user/host
+      }
+    };
+
+    function findDoc(id) {
+      for (var i = 0; i < state.docs.length; i++) {
+        if (state.docs[i].id === id) return state.docs[i];
+      }
+      return null;
+    }
+
+    function createDoc(payload) {
+      // atomic: create with normalized fields
+      var doc = {
+        id: 'd_' + Math.random().toString(16).slice(2) + '_' + Date.now(),
+        title: safeStr(payload.title).trim(),
+        author: safeStr(payload.author).trim(),
+        status: payload.status || 'draft',
+        priority: payload.priority || 'med',
+        tags: Array.isArray(payload.tags) ? payload.tags : [],
+        content: safeStr(payload.content),
+        fileName: safeStr(payload.fileName || ''),
+        createdAt: nowISO(),
+        updatedAt: nowISO()
+      };
+      state.docs.push(doc);
+      return doc;
+    }
+
+    function updateDoc(id, patch) {
+      var doc = findDoc(id);
+      if (!doc) return null;
+      // atomic patch apply
+      if (patch.title !== undefined) doc.title = safeStr(patch.title).trim();
+      if (patch.author !== undefined) doc.author = safeStr(patch.author).trim();
+      if (patch.status !== undefined) doc.status = patch.status;
+      if (patch.priority !== undefined) doc.priority = patch.priority;
+      if (patch.tags !== undefined) doc.tags = patch.tags;
+      if (patch.content !== undefined) doc.content = safeStr(patch.content);
+      if (patch.fileName !== undefined) doc.fileName = safeStr(patch.fileName);
+      doc.updatedAt = nowISO();
+      state.meta.updatedAt = nowISO();
+      return doc;
+    }
+
+    function deleteDoc(id) {
+      for (var i = state.docs.length - 1; i >= 0; i--) {
+        if (state.docs[i].id === id) {
+          state.docs.splice(i, 1);
+          state.meta.updatedAt = nowISO();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function setAll(newState) {
+      if (!newState || !newState.docs) return false;
+      state = newState;
+      return true;
+    }
+
+    function getState() { return state; }
+
+    return {
+      createDoc: createDoc,
+      updateDoc: updateDoc,
+      deleteDoc: deleteDoc,
+      findDoc: findDoc,
+      setAll: setAll,
+      getState: getState
+    };
+  })();
+
+  // ---------- AVIA Control de Versiones ----------
+  var Versioning = (function () {
+    var versions = []; // {id, ts, snapshot}
+    function commitVersion(ledger, docsState, reason) {
+      var snap = {
+        docsState: JSON.parse(JSON.stringify(docsState || {})),
+        ledger: JSON.parse(JSON.stringify(ledger || []))
+      };
+      var id = 'v_' + Date.now() + '_' + Math.random().toString(16).slice(2,6);
+      versions.push({
+        id: id,
+        ts: nowISO(),
+        reason: boundedString(reason || '', 120),
+        snapshot: snap
+      });
+      if (versions.length > 25) versions.shift();
+      return id;
+    }
+    function getVersions() { return versions.slice(); }
+
+    function rollback(ledgerRef) {
+      if (!versions.length) return null;
+      var last = versions.pop();
+      var snap = last.snapshot;
+      // restore docs & ledger
+      DocStore.setAll(snap.docsState);
+      ledgerRef.length = 0;
+      for (var i = 0; i < snap.ledger.length; i++) ledgerRef.push(snap.ledger[i]);
+      return last;
+    }
+
+    return {
+      init: function (loadedVersions) { versions = loadedVersions || []; },
+      getVersions: getVersions,
+      commitVersion: commitVersion,
+      rollback: rollback
+    };
+  })();
+
+  // ---------- UI Rendering (atomic views) ----------
+  var UI = (function () {
+    function statusBadge(status) {
+      if (status === 'published') return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">Publicado</span>';
+      if (status === 'archived') return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-100">Archivado</span>';
+      return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-50 text-yellow-800 border border-yellow-100">Borrador</span>';
+    }
+
+    function priorityBadge(p) {
+      if (p === 'high') return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">Alta</span>';
+      if (p === 'med') return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Media</span>';
+      return '<span class="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Baja</span>';
+    }
+
+    function escapeHTML(str) {
+      return safeStr(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function matches(doc, q, status, priority) {
+      q = safeStr(q).toLowerCase();
+      var okQ = true;
+      if (q) {
+        var blob = [
+          doc.title, doc.author,
+          (doc.tags || []).join(','),
+          doc.content
+        ].join(' ').toLowerCase();
+        okQ = blob.indexOf(q) !== -1;
+      }
+      var okS = (status === 'all') ? true : doc.status === status;
+      var okP = (priority === 'all') ? true : doc.priority === priority;
+      return okQ && okS && okP;
+    }
+
+    function sortDocs(docs, sortKey) {
+      var arr = docs.slice();
+      if (sortKey === 'updated_desc') {
+        arr.sort(function(a,b){ return (new Date(b.updatedAt)).getTime() - (new Date(a.updatedAt)).getTime(); });
+      } else if (sortKey === 'updated_asc') {
+        arr.sort(function(a,b){ return (new Date(a.updatedAt)).getTime() - (new Date(b.updatedAt)).getTime(); });
+      } else if (sortKey === 'title_asc') {
+        arr.sort(function(a,b){ return safeStr(a.title).localeCompare(safeStr(b.title)); });
+      } else if (sortKey === 'title_desc') {
+        arr.sort(function(a,b){ return safeStr(b.title).localeCompare(safeStr(a.title)); });
+      }
+      return arr;
+    }
+
+    function renderLedger(ledger) {
+      var box = document.getElementById('ledgerBox');
+      box.innerHTML = '';
+      var last = ledger.slice(-8);
+      if (!last.length) {
+        box.innerHTML = '<div class="text-xs text-gray-500">Sin acciones aún.</div>';
+        return;
+      }
+      for (var i = 0; i < last.length; i++) {
+        var e = last[i];
+        var row = document.createElement('div');
+        row.className = 'p-2 rounded-lg border border-gray-100 bg-white';
+        row.innerHTML =
+          '<div class="flex items-start justify-between gap-2">' +
+            '<div class="min-w-0">' +
+              '<div class="text-xs font-semibold text-gray-900 truncate">' + escapeHTML(e.actionType) + '</div>' +
+              '<div class="text-[11px] text-gray-600 mt-0.5 truncate">' + escapeHTML(e.docId || '-') + '</div>' +
+              '<div class="text-[11px] text-gray-500 mt-1">' + escapeHTML(formatCompact(e.ts)) + '</div>' +
+            '</div>' +
+            '<div class="text-[10px] text-gray-700 font-mono">' + escapeHTML(e.hash) + '</div>' +
+          '</div>';
+        box.appendChild(row);
+      }
+    }
+
+    function renderTrace(trace) {
+      var box = document.getElementById('traceBox');
+      box.innerHTML = '';
+      var last = trace.slice(-10);
+      if (!last.length) {
+        box.innerHTML = '<div class="text-xs text-gray-500">—</div>';
+        return;
+      }
+      for (var i = 0; i < last.length; i++) {
+        var t = last[i];
+        var line = document.createElement('div');
+        line.className = 'flex items-center justify-between gap-2';
+        var color = t.status === 'ok' ? 'text-green-700' : (t.status === 'veto' ? 'text-red-700' : 'text-blue-700');
+        line.innerHTML =
+          '<span class="truncate text-gray-700 font-mono">' + escapeHTML(t.step) + '</span>' +
+          '<span class="text-[11px] ' + color + ' whitespace-nowrap ml-2">' + escapeHTML(t.status) + '</span>';
+        box.appendChild(line);
+      }
+    }
+
+    function renderDocs(allDocs, ledger) {
+      var q = document.getElementById('qSearch').value;
+      var status = document.getElementById('selStatus').value;
+      var priority = document.getElementById('selPriority').value;
+      var sortKey = document.getElementById('selSort').value;
+
+      var filtered = [];
+      for (var i = 0; i < allDocs.length; i++) {
+        if (matches(allDocs[i], q, status, priority)) filtered.push(allDocs[i]);
+      }
+      filtered = sortDocs(filtered, sortKey);
+
+      var list = document.getElementById('docList');
+      list.innerHTML = '';
+
+      document.getElementById('docMeta').textContent =
+        filtered.length + ' documento(s) · actualizado: ' + formatCompact(DocStore.getState().meta.updatedAt);
+
+      if (!filtered.length) {
+        document.getElementById('docEmpty').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('docEmpty').classList.add('hidden');
+
+      for (var j = 0; j < filtered.length; j++) {
+        (function (doc) {
+          var row = document.createElement('div');
+          row.className = 'p-3 grid grid-cols-10 gap-2 items-center';
+
+          // Find last ledger hash for doc (best-effort)
+          var lastForDoc = '';
+          for (var k = ledger.length - 1; k >= 0; k--) {
+            if (ledger[k].docId === doc.id) { lastForDoc = ledger[k].hash; break; }
+          }
+
+          var tagsShort = (doc.tags && doc.tags.length) ? doc.tags.slice(0,3).join(', ') : '-';
+          row.innerHTML =
+            '<div class="col-span-4 min-w-0">' +
+              '<div class="font-semibold text-gray-900 truncate">' + escapeHTML(doc.title) + '</div>' +
+              '<div class="text-xs text-gray-600 truncate mt-0.5">' + escapeHTML(tagsShort) + '</div>' +
+            '</div>' +
+            '<div class="col-span-2 min-w-0 text-sm text-gray-800">' + escapeHTML(doc.author) + '</div>' +
+            '<div class="col-span-1">' + statusBadge(doc.status) + '</div>' +
+            '<div class="col-span-1">' + priorityBadge(doc.priority) + '</div>' +
+            '<div class="col-span-1">' +
+              '<div class="flex items-center gap-2 justify-end">' +
+                '<button class="btnEdit px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200" data-id="' + escapeHTML(doc.id) + '">Editar</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="col-span-1 text-right">' +
+              '<div class="text-[10px] font-mono text-gray-700 truncate" title="Hash ledger">' + escapeHTML(lastForDoc || '-') + '</div>' +
+            '</div>';
+
+          // Edit minimal: open modal prefill; atomic: reuse create flow patch update with propose/vote/commit.
+          row.querySelector('.btnEdit').addEventListener('click', function () {
+            openEditModal(doc);
+          });
+
+          list.appendChild(row);
+        })(filtered[j]);
+      }
+    }
+
+    // Modal helpers
+    function setModalValues(docOrEmpty) {
+      docOrEmpty = docOrEmpty || {};
+      document.getElementById('inTitle').value = safeStr(docOrEmpty.title);
+      document.getElementById('inAuthor').value = safeStr(docOrEmpty.author);
+      document.getElementById('inStatus').value = safeStr(docOrEmpty.status || 'draft');
+      document.getElementById('inPriority').value = safeStr(docOrEmpty.priority || 'med');
+      document.getElementById('inTags').value = Array.isArray(docOrEmpty.tags) ? docOrEmpty.tags.join(', ') : safeStr(docOrEmpty.tags);
+      document.getElementById('inContent').value = safeStr(docOrEmpty.content);
+      document.getElementById('contentLen').textContent = String(safeStr(docOrEmpty.content).length);
+    }
+
+    function showModal(show) {
+      var modal = document.getElementById('modalDoc');
+      if (show) modal.classList.remove('hidden'); else modal.classList.add('hidden');
+    }
+
+    return {
+      statusBadge: statusBadge,
+      priorityBadge: priorityBadge,
+      renderDocs: renderDocs,
+      renderLedger: renderLedger,
+      renderTrace: renderTrace,
+      showModal: showModal,
+      setModalValues: setModalValues,
+      escapeHTML: escapeHTML
+    };
+  })();
+
+  // ---------- Main Controller ----------
+  var App = (function () {
+    var myPeerId = 'peer_' + Math.random().toString(16).slice(2) + '_' + (Date.now()%100000);
+    var ledger = [];
+    var consensusState = null;
+
+    var _editMode = {
+      active: false,
+      docId: null
+    };
+
+    function loadAll() {
+      var st = Storage.readState();
+      var ld = Storage.readLedger();
+      var vs = Storage.readVersions();
+
+      if (st && st.docs) {
+        DocStore.setAll(st);
+      } else {
+        // Seed: keep minimal, friendly, inclusive default
+        DocStore.createDoc({
+          title: 'Guía de Bienestar Comunitario',
+          author: 'AVIA Sistema',
+          status: 'published',
+          priority: 'med',
+          tags: ['comunidad','accesibilidad','calma'],
+          content: 'Este documento orienta pasos simples para activar calma, pedir ayuda y sostener hábitos positivos.'
+        });
+        DocStore.createDoc({
+          title: 'Plantilla: Registro de Acciones',
+          author: 'AVIA Nomada',
+          status: 'draft',
+          priority: 'high',
+          tags: ['seguimiento','ledger','sincronización'],
+          content: 'Usa el ledger para rastrear decisiones, validar políticas y aplicar rollback si ocurre un fallo.'
+        });
+      }
+
+      ledger = ld && Array.isArray(ld) ? ld : [];
+
+      Versioning.init(vs && Array.isArray(vs) ? vs : []);
+
+      // Persist to ensure keys exist
+      Storage.writeAll(DocStore.getState(), ledger, Versioning.getVersions());
+
+      // UI render
+      refreshUI();
+    }
+
+    function refreshUI() {
+      var st = DocStore.getState();
+      UI.renderDocs(st.docs, ledger);
+      UI.renderLedger(ledger);
+      UI.renderTrace(Pipeline.getTrace());
+      updateLastCommitUI();
+      updateHeartbeatUI();
+    }
+
+    function updateLastCommitUI() {
+      var versions = Versioning.getVersions();
+      var last = versions.length ? versions[versions.length - 1] : null;
+      document.getElementById('lastCommit').textContent =
+        last ? (last.id + ' · ' + formatCompact(last.ts) + ' · ' + last.reason) : '—';
+    }
+
+    function updateHeartbeatUI() {
+      // uses Sync handler to set hbStatus
+      // keep no-op here; actual update in handler.
+    }
+
+    function openCreateModal() {
+      _editMode.active = false;
+      _editMode.docId = null;
+      UI.setModalValues({
+        title: '',
+        author: '',
+        status: 'draft',
+        priority: 'med',
+        tags: '',
+        content: ''
+      });
+      UI.showModal(true);
+    }
+
+    function openEditModal(doc) {
+      _editMode.active = true;
+      _editMode.docId = doc.id;
+      UI.setModalValues(doc);
+      UI.showModal(true);
+    }
+
+    function closeModal() {
+      UI.showModal(false);
+      _editMode.active = false;
+      _editMode.docId = null;
+    }
+
+    function buildDocFromForm() {
+      var title = document.getElementById('inTitle').value;
+      var author = document.getElementById('inAuthor').value;
+      var status = document.getElementById('inStatus').value;
+      var priority = document.getElementById('inPriority').value;
+      var tagsRaw = document.getElementById('inTags').value;
+      var content = document.getElementById('inContent').value;
+
+      var tags = [];
+      if (tagsRaw && safeStr(tagsRaw).trim()) {
+        var parts = safeStr(tagsRaw).split(',');
+        for (var i = 0; i < parts.length; i++) {
+          var t = safeStr(parts[i]).trim();
+          if (t) tags.push(t);
+        }
+      }
+
+      return {
+        title: title,
+        author: author,
+        status: status,
+        priority: priority,
+        tags: tags,
+        content: content
+        // fileName optional (not in this modal)
+      };
+    }
+
+    function commitWithLedger(actionType, docId, payload, reason) {
+      reason = reason || '';
+      var docsState = DocStore.getState();
+
+      var action = Ledger.makeAction(
+        { id: docId },
+        actionType,
+        payload || {}
+      );
+
+      // pipeline rollback support: snapshot before commitVersion
+      var versionId = Versioning.commitVersion(ledger, docsState, reason);
+
+      // add ledger entry
+      Ledger.addEntry(ledger, action);
+
+      // persist
+      Storage.writeAll(DocStore.getState(), ledger, Versioning.getVersions());
+
+      // UI
+      document.getElementById('lastCommit').textContent = versionId + ' · ' + formatCompact(nowISO()) + ' · ' + boundedString(reason, 100);
+
+      return versionId;
+    }
+
+    function syncAndProposeOperation(opType, docPayload) {
+      var consensusId = Consensus.makeConsensusId();
+
+      // Atomic context shared with handlers
+      var ctx = {
+        consensusId: consensusId,
+        myPeer: myPeerId,
+        peers: [myPeerId], // local-only in iframe sandbox; still follows protocol.
+        proposal: { opType: opType, docPayload: docPayload, consensusId: consensusId },
+        publish: function (msg) { Sync.publish(msg); },
+        timeoutMs: 1350,
+        requiredRatio: 0.6,
+        _consensusState: {}
+      };
+
+      // Evaluate veto policies before propose (Agent Autónomo)
+      var vetoEval = Policies.validateDoc(docPayload.doc, { opType: opType, meta: { vulnerable: DocStore.getState().meta.vulnerableMode } });
+      if (!vetoEval.ok) {
+        Policies.recordLearning(vetoEval.reasons);
+        Pipeline.push('policy_veto', 'veto', 'Razones: ' + vetoEval.reasons.join(','));
+        toast('Operación vetada por políticas AVIA.', 'error');
+        return Promise.resolve({ ok: false, veto: true, reasons: vetoEval.reasons });
+      }
+
+      Pipeline.push('policy_gate', 'ok', 'Políticas OK. Proponiendo...');
+      return Consensus.proposeAndCommit(ctx).then(function (res) {
+        // If committed, apply operation (commit) locally.
+        if (res.ok && res.committed) {
+          Pipeline.push('pipeline_commit', 'ok', 'Commit aplicado: ' + opType);
+
+          // Apply op
+          if (opType === 'DOC_CREATE') {
+            var newDoc = DocStore.createDoc(docPayload.doc);
+            commitWithLedger('DOC_CREATE', newDoc.id, docPayload, 'Create doc con consenso');
+            return { ok: true, docId: newDoc.id };
+          } else if (opType === 'DOC_UPDATE') {
+            var updated = DocStore.updateDoc(docPayload.docId, docPayload.patch);
+            if (!updated) {
+              Pipeline.push('pipeline_rollback', 'veto', 'Doc no encontrada para update');
+              toast('Rollback sugerido: documento no existe.', 'error');
+              return { ok: false, error: 'not_found' };
+            }
+            commitWithLedger('DOC_UPDATE', updated.id, docPayload, 'Update doc con consenso');
+            return { ok: true, docId: updated.id };
+          }
+        }
+
+        return { ok: false, committed: false };
+      });
+    }
+
+    function applyOperationCreateFromUI() {
+      var doc = buildDocFromForm();
+
+      // Nomada: meta fields for trace & veto
+      var payload = {
+        doc: {
+          title: doc.title,
+          author: doc.author,
+          status: doc.status,
+          priority: doc.priority,
+          tags: doc.tags,
+          content: doc.content
+        }
+      };
+
+      Pipeline.push('pipeline_step_validate', 'ok', 'Validación previa UI');
+      // propose/vote/commit + ledger
+      return syncAndProposeOperation('DOC_CREATE', payload).then(function (r) {
+        if (r && r.ok) {
+          toast('Documento creado y sincronizado (con AVIA ledger).', 'success');
+        } else {
+          toast('No se pudo crear el documento. Revisa políticas / políticas de veto.', 'error');
+        }
+        closeModal();
+        refreshUI();
+        UI.setModalValues({});
+      });
+    }
+
+    function applyOperationUpdateFromUI() {
+      var doc = buildDocFromForm();
+      var docId = _editMode.docId;
+
+      var patch = {
+        title: doc.title,
+        author: doc.author,
+        status: doc.status,
+        priority: doc.priority,
+        tags: doc.tags,
+        content: doc.content
+      };
+
+      Pipeline.push('pipeline_step_validate', 'ok', 'Validación previa UI (update)');
+      return syncAndProposeOperation('DOC_UPDATE', { docId: docId, patch: patch, doc: patch }).then(function (r) {
+        if (r && r.ok) toast('Documento actualizado con AVIA ledger.', 'success');
+        else toast('Update vetado o falló el commit.', 'error');
+        closeModal();
+        refreshUI();
+      });
+    }
+
+    function handleCreateOrUpdate() {
+      // Agent Autónomo: learning + veto already in syncAndProposeOperation
+      if (_editMode.active) return applyOperationUpdateFromUI();
+      return applyOperationCreateFromUI();
+    }
+
+    function handleSyncNow() {
+      Pipeline.push('sync_manual', 'ok', 'Sincronización manual solicitada');
+      toast('Sincronizando con ecosistema AVIA...', 'info');
+
+      // Broadcast a “sync ping”; peers (if present) could respond.
+      Sync.publish({ type: 'SYNC_PING', peer: myPeerId, hb: nowISO() });
+
+      setTimeout(function () {
+        // best-effort: re-render
+        refreshUI();
+        toast('Sincronización finalizada (mejor esfuerzo).', 'success');
+      }, 650);
+    }
+
+    function handleExport() {
+      Pipeline.push('export', 'ok', 'Exportando estado + ledger + versiones');
+      var payload = Storage.exportAll(
+        DocStore.getState(),
+        ledger,
+        Versioning.getVersions()
+      );
+
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'avia-documents-export-' + Date.now() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setTimeout(function () { URL.revokeObjectURL(url); }, 600);
+      toast('Exportación lista (JSON).', 'success');
+    }
+
+    function handleImport(file) {
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var text = safeStr(reader.result);
+        var parsed = safeJSONParse(text);
+        var res = Storage.importAll(parsed);
+        if (!res.ok) {
+          toast('Importación fallida: ' + boundedString(res.reason, 80), 'error');
+          Pipeline.push('import', 'veto', res.reason);
+          return;
+        }
+
+        // rollback-safe: snapshot before applying import
+        var versionId = Versioning.commitVersion(ledger, DocStore.getState(), 'Import pre');
+        toast('Importando... (rollback disponible: ' + versionId + ')', 'info');
+        Pipeline.push('import_apply', 'ok', 'Aplicando import');
+
+        DocStore.setAll(res.state);
+        ledger = res.ledger || [];
+        Versioning.init(res.versions || []);
+
+        Storage.writeAll(DocStore.getState(), ledger, Versioning.getVersions());
+        refreshUI();
+        toast('Importación completada.', 'success');
+      };
+      reader.onerror = function () {
+        toast('Error leyendo el archivo de importación.', 'error');
+      };
+      reader.readAsText(file);
+    }
+
+    function handleRollback() {
+      Pipeline.push('rollback', 'ok', 'Solicitado rollback');
+      // rollback to previous snapshot created by commitVersion
+      var snapshotMeta = Versioning.rollback(ledger);
+      if (!snapshotMeta) {
+        toast('No hay versiones para rollback.', 'error');
+        return;
+      }
+      Storage.writeAll(DocStore.getState(), ledger, Versioning.getVersions());
+      refreshUI();
+      toast('Rollback aplicado: ' + snapshotMeta.id, 'success');
+      Pipeline.push('rollback_done', 'ok', snapshotMeta.reason);
+    }
+
+    function bindEvents() {
+      document.getElementById('btnAddDoc').addEventListener('click', function () {
+        openCreateModal();
+      });
+
+      document.getElementById('btnCloseModal').addEventListener('click', function () { closeModal(); });
+      document.getElementById('btnCancelModal').addEventListener('click', function () { closeModal(); });
+      document.getElementById('modalBackdrop').addEventListener('click', function () { closeModal(); });
+
+      document.getElementById('btnCreateDoc').addEventListener('click', function () {
+        // Atomic: short pipeline step
+        Pipeline.push('pipeline_start', 'ok', 'User submit create/update');
+        handleCreateOrUpdate();
+      });
+
+      document.getElementById('btnSync').addEventListener('click', handleSyncNow);
+      document.getElementById('btnExport').addEventListener('click', handleExport);
+
+      document.getElementById('fileImport').addEventListener('change', function (e) {
+        var f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+        handleImport(f);
+        // allow re-import same file
+        e.target.value = '';
+      });
+
+      document.getElementById('btnRollback').addEventListener('click', handleRollback);
+
+      // Filter live render (atomic: debounce-ish)
+      var t = null;
+      function scheduleRender() {
+        if (t) clearTimeout(t);
+        t = setTimeout(function () { refreshUI(); }, 120);
+      }
+
+      document.getElementById('qSearch').addEventListener('input', scheduleRender);
+      document.getElementById('selStatus').addEventListener('change', scheduleRender);
+      document.getElementById('selPriority').addEventListener('change', scheduleRender);
+      document.getElementById('selSort').addEventListener('change', scheduleRender);
+
+      // content len
+      document.getElementById('inContent').addEventListener('input', function () {
+        document.getElementById('contentLen').textContent = String(safeStr(document.getElementById('inContent').value).length);
+      });
+
+      // ESC close
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+      });
+    }
+
+    function initPoliciesUI() {
+      var rules = Policies.getRules();
+      document.getElementById('polMaxSize').textContent = Math.round(rules.maxContentSizeBytes/1024) + 'KB';
+      document.getElementById('polAllowed').textContent = rules.allowedExt.join(' ');
+    }
+
+    function initSync() {
+      // Attach handlers
+      Sync.setHandlers({
+        onHeartbeat: function (hbMap, peer) {
+          // show last hb recency
+          var out = '-';
+          if (hbMap && hbMap[peer]) {
+            var ts = hbMap[peer];
+            out = formatCompact(ts);
+          }
+          document.getElementById('hbStatus').textContent = out;
+        },
+        onMessage: function (data) {
+          // Atomic: parse message types
+          if (!data) return;
+          if (data.type === 'HEARTBEAT') {
+            // just update UI; learning not needed
+            return;
+          }
+          if (data.type === 'SYNC_PING') {
+            // Nomada: react politely; no heavy merge in sandbox
+            Pipeline.push('sync_ping', 'ok', 'Ping recibido de: ' + safeStr(data.from));
+            return;
+          }
+
+          // Consensus protocol (local-only best effort, still listens)
+          // If another peer commits, we could import/merge by proposal.
+          if (data.type === 'CONSENSUS_PROPOSE') {
+            Pipeline.push('consensus_receive_propose', 'ok', 'Propuesta: ' + safeStr(data.consensusId));
+            // We may vote implicitly, but without multi-peer state we ignore.
+            Sync.publish({
+              type: 'CONSENSUS_VOTE',
+              consensusId: data.consensusId,
+              proposal: data.proposal,
+              from: myPeerId
+            });
+            return;
+          }
+
+          if (data.type === 'CONSENSUS_VOTE') {
+            // If we had multi-peer context we'd aggregate. In sandbox we keep minimal.
+            Pipeline.push('consensus_receive_vote', 'ok', 'Voto recibido: ' + safeStr(data.consensusId));
+            return;
+          }
+
+          if (data.type === 'CONSENSUS_COMMIT') {
+            // Apply only if committed op is relevant
+            // For safety, validate policies again.
+            Pipeline.push('consensus_commit_receive', 'ok', 'Commit recibido: ' + safeStr(data.consensusId));
+            var prop = data.proposal || {};
+            var opType = prop.opType;
+            var docPayload = prop.docPayload;
+
+            if (opType === 'DOC_CREATE' && docPayload && docPayload.doc) {
+              var evalRes = Policies.validateDoc(docPayload.doc, {});
+              if (!evalRes.ok) {
+                Policies.recordLearning(evalRes.reasons);
+                Pipeline.push('policy_veto_remote', 'veto', evalRes.reasons.join(','));
+                toast('Commit remoto vetado por políticas.', 'error');
+                return;
+              }
+              // Apply create but avoid duplicates by title+author+content hash (best-effort)
+              var incoming = docPayload.doc;
+              var incomingHash = hashString(incoming.title + '|' + incoming.author + '|' + incoming.content);
+              var already = false;
+              var docs = DocStore.getState().docs;
+              for (var i = 0; i < docs.length; i++) {
+                var d = docs[i];
+                var dHash = hashString(d.title + '|' + d.author + '|' + d.content);
+                if (dHash === incomingHash) { already = true; break; }
+              }
+              if (!already) {
+                var newDoc = DocStore.createDoc(incoming);
+                commitWithLedger('DOC_CREATE_REMOTE', newDoc.id, docPayload, 'Remote commit apply');
+                refreshUI();
+                toast('Documento sincronizado desde consenso remoto.', 'success');
+              }
+            }
+            return;
+          }
+        }
+      });
+
+      Sync.init(myPeerId);
+      Sync.startHeartbeat();
+    }
+
+    function boot() {
+      initPoliciesUI();
+      Pipeline.push('boot', 'ok', 'Iniciando AVIADocuments');
+      loadAll();
+
+      bindEvents();
+      initSync();
+
+      // Initial render trace/ledger
+      refreshUI();
+      toast('AVIADocuments listo. Modo AVIA Nomada activo.', 'success');
+    }
+
+    return { boot: boot };
+  })();
+
+  // ---------- Start ----------
+  App.boot();
+})();
+</script>
+</body>
+</html>

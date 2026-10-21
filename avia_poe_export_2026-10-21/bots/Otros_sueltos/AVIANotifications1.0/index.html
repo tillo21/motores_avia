@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avia Notifications — Production Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        darkMode: 'class',
+        theme: {
+            extend: {
+                fontFamily: {
+                    heading: ['Sora', 'sans-serif'],
+                    body: ['DM Sans', 'sans-serif'],
+                    mono: ['JetBrains Mono', 'monospace']
+                },
+                colors: {
+                    brand: {
+                        50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe',
+                        300: '#f0abfc', 400: '#e879f9', 500: '#d946ef',
+                        600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75'
+                    },
+                    surface: {
+                        50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0',
+                        700: '#1e293b', 800: '#0f172a', 900: '#020617'
+                    }
+                }
+            }
+        }
+    };
+    </script>
+    <style>
+        * { font-family: 'DM Sans', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-heading { font-family: 'Sora', sans-serif; }
+        code, .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        :root {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --bg-tertiary: #f1f5f9;
+            --text-primary: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8;
+            --border-color: #e2e8f0; --border-hover: #cbd5e1;
+            --accent: #d946ef; --accent-soft: rgba(217,70,239,0.08); --accent-hover: #c026d3;
+            --success: #10b981; --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+            --card-shadow-hover: 0 10px 25px rgba(0,0,0,0.08);
+            --sidebar-bg: #ffffff; --sidebar-border: #e2e8f0;
+            --overlay: rgba(15,23,42,0.4);
+        }
+        .dark {
+            --bg-primary: #0a0e1a; --bg-secondary: #111827; --bg-tertiary: #1e293b;
+            --text-primary: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
+            --border-color: #1e293b; --border-hover: #334155;
+            --accent: #e879f9; --accent-soft: rgba(232,121,249,0.1); --accent-hover: #d946ef;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --card-shadow-hover: 0 10px 25px rgba(0,0,0,0.4);
+            --sidebar-bg: #0f172a; --sidebar-border: #1e293b;
+            --overlay: rgba(0,0,0,0.6);
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+        }
+        .dark body { background: linear-gradient(135deg, #0a0e1a 0%, #0d1225 50%, #0a0e1a 100%); }
+
+        .sidebar {
+            background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+        }
+        .sidebar-overlay { background: var(--overlay); transition: opacity 0.3s; }
+
+        .card {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            box-shadow: var(--card-shadow); border-radius: 16px;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .card:hover { box-shadow: var(--card-shadow-hover); }
+        .card-flat {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #d946ef, #a855f7);
+            color: white; border: none; border-radius: 10px;
+            padding: 10px 20px; font-weight: 600; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(217,70,239,0.35); }
+        .btn-secondary {
+            background: var(--bg-tertiary); color: var(--text-primary);
+            border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 10px 20px; font-weight: 500; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-secondary:hover { border-color: var(--border-hover); background: var(--bg-tertiary); }
+        .btn-ghost {
+            background: transparent; color: var(--text-secondary);
+            border: none; border-radius: 8px; padding: 8px 12px;
+            font-weight: 500; font-size: 14px; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-ghost:hover { background: var(--accent-soft); color: var(--accent); }
+        .btn-danger {
+            background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;
+            border-radius: 10px; padding: 10px 20px; font-weight: 600; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .dark .btn-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); }
+        .btn-danger:hover { background: #fee2e2; }
+
+        .input-field {
+            width: 100%; padding: 10px 14px; border-radius: 10px; font-size: 16px;
+            background: var(--bg-tertiary); border: 1px solid var(--border-color);
+            color: var(--text-primary); transition: all 0.2s; outline: none;
+        }
+        .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+        .input-field::placeholder { color: var(--text-muted); }
+
+        select.input-field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+        textarea.input-field { resize: vertical; min-height: 80px; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .badge-success { background: rgba(16,185,129,0.1); color: #10b981; }
+        .badge-warning { background: rgba(245,158,11,0.1); color: #f59e0b; }
+        .badge-error { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .badge-info { background: rgba(59,130,246,0.1); color: #3b82f6; }
+        .badge-purple { background: var(--accent-soft); color: var(--accent); }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+            border-radius: 10px; font-size: 14px; font-weight: 500;
+            color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+            text-decoration: none; position: relative;
+        }
+        .nav-item:hover { background: var(--accent-soft); color: var(--accent); }
+        .nav-item.active {
+            background: var(--accent-soft); color: var(--accent); font-weight: 600;
+        }
+        .nav-item.active::before {
+            content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+            width: 3px; height: 20px; background: var(--accent); border-radius: 0 3px 3px 0;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+        td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+        tr:last-child td { border-bottom: none; }
+        tbody tr { transition: background 0.15s; }
+        tbody tr:hover { background: var(--accent-soft); }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; background: var(--overlay);
+            z-index: 100; display: flex; align-items: center; justify-content: center;
+            padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.25s;
+        }
+        .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+        .modal-panel {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 20px; width: 100%; max-width: 580px; max-height: 90vh;
+            overflow-y: auto; transform: translateY(10px) scale(0.97);
+            transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        }
+        .modal-backdrop.open .modal-panel { transform: translateY(0) scale(1); }
+
+        .tab-btn {
+            padding: 8px 16px; font-size: 14px; font-weight: 500; border-radius: 8px;
+            color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+            border: none; background: transparent;
+        }
+        .tab-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+        .tab-btn:hover:not(.active) { color: var(--text-primary); }
+
+        .stat-number { font-family: 'Sora', sans-serif; font-weight: 700; }
+
+        .pulse-dot { width: 8px; height: 8px; border-radius: 50%; position: relative; }
+        .pulse-dot::after {
+            content: ''; position: absolute; inset: -3px; border-radius: 50%;
+            animation: pulse-ring 2s infinite;
+        }
+        .pulse-dot.green { background: #10b981; }
+        .pulse-dot.green::after { border: 2px solid #10b981; }
+        .pulse-dot.yellow { background: #f59e0b; }
+        .pulse-dot.yellow::after { border: 2px solid #f59e0b; }
+        .pulse-dot.red { background: #ef4444; }
+        .pulse-dot.red::after { border: 2px solid #ef4444; }
+
+        @keyframes pulse-ring {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.8); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .anim-fade-up { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+        .anim-d1 { animation-delay: 0.05s; } .anim-d2 { animation-delay: 0.1s; }
+        .anim-d3 { animation-delay: 0.15s; } .anim-d4 { animation-delay: 0.2s; }
+        .anim-d5 { animation-delay: 0.25s; }
+
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 500;
+            display: flex; align-items: center; gap: 10px; min-width: 280px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); transform: translateX(120%);
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #065f46; color: #d1fae5; }
+        .toast-error { background: #991b1b; color: #fecaca; }
+        .toast-info { background: #1e3a5f; color: #bfdbfe; }
+
+        .loading-spinner {
+            width: 20px; height: 20px; border: 2px solid var(--border-color);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .ai-bubble { background: linear-gradient(135deg, var(--accent-soft), rgba(168,85,247,0.08)); border: 1px solid rgba(217,70,239,0.15); border-radius: 14px; padding: 16px; }
+        .ai-bubble p { margin: 0 0 8px; line-height: 1.6; }
+        .ai-bubble p:last-child { margin-bottom: 0; }
+
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state svg { margin-bottom: 16px; opacity: 0.4; }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); position: fixed; z-index: 60; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; }
+            .grid-stats { grid-template-columns: 1fr 1fr !important; }
+            .grid-charts { grid-template-columns: 1fr !important; }
+            .system-grid { grid-template-columns: 1fr 1fr !important; }
+            .header-actions { flex-direction: column; gap: 8px; }
+            .hide-mobile { display: none !important; }
+        }
+        @media (max-width: 480px) {
+            .grid-stats { grid-template-columns: 1fr !important; }
+        }
+
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-family: 'Sora', sans-serif; margin: 12px 0 8px; }
+        .markdown-body p { margin: 0 0 8px; line-height: 1.65; }
+        .markdown-body ul, .markdown-body ol { margin: 4px 0 8px 20px; }
+        .markdown-body code { font-family: 'JetBrains Mono', monospace; background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        .markdown-body pre { background: var(--bg-tertiary); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+        .markdown-body pre code { background: none; padding: 0; }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- Mobile Header -->
+    <header class="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3" style="background:var(--bg-secondary);border-bottom:1px solid var(--border-color)">
+        <button onclick="toggleSidebar()" class="btn-ghost"><i data-lucide="menu" class="w-5 h-5"></i></button>
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,#d946ef,#a855f7)"><i data-lucide="bell" class="w-4 h-4 text-white"></i></div>
+            <span class="font-heading font-bold text-sm">Avia Notif.</span>
+        </div>
+        <div style="width:36px"></div>
+    </header>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div id="sidebarOverlay" class="sidebar-overlay fixed inset-0 z-50 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 z-50 flex flex-col">
+        <div class="p-5 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#d946ef,#a855f7)">
+                <i data-lucide="bell" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-heading font-bold text-base leading-tight">Avia Notifications</h1>
+                <p class="text-xs" style="color:var(--text-muted)">v2.0 Production</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-1 overflow-y-auto scrollbar-thin">
+            <div onclick="navigate('dashboard')" class="nav-item active" data-nav="dashboard"><i data-lucide="layout-dashboard" class="w-5 h-5"></i><span>Dashboard</span></div>
+            <div onclick="navigate('notifications')" class="nav-item" data-nav="notifications"><i data-lucide="mail" class="w-5 h-5"></i><span>Notifications</span><span class="ml-auto badge badge-purple text-xs">1.2M</span></div>
+            <div onclick="navigate('templates')" class="nav-item" data-nav="templates"><i data-lucide="file-text" class="w-5 h-5"></i><span>Templates</span></div>
+            <div onclick="navigate('analytics')" class="nav-item" data-nav="analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span>Analytics</span></div>
+            <div onclick="navigate('users')" class="nav-item" data-nav="users"><i data-lucide="users" class="w-5 h-5"></i><span>Users</span></div>
+            <div onclick="navigate('settings')" class="nav-item" data-nav="settings"><i data-lucide="settings" class="w-5 h-5"></i><span>Settings</span></div>
+        </nav>
+
+        <div class="p-4">
+            <div class="card-flat p-3 flex items-center gap-3" style="border-radius:12px">
+                <div class="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center font-heading font-bold text-sm text-white" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6)">AV</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">Admin User</p>
+                    <p class="text-xs truncate" style="color:var(--text-muted)">admin@avia.com</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="main-content md:ml-64 min-h-screen pt-14 md:pt-0">
+
+        <!-- ===== DASHBOARD ===== -->
+        <section id="page-dashboard" class="page p-6 md:p-8">
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Dashboard Overview</h2>
+                    <p style="color:var(--text-secondary)" class="text-sm">Monitor your notification infrastructure in real-time</p>
+                </div>
+                <div class="flex items-center gap-3 header-actions">
+                    <button class="btn-secondary" onclick="exportDashboardCSV()"><i data-lucide="download" class="w-4 h-4"></i><span class="hide-mobile">Export</span></button>
+                    <button class="btn-primary" onclick="openModal('createNotif')"><i data-lucide="plus" class="w-4 h-4"></i>New Notification</button>
+                </div>
+            </header>
+
+            <!-- System Status -->
+            <div class="card p-5 mb-6 anim-fade-up">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading font-semibold text-sm flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4" style="color:var(--success)"></i>System Status</h3>
+                    <span class="badge badge-success">All Operational</span>
+                </div>
+                <div class="grid grid-cols-4 system-grid gap-4">
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                        <div class="pulse-dot green"></div>
+                        <div><p class="text-sm font-semibold">API Service</p><p class="text-xs" style="color:var(--text-muted)">99.99% uptime</p></div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                        <div class="pulse-dot green"></div>
+                        <div><p class="text-sm font-semibold">Workers</p><p class="text-xs" style="color:var(--text-muted)">20/20 active</p></div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                        <div class="pulse-dot green"></div>
+                        <div><p class="text-sm font-semibold">Database</p><p class="text-xs" style="color:var(--text-muted)">12ms latency</p></div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                        <div class="pulse-dot green"></div>
+                        <div><p class="text-sm font-semibold">Redis Cache</p><p class="text-xs" style="color:var(--text-muted)">94% hit rate</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-4 grid-stats gap-5 mb-6">
+                <div class="card p-5 anim-fade-up anim-d1">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(59,130,246,0.1)"><i data-lucide="send" class="w-5 h-5" style="color:#3b82f6"></i></div>
+                        <span class="text-xs font-semibold" style="color:var(--success)">+12.5%</span>
+                    </div>
+                    <p class="stat-number text-2xl mb-1" id="statSent">1,234,567</p>
+                    <p class="text-xs" style="color:var(--text-muted)">Notifications Sent</p>
+                </div>
+                <div class="card p-5 anim-fade-up anim-d2">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(16,185,129,0.1)"><i data-lucide="check-circle" class="w-5 h-5" style="color:#10b981"></i></div>
+                        <span class="text-xs font-semibold" style="color:var(--success)">+8.2%</span>
+                    </div>
+                    <p class="stat-number text-2xl mb-1">98.7%</p>
+                    <p class="text-xs" style="color:var(--text-muted)">Delivery Rate</p>
+                </div>
+                <div class="card p-5 anim-fade-up anim-d3">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(245,158,11,0.1)"><i data-lucide="clock" class="w-5 h-5" style="color:#f59e0b"></i></div>
+                        <span class="text-xs font-semibold" style="color:var(--success)">-15.3%</span>
+                    </div>
+                    <p class="stat-number text-2xl mb-1">245ms</p>
+                    <p class="text-xs" style="color:var(--text-muted)">Avg Response Time</p>
+                </div>
+                <div class="card p-5 anim-fade-up anim-d4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(168,85,247,0.1)"><i data-lucide="users" class="w-5 h-5" style="color:#a855f7"></i></div>
+                        <span class="text-xs font-semibold" style="color:var(--success)">+23.1%</span>
+                    </div>
+                    <p class="stat-number text-2xl mb-1" id="statUsers">45,678</p>
+                    <p class="text-xs" style="color:var(--text-muted)">Active Users</p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-2 grid-charts gap-5 mb-6">
+                <div class="card p-5 anim-fade-up anim-d4">
+                    <h3 class="font-heading font-semibold text-sm mb-4">Notifications Over Time (24h)</h3>
+                    <div style="height:220px"><canvas id="chartTimeline"></canvas></div>
+                </div>
+                <div class="card p-5 anim-fade-up anim-d5">
+                    <h3 class="font-heading font-semibold text-sm mb-4">Channel Distribution</h3>
+                    <div style="height:220px"><canvas id="chartChannels"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Recent Notifications -->
+            <div class="card p-5 anim-fade-up anim-d5">
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="font-heading font-semibold text-sm">Recent Notifications</h3>
+                    <button class="btn-ghost text-xs" onclick="navigate('notifications')">View all <i data-lucide="arrow-right" class="w-3 h-3"></i></button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>ID</th><th>Recipient</th><th>Channel</th><th>Status</th><th>Sent</th></tr></thead>
+                        <tbody id="dashRecentTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== NOTIFICATIONS ===== -->
+        <section id="page-notifications" class="page p-6 md:p-8 hidden">
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Notifications</h2>
+                    <p style="color:var(--text-secondary)" class="text-sm">Manage and monitor all sent notifications</p>
+                </div>
+                <button class="btn-primary" onclick="openModal('createNotif')"><i data-lucide="plus" class="w-4 h-4"></i>New Notification</button>
+            </header>
+
+            <!-- Filters -->
+            <div class="card p-4 mb-5 flex flex-wrap items-center gap-3">
+                <div class="flex-1 min-w-[200px]">
+                    <input type="text" class="input-field" placeholder="Search by ID, recipient, content..." id="notifSearch" oninput="filterNotifications()">
+                </div>
+                <select class="input-field" style="width:auto;min-width:140px" id="notifChannelFilter" onchange="filterNotifications()">
+                    <option value="">All Channels</option>
+                    <option value="Email">Email</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Push">Push</option>
+                    <option value="Webhook">Webhook</option>
+                </select>
+                <select class="input-field" style="width:auto;min-width:140px" id="notifStatusFilter" onchange="filterNotifications()">
+                    <option value="">All Statuses</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Failed">Failed</option>
+                </select>
+                <button class="btn-secondary" onclick="exportNotificationsCSV()"><i data-lucide="download" class="w-4 h-4"></i><span class="hide-mobile">Export CSV</span></button>
+            </div>
+
+            <!-- Table -->
+            <div class="card p-5">
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>ID</th><th>Recipient</th><th>Channel</th><th>Subject</th><th>Status</th><th>Sent At</th><th>Actions</th></tr></thead>
+                        <tbody id="notifTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between mt-5 pt-4" style="border-top:1px solid var(--border-color)">
+                    <p class="text-xs" style="color:var(--text-muted)" id="notifPagInfo">Showing 1-20 of 0</p>
+                    <div class="flex gap-2">
+                        <button class="btn-secondary text-xs" id="notifPrev" onclick="notifChangePage(-1)" disabled>Previous</button>
+                        <button class="btn-secondary text-xs" id="notifNext" onclick="notifChangePage(1)">Next</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== TEMPLATES ===== -->
+        <section id="page-templates" class="page p-6 md:p-8 hidden">
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Templates</h2>
+                    <p style="color:var(--text-secondary)" class="text-sm">Create and manage reusable notification templates</p>
+                </div>
+                <button class="btn-primary" onclick="openModal('createTemplate')"><i data-lucide="plus" class="w-4 h-4"></i>New Template</button>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="templatesGrid"></div>
+        </section>
+
+        <!-- ===== ANALYTICS ===== -->
+        <section id="page-analytics" class="page p-6 md:p-8 hidden">
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Analytics</h2>
+                    <p style="color:var(--text-secondary)" class="text-sm">Deep insights into your notification performance</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1 p-1 rounded-lg" style="background:var(--bg-tertiary)">
+                        <button class="tab-btn active" onclick="setAnalyticsPeriod('7d',this)">7d</button>
+                        <button class="tab-btn" onclick="setAnalyticsPeriod('30d',this)">30d</button>
+                        <button class="tab-btn" onclick="setAnalyticsPeriod('90d',this)">90d</button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-3 grid-stats gap-5 mb-6">
+                <div class="card p-5">
+                    <p class="text-xs font-semibold mb-2" style="color:var(--text-muted)">OPEN RATE</p>
+                    <p class="stat-number text-3xl mb-1">42.8%</p>
+                    <p class="text-xs" style="color:var(--success)">+3.2% vs prev period</p>
+                </div>
+                <div class="card p-5">
+                    <p class="text-xs font-semibold mb-2" style="color:var(--text-muted)">CLICK-THROUGH RATE</p>
+                    <p class="stat-number text-3xl mb-1">18.4%</p>
+                    <p class="text-xs" style="color:var(--success)">+1.8% vs prev period</p>
+                </div>
+                <div class="card p-5">
+                    <p class="text-xs font-semibold mb-2" style="color:var(--text-muted)">BOUNCE RATE</p>
+                    <p class="stat-number text-3xl mb-1">1.3%</p>
+                    <p class="text-xs" style="color:var(--success)">-0.4% vs prev period</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 grid-charts gap-5 mb-6">
+                <div class="card p-5">
+                    <h3 class="font-heading font-semibold text-sm mb-4">Delivery by Channel (Weekly)</h3>
+                    <div style="height:260px"><canvas id="chartAnalyticsBars"></canvas></div>
+                </div>
+                <div class="card p-5">
+                    <h3 class="font-heading font-semibold text-sm mb-4">Failure Reasons</h3>
+                    <div style="height:260px"><canvas id="chartFailures"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card p-5">
+                <h3 class="font-heading font-semibold text-sm mb-4">Hourly Traffic Heatmap</h3>
+                <div id="heatmapContainer" class="overflow-x-auto"></div>
+            </div>
+        </section>
+
+        <!-- ===== USERS ===== -->
+        <section id="page-users" class="page p-6 md:p-8 hidden">
+            <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Users</h2>
+                    <p style="color:var(--text-secondary)" class="text-sm">Manage notification recipients and subscriptions</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="text" class="input-field" style="width:240px" placeholder="Search users..." id="userSearch" oninput="renderUsers()">
+                </div>
+            </header>
+            <div class="card p-5">
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead><tr><th>User</th><th>Email</th><th>Channels</th><th>Notifications</th><th>Status</th><th>Last Active</th></tr></thead>
+                        <tbody id="usersTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SETTINGS ===== -->
+        <section id="page-settings" class="page p-6 md:p-8 hidden">
+            <header class="mb-6">
+                <h2 class="font-heading text-2xl md:text-3xl font-bold mb-1">Settings</h2>
+                <p style="color:var(--text-secondary)" class="text-sm">Configure your notification service</p>
+            </header>
+
+            <div class="space-y-5">
+                <!-- API Keys -->
+                <div class="card p-5">
+                    <h3 class="font-heading font-semibold text-sm mb-4 flex items-center gap-2"><i data-lucide="key" class="w-4 h-4"></i>API Keys</h3>
+                    <div class="space-y-3" id="apiKeysContainer"></div>
+                    <button class="btn-secondary mt-4 text-xs" onclick="generateApiKey()"><i data-lucide="plus" class="w-4 h-4"></i>Generate New Key</button>
+                </div>
+
+                <!-- Channels -->
+                <div class="card p-5">
+                    <h3 class="font-heading font-semibold text-sm mb-4 flex items-center gap-2"><i data-lucide="radio" class="w-4 h-4"></i>Channel Configuration</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                            <div class="flex items-center gap-3"><i data-lucide="mail" class="w-5 h-5" style="color:#3b82f6"></i><div><p class="text-sm font-semibold">Email (SMTP)</p><p class="text-xs" style="color:var(--text-muted)">smtp.avia.com:587</p></div></div>
+                            <span class="badge badge-success">Active</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                            <div class="flex items-center gap-3"><i data-lucide="message-square" class="w-5 h-5" style="color:#10b981"></i><div><p class="text-sm font-semibold">SMS (Twilio)</p><p class="text-xs" style="color:var(--text-muted)">+1 (555) 000-1234</p></div></div>
+                            <span class="badge badge-success">Active</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                            <div class="flex items-center gap-3"><i data-lucide="bell" class="w-5 h-5" style="color:#a855f7"></i><div><p class="text-sm font-semibold">Push (FCM)</p><p class="text-xs" style="color:var(--text-muted)">Project: avia-prod-12345</p></div></div>
+                            <span class="badge badge-success">Active</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded-xl" style="background:var(--bg-tertiary)">
+                            <div class="flex items-center gap-3"><i data-lucide="webhook" class="w-5 h-5" style="color:#f59e0b"></i><div><p class="text-sm font-semibold">Webhook</p><p class="text-xs" style="color:var(--text-muted)">https://api.avia.com/webhooks</p></div></div>
+                            <span class="badge badge-success">Active</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rate Limits -->
+                <div class="card p-5">
+                    <h3 class="font-heading font-semibold text-sm mb-4 flex items-center gap-2"><i data-lucide="gauge" class="w-4 h-4"></i>Rate Limits</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">Email (per minute)</label>
+                            <input type="number" class="input-field" value="500">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">SMS (per minute)</label>
+                            <input type="number" class="input-field" value="200">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">Push (per minute)</label>
+                            <input type="number" class="input-field" value="1000">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">Webhook (per minute)</label>
+                            <input type="number" class="input-field" value="300">
+                        </div>
+                    </div>
+                    <button class="btn-primary mt-4 text-sm" onclick="showToast('success','Rate limits updated successfully')">Save Changes</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Create Notification Modal -->
+<div id="modal-createNotif" class="modal-backdrop" onclick="if(event.target===this)closeModal('createNotif')">
+    <div class="modal-panel">
+        <div class="p-6 flex items-center justify-between" style="border-bottom:1px solid var(--border-color)">
+            <h3 class="font-heading font-bold text-lg">New Notification</h3>
+            <button class="btn-ghost" onclick="closeModal('createNotif')"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">CHANNEL</label>
+                <select class="input-field" id="newNotifChannel">
+                    <option value="Email">Email</option>
+                    <option value="SMS">SMS</option>
+                    <option value="Push">Push</option>
+                    <option value="Webhook">Webhook</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">RECIPIENT</label>
+                <input type="text" class="input-field" id="newNotifRecipient" placeholder="user@example.com or +1234567890">
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">SUBJECT</label>
+                <input type="text" class="input-field" id="newNotifSubject" placeholder="Notification subject...">
+            </div>
+            <div>
+                <label class="text-xs font-semibold flex items-center justify-between mb-2" style="color:var(--text-muted)">
+                    CONTENT
+                    <button class="btn-ghost text-xs" onclick="aiComposeNotification()" id="aiComposeBtn"><i data-lucide="sparkles" class="w-3 h-3"></i>AI Compose</button>
+                </label>
+                <textarea class="input-field" id="newNotifContent" rows="4" placeholder="Write your notification content..."></textarea>
+            </div>
+            <div id="aiComposeResult" class="hidden">
+                <div class="ai-bubble">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="sparkles" class="w-4 h-4" style="color:var(--accent)"></i>
+                        <span class="text-xs font-semibold" style="color:var(--accent)">AI Suggestion</span>
+                    </div>
+                    <div id="aiComposeText" class="text-sm markdown-body" style="color:var(--text-secondary)"></div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="btn-ghost text-xs" onclick="acceptAiCompose()"><i data-lucide="check" class="w-3 h-3"></i>Use this</button>
+                        <button class="btn-ghost text-xs" onclick="document.getElementById('aiComposeResult').classList.add('hidden')"><i data-lucide="x" class="w-3 h-3"></i>Dismiss</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">TEMPLATE (optional)</label>
+                <select class="input-field" id="newNotifTemplate" onchange="applyTemplate()">
+                    <option value="">— None —</option>
+                </select>
+            </div>
+        </div>
+        <div class="p-6 flex justify-end gap-3" style="border-top:1px solid var(--border-color)">
+            <button class="btn-secondary" onclick="closeModal('createNotif')">Cancel</button>
+            <button class="btn-primary" onclick="sendNotification()" id="sendNotifBtn"><i data-lucide="send" class="w-4 h-4"></i>Send Notification</button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Template Modal -->
+<div id="modal-createTemplate" class="modal-backdrop" onclick="if(event.target===this)closeModal('createTemplate')">
+    <div class="modal-panel">
+        <div class="p-6 flex items-center justify-between" style="border-bottom:1px solid var(--border-color)">
+            <h3 class="font-heading font-bold text-lg" id="templateModalTitle">New Template</h3>
+            <button class="btn-ghost" onclick="closeModal('createTemplate')"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">TEMPLATE NAME</label>
+                <input type="text" class="input-field" id="tplName" placeholder="e.g., Welcome Email">
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">CHANNEL</label>
+                <select class="input-field" id="tplChannel">
+                    <option value="Email">Email</option><option value="SMS">SMS</option>
+                    <option value="Push">Push</option><option value="Webhook">Webhook</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">SUBJECT</label>
+                <input type="text" class="input-field" id="tplSubject" placeholder="Template subject...">
+            </div>
+            <div>
+                <label class="text-xs font-semibold block mb-2" style="color:var(--text-muted)">CONTENT</label>
+                <textarea class="input-field" id="tplContent" rows="5" placeholder="Use {{name}}, {{company}} for variables..."></textarea>
+            </div>
+        </div>
+        <div class="p-6 flex justify-end gap-3" style="border-top:1px solid var(--border-color)">
+            <button class="btn-secondary" onclick="closeModal('createTemplate')">Cancel</button>
+            <button class="btn-primary" onclick="saveTemplate()" id="saveTemplateBtn">Save Template</button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Detail Modal -->
+<div id="modal-notifDetail" class="modal-backdrop" onclick="if(event.target===this)closeModal('notifDetail')">
+    <div class="modal-panel">
+        <div class="p-6 flex items-center justify-between" style="border-bottom:1px solid var(--border-color)">
+            <h3 class="font-heading font-bold text-lg">Notification Detail</h3>
+            <button class="btn-ghost" onclick="closeModal('notifDetail')"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-6" id="notifDetailContent"></div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="modal-confirm" class="modal-backdrop" onclick="if(event.target===this)closeModal('confirm')">
+    <div class="modal-panel" style="max-width:420px">
+        <div class="p-6">
+            <p class="font-heading font-semibold mb-2" id="confirmTitle">Are you sure?</p>
+            <p class="text-sm" style="color:var(--text-secondary)" id="confirmMsg"></p>
+        </div>
+        <div class="p-6 flex justify-end gap-3" style="border-top:1px solid var(--border-color)">
+            <button class="btn-secondary" onclick="closeModal('confirm')">Cancel</button>
+            <button class="btn-danger" id="confirmAction" onclick="closeModal('confirm')">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ============================================================
+   STATE & DATA
+   ============================================================ */
+const STATE = {
+    currentPage: 'dashboard',
+    notifPage: 0,
+    notifPerPage: 20,
+    editingTemplateId: null,
+    charts: {}
+};
+
+// Generate realistic notification data
+function generateNotifications(count) {
+    const channels = ['Email','SMS','Push','Webhook'];
+    const statuses = ['Delivered','Delivered','Delivered','Delivered','Delivered','Delivered','Pending','Failed'];
+    const domains = ['gmail.com','company.com','avia.io','outlook.com','corp.net'];
+    const subjects = [
+        'Welcome to Avia','Password Reset','Order Confirmation','Payment Received',
+        'Account Verification','Shipping Update','Weekly Digest','Security Alert',
+        'New Feature Announcement','Subscription Renewal','Invoice Ready',
+        'Two-Factor Authentication','Profile Update','Campaign Report'
+    ];
+    const names = ['alice','bob','carlos','diana','elena','frank','grace','hector','iris','james',
+        'karen','leo','maria','nick','olivia','paul','quinn','rosa','sam','tina'];
+    const arr = [];
+    const now = Date.now();
+    for (let i = 0; i < count; i++) {
+        const ch = channels[Math.floor(Math.random()*channels.length)];
+        const name = names[Math.floor(Math.random()*names.length)];
+        const domain = domains[Math.floor(Math.random()*domains.length)];
+        let recipient;
+        if (ch === 'Email') recipient = name + '@' + domain;
+        else if (ch === 'SMS') recipient = '+1' + String(Math.floor(Math.random()*9000000000)+1000000000);
+        else if (ch === 'Push') recipient = 'fcm_' + Math.random().toString(36).substring(2,10);
+        else recipient = 'https://hooks.' + domain + '/wh/' + Math.random().toString(36).substring(2,8);
+        arr.push({
+            id: 'NOT-' + String(1000000 + i).padStart(7,'0'),
+            recipient: recipient,
+            channel: ch,
+            subject: subjects[Math.floor(Math.random()*subjects.length)],
+            status: statuses[Math.floor(Math.random()*statuses.length)],
+            content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+            sentAt: new Date(now - i * 47000 - Math.random()*30000)
+        });
+    }
+    return arr;
+}
+
+const notifications = generateNotifications(500);
+let filteredNotifications = [...notifications];
+
+const templates = [
+    { id: 't1', name: 'Welcome Email', channel: 'Email', subject: 'Welcome to {{company}}!', content: 'Hi {{name}},\n\nWelcome to {{company}}! We\'re thrilled to have you on board.\n\nGet started by exploring our dashboard.', usageCount: 1240, createdAt: '2026-01-15' },
+    { id: 't2', name: 'Password Reset', channel: 'Email', subject: 'Reset your password', content: 'Hi {{name}},\n\nWe received a request to reset your password. Click the link below:\n\n{{reset_link}}\n\nThis link expires in 24 hours.', usageCount: 876, createdAt: '2026-01-22' },
+    { id: 't3', name: 'Order Confirmation SMS', channel: 'SMS', subject: 'Order #{{order_id}}', content: 'Hi {{name}}, your order #{{order_id}} has been confirmed. Estimated delivery: {{delivery_date}}. Track: {{tracking_url}}', usageCount: 2340, createdAt: '2026-02-01' },
+    { id: 't4', name: 'Security Alert', channel: 'Push', subject: 'Security Alert', content: 'New sign-in detected from {{location}} on {{device}}. If this wasn\'t you, secure your account immediately.', usageCount: 567, createdAt: '2026-02-10' },
+    { id: 't5', name: 'Weekly Digest', channel: 'Email', subject: 'Your Weekly Digest — {{week}}', content: 'Hi {{name}},\n\nHere\'s your activity summary for the week:\n- Notifications sent: {{sent_count}}\n- Delivery rate: {{rate}}%\n- Top channel: {{top_channel}}', usageCount: 3200, createdAt: '2026-02-18' },
+];
+
+const users = [
+    { name: 'Alice Johnson', email: 'alice@company.com', channels: ['Email','Push'], notifCount: 12450, status: 'Active', lastActive: '2 mins ago', avatar: 'AJ' },
+    { name: 'Bob Smith', email: 'bob@corp.net', channels: ['Email','SMS'], notifCount: 8923, status: 'Active', lastActive: '15 mins ago', avatar: 'BS' },
+    { name: 'Carlos Rivera', email: 'carlos@avia.io', channels: ['Email','SMS','Push'], notifCount: 15670, status: 'Active', lastActive: '1 hour ago', avatar: 'CR' },
+    { name: 'Diana Chen', email: 'diana@gmail.com', channels: ['Email'], notifCount: 3240, status: 'Inactive', lastActive: '3 days ago', avatar: 'DC' },
+    { name: 'Elena Petrov', email: 'elena@outlook.com', channels: ['Email','Push','Webhook'], notifCount: 22100, status: 'Active', lastActive: '5 mins ago', avatar: 'EP' },
+    { name: 'Frank Lee', email: 'frank@company.com', channels: ['SMS'], notifCount: 1890, status: 'Active', lastActive: '30 mins ago', avatar: 'FL' },
+    { name: 'Grace Kim', email: 'grace@avia.io', channels: ['Email','SMS','Push'], notifCount: 9870, status: 'Active', lastActive: '10 mins ago', avatar: 'GK' },
+    { name: 'Hector Gomez', email: 'hector@corp.net', channels: ['Email','Webhook'], notifCount: 6540, status: 'Suspended', lastActive: '2 weeks ago', avatar: 'HG' },
+];
+
+const apiKeys = [
+    { id: 'ak1', name: 'Production API Key', key: 'sk-prod-a8f3...x9k2', created: '2026-01-01', lastUsed: '2 mins ago', status: 'Active' },
+    { id: 'ak2', name: 'Staging API Key', key: 'sk-stag-b2e1...m4j7', created: '2026-02-15', lastUsed: '1 hour ago', status: 'Active' },
+];
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    if (event.matches) { document.documentElement.classList.add('dark'); }
+    else { document.documentElement.classList.remove('dark'); }
+    rebuildCharts();
+});
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function navigate(page) {
+    STATE.currentPage = page;
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    document.getElementById('page-' + page).classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItem = document.querySelector('[data-nav="' + page + '"]');
+    if (navItem) navItem.classList.add('active');
+    // Close mobile sidebar
+    if (window.innerWidth < 768) toggleSidebar(false);
+    // Re-render page-specific content
+    if (page === 'notifications') renderNotifications();
+    if (page === 'templates') renderTemplates();
+    if (page === 'analytics') { buildAnalyticsCharts(); buildHeatmap(); }
+    if (page === 'users') renderUsers();
+    if (page === 'settings') renderApiKeys();
+    lucide.createIcons();
+}
+
+function toggleSidebar(forceOpen) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const isOpen = sidebar.classList.contains('open');
+    const shouldOpen = forceOpen !== undefined ? forceOpen : !isOpen;
+    if (shouldOpen) {
+        sidebar.classList.add('open');
+        overlay.classList.remove('hidden');
+    } else {
+        sidebar.classList.remove('open');
+        overlay.classList.add('hidden');
+    }
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(name) {
+    document.getElementById('modal-' + name).classList.add('open');
+    if (name === 'createNotif') populateTemplateDropdown();
+    lucide.createIcons();
+}
+function closeModal(name) {
+    document.getElementById('modal-' + name).classList.remove('open');
+}
+function showConfirmDialog(title, msg, onConfirm) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMsg').textContent = msg;
+    const btn = document.getElementById('confirmAction');
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', () => { closeModal('confirm'); onConfirm(); });
+    openModal('confirm');
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+function showToast(type, message) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    const icons = { success: 'check-circle', error: 'alert-circle', info: 'info' };
+    toast.innerHTML = '<i data-lucide="' + (icons[type]||'info') + '" class="w-5 h-5"></i><span>' + message + '</span>';
+    container.appendChild(toast);
+    lucide.createIcons();
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboardRecent() {
+    const tbody = document.getElementById('dashRecentTable');
+    tbody.innerHTML = '';
+    notifications.slice(0, 8).forEach(n => {
+        const statusClass = n.status === 'Delivered' ? 'badge-success' : n.status === 'Pending' ? 'badge-warning' : 'badge-error';
+        const channelIcons = { Email:'mail', SMS:'message-square', Push:'bell', Webhook:'webhook' };
+        tbody.innerHTML += '<tr>' +
+            '<td class="font-mono text-xs">' + n.id + '</td>' +
+            '<td class="text-sm" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n.recipient + '</td>' +
+            '<td><span class="flex items-center gap-2 text-sm"><i data-lucide="' + (channelIcons[n.channel]||'radio') + '" class="w-4 h-4"></i>' + n.channel + '</span></td>' +
+            '<td><span class="badge ' + statusClass + '">' + n.status + '</span></td>' +
+            '<td class="text-xs" style="color:var(--text-muted)">' + timeAgo(n.sentAt) + '</td>' +
+            '</tr>';
+    });
+}
+
+function buildDashboardCharts() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(148,163,184,0.08)' : 'rgba(148,163,184,0.15)';
+    const tickColor = isDark ? '#64748b' : '#94a3b8';
+
+    // Timeline
+    if (STATE.charts.timeline) STATE.charts.timeline.destroy();
+    STATE.charts.timeline = new Chart(document.getElementById('chartTimeline'), {
+        type: 'line',
+        data: {
+            labels: ['00:00','02:00','04:00','06:00','08:00','10:00','12:00','14:00','16:00','18:00','20:00','22:00'],
+            datasets: [{
+                label: 'Sent', data: [1200,800,600,900,2800,4200,5100,4800,4500,3900,2800,1800],
+                borderColor: '#d946ef', backgroundColor: 'rgba(217,70,239,0.08)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 0, pointHitRadius: 10
+            },{
+                label: 'Delivered', data: [1180,790,592,885,2760,4140,5030,4730,4440,3850,2760,1770],
+                borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', tension: 0.4, fill: true, borderWidth: 2, pointRadius: 0, pointHitRadius: 10
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: true, position: 'top', labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } } } },
+            scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } }, x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 11 } } } },
+            interaction: { intersect: false, mode: 'index' }
+        }
+    });
+
+    // Channels
+    if (STATE.charts.channels) STATE.charts.channels.destroy();
+    STATE.charts.channels = new Chart(document.getElementById('chartChannels'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Email','SMS','Push','Webhook'],
+            datasets: [{ data: [45,25,20,10], backgroundColor: ['#3b82f6','#10b981','#a855f7','#f59e0b'], borderWidth: 0, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'right', labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 12 } } } }
+        }
+    });
+}
+
+/* ============================================================
+   NOTIFICATIONS SECTION
+   ============================================================ */
+function filterNotifications() {
+    const q = (document.getElementById('notifSearch').value || '').toLowerCase();
+    const ch = document.getElementById('notifChannelFilter').value;
+    const st = document.getElementById('notifStatusFilter').value;
+    filteredNotifications = notifications.filter(n => {
+        if (ch && n.channel !== ch) return false;
+        if (st && n.status !== st) return false;
+        if (q && !(n.id.toLowerCase().includes(q) || n.recipient.toLowerCase().includes(q) || n.subject.toLowerCase().includes(q))) return false;
+        return true;
+    });
+    STATE.notifPage = 0;
+    renderNotifications();
+}
+
+function renderNotifications() {
+    const tbody = document.getElementById('notifTableBody');
+    const start = STATE.notifPage * STATE.notifPerPage;
+    const page = filteredNotifications.slice(start, start + STATE.notifPerPage);
+    if (page.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12" style="color:var(--text-muted)">No notifications found</td></tr>';
+    } else {
+        tbody.innerHTML = '';
+        const channelIcons = { Email:'mail', SMS:'message-square', Push:'bell', Webhook:'webhook' };
+        page.forEach(n => {
+            const statusClass = n.status === 'Delivered' ? 'badge-success' : n.status === 'Pending' ? 'badge-warning' : 'badge-error';
+            tbody.innerHTML += '<tr>' +
+                '<td class="font-mono text-xs">' + n.id + '</td>' +
+                '<td class="text-sm" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n.recipient + '</td>' +
+                '<td><span class="flex items-center gap-2 text-sm"><i data-lucide="' + (channelIcons[n.channel]||'radio') + '" class="w-4 h-4"></i>' + n.channel + '</span></td>' +
+                '<td class="text-sm" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n.subject + '</td>' +
+                '<td><span class="badge ' + statusClass + '">' + n.status + '</span></td>' +
+                '<td class="text-xs" style="color:var(--text-muted)">' + formatDate(n.sentAt) + '</td>' +
+                '<td><button class="btn-ghost text-xs" onclick="viewNotifDetail(\'' + n.id + '\')"><i data-lucide="eye" class="w-4 h-4"></i></button></td>' +
+                '</tr>';
+        });
+    }
+    const total = filteredNotifications.length;
+    const end = Math.min(start + STATE.notifPerPage, total);
+    document.getElementById('notifPagInfo').textContent = 'Showing ' + (total ? start+1 : 0) + '-' + end + ' of ' + total.toLocaleString();
+    document.getElementById('notifPrev').disabled = STATE.notifPage === 0;
+    document.getElementById('notifNext').disabled = end >= total;
+    lucide.createIcons();
+}
+
+function notifChangePage(dir) {
+    STATE.notifPage += dir;
+    renderNotifications();
+}
+
+function viewNotifDetail(id) {
+    const n = notifications.find(x => x.id === id);
+    if (!n) return;
+    const statusClass = n.status === 'Delivered' ? 'badge-success' : n.status === 'Pending' ? 'badge-warning' : 'badge-error';
+    document.getElementById('notifDetailContent').innerHTML =
+        '<div class="space-y-4">' +
+        '<div class="flex items-center justify-between"><span class="font-mono text-sm" style="color:var(--text-muted)">' + n.id + '</span><span class="badge ' + statusClass + '">' + n.status + '</span></div>' +
+        '<div class="grid grid-cols-2 gap-4">' +
+        '<div><p class="text-xs font-semibold mb-1" style="color:var(--text-muted)">CHANNEL</p><p class="text-sm">' + n.channel + '</p></div>' +
+        '<div><p class="text-xs font-semibold mb-1" style="color:var(--text-muted)">SENT AT</p><p class="text-sm">' + formatDate(n.sentAt) + '</p></div>' +
+        '<div class="col-span-2"><p class="text-xs font-semibold mb-1" style="color:var(--text-muted)">RECIPIENT</p><p class="text-sm font-mono">' + n.recipient + '</p></div>' +
+        '<div class="col-span-2"><p class="text-xs font-semibold mb-1" style="color:var(--text-muted)">SUBJECT</p><p class="text-sm font-semibold">' + n.subject + '</p></div>' +
+        '<div class="col-span-2"><p class="text-xs font-semibold mb-1" style="color:var(--text-muted)">CONTENT</p><p class="text-sm" style="color:var(--text-secondary);line-height:1.6">' + n.content + '</p></div>' +
+        '</div></div>';
+    openModal('notifDetail');
+}
+
+/* ============================================================
+   CREATE NOTIFICATION
+   ============================================================ */
+function populateTemplateDropdown() {
+    const sel = document.getElementById('newNotifTemplate');
+    sel.innerHTML = '<option value="">— None —</option>';
+    templates.forEach(t => {
+        sel.innerHTML += '<option value="' + t.id + '">' + t.name + ' (' + t.channel + ')</option>';
+    });
+}
+
+function applyTemplate() {
+    const tplId = document.getElementById('newNotifTemplate').value;
+    if (!tplId) return;
+    const tpl = templates.find(t => t.id === tplId);
+    if (!tpl) return;
+    document.getElementById('newNotifChannel').value = tpl.channel;
+    document.getElementById('newNotifSubject').value = tpl.subject;
+    document.getElementById('newNotifContent').value = tpl.content;
+}
+
+function sendNotification() {
+    const channel = document.getElementById('newNotifChannel').value;
+    const recipient = document.getElementById('newNotifRecipient').value.trim();
+    const subject = document.getElementById('newNotifSubject').value.trim();
+    const content = document.getElementById('newNotifContent').value.trim();
+
+    if (!recipient) { showToast('error', 'Please enter a recipient'); return; }
+    if (!subject) { showToast('error', 'Please enter a subject'); return; }
+    if (!content) { showToast('error', 'Please enter notification content'); return; }
+
+    const newNotif = {
+        id: 'NOT-' + String(2000000 + notifications.length).padStart(7,'0'),
+        recipient, channel, subject, content,
+        status: 'Pending',
+        sentAt: new Date()
+    };
+    notifications.unshift(newNotif);
+    filteredNotifications = [...notifications];
+
+    // Simulate delivery
+    setTimeout(() => {
+        newNotif.status = Math.random() > 0.1 ? 'Delivered' : 'Failed';
+        if (STATE.currentPage === 'notifications') renderNotifications();
+        if (STATE.currentPage === 'dashboard') renderDashboardRecent();
+    }, 2000 + Math.random() * 3000);
+
+    closeModal('createNotif');
+    showToast('success', 'Notification sent to ' + recipient);
+
+    // Clear form
+    document.getElementById('newNotifRecipient').value = '';
+    document.getElementById('newNotifSubject').value = '';
+    document.getElementById('newNotifContent').value = '';
+    document.getElementById('newNotifTemplate').value = '';
+    document.getElementById('aiComposeResult').classList.add('hidden');
+
+    if (STATE.currentPage === 'dashboard') renderDashboardRecent();
+    if (STATE.currentPage === 'notifications') renderNotifications();
+    lucide.createIcons();
+}
+
+/* ============================================================
+   AI COMPOSE (Poe Embed API)
+   ============================================================ */
+let aiComposeContent = '';
+
+function aiComposeNotification() {
+    const subject = document.getElementById('newNotifSubject').value.trim();
+    const channel = document.getElementById('newNotifChannel').value;
+    const recipient = document.getElementById('newNotifRecipient').value.trim();
+
+    if (!subject && !document.getElementById('newNotifContent').value.trim()) {
+        showToast('error', 'Please enter a subject or some content to get AI suggestions');
+        return;
+    }
+
+    const prompt = 'Write a professional, concise ' + channel + ' notification' +
+        (subject ? ' about "' + subject + '"' : '') +
+        (recipient ? ' for recipient ' + recipient : '') +
+        '. Keep it short, clear, and action-oriented. Do NOT use markdown, just plain text. Max 3 paragraphs.';
+
+    const resultDiv = document.getElementById('aiComposeResult');
+    const textDiv = document.getElementById('aiComposeText');
+    resultDiv.classList.remove('hidden');
+    textDiv.innerHTML = '<div class="flex items-center gap-2"><div class="loading-spinner"></div><span class="text-xs" style="color:var(--text-muted)">AI is composing...</span></div>';
+
+    const btn = document.getElementById('aiComposeBtn');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    if (window.Poe) {
+        window.Poe.registerHandler('ai-compose-handler', (result) => {
+            const msg = result.responses[0];
+            if (msg.status === 'error') {
+                textDiv.textContent = 'Error: ' + (msg.statusText || 'Failed to generate');
+                btn.disabled = false; btn.style.opacity = '1';
+            } else if (msg.status === 'incomplete') {
+                aiComposeContent = msg.content;
+                textDiv.innerHTML = marked.parse(msg.content);
+            } else if (msg.status === 'complete') {
+                aiComposeContent = msg.content;
+                textDiv.innerHTML = marked.parse(msg.content);
+                btn.disabled = false; btn.style.opacity = '1';
+            }
+        });
+        window.Poe.sendUserMessage('@Grok-4.1-Fast-Non-Reasoning ' + prompt, {
+            handler: 'ai-compose-handler', stream: true, openChat: false, parameters: {}
+        }).catch(err => {
+            textDiv.textContent = 'Error: ' + String(err);
+            btn.disabled = false; btn.style.opacity = '1';
+        });
+    } else {
+        // Fallback for preview
+        setTimeout(() => {
+            aiComposeContent = 'Dear valued customer,\n\nThis is a professionally composed notification regarding ' + (subject || 'your account') + '. We wanted to keep you informed about the latest updates.\n\nPlease don\'t hesitate to reach out if you have any questions.\n\nBest regards,\nThe Avia Team';
+            textDiv.textContent = aiComposeContent;
+            btn.disabled = false; btn.style.opacity = '1';
+        }, 1500);
+    }
+}
+
+function acceptAiCompose() {
+    document.getElementById('newNotifContent').value = aiComposeContent;
+    document.getElementById('aiComposeResult').classList.add('hidden');
+    showToast('success', 'AI suggestion applied');
+}
+
+/* ============================================================
+   TEMPLATES
+   ============================================================ */
+function renderTemplates() {
+    const grid = document.getElementById('templatesGrid');
+    if (templates.length === 0) {
+        grid.innerHTML = '<div class="col-span-full empty-state"><i data-lucide="file-text" class="w-12 h-12"></i><p class="text-sm">No templates yet</p><p class="text-xs mt-1">Create your first template to get started</p></div>';
+        return;
+    }
+    const channelColors = { Email: '#3b82f6', SMS: '#10b981', Push: '#a855f7', Webhook: '#f59e0b' };
+    grid.innerHTML = '';
+    templates.forEach(t => {
+        grid.innerHTML += '<div class="card p-5">' +
+            '<div class="flex items-center justify-between mb-3">' +
+            '<span class="badge" style="background:' + channelColors[t.channel] + '15;color:' + channelColors[t.channel] + '">' + t.channel + '</span>' +
+            '<div class="flex gap-1">' +
+            '<button class="btn-ghost text-xs" onclick="editTemplate(\'' + t.id + '\')"><i data-lucide="pencil" class="w-3 h-3"></i></button>' +
+            '<button class="btn-ghost text-xs" onclick="deleteTemplate(\'' + t.id + '\')"><i data-lucide="trash-2" class="w-3 h-3"></i></button>' +
+            '</div></div>' +
+            '<h4 class="font-heading font-semibold text-sm mb-1">' + t.name + '</h4>' +
+            '<p class="text-xs mb-3" style="color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + t.content + '</p>' +
+            '<div class="flex items-center justify-between text-xs" style="color:var(--text-muted)">' +
+            '<span>Used ' + t.usageCount.toLocaleString() + ' times</span>' +
+            '<span>' + t.createdAt + '</span>' +
+            '</div></div>';
+    });
+}
+
+function editTemplate(id) {
+    const t = templates.find(x => x.id === id);
+    if (!t) return;
+    STATE.editingTemplateId = id;
+    document.getElementById('templateModalTitle').textContent = 'Edit Template';
+    document.getElementById('tplName').value = t.name;
+    document.getElementById('tplChannel').value = t.channel;
+    document.getElementById('tplSubject').value = t.subject;
+    document.getElementById('tplContent').value = t.content;
+    openModal('createTemplate');
+}
+
+function saveTemplate() {
+    const name = document.getElementById('tplName').value.trim();
+    const channel = document.getElementById('tplChannel').value;
+    const subject = document.getElementById('tplSubject').value.trim();
+    const content = document.getElementById('tplContent').value.trim();
+
+    if (!name) { showToast('error', 'Please enter a template name'); return; }
+    if (!content) { showToast('error', 'Please enter template content'); return; }
+
+    if (STATE.editingTemplateId) {
+        const t = templates.find(x => x.id === STATE.editingTemplateId);
+        if (t) { t.name = name; t.channel = channel; t.subject = subject; t.content = content; }
+        showToast('success', 'Template updated');
+    } else {
+        templates.push({
+            id: 't' + Date.now(),
+            name, channel, subject, content,
+            usageCount: 0,
+            createdAt: new Date().toISOString().split('T')[0]
+        });
+        showToast('success', 'Template created');
+    }
+
+    STATE.editingTemplateId = null;
+    document.getElementById('tplName').value = '';
+    document.getElementById('tplSubject').value = '';
+    document.getElementById('tplContent').value = '';
+    document.getElementById('templateModalTitle').textContent = 'New Template';
+    closeModal('createTemplate');
+    renderTemplates();
+    lucide.createIcons();
+}
+
+function deleteTemplate(id) {
+    showConfirmDialog('Delete Template', 'This action cannot be undone. Are you sure?', () => {
+        const idx = templates.findIndex(t => t.id === id);
+        if (idx !== -1) templates.splice(idx, 1);
+        renderTemplates();
+        lucide.createIcons();
+        showToast('success', 'Template deleted');
+    });
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
+function buildAnalyticsCharts() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(148,163,184,0.08)' : 'rgba(148,163,184,0.15)';
+    const tickColor = isDark ? '#64748b' : '#94a3b8';
+
+    if (STATE.charts.analyticsBars) STATE.charts.analyticsBars.destroy();
+    STATE.charts.analyticsBars = new Chart(document.getElementById('chartAnalyticsBars'), {
+        type: 'bar',
+        data: {
+            labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+            datasets: [
+                { label: 'Email', data: [4200,3800,4500,4100,4800,2200,1800], backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.7 },
+                { label: 'SMS', data: [1800,2100,1900,2300,2000,1200,900], backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.7 },
+                { label: 'Push', data: [2400,2200,2600,2800,2500,1500,1100], backgroundColor: '#a855f7', borderRadius: 6, barPercentage: 0.7 },
+                { label: 'Webhook', data: [800,900,700,1100,1000,400,300], backgroundColor: '#f59e0b', borderRadius: 6, barPercentage: 0.7 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11 } } } },
+            scales: {
+                y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } },
+                x: { stacked: true, grid: { display: false }, ticks: { color: tickColor, font: { size: 11 } } }
+            }
+        }
+    });
+
+    if (STATE.charts.failures) STATE.charts.failures.destroy();
+    STATE.charts.failures = new Chart(document.getElementById('chartFailures'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Invalid Address','Rate Limited','Server Error','Timeout','Bounced'],
+            datasets: [{ data: [35,22,18,15,10], backgroundColor: ['#ef4444','#f59e0b','#8b5cf6','#3b82f6','#64748b'], borderWidth: 0, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '60%',
+            plugins: { legend: { position: 'right', labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } } } }
+        }
+    });
+}
+
+function buildHeatmap() {
+    const container = document.getElementById('heatmapContainer');
+    const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));
+    let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:10px">';
+    html += '<div></div>';
+    hours.forEach(h => { html += '<div style="text-align:center;color:var(--text-muted)">' + h + '</div>'; });
+    days.forEach(d => {
+        html += '<div style="display:flex;align-items:center;color:var(--text-muted);font-weight:600">' + d + '</div>';
+        hours.forEach(() => {
+            const intensity = Math.random();
+            const alpha = (0.1 + intensity * 0.8).toFixed(2);
+            html += '<div style="height:24px;border-radius:4px;background:rgba(217,70,239,' + alpha + ')" title="' + Math.floor(intensity*5000) + ' notifications"></div>';
+        });
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function setAnalyticsPeriod(period, btn) {
+    btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildAnalyticsCharts();
+}
+
+/* ============================================================
+   USERS
+   ============================================================ */
+function renderUsers() {
+    const q = (document.getElementById('userSearch').value || '').toLowerCase();
+    const filtered = users.filter(u => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    const tbody = document.getElementById('usersTableBody');
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12" style="color:var(--text-muted)">No users found</td></tr>';
+        return;
+    }
+    const statusClasses = { Active: 'badge-success', Inactive: 'badge-warning', Suspended: 'badge-error' };
+    const avatarColors = ['#3b82f6','#10b981','#d946ef','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
+    tbody.innerHTML = '';
+    filtered.forEach((u, i) => {
+        tbody.innerHTML += '<tr>' +
+            '<td><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:' + avatarColors[i % avatarColors.length] + '">' + u.avatar + '</div><span class="text-sm font-semibold">' + u.name + '</span></div></td>' +
+            '<td class="text-sm">' + u.email + '</td>' +
+            '<td class="text-sm">' + u.channels.join(', ') + '</td>' +
+            '<td class="text-sm font-mono">' + u.notifCount.toLocaleString() + '</td>' +
+            '<td><span class="badge ' + (statusClasses[u.status]||'badge-info') + '">' + u.status + '</span></td>' +
+            '<td class="text-xs" style="color:var(--text-muted)">' + u.lastActive + '</td>' +
+            '</tr>';
+    });
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function renderApiKeys() {
+    const container = document.getElementById('apiKeysContainer');
+    container.innerHTML = '';
+    apiKeys.forEach(k => {
+        container.innerHTML += '<div class="flex items-center justify-between p-3 rounded-xl" style="background:var(--bg-tertiary)">' +
+            '<div class="flex-1 min-w-0"><p class="text-sm font-semibold">' + k.name + '</p>' +
+            '<p class="text-xs font-mono" style="color:var(--text-muted)">' + k.key + '</p></div>' +
+            '<div class="flex items-center gap-2 ml-3">' +
+            '<span class="badge badge-success text-xs">' + k.status + '</span>' +
+            '<button class="btn-ghost text-xs" onclick="revokeApiKey(\'' + k.id + '\')"><i data-lucide="trash-2" class="w-3 h-3"></i></button>' +
+            '</div></div>';
+    });
+    lucide.createIcons();
+}
+
+function generateApiKey() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'sk-prod-';
+    for (let i = 0; i < 4; i++) key += chars[Math.floor(Math.random()*chars.length)];
+    key += '...' ;
+    for (let i = 0; i < 4; i++) key += chars[Math.floor(Math.random()*chars.length)];
+    apiKeys.push({
+        id: 'ak' + Date.now(),
+        name: 'API Key ' + (apiKeys.length + 1),
+        key: key,
+        created: new Date().toISOString().split('T')[0],
+        lastUsed: 'Never',
+        status: 'Active'
+    });
+    renderApiKeys();
+    showToast('success', 'New API key generated');
+}
+
+function revokeApiKey(id) {
+    showConfirmDialog('Revoke API Key', 'This will immediately invalidate this key. Are you sure?', () => {
+        const idx = apiKeys.findIndex(k => k.id === id);
+        if (idx !== -1) apiKeys.splice(idx, 1);
+        renderApiKeys();
+        showToast('success', 'API key revoked');
+    });
+}
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+function exportDashboardCSV() {
+    exportCSV(notifications.slice(0, 100), 'dashboard-report.csv');
+}
+
+function exportNotificationsCSV() {
+    exportCSV(filteredNotifications, 'notifications-export.csv');
+}
+
+function exportCSV(data, filename) {
+    const headers = ['ID','Recipient','Channel','Subject','Status','Sent At'];
+    const rows = data.map(n => [n.id, n.recipient, n.channel, n.subject, n.status, n.sentAt instanceof Date ? n.sentAt.toISOString() : n.sentAt]);
+    let csv = headers.join(',') + '\n';
+    rows.forEach(r => { csv += r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',') + '\n'; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showToast('success', 'Exported ' + data.length + ' records');
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function timeAgo(date) {
+    const secs = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (secs < 60) return secs + 's ago';
+    if (secs < 3600) return Math.floor(secs/60) + 'm ago';
+    if (secs < 86400) return Math.floor(secs/3600) + 'h ago';
+    return Math.floor(secs/86400) + 'd ago';
+}
+
+function formatDate(date) {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function rebuildCharts() {
+    if (STATE.currentPage === 'dashboard') buildDashboardCharts();
+    if (STATE.currentPage === 'analytics') { buildAnalyticsCharts(); buildHeatmap(); }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+    lucide.createIcons();
+    renderDashboardRecent();
+    buildDashboardCharts();
+    lucide.createIcons();
+
+    // Simulate real-time counter updates
+    setInterval(() => {
+        const sentEl = document.getElementById('statSent');
+        const usersEl = document.getElementById('statUsers');
+        if (sentEl) {
+            const v = parseInt(sentEl.textContent.replace(/,/g, ''));
+            sentEl.textContent = (v + Math.floor(Math.random() * 5) + 1).toLocaleString();
+        }
+        if (usersEl) {
+            const v = parseInt(usersEl.textContent.replace(/,/g, ''));
+            if (Math.random() > 0.7) usersEl.textContent = (v + 1).toLocaleString();
+        }
+    }, 4000);
+}
+
+init();
+</script>
+</body>
+</html>
+

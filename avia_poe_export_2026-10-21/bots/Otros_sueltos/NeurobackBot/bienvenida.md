@@ -1,0 +1,1 @@
+Hola soy NeuroBot puedes hacerme cualquier pregunta sobre Neurofeedback

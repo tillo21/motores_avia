@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orquestador de Agentes AVIA v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e293b 0%, #7e22ce 50%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="glass rounded-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-white mb-2">
+                🌟 Orquestador de Agentes AVIA v2.0
+            </h1>
+            <p class="text-purple-200">
+                Sistema con persistencia abstracta y gestión multimedia integrada
+            </p>
+            <div class="mt-4 flex gap-2 text-sm">
+                <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #86efac;">
+                    ✓ Persistencia: <span id="storageType">memory</span>
+                </span>
+                <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">
+                    <span id="agentCount">0</span> Agentes
+                </span>
+                <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #d8b4fe;">
+                    <span id="resourceCount">0</span> Recursos
+                </span>
+            </div>
+        </div>
+
+        <!-- Grid de Agentes -->
+        <div id="agentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"></div>
+
+        <!-- Panel de Recursos -->
+        <div class="glass rounded-lg p-6">
+            <h2 class="text-xl font-bold text-white mb-4">📚 Recursos del Sistema</h2>
+            <div id="resourcesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+
+        <!-- Modal de Recursos -->
+        <div id="resourceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="glass rounded-lg p-6 max-w-md w-full" style="background: rgba(30, 41, 59, 0.95);">
+                <h3 class="text-xl font-bold text-white mb-4">Agregar Recurso</h3>
+                
+                <div class="space-y-3 mb-4">
+                    <label class="flex items-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span>Subir Archivo Multimedia</span>
+                        <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf" class="hidden">
+                    </label>
+
+                    <div>
+                        <input type="url" id="urlInput" placeholder="https://ejemplo.com/recurso" 
+                               class="w-full px-3 py-2 bg-slate-700 text-white rounded mb-2">
+                        <button id="addUrlBtn" class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                            </svg>
+                            Agregar URL
+                        </button>
+                    </div>
+
+                    <button id="transcribeBtn" class="w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                        </svg>
+                        <span id="transcribeBtnText">Generar Transcripción</span>
+                    </button>
+                </div>
+
+                <button id="closeModalBtn" class="w-full px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AVIA Storage Abstraction Layer
+        class AVIAStorage {
+            constructor() {
+                this.storageType = this.detectStorage();
+                this.memoryCache = {};
+                document.getElementById('storageType').textContent = this.storageType;
+            }
+            
+            detectStorage() {
+                try {
+                    localStorage.setItem('__test__', 'test');
+                    localStorage.removeItem('__test__');
+                    return 'localStorage';
+                } catch {
+                    return 'memory';
+                }
+            }
+            
+            setItem(key, value) {
+                const serialized = JSON.stringify(value);
+                if (this.storageType === 'localStorage') {
+                    localStorage.setItem(key, serialized);
+                } else {
+                    this.memoryCache[key] = serialized;
+                }
+            }
+            
+            getItem(key) {
+                const item = this.storageType === 'localStorage' 
+                    ? localStorage.getItem(key)
+                    : this.memoryCache[key];
+                return item ? JSON.parse(item) : null;
+            }
+            
+            removeItem(key) {
+                if (this.storageType === 'localStorage') {
+                    localStorage.removeItem(key);
+                } else {
+                    delete this.memoryCache[key];
+                }
+            }
+        }
+
+        const storage = new AVIAStorage();
+        let agents = [];
+        let resources = [];
+        let selectedAgent = null;
+
+        // Inicialización
+        function init() {
+            agents = storage.getItem('agents') || [
+                { id: '1', name: 'AVIA Semiotic', role: 'Análisis', capabilities: ['NLP', 'Semántica'], status: 'active', resources: [] },
+                { id: '2', name: 'AVIA Ontología', role: 'Estructura', capabilities: ['Taxonomía', 'Relaciones'], status: 'active', resources: [] },
+                { id: '3', name: 'AVIA Curator', role: 'Contenido', capabilities: ['Edición', 'Calidad'], status: 'idle', resources: [] }
+            ];
+            resources = storage.getItem('resources') || [];
+            
+            if (!storage.getItem('agents')) {
+                storage.setItem('agents', agents);
+            }
+            
+            render();
+        }
+
+        function render() {
+            renderAgents();
+            renderResources();
+            updateCounters();
+        }
+
+        function updateCounters() {
+            document.getElementById('agentCount').textContent = agents.length;
+            document.getElementById('resourceCount').textContent = resources.length;
+        }
+
+        function renderAgents() {
+            const grid = document.getElementById('agentsGrid');
+            grid.innerHTML = agents.map(agent => {
+                const agentResources = resources.filter(r => agent.resources && agent.resources.includes(r.id));
+                const statusColor = agent.status === 'active' ? 'bg-green-500' : 'bg-gray-500';
+                
+                return `
+                    <div class="glass rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-white">${agent.name}</h3>
+                                <p class="text-purple-200 text-sm">${agent.role}</p>
+                            </div>
+                            <span class="badge ${statusColor} text-white">${agent.status}</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <p class="text-purple-200 text-xs mb-1">Capacidades:</p>
+                            <div class="flex flex-wrap gap-1">
+                                ${agent.capabilities.map(cap => `
+                                    <span class="badge" style="background: rgba(168, 85, 247, 0.3); color: #e9d5ff;">
+                                        ${cap}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        ${agentResources.length > 0 ? `
+                            <div class="mb-3 p-2 rounded" style="background: rgba(59, 130, 246, 0.1);">
+                                <p class="text-blue-200 text-xs mb-1">Recursos: ${agentResources.length}</p>
+                                <div class="space-y-1">
+                                    ${agentResources.slice(0, 2).map(res => `
+                                        <div class="text-xs text-blue-100 truncate">
+                                            ${res.type === 'multimedia' ? '📎' : res.type === 'url' ? '🔗' : '📝'} ${res.name}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="flex gap-2">
+                            <button onclick="openResourceModal('${agent.id}')" 
+                                    class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
+                                📎 Recursos
+                            </button>
+                            <button onclick="createTask('${agent.id}')" 
+                                    class="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm">
+                                Nueva Tarea
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderResources() {
+            const grid = document.getElementById('resourcesGrid');
+            grid.innerHTML = resources.map(resource => `
+                <div class="rounded p-3 flex items-start justify-between" style="background: rgba(30, 41, 59, 0.5);">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xl">
+                                ${resource.type === 'multimedia' ? '📎' : resource.type === 'url' ? '🔗' : '📝'}
+                            </span>
+                            <span class="text-white text-sm font-medium truncate">${resource.name}</span>
+                        </div>
+                        <p class="text-purple-200 text-xs">
+                            ${new Date(resource.uploadedAt).toLocaleDateString()}
+                        </p>
+                        ${resource.content ? `<p class="text-purple-300 text-xs mt-1 truncate">${resource.content}</p>` : ''}
+                    </div>
+                    <button onclick="deleteResource('${resource.id}')" 
+                            class="ml-2 p-1 text-red-400 hover:text-red-300">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openResourceModal(agentId) {
+            selectedAgent = agentId;
+            document.getElementById('resourceModal').style.display = 'flex';
+        }
+
+        function closeResourceModal() {
+            selectedAgent = null;
+            document.getElementById('resourceModal').style.display = 'none';
+            document.getElementById('urlInput').value = '';
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const newResource = {
+                    id: Date.now().toString(),
+                    type: 'multimedia',
+                    name: file.name,
+                    url: e.target.result,
+                    size: file.size,
+                    mimeType: file.type,
+                    uploadedAt: new Date().toISOString()
+                };
+
+                resources.push(newResource);
+                storage.setItem('resources', resources);
+                
+                if (selectedAgent) {
+                    attachResourceToAgent(selectedAgent, newResource.id);
+                }
+                
+                render();
+                closeResourceModal();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleUrlSubmit() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            const newResource = {
+                id: Date.now().toString(),
+                type: 'url',
+                name: url,
+                url: url,
+                uploadedAt: new Date().toISOString()
+            };
+
+            resources.push(newResource);
+            storage.setItem('resources', resources);
+            
+            if (selectedAgent) {
+                attachResourceToAgent(selectedAgent, newResource.id);
+            }
+
+            render();
+            closeResourceModal();
+        }
+
+        function handleTranscription() {
+            const btn = document.getElementById('transcribeBtn');
+            const btnText = document.getElementById('transcribeBtnText');
+            
+            btn.disabled = true;
+            btnText.textContent = 'Transcribiendo...';
+            btn.classList.add('animate-pulse');
+            
+            setTimeout(() => {
+                const newResource = {
+                    id: Date.now().toString(),
+                    type: 'transcription',
+                    name: 'Transcripción generada',
+                    url: '',
+                    content: 'Esta es una transcripción simulada del contenido multimedia. En producción, aquí iría el texto real transcrito desde audio/video usando una API de transcripción.',
+                    uploadedAt: new Date().toISOString()
+                };
+
+                resources.push(newResource);
+                storage.setItem('resources', resources);
+                
+                if (selectedAgent) {
+                    attachResourceToAgent(selectedAgent, newResource.id);
+                }
+
+                btn.disabled = false;
+                btnText.textContent = 'Generar Transcripción';
+                btn.classList.remove('animate-pulse');
+                
+                render();
+                closeResourceModal();
+            }, 2000);
+        }
+
+        function attachResourceToAgent(agentId, resourceId) {
+            const agent = agents.find(a => a.id === agentId);
+            if (agent) {
+                if (!agent.resources) agent.resources = [];
+                if (!agent.resources.includes(resourceId)) {
+                    agent.resources.push(resourceId);
+                    storage.setItem('agents', agents);
+                }
+            }
+        }
+
+        function deleteResource(resourceId) {
+            resources = resources.filter(r => r.id !== resourceId);
+            agents = agents.map(agent => ({
+                ...agent,
+                resources: (agent.resources || []).filter(id => id !== resourceId)
+            }));
+            
+            storage.setItem('resources', resources);
+            storage.setItem('agents', agents);
+            render();
+        }
+
+        function createTask(agentId) {
+            const agent = agents.find(a => a.id === agentId);
+            alert(`Tarea creada para ${agent.name}. Sistema de tareas completo en desarrollo.`);
+        }
+
+        // Event Listeners
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('addUrlBtn').addEventListener('click', handleUrlSubmit);
+        document.getElementById('transcribeBtn').addEventListener('click', handleTranscription);
+        document.getElementById('closeModalBtn').addEventListener('click', closeResourceModal);
+
+        // Iniciar aplicación
+        init();
+    </script>
+</body>
+</html>

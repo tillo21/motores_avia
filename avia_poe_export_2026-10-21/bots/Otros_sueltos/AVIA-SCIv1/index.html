@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Comunicación Inter-Agentes</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2d1b4e 100%);
+            color: #fff;
+            padding: 1.5rem;
+            min-height: 100vh;
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem; max-width: 350px;
+        }
+        .toast {
+            padding: 0.8rem 1.2rem; border-radius: 8px; font-size: 0.9rem;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+        }
+        .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+        .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        .toast.warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
+        @keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+        @keyframes fadeOut { to{opacity:0;transform:translateX(30px)} }
+
+        /* Header */
+        .header {
+            background: rgba(15,23,42,0.9); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+            border: 1px solid rgba(99,102,241,0.3);
+            box-shadow: 0 4px 20px rgba(99,102,241,0.2);
+        }
+        .header h1 { 
+            font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem;
+            background: linear-gradient(90deg,#818cf8,#c084fc);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .badge {
+            font-size: 0.7rem; padding: 0.25rem 0.7rem; border-radius: 20px;
+            background: linear-gradient(90deg,#6366f1,#8b5cf6); font-weight: 700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+        /* Layout */
+        .grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 1.5rem; 
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: rgba(15,23,42,0.8); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card h2 { 
+            font-size: 1.2rem; margin-bottom: 1rem; 
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+
+        /* Agent network visualization */
+        #network-canvas {
+            width: 100%; height: 400px; background: rgba(10,14,39,0.6);
+            border-radius: 8px; border: 1px solid rgba(99,102,241,0.2);
+        }
+
+        /* Message stream */
+        .message-stream {
+            max-height: 400px; overflow-y: auto;
+            background: rgba(10,14,39,0.6); border-radius: 8px;
+            padding: 1rem; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .message-item {
+            background: rgba(30,41,59,0.6); border-radius: 8px;
+            padding: 0.8rem; margin-bottom: 0.6rem;
+            border-left: 3px solid #6366f1;
+            animation: messageIn 0.3s ease;
+        }
+        @keyframes messageIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:none} }
+        .message-item.request { border-left-color: #3b82f6; }
+        .message-item.response { border-left-color: #10b981; }
+        .message-item.broadcast { border-left-color: #f59e0b; }
+        .message-item.error { border-left-color: #ef4444; }
+        
+        .msg-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.4rem; font-size: 0.85rem;
+        }
+        .msg-route {
+            display: flex; align-items: center; gap: 0.3rem; font-weight: 600;
+        }
+        .msg-type {
+            font-size: 0.7rem; padding: 0.15rem 0.5rem;
+            border-radius: 10px; font-weight: 600; text-transform: uppercase;
+        }
+        .type-request { background: rgba(59,130,246,0.2); color: #93c5fd; }
+        .type-response { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+        .type-broadcast { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .type-error { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        
+        .msg-content {
+            font-size: 0.9rem; opacity: 0.9; margin-top: 0.3rem;
+            word-wrap: break-word;
+        }
+        .msg-time {
+            font-size: 0.75rem; opacity: 0.6; margin-top: 0.3rem;
+        }
+
+        /* Agent cards */
+        .agents-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .agent-box {
+            background: rgba(30,41,59,0.6); border-radius: 8px;
+            padding: 1rem; border: 2px solid rgba(99,102,241,0.3);
+            transition: all 0.3s;
+        }
+        .agent-box:hover { 
+            transform: translateY(-2px); 
+            border-color: rgba(99,102,241,0.6);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+        }
+        .agent-box.active {
+            border-color: #10b981;
+            box-shadow: 0 0 20px rgba(16,185,129,0.3);
+        }
+        .agent-name { font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem; }
+        .agent-stat { font-size: 0.8rem; opacity: 0.8; margin: 0.2rem 0; }
+        .agent-inbox {
+            margin-top: 0.5rem; padding-top: 0.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .inbox-count {
+            font-size: 0.75rem; padding: 0.2rem 0.5rem;
+            background: rgba(99,102,241,0.3); border-radius: 10px;
+            display: inline-block;
+        }
+
+        /* Stats */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem; margin-top: 1rem;
+        }
+        .stat-card {
+            background: rgba(30,41,59,0.6); padding: 1rem; border-radius: 8px;
+            text-align: center; border: 1px solid rgba(99,102,241,0.2);
+        }
+        .stat-value {
+            font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(90deg,#60a5fa,#a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.8rem; opacity: 0.7; margin-top: 0.3rem; }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; }
+        .btn {
+            padding: 0.6rem 1rem; border-radius: 6px; border: none;
+            cursor: pointer; font-weight: 600; transition: all 0.2s;
+            font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-primary { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+        .btn-success { background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        .btn-danger  { background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        @media(max-width:1000px) {
+            .grid { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="container">
+
+    <div class="header">
+        <h1>🔗 AVIA - Sistema de Comunicación Inter-Agentes <span class="badge" id="netStatus">EN LÍNEA</span></h1>
+        <p style="opacity:0.8;margin-top:0.5rem;font-size:0.9rem">
+            Protocolo de mensajería distribuida con enrutamiento inteligente y sincronización en tiempo real
+        </p>
+    </div>
+
+    <div class="grid">
+        <!-- Network visualization -->
+        <div class="card">
+            <h2>🌐 Topología de Red</h2>
+            <canvas id="network-canvas"></canvas>
+            <div class="controls" style="margin-top:1rem">
+                <button class="btn btn-primary" onclick="Network.randomActivity()">⚡ Actividad aleatoria</button>
+                <button class="btn btn-success" onclick="Network.broadcast()">📢 Broadcast</button>
+            </div>
+        </div>
+
+        <!-- Message stream -->
+        <div class="card">
+            <h2>💬 Flujo de Mensajes (<span id="msgCount">0</span>)</h2>
+            <div class="message-stream" id="messageStream"></div>
+        </div>
+    </div>
+
+    <!-- Agent status -->
+    <div class="card">
+        <h2>👥 Estado de Agentes</h2>
+        <div class="agents-grid" id="agentsGrid"></div>
+    </div>
+
+    <!-- Network stats -->
+    <div class="card" style="margin-top:1.5rem">
+        <h2>📊 Métricas de Red</h2>
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-value" id="statMessages">0</div><div class="stat-label">Mensajes totales</div></div>
+            <div class="stat-card"><div class="stat-value" id="statRequests">0</div><div class="stat-label">Peticiones</div></div>
+            <div class="stat-card"><div class="stat-value" id="statResponses">0</div><div class="stat-label">Respuestas</div></div>
+            <div class="stat-card"><div class="stat-value" id="statBroadcasts">0</div><div class="stat-label">Broadcasts</div></div>
+            <div class="stat-card"><div class="stat-value" id="statLatency">0ms</div><div class="stat-label">Latencia promedio</div></div>
+            <div class="stat-card"><div class="stat-value" id="statThroughput">0/s</div><div class="stat-label">Throughput</div></div>
+        </div>
+    </div>
+
+    <!-- System controls -->
+    <div class="card" style="margin-top:1.5rem">
+        <h2>⚙️ Control del Sistema</h2>
+        <div class="controls">
+            <button class="btn btn-primary" onclick="Network.sendRequest()">📤 Enviar petición</button>
+            <button class="btn btn-success" onclick="Network.chainedCommunication()">🔗 Comunicación en cadena</button>
+            <button class="btn btn-primary" onclick="Network.stressTest()">🔥 Test de carga</button>
+            <button class="btn btn-danger" onclick="Network.clearMessages()">🗑️ Limpiar mensajes</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   AVIA Inter-Agent Communication System
+   - Protocolo de mensajería punto-a-punto y broadcast
+   - Enrutamiento inteligente con prioridades
+   - Visualización de red en tiempo real
+   - Métricas de latencia y throughput
+══════════════════════════════════════════════════════════ */
+
+function toast(msg, type='info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+}
+
+class CommunicationNetwork {
+    constructor() {
+        this.agents = new Map([
+            ['Orquestador', { x:400, y:200, inbox:[], sent:0, received:0, role:'hub' }],
+            ['Validador',   { x:200, y:100, inbox:[], sent:0, received:0, role:'validator' }],
+            ['Corrector',   { x:600, y:100, inbox:[], sent:0, received:0, role:'repair' }],
+            ['Monitor',     { x:200, y:300, inbox:[], sent:0, received:0, role:'observer' }],
+            ['Analítico',   { x:600, y:300, inbox:[], sent:0, received:0, role:'analytics' }],
+            ['Creativo',    { x:400, y:400, inbox:[], sent:0, received:0, role:'content' }],
+        ]);
+
+        this.messages = [];
+        this.messageId = 1;
+        this.stats = {
+            total: 0,
+            requests: 0,
+            responses: 0,
+            broadcasts: 0,
+            latencies: [],
+            lastSecondCount: 0,
+            lastSecondTime: Date.now()
+        };
+
+        this.activeConnections = new Set();
+        this.canvas = document.getElementById('network-canvas');
+        this.ctx = this.canvas.getContext('2d');
+
+        this._init();
+    }
+
+    _init() {
+        this._resizeCanvas();
+        window.addEventListener('resize', () => this._resizeCanvas());
+        this._render();
+        this._startAnimationLoop();
+        this._startThroughputTicker();
+
+        // Auto-actividad inicial
+        setTimeout(() => this.randomActivity(), 1000);
+        setInterval(() => this.randomActivity(), 8000);
+    }
+
+    _resizeCanvas() {
+        const rect = this.canvas.getBoundingClientRect();
+        this.canvas.width = rect.width * window.devicePixelRatio;
+        this.canvas.height = rect.height * window.devicePixelRatio;
+        this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        this.canvasWidth = rect.width;
+        this.canvasHeight = rect.height;
+    }
+
+    // ═══ MESSAGING ═══
+    send(from, to, content, type='request') {
+        const fromAgent = this.agents.get(from);
+        const toAgent = this.agents.get(to);
+        if (!fromAgent || !toAgent) return;
+
+        const msg = {
+            id: this.messageId++,
+            from, to, content, type,
+            timestamp: Date.now(),
+            delivered: false
+        };
+
+        this.messages.unshift(msg);
+        if (this.messages.length > 30) this.messages.pop();
+
+        fromAgent.sent++;
+        this.stats.total++;
+        if (type === 'request') this.stats.requests++;
+        if (type === 'response') this.stats.responses++;
+        if (type === 'broadcast') this.stats.broadcasts++;
+
+        // Simular latencia de red
+        const latency = Math.floor(Math.random() * 50) + 10;
+        this.stats.latencies.push(latency);
+        if (this.stats.latencies.length > 100) this.stats.latencies.shift();
+        this.stats.lastSecondCount++;
+
+        // Animación de conexión
+        this.activeConnections.add(`${from}-${to}`);
+        setTimeout(() => this.activeConnections.delete(`${from}-${to}`), 500);
+
+        setTimeout(() => {
+            toAgent.inbox.push(msg);
+            if (toAgent.inbox.length > 5) toAgent.inbox.shift();
+            toAgent.received++;
+            msg.delivered = true;
+            this._render();
+
+            // Auto-respuesta en algunos casos
+            if (type === 'request' && Math.random() > 0.3) {
+                setTimeout(() => {
+                    this.send(to, from, `Respuesta a: ${content.substring(0,20)}...`, 'response');
+                }, latency + Math.random() * 100);
+            }
+        }, latency);
+
+        this._render();
+        return msg;
+    }
+
+    broadcast(from, content) {
+        const fromAgent = this.agents.get(from);
+        if (!fromAgent) return;
+
+        for (const [name, _] of this.agents) {
+            if (name !== from) {
+                this.send(from, name, content, 'broadcast');
+            }
+        }
+        toast(`📢 Broadcast desde ${from}`, 'info');
+    }
+
+    // ═══ CONVENIENCE METHODS ═══
+    sendRequest() {
+        const agents = [...this.agents.keys()];
+        const from = agents[Math.floor(Math.random() * agents.length)];
+        const to = agents.filter(a => a !== from)[Math.floor(Math.random() * (agents.length - 1))];
+        const contents = [
+            'Solicitar validación de datos',
+            'Análisis de performance requerido',
+            'Generar reporte de estado',
+            'Verificar integridad del sistema',
+            'Optimizar recursos disponibles',
+            'Coordinar próxima tarea',
+        ];
+        const content = contents[Math.floor(Math.random() * contents.length)];
+        this.send(from, to, content, 'request');
+        toast(`📤 ${from} → ${to}`, 'info');
+    }
+
+    randomActivity() {
+        const count = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < count; i++) {
+            setTimeout(() => this.sendRequest(), i * 300);
+        }
+    }
+
+    chainedCommunication() {
+        const agents = [...this.agents.keys()];
+        let prev = agents[0];
+        agents.slice(1).forEach((agent, i) => {
+            setTimeout(() => {
+                this.send(prev, agent, `Mensaje en cadena #${i+1}`, 'request');
+                prev = agent;
+            }, i * 500);
+        });
+        toast('🔗 Comunicación en cadena iniciada', 'success');
+    }
+
+    stressTest() {
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => this.sendRequest(), i * 100);
+        }
+        toast('🔥 Test de carga: 20 mensajes', 'warning');
+    }
+
+    clearMessages() {
+        this.messages = [];
+        this.agents.forEach(a => a.inbox = []);
+        this._render();
+        toast('🗑️ Mensajes limpiados', 'info');
+    }
+
+    // ═══ RENDERING ═══
+    _render() {
+        this._renderAgents();
+        this._renderMessages();
+        this._renderStats();
+    }
+
+    _renderAgents() {
+        const el = document.getElementById('agentsGrid');
+        el.innerHTML = [...this.agents.entries()].map(([name, a]) => `
+            <div class="agent-box ${a.inbox.length > 0 ? 'active' : ''}">
+                <div class="agent-name">${name}</div>
+                <div class="agent-stat">📤 Enviados: ${a.sent}</div>
+                <div class="agent-stat">📥 Recibidos: ${a.received}</div>
+                <div class="agent-inbox">
+                    <span class="inbox-count">📬 ${a.inbox.length} en buzón</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    _renderMessages() {
+        const el = document.getElementById('messageStream');
+        document.getElementById('msgCount').textContent = this.messages.length;
+        
+        el.innerHTML = this.messages.map(m => `
+            <div class="message-item ${m.type}">
+                <div class="msg-header">
+                    <span class="msg-route">
+                        ${m.from} <span style="opacity:0.5">→</span> ${m.to}
+                    </span>
+                    <span class="msg-type type-${m.type}">${m.type}</span>
+                </div>
+                <div class="msg-content">${m.content}</div>
+                <div class="msg-time">
+                    ID: ${m.id} · ${new Date(m.timestamp).toLocaleTimeString()} 
+                    ${m.delivered ? '✓' : '⏳'}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    _renderStats() {
+        document.getElementById('statMessages').textContent = this.stats.total;
+        document.getElementById('statRequests').textContent = this.stats.requests;
+        document.getElementById('statResponses').textContent = this.stats.responses;
+        document.getElementById('statBroadcasts').textContent = this.stats.broadcasts;
+        
+        const avgLatency = this.stats.latencies.length > 0
+            ? Math.round(this.stats.latencies.reduce((a,b)=>a+b,0) / this.stats.latencies.length)
+            : 0;
+        document.getElementById('statLatency').textContent = `${avgLatency}ms`;
+    }
+
+    _startThroughputTicker() {
+        setInterval(() => {
+            const now = Date.now();
+            const elapsed = (now - this.stats.lastSecondTime) / 1000;
+            const throughput = (this.stats.lastSecondCount / elapsed).toFixed(1);
+            document.getElementById('statThroughput').textContent = `${throughput}/s`;
+            this.stats.lastSecondCount = 0;
+            this.stats.lastSecondTime = now;
+        }, 1000);
+    }
+
+    // ═══ CANVAS ANIMATION ═══
+    _startAnimationLoop() {
+        const animate = () => {
+            this._drawNetwork();
+            requestAnimationFrame(animate);
+        };
+        animate();
+    }
+
+    _drawNetwork() {
+        const ctx = this.ctx;
+        const w = this.canvasWidth;
+        const h = this.canvasHeight;
+
+        // Clear
+        ctx.fillStyle = 'rgba(10,14,39,0.3)';
+        ctx.fillRect(0, 0, w, h);
+
+        // Draw connections
+        ctx.strokeStyle = 'rgba(99,102,241,0.2)';
+        ctx.lineWidth = 1;
+        const agentArray = [...this.agents.entries()];
+        for (let i = 0; i < agentArray.length; i++) {
+            for (let j = i + 1; j < agentArray.length; j++) {
+                const [n1, a1] = agentArray[i];
+                const [n2, a2] = agentArray[j];
+                
+                const isActive = this.activeConnections.has(`${n1}-${n2}`) || 
+                               this.activeConnections.has(`${n2}-${n1}`);
+                
+                if (isActive) {
+                    ctx.strokeStyle = 'rgba(16,185,129,0.8)';
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.strokeStyle = 'rgba(99,102,241,0.2)';
+                    ctx.lineWidth = 1;
+                }
+                
+                ctx.beginPath();
+                ctx.moveTo(a1.x, a1.y);
+                ctx.lineTo(a2.x, a2.y);
+                ctx.stroke();
+            }
+        }
+
+        // Draw agents
+        agentArray.forEach(([name, a]) => {
+            const hasMessages = a.inbox.length > 0;
+            
+            // Glow effect
+            if (hasMessages) {
+                ctx.shadowColor = 'rgba(16,185,129,0.8)';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+            
+            // Node circle
+            ctx.fillStyle = hasMessages ? '#10b981' : '#6366f1';
+            ctx.beginPath();
+            ctx.arc(a.x, a.y, hasMessages ? 12 : 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(name, a.x, a.y + 25);
+            
+            // Inbox count
+            if (hasMessages) {
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText(a.inbox.length, a.x, a.y + 4);
+            }
+        });
+    }
+}
+
+// ═══ INICIALIZACIÓN ═══
+const Network = new CommunicationNetwork();
+</script>
+</body>
+</html>

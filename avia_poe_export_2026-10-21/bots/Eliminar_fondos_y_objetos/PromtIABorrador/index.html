@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Object Eraser</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-zone.drag-over {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        canvas {
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            cursor: none;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .tools {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-box {
+            position: relative;
+        }
+
+        .result-box canvas,
+        .result-box img {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .result-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+            display: block;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #brushCursor {
+            position: fixed;
+            border: 2px solid #667eea;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+            background: rgba(102, 126, 234, 0.2);
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+        }
+
+        /* AVIA Button & Modal */
+        .avia-float-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(147, 51, 234, 0.4);
+            z-index: 9998;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avia-float-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(147, 51, 234, 0.6);
+        }
+
+        .avia-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .avia-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avia-modal-content {
+            background: linear-gradient(135deg, #2d1b4e 0%, #1e1533 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(147, 51, 234, 0.4);
+        }
+
+        .avia-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.3);
+        }
+
+        .avia-header h2 {
+            color: #c084fc;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .avia-close {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .avia-close:hover {
+            background: rgba(147, 51, 234, 0.3);
+        }
+
+        .avia-chat {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .avia-message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .avia-message.user {
+            background: rgba(147, 51, 234, 0.15);
+            border-left: 3px solid #9333ea;
+            color: white;
+        }
+
+        .avia-message.assistant {
+            background: rgba(192, 132, 252, 0.15);
+            border-left: 3px solid #c084fc;
+            color: white;
+        }
+
+        .avia-message.system {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #aaa;
+            color: #aaa;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .avia-message-label {
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+
+        .avia-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .avia-input-area textarea {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .avia-input-area textarea::placeholder {
+            color: #aaa;
+        }
+
+        .avia-input-area textarea:focus {
+            outline: none;
+            border-color: #9333ea;
+        }
+
+        .avia-send-btn {
+            background: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
+        }
+
+        .avia-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(147, 51, 234, 0.5);
+        }
+
+        .avia-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .avia-loading {
+            text-align: center;
+            padding: 10px;
+            color: #aaa;
+            display: none;
+        }
+
+        .avia-loading.active {
+            display: block;
+        }
+
+        .avia-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #9333ea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .avia-quick-btns {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .avia-quick-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .avia-quick-btn:hover {
+            background: rgba(147, 51, 234, 0.2);
+            border-color: #9333ea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 AI Object Eraser</h1>
+
+        <!-- Upload Section -->
+        <div id="uploadSection" class="card">
+            <div class="upload-zone" id="uploadZone">
+                <h2 style="color: #667eea; margin-bottom: 10px;">📸 Sube tu imagen</h2>
+                <p style="color: #666;">Arrastra y suelta una imagen o haz clic para seleccionar</p>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+        </div>
+
+        <!-- Editor Section -->
+        <div id="editorSection" class="card hidden">
+            <h2 style="margin-bottom: 10px; color: #667eea;">🎯 Selección Inteligente</h2>
+            <p style="margin-bottom: 10px; color: #666; font-size: 14px;"><strong>Modo Actual:</strong> <span id="currentModeText" style="color: #667eea; font-weight: 600;">✋ Detección Automática</span></p>
+            <p style="margin-bottom: 20px; color: #999; font-size: 13px;" id="modeInstructions">Haz click sobre el objeto que quieres eliminar. La IA lo detectará automáticamente.</p>
+
+            <div class="tools">
+                <button class="btn-secondary" id="switchModeBtn" onclick="switchMode()" style="background: #9333ea; color: white;">
+                    🔄 <span id="switchModeText">Modo Manual</span>
+                </button>
+                <button class="btn-secondary" onclick="undo()">↩️ Deshacer</button>
+                <button class="btn-secondary" onclick="clearMask()">🗑️ Limpiar todo</button>
+                <button class="btn-secondary" onclick="toggleMask()">👁️ <span id="toggleText">Ocultar</span> marcas</button>
+                <button class="btn-secondary" onclick="toggleDebugMask()">🔍 Debug</button>
+                <button class="btn-secondary" onclick="testMask()" style="background: #ff9800; color: white;">🧪 Test Máscara</button>
+            </div>
+
+            <div class="slider-container">
+                <label>✏️ Tamaño del marcador: <strong id="brushSizeLabel">20</strong>px</label>
+                <input type="range" id="brushSize" min="5" max="100" value="20" oninput="updateBrushSize(this.value)">
+            </div>
+
+            <div class="slider-container">
+                <label>🎯 Sensibilidad de detección automática: <strong id="toleranceLabel">30</strong></label>
+                <input type="range" id="tolerance" min="10" max="100" value="30" oninput="updateTolerance(this.value)">
+                <p style="font-size: 12px; color: #999; margin-top: 5px;">
+                    Menor valor = más preciso (solo colores muy similares)<br>
+                    Mayor valor = más flexible (incluye colores variados)
+                </p>
+            </div>
+
+            <div class="slider-container">
+                <label>🤖 Motor de IA:</label>
+                <select id="aiEngine" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Space Grotesk', sans-serif; font-size: 14px; margin-top: 8px;">
+                    <option value="gpt-image">GPT-Image-1 (OpenAI) - Mejor calidad</option>
+                    <option value="freepeek">Freepeek AI (Local) - Gratis y privado</option>
+                </select>
+                <p style="font-size: 12px; color: #999; margin-top: 5px;" id="aiDescription">
+                    🌐 Online - Alta calidad, requiere conexión
+                </p>
+            </div>
+
+            <div class="slider-container">
+                <label>
+                    <input type="checkbox" id="autoResize" checked style="margin-right: 8px;">
+                    📏 Reducir resolución automáticamente (imágenes >2048px)
+                </label>
+                <p style="font-size: 12px; color: #999; margin-top: 5px;">
+                    Reduce imágenes grandes a 2048px para procesamiento más rápido
+                </p>
+            </div>
+
+            <canvas id="canvas"></canvas>
+
+            <div class="tools" style="margin-top: 20px;">
+                <button class="btn-primary" onclick="processImage()">✨ Eliminar Objeto</button>
+                <button class="btn-secondary" onclick="reset()">🔄 Nueva Imagen</button>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loadingSection" class="card hidden">
+            <div class="spinner"></div>
+            <p style="text-align: center; color: #666;">Procesando con IA... Por favor espera</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="card hidden">
+            <h2 style="margin-bottom: 20px; color: #667eea;">✅ Resultado</h2>
+
+            <div class="results-grid">
+                <div class="result-box">
+                    <span class="result-label">Original</span>
+                    <canvas id="originalCanvas"></canvas>
+                </div>
+                <div class="result-box">
+                    <span class="result-label" style="background: rgba(102, 126, 234, 0.8);">Procesada</span>
+                    <img id="resultImage" alt="Resultado">
+                </div>
+            </div>
+
+            <div class="tools" style="margin-top: 20px;">
+                <button class="btn-primary" onclick="downloadResult()">💾 Descargar</button>
+                <button class="btn-secondary" onclick="editAgain()">✏️ Editar de nuevo</button>
+                <button class="btn-secondary" onclick="reset()">🆕 Nueva imagen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cursor visual -->
+    <div id="brushCursor"></div>
+
+    <!-- Inline Components for Compatibility -->
+    <script>
+        // TileProcessor Class
+        class TileProcessor {
+            constructor(tileSize = 512, overlap = 64) {
+                this.tileSize = tileSize;
+                this.overlap = overlap;
+            }
+
+            divideTiles(canvas) {
+                const width = canvas.width;
+                const height = canvas.height;
+                const tiles = [];
+                const ctx = canvas.getContext('2d');
+
+                for (let y = 0; y < height; y += (this.tileSize - this.overlap)) {
+                    for (let x = 0; x < width; x += (this.tileSize - this.overlap)) {
+                        const tileWidth = Math.min(this.tileSize, width - x);
+                        const tileHeight = Math.min(this.tileSize, height - y);
+
+                        const tileCanvas = document.createElement('canvas');
+                        tileCanvas.width = tileWidth;
+                        tileCanvas.height = tileHeight;
+                        const tileCtx = tileCanvas.getContext('2d');
+
+                        const imageData = ctx.getImageData(x, y, tileWidth, tileHeight);
+                        tileCtx.putImageData(imageData, 0, 0);
+
+                        tiles.push({ canvas: tileCanvas, x, y, width: tileWidth, height: tileHeight });
+                    }
+                }
+
+                return tiles;
+            }
+
+            calculateTileCount(width, height) {
+                const tilesX = Math.ceil(width / (this.tileSize - this.overlap));
+                const tilesY = Math.ceil(height / (this.tileSize - this.overlap));
+                return { tilesX, tilesY, total: tilesX * tilesY };
+            }
+
+            shouldUseTiles(width, height, threshold = 2048) {
+                return width > threshold || height > threshold;
+            }
+        }
+
+        // SmartSelector Class
+        class SmartSelector {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.tolerance = 30;
+                this.maxPixels = 50000; // Límite máximo para prevenir fondos completos
+            }
+
+            detectObject(x, y) {
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const pixels = imageData.data;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+
+                const startIndex = Math.floor(y) * width + Math.floor(x);
+                const pixelIndex = startIndex * 4;
+                const targetColor = {
+                    r: pixels[pixelIndex],
+                    g: pixels[pixelIndex + 1],
+                    b: pixels[pixelIndex + 2],
+                    a: pixels[pixelIndex + 3]
+                };
+
+                const mask = new Uint8Array(width * height);
+                const visited = new Uint8Array(width * height);
+                const queue = [{x: Math.floor(x), y: Math.floor(y)}];
+
+                let minX = Math.floor(x), maxX = Math.floor(x), minY = Math.floor(y), maxY = Math.floor(y);
+                let pixelCount = 0;
+
+                // Límite dinámico: máximo 15% del área total de la imagen
+                const totalPixels = width * height;
+                const maxReasonableSize = Math.min(this.maxPixels, Math.floor(totalPixels * 0.15));
+
+                console.log(`🎯 Iniciando detección desde (${Math.floor(x)}, ${Math.floor(y)})`);
+                console.log(`   Color objetivo: rgb(${targetColor.r}, ${targetColor.g}, ${targetColor.b})`);
+                console.log(`   Límite máximo: ${maxReasonableSize} píxeles (${((maxReasonableSize/totalPixels)*100).toFixed(1)}% del total)`);
+
+                while (queue.length > 0 && pixelCount < maxReasonableSize) {
+                    const point = queue.shift();
+                    const px = point.x;
+                    const py = point.y;
+
+                    if (px < 0 || px >= width || py < 0 || py >= height) continue;
+
+                    const index = py * width + px;
+                    if (visited[index]) continue;
+                    visited[index] = 1;
+
+                    const pIndex = index * 4;
+                    const currentColor = {
+                        r: pixels[pIndex],
+                        g: pixels[pIndex + 1],
+                        b: pixels[pIndex + 2],
+                        a: pixels[pIndex + 3]
+                    };
+
+                    if (this.colorDistance(targetColor, currentColor) <= this.tolerance) {
+                        mask[index] = 255;
+                        pixelCount++;
+
+                        minX = Math.min(minX, px);
+                        maxX = Math.max(maxX, px);
+                        minY = Math.min(minY, py);
+                        maxY = Math.max(maxY, py);
+
+                        // Solo expandir si no hemos alcanzado el límite
+                        if (pixelCount < maxReasonableSize) {
+                            queue.push({x: px + 1, y: py});
+                            queue.push({x: px - 1, y: py});
+                            queue.push({x: px, y: py + 1});
+                            queue.push({x: px, y: py - 1});
+                        }
+                    }
+                }
+
+                if (pixelCount >= maxReasonableSize) {
+                    console.warn(`⚠️ LÍMITE ALCANZADO: ${maxReasonableSize} píxeles`);
+                    console.warn(`   Probablemente clickeaste en un FONDO grande, no en un objeto`);
+                    console.warn(`   💡 Intenta clickear en el LOGO u objeto específico que quieres eliminar`);
+                }
+
+                return {
+                    mask: mask,
+                    bounds: {
+                        x: minX,
+                        y: minY,
+                        width: maxX - minX + 1,
+                        height: maxY - minY + 1
+                    },
+                    pixelCount: pixelCount,
+                    hitLimit: pixelCount >= maxReasonableSize
+                };
+            }
+
+            colorDistance(c1, c2) {
+                return Math.sqrt(
+                    Math.pow(c1.r - c2.r, 2) +
+                    Math.pow(c1.g - c2.g, 2) +
+                    Math.pow(c1.b - c2.b, 2) +
+                    Math.pow(c1.a - c2.a, 2)
+                );
+            }
+        }
+
+        // AIDetection Class
+        class AIDetection {
+            constructor() {
+                this.availableBots = ['Claude-Opus-4.5', 'GPT-4o'];
+            }
+
+            async analyzeImageWithAI(imageCanvas, userDescription = null) {
+                console.log('🤖 AIDetection: Función disponible pero no implementada en esta versión');
+                return null;
+            }
+        }
+
+        // ConfirmationDialog Class
+        class ConfirmationDialog {
+            constructor() {
+                this.currentModal = null;
+            }
+
+            async show(options) {
+                return new Promise((resolve) => {
+                    const modal = this.createModal(options, resolve);
+                    document.body.appendChild(modal);
+                    this.currentModal = modal;
+                });
+            }
+
+            createModal(options, resolve) {
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:10001;animation:fadeIn 0.3s ease;';
+
+                const preview = this.createPreview(options.originalCanvas, options.maskCanvas);
+
+                modal.innerHTML = `
+                    <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border-radius:20px;padding:30px;max-width:600px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+                        <h2 style="color:white;margin-bottom:20px;font-size:24px;text-align:center;">
+                            🎯 ¿Es esto lo que quieres eliminar?
+                        </h2>
+                        <div style="background:white;border-radius:15px;padding:20px;margin-bottom:20px;max-height:400px;overflow:auto;display:flex;justify-content:center;">
+                            ${preview.outerHTML}
+                        </div>
+                        <div style="background:rgba(255,255,255,0.2);border-radius:10px;padding:15px;margin-bottom:20px;color:white;">
+                            <p style="margin:0;font-size:14px;">
+                                💡 Objeto detectado: ${options.objectName}<br>
+                                📏 Área: ${Math.round(options.bounds.width)}% × ${Math.round(options.bounds.height)}%
+                            </p>
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <button id="confirmYes" style="flex:1;padding:15px;background:#4caf50;color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">
+                                ✅ Sí, eliminar
+                            </button>
+                            <button id="confirmRetry" style="flex:1;padding:15px;background:#ff9800;color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">
+                                🔄 Reintentar
+                            </button>
+                            <button id="confirmManual" style="flex:1;padding:15px;background:#9333ea;color:white;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">
+                                ✏️ Manual
+                            </button>
+                            <button id="confirmCancel" style="width:100%;padding:10px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:10px;cursor:pointer;">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                modal.querySelector('#confirmYes').addEventListener('click', () => {
+                    modal.remove();
+                    resolve({action: 'confirm'});
+                });
+
+                modal.querySelector('#confirmRetry').addEventListener('click', () => {
+                    modal.remove();
+                    resolve({action: 'retry'});
+                });
+
+                modal.querySelector('#confirmManual').addEventListener('click', () => {
+                    modal.remove();
+                    resolve({action: 'manual'});
+                });
+
+                modal.querySelector('#confirmCancel').addEventListener('click', () => {
+                    modal.remove();
+                    resolve({action: 'cancel'});
+                });
+
+                return modal;
+            }
+
+            createPreview(originalCanvas, maskCanvas) {
+                const preview = document.createElement('canvas');
+                preview.width = originalCanvas.width;
+                preview.height = originalCanvas.height;
+                preview.style.maxWidth = '100%';
+                preview.style.height = 'auto';
+                preview.style.borderRadius = '10px';
+
+                const ctx = preview.getContext('2d');
+                ctx.drawImage(originalCanvas, 0, 0);
+
+                // Overlay red where mask is white
+                const maskData = maskCanvas.getContext('2d').getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+                const overlayData = ctx.createImageData(preview.width, preview.height);
+
+                for (let i = 0; i < maskData.data.length; i += 4) {
+                    if (maskData.data[i] > 128) {
+                        overlayData.data[i] = 255;
+                        overlayData.data[i + 1] = 0;
+                        overlayData.data[i + 2] = 0;
+                        overlayData.data[i + 3] = 150;
+                    }
+                }
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = preview.width;
+                tempCanvas.height = preview.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.putImageData(overlayData, 0, 0);
+                ctx.drawImage(tempCanvas, 0, 0);
+
+                return preview;
+            }
+
+            close() {
+                if (this.currentModal) {
+                    this.currentModal.remove();
+                    this.currentModal = null;
+                }
+            }
+        }
+
+        console.log('✅ Componentes JavaScript cargados inline correctamente');
+    </script>
+
+    <!-- AVIA Float Button -->
+    <button class="avia-float-btn" onclick="toggleAviaModal()">
+        💬 AVIA Tillo
+    </button>
+
+    <!-- AVIA Modal -->
+    <div class="avia-modal" id="aviaModal">
+        <div class="avia-modal-content">
+            <div class="avia-header">
+                <h2>💬 AVIA Tillo - Asistente de Código</h2>
+                <button class="avia-close" onclick="toggleAviaModal()">×</button>
+            </div>
+
+            <div class="avia-quick-btns">
+                <button class="avia-quick-btn" onclick="sendAviaQuick('fix-eraser')">
+                    🧹 Arreglar Borrador
+                </button>
+                <button class="avia-quick-btn" onclick="sendAviaQuick('explain')">
+                    📖 Explicar Código
+                </button>
+                <button class="avia-quick-btn" onclick="clearAviaChat()">
+                    🗑️ Limpiar Chat
+                </button>
+            </div>
+
+            <div class="avia-chat" id="aviaChat">
+                <div class="avia-message system">
+                    <div class="avia-message-label">Sistema</div>
+                    <div>Interfaz AVIA lista. Usa los botones rápidos o escribe tu pregunta.</div>
+                </div>
+            </div>
+
+            <div class="avia-loading" id="aviaLoading">
+                <span class="avia-spinner"></span> Esperando respuesta de AVIA Tillo...
+            </div>
+
+            <div class="avia-input-area">
+                <textarea
+                    id="aviaInput"
+                    placeholder="Escribe tu pregunta para AVIA Tillo..."
+                    onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendAviaMessage(); }"
+                ></textarea>
+                <button class="avia-send-btn" onclick="sendAviaMessage()" id="aviaSendBtn">
+                    Enviar 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let canvas, ctx, originalCanvas, originalCtx;
+        let originalImage = null;
+        let maskCanvas, maskCtx;
+        let isDrawing = false;
+        let brushSize = 20;
+        let showMaskOverlay = true;
+        let history = [];
+        let lastX = 0, lastY = 0;
+        let resultUrl = null;
+
+        // Web Worker para procesamiento de máscara
+        let maskWorker = null;
+        let useWorker = true; // Usar worker por defecto para mejor rendimiento
+
+        // Tile Processor para imágenes grandes
+        let tileProcessor = null;
+        let useTiles = true; // Usar tiles por defecto para imágenes grandes
+
+        // Smart Selection System
+        let smartSelector = null;
+        let conversationSystem = null;
+        let aiDetection = null;
+        let confirmationDialog = null;
+        let currentSelectionMode = 'auto'; // auto, lasso, manual
+        let pendingSelection = null;
+        let isProcessingClick = false;
+
+        // Initialize
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const cursor = document.getElementById('brushCursor');
+
+        // AI Engine selector
+        let currentAIEngine = 'gpt-image';
+        function initAISelector() {
+            const aiSelector = document.getElementById('aiEngine');
+            const aiDescription = document.getElementById('aiDescription');
+
+            aiSelector.addEventListener('change', function() {
+                currentAIEngine = this.value;
+
+                if (currentAIEngine === 'gpt-image') {
+                    aiDescription.textContent = '🌐 Online - Alta calidad, requiere conexión';
+                } else if (currentAIEngine === 'freepeek') {
+                    aiDescription.textContent = '💻 Local - Gratis, privado, sin conexión';
+                }
+            });
+        }
+
+        // Mensaje de bienvenida en consola
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('%c🎨 AI Object Eraser 2.0 - Sistema Inteligente', 'font-size: 20px; font-weight: bold; color: #667eea;');
+            console.log('%c✨ Novedades:', 'font-size: 14px; font-weight: bold; color: #764ba2;');
+            console.log('   🎯 Detección automática con click');
+            console.log('   💬 Diálogo de confirmación visual');
+            console.log('   🎚️ Sensibilidad ajustable');
+            console.log('   🔄 Cambio entre modo auto/manual');
+            console.log('   📏 Auto-reducción de imágenes grandes');
+            console.log('   💬 AVIA Tillo - Asistente integrado');
+            console.log('');
+            console.log('%c📖 Instrucciones Rápidas:', 'font-size: 14px; font-weight: bold; color: #51cf66;');
+            console.log('   1. Sube una imagen');
+            console.log('   2. Click en el objeto a eliminar');
+            console.log('   3. Confirma la selección');
+            console.log('   4. ¡Listo!');
+            console.log('');
+            console.log('%c💡 Tips:', 'font-size: 14px; font-weight: bold; color: #ffd43b;');
+            console.log('   • Ajusta la sensibilidad si la detección no es precisa');
+            console.log('   • Usa "🔄 Modo Manual" para control total');
+            console.log('   • Click en "💬 AVIA Tillo" para ayuda');
+            console.log('');
+            console.log('%c🚀 ¡Empieza subiendo una imagen!', 'font-size: 16px; font-weight: bold; color: #ff6b35;');
+        });
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFile);
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        });
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                loadImage(file);
+            }
+        }
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    setupCanvas();
+                    initAISelector();
+                    document.getElementById('uploadSection').classList.add('hidden');
+                    document.getElementById('editorSection').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setupCanvas() {
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+            originalCanvas = document.getElementById('originalCanvas');
+            originalCtx = originalCanvas.getContext('2d');
+
+            // Create mask canvas
+            maskCanvas = document.createElement('canvas');
+            maskCtx = maskCanvas.getContext('2d');
+
+            // Initialize Web Worker
+            try {
+                maskWorker = new Worker('mask-worker.js');
+                maskWorker.onmessage = function(e) {
+                    if (e.data.type === 'overlayProcessed') {
+                        // Dibujar overlay procesado por el worker
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = maskCanvas.width;
+                        tempCanvas.height = maskCanvas.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+
+                        const imageData = new ImageData(
+                            new Uint8ClampedArray(e.data.data),
+                            maskCanvas.width,
+                            maskCanvas.height
+                        );
+                        tempCtx.putImageData(imageData, 0, 0);
+                        ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                };
+                console.log('✅ Web Worker activado para mejor rendimiento');
+            } catch (err) {
+                console.warn('⚠️ Web Worker no disponible, usando procesamiento síncrono:', err);
+                useWorker = false;
+            }
+
+            // Initialize Tile Processor
+            try {
+                tileProcessor = new TileProcessor(512, 64);
+                const tileInfo = tileProcessor.calculateTileCount(canvas.width, canvas.height);
+
+                if (tileProcessor.shouldUseTiles(canvas.width, canvas.height)) {
+                    console.log(`📦 Imagen grande detectada (${canvas.width}x${canvas.height})`);
+                    console.log(`   Se usará sistema de tiles: ${tileInfo.total} tiles (${tileInfo.tilesX}x${tileInfo.tilesY})`);
+                } else {
+                    console.log(`✅ Imagen de tamaño normal (${canvas.width}x${canvas.height}), no se necesitan tiles`);
+                }
+            } catch (err) {
+                console.warn('⚠️ Tile Processor no disponible:', err);
+                useTiles = false;
+            }
+
+            // Set dimensions
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+            maskCanvas.width = originalImage.width;
+            maskCanvas.height = originalImage.height;
+            originalCanvas.width = originalImage.width;
+            originalCanvas.height = originalImage.height;
+
+            // Draw original
+            ctx.drawImage(originalImage, 0, 0);
+            originalCtx.drawImage(originalImage, 0, 0);
+
+            // Initialize mask
+            maskCtx.fillStyle = 'black';
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+            history = [];
+            saveState();
+
+            // Initialize Smart Systems
+            try {
+                // Verificar que las clases estén disponibles
+                if (typeof SmartSelector === 'undefined') {
+                    throw new Error('SmartSelector no está definido. Verifica que smart-select.js esté cargado correctamente.');
+                }
+                if (typeof AIDetection === 'undefined') {
+                    throw new Error('AIDetection no está definido. Verifica que ai-detection.js esté cargado correctamente.');
+                }
+                if (typeof ConfirmationDialog === 'undefined') {
+                    throw new Error('ConfirmationDialog no está definido. Verifica que confirmation-dialog.js esté cargado correctamente.');
+                }
+
+                smartSelector = new SmartSelector(canvas);
+                aiDetection = new AIDetection();
+                confirmationDialog = new ConfirmationDialog();
+                console.log('✅ Sistemas inteligentes inicializados:');
+                console.log('   🎯 SmartSelector: Detección automática por flood-fill');
+                console.log('   🤖 AIDetection: Integración con Claude-Opus-4.5');
+                console.log('   💬 ConfirmationDialog: Diálogos visuales de confirmación');
+                console.log('   📊 Tolerancia inicial: 30');
+            } catch (err) {
+                console.error('❌ Error al inicializar sistemas inteligentes:', err);
+                console.warn('⚠️ La aplicación funcionará en modo manual solamente');
+                // Cambiar automáticamente a modo manual si no hay sistemas inteligentes
+                currentSelectionMode = 'manual';
+            }
+
+            // Add event listeners based on mode
+            if (currentSelectionMode === 'auto') {
+                canvas.addEventListener('click', handleSmartClick);
+                canvas.style.cursor = 'pointer';
+                console.log('👆 Modo auto-detección activado');
+            } else {
+                // Modo manual tradicional
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+                canvas.addEventListener('mouseenter', showCursor);
+                canvas.addEventListener('mouseleave', hideCursor);
+
+                // Touch support
+                canvas.addEventListener('touchstart', handleTouch);
+                canvas.addEventListener('touchmove', handleTouch);
+                canvas.addEventListener('touchend', stopDrawing);
+            }
+        }
+
+        /**
+         * Maneja click inteligente con detección automática
+         */
+        async function handleSmartClick(e) {
+            if (isProcessingClick) {
+                console.log('⏳ Ya procesando un click...');
+                return;
+            }
+
+            isProcessingClick = true;
+            const coords = getCoords(e);
+
+            console.log(`🎯 Click en (${coords.x}, ${coords.y})`);
+
+            try {
+                // Mostrar indicador de carga
+                canvas.style.cursor = 'wait';
+
+                // Detectar objeto automáticamente
+                const detection = smartSelector.detectObject(coords.x, coords.y);
+
+                console.log(`📦 Objeto detectado: ${detection.pixelCount} píxeles`);
+                console.log(`   Bounds: (${detection.bounds.x}, ${detection.bounds.y}) ${detection.bounds.width}x${detection.bounds.height}`);
+                console.log(`   Sensibilidad actual: ${smartSelector.tolerance}`);
+
+                // Umbral muy permisivo: al menos 1 píxel
+                if (detection.pixelCount < 1) {
+                    showAlert('⚠️ No se detectó ningún objeto en ese punto.\n\n💡 Sugerencias:\n• Aumenta la sensibilidad de detección (slider)\n• Intenta clickear en el centro del objeto\n• O cambia a modo manual para pintar');
+                    canvas.style.cursor = 'pointer';
+                    isProcessingClick = false;
+                    return;
+                }
+
+                // Aplicar máscara detectada al maskCanvas
+                const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+                for (let i = 0; i < detection.mask.length; i++) {
+                    const pixelIndex = i * 4;
+                    if (detection.mask[i] === 255) {
+                        maskData.data[pixelIndex] = 255;     // R
+                        maskData.data[pixelIndex + 1] = 255; // G
+                        maskData.data[pixelIndex + 2] = 255; // B
+                        maskData.data[pixelIndex + 3] = 255; // A
+                    }
+                }
+                maskCtx.putImageData(maskData, 0, 0);
+                redraw();
+
+                // Mostrar confirmación (con aviso si se alcanzó el límite)
+                let objectName = 'Objeto detectado';
+                if (detection.hitLimit) {
+                    objectName = '⚠️ Área grande detectada (posible fondo)';
+                }
+
+                const result = await confirmationDialog.show({
+                    originalCanvas: canvas,
+                    maskCanvas: maskCanvas,
+                    bounds: {
+                        x: (detection.bounds.x / canvas.width) * 100,
+                        y: (detection.bounds.y / canvas.height) * 100,
+                        width: (detection.bounds.width / canvas.width) * 100,
+                        height: (detection.bounds.height / canvas.height) * 100
+                    },
+                    objectName: objectName,
+                    confidence: detection.hitLimit ? 50 : 75,
+                    hitLimit: detection.hitLimit
+                });
+
+                console.log('👤 Usuario respondió:', result.action);
+
+                if (result.action === 'confirm') {
+                    // Usuario confirmó, guardar estado
+                    saveState();
+                    console.log('✅ Selección confirmada');
+                } else if (result.action === 'manual') {
+                    // Cambiar a modo manual
+                    switchToManualMode();
+                } else if (result.action === 'retry') {
+                    // Reintentar detección - limpiar y esperar nuevo click
+                    clearMask();
+                    showAlert('👆 Intenta clickear en otro punto del objeto que quieres eliminar.');
+                } else {
+                    // Cancelar, limpiar máscara
+                    clearMask();
+                }
+
+            } catch (error) {
+                console.error('❌ Error en detección:', error);
+                showAlert('Error en detección automática: ' + error.message);
+            } finally {
+                canvas.style.cursor = 'pointer';
+                isProcessingClick = false;
+            }
+        }
+
+        /**
+         * Cambia a modo manual de marcado
+         */
+        function switchToManualMode() {
+            console.log('🔄 Cambiando a modo manual');
+
+            currentSelectionMode = 'manual';
+            document.getElementById('currentModeText').textContent = '✏️ Marcado Manual';
+            document.getElementById('modeInstructions').textContent = 'Pinta manualmente sobre el objeto a eliminar';
+            document.getElementById('switchModeText').textContent = 'Modo Automático';
+
+            // Remover listener de auto-detección
+            canvas.removeEventListener('click', handleSmartClick);
+
+            // Agregar listeners de dibujo manual
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('mouseenter', showCursor);
+            canvas.addEventListener('mouseleave', hideCursor);
+
+            canvas.style.cursor = 'none';
+            cursor.style.display = 'block';
+        }
+
+        /**
+         * Cambia a modo automático de detección
+         */
+        function switchToAutoMode() {
+            console.log('🔄 Cambiando a modo automático');
+
+            currentSelectionMode = 'auto';
+            document.getElementById('currentModeText').textContent = '✋ Detección Automática';
+            document.getElementById('modeInstructions').textContent = 'Haz click sobre el objeto que quieres eliminar. La IA lo detectará automáticamente.';
+            document.getElementById('switchModeText').textContent = 'Modo Manual';
+
+            // Remover listeners de dibujo manual
+            canvas.removeEventListener('mousedown', startDrawing);
+            canvas.removeEventListener('mousemove', draw);
+            canvas.removeEventListener('mouseup', stopDrawing);
+            canvas.removeEventListener('mouseout', stopDrawing);
+            canvas.removeEventListener('mouseenter', showCursor);
+            canvas.removeEventListener('mouseleave', hideCursor);
+
+            // Agregar listener de auto-detección
+            canvas.addEventListener('click', handleSmartClick);
+
+            canvas.style.cursor = 'pointer';
+            cursor.style.display = 'none';
+        }
+
+        /**
+         * Alterna entre modo automático y manual
+         */
+        function switchMode() {
+            if (currentSelectionMode === 'auto') {
+                switchToManualMode();
+            } else {
+                switchToAutoMode();
+            }
+        }
+
+
+        function updateBrushSize(value) {
+            brushSize = parseInt(value);
+            document.getElementById('brushSizeLabel').textContent = brushSize;
+            cursor.style.width = brushSize + 'px';
+            cursor.style.height = brushSize + 'px';
+        }
+
+        function updateTolerance(value) {
+            const tolerance = parseInt(value);
+            document.getElementById('toleranceLabel').textContent = tolerance;
+            if (smartSelector) {
+                smartSelector.tolerance = tolerance;
+                console.log(`🎯 Tolerancia actualizada: ${tolerance}`);
+            }
+        }
+
+        function showCursor() {
+            cursor.style.display = 'block';
+        }
+
+        function hideCursor() {
+            cursor.style.display = 'none';
+        }
+
+        function updateCursorPosition(e) {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        }
+
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            if (e.touches) {
+                return {
+                    x: (e.touches[0].clientX - rect.left) * scaleX,
+                    y: (e.touches[0].clientY - rect.top) * scaleY
+                };
+            }
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const coords = getCoords(e);
+            lastX = coords.x;
+            lastY = coords.y;
+            drawPoint(coords.x, coords.y);
+        }
+
+        function draw(e) {
+            updateCursorPosition(e);
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            const coords = getCoords(e);
+            drawLine(lastX, lastY, coords.x, coords.y);
+            lastX = coords.x;
+            lastY = coords.y;
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveState();
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            if (e.type === 'touchstart') startDrawing(e);
+            else if (e.type === 'touchmove') draw(e);
+        }
+
+        function drawPoint(x, y) {
+            maskCtx.globalCompositeOperation = 'source-over';
+            maskCtx.fillStyle = '#FFFFFF';
+
+            maskCtx.beginPath();
+            maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+            maskCtx.fill();
+            redraw();
+        }
+
+        function drawLine(x1, y1, x2, y2) {
+            const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const steps = Math.max(1, Math.ceil(dist / (brushSize / 4)));
+
+            maskCtx.globalCompositeOperation = 'source-over';
+            maskCtx.fillStyle = '#FFFFFF';
+
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const x = x1 + (x2 - x1) * t;
+                const y = y1 + (y2 - y1) * t;
+
+                maskCtx.beginPath();
+                maskCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                maskCtx.fill();
+            }
+
+            redraw();
+        }
+
+        function redraw() {
+            if (debugMode) {
+                // In debug mode, show the raw mask
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(maskCanvas, 0, 0);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(originalImage, 0, 0);
+
+            if (showMaskOverlay) {
+                // Use Web Worker for better performance if available
+                if (useWorker && maskWorker) {
+                    const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+                    maskWorker.postMessage({
+                        type: 'processOverlay',
+                        data: {
+                            maskData: maskData.data,
+                            width: maskCanvas.width,
+                            height: maskCanvas.height
+                        }
+                    });
+                } else {
+                    // Fallback: procesamiento síncrono
+                    redrawSync();
+                }
+            }
+        }
+
+        function redrawSync() {
+            // Create temporary canvas for overlay
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = maskCanvas.width;
+            tempCanvas.height = maskCanvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const overlay = tempCtx.createImageData(maskCanvas.width, maskCanvas.height);
+
+            for (let i = 0; i < maskData.data.length; i += 4) {
+                // Check if pixel is white (R > 128)
+                // Black pixels (R < 128) won't show overlay
+                if (maskData.data[i] > 128) {
+                    overlay.data[i] = 255;      // Red
+                    overlay.data[i + 1] = 0;    // Green
+                    overlay.data[i + 2] = 0;    // Blue
+                    overlay.data[i + 3] = 128;  // Alpha (semi-transparent)
+                }
+            }
+
+            tempCtx.putImageData(overlay, 0, 0);
+            ctx.drawImage(tempCanvas, 0, 0);
+        }
+
+        function toggleMask() {
+            showMaskOverlay = !showMaskOverlay;
+            document.getElementById('toggleText').textContent = showMaskOverlay ? 'Ocultar' : 'Mostrar';
+            if (!debugMode) {
+                redraw();
+            }
+        }
+
+        function saveState() {
+            history.push(maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
+            if (history.length > 20) history.shift();
+        }
+
+        function undo() {
+            if (history.length > 1) {
+                history.pop();
+                maskCtx.putImageData(history[history.length - 1], 0, 0);
+                redraw();
+            }
+        }
+
+        function clearMask() {
+            // 1. Limpiar completamente el canvas de máscara
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+            // 2. Rellenar con negro (fondo limpio para la máscara)
+            maskCtx.fillStyle = '#000000';
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+            // 3. Guardar estado y redibujar
+            saveState();
+            redraw();
+
+            console.log('✅ Máscara limpiada completamente');
+        }
+
+        async function processImage() {
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const hasWhite = maskData.data.some((v, i) => i % 4 === 0 && v > 128);
+
+            if (!hasWhite) {
+                showAlert('Por favor, marca el objeto que quieres eliminar');
+                return;
+            }
+
+            document.getElementById('editorSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
+
+            try {
+                if (currentAIEngine === 'gpt-image') {
+                    await processWithGPTImage();
+                } else if (currentAIEngine === 'freepeek') {
+                    await processWithFreepeek();
+                }
+            } catch (error) {
+                document.getElementById('loadingSection').classList.add('hidden');
+                document.getElementById('editorSection').classList.remove('hidden');
+                showAlert('Error: ' + error.message);
+            }
+        }
+
+        /**
+         * Reduce la resolución de un canvas si es muy grande
+         */
+        function resizeCanvas(sourceCanvas, maxSize = 2048) {
+            const width = sourceCanvas.width;
+            const height = sourceCanvas.height;
+
+            // Si ya es pequeño, devolver el original
+            if (width <= maxSize && height <= maxSize) {
+                console.log(`✅ Resolución OK (${width}x${height}), no se necesita reducir`);
+                return sourceCanvas;
+            }
+
+            // Calcular nueva resolución manteniendo aspect ratio
+            let newWidth, newHeight;
+            if (width > height) {
+                newWidth = maxSize;
+                newHeight = Math.round((height / width) * maxSize);
+            } else {
+                newHeight = maxSize;
+                newWidth = Math.round((width / height) * maxSize);
+            }
+
+            // Crear canvas reducido
+            const resizedCanvas = document.createElement('canvas');
+            resizedCanvas.width = newWidth;
+            resizedCanvas.height = newHeight;
+            const ctx = resizedCanvas.getContext('2d');
+
+            // Dibujar imagen reducida con alta calidad
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(sourceCanvas, 0, 0, newWidth, newHeight);
+
+            console.log(`📏 Resolución reducida: ${width}x${height} → ${newWidth}x${newHeight}`);
+            return resizedCanvas;
+        }
+
+        async function processWithGPTImage() {
+            // Verificar máscara antes de procesar
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            let whitePixels = 0;
+            for (let i = 0; i < maskData.data.length; i += 4) {
+                if (maskData.data[i] > 128) whitePixels++;
+            }
+            console.log(`🎨 Máscara: ${whitePixels} píxeles blancos de ${maskCanvas.width * maskCanvas.height} totales`);
+
+            if (whitePixels === 0) {
+                showAlert('⚠️ Error: La máscara está vacía. Por favor marca el objeto a eliminar.');
+                document.getElementById('loadingSection').classList.add('hidden');
+                document.getElementById('editorSection').classList.remove('hidden');
+                return;
+            }
+
+            // Verificar si se debe reducir resolución
+            const autoResize = document.getElementById('autoResize').checked;
+
+            let processCanvas = originalCanvas;
+            let processMask = maskCanvas;
+
+            if (autoResize) {
+                processCanvas = resizeCanvas(originalCanvas, 2048);
+                processMask = resizeCanvas(maskCanvas, 2048);
+            }
+
+            console.log(`📤 Enviando a GPT-Image-1:`);
+            console.log(`   Imagen: ${processCanvas.width}x${processCanvas.height}`);
+            console.log(`   Máscara: ${processMask.width}x${processMask.height}`);
+
+            const originalBlob = await new Promise(r => processCanvas.toBlob(r, 'image/png'));
+            const maskBlob = await new Promise(r => processMask.toBlob(r, 'image/png'));
+
+            const originalFile = new File([originalBlob], 'original.png', {type: 'image/png'});
+            const maskFile = new File([maskBlob], 'mask.png', {type: 'image/png'});
+
+            window.Poe.registerHandler('eraser-result', (result) => {
+                const msg = result.responses[0];
+
+                if (msg.status === 'error') {
+                    console.error('❌ Error de GPT-Image-1:', msg.statusText);
+                    document.getElementById('loadingSection').classList.add('hidden');
+                    document.getElementById('editorSection').classList.remove('hidden');
+                    showAlert('Error: ' + (msg.statusText || 'Error desconocido'));
+                } else if (msg.status === 'complete') {
+                    console.log('✅ GPT-Image-1 completado');
+                    console.log('   Mensaje:', msg.content.substring(0, 100));
+                    console.log('   Attachments:', msg.attachments?.length || 0);
+
+                    if (msg.attachments && msg.attachments.length > 0) {
+                        resultUrl = msg.attachments[0].url;
+                        console.log('   URL resultado:', resultUrl);
+                        showResult();
+                    } else {
+                        console.warn('⚠️ GPT-Image-1 no devolvió imagen');
+                        document.getElementById('loadingSection').classList.add('hidden');
+                        document.getElementById('editorSection').classList.remove('hidden');
+                        showAlert('No se generó ninguna imagen. Respuesta: ' + msg.content);
+                    }
+                }
+            });
+
+            await window.Poe.sendUserMessage(
+                '@GPT-Image-1 Remove the masked object and inpaint the area naturally to match the surrounding background. Fill the removed area seamlessly with appropriate textures and patterns from the surrounding environment. --use_mask true --quality high',
+                {
+                    attachments: [originalFile, maskFile],
+                    handler: 'eraser-result',
+                    stream: false,
+                    openChat: false
+                }
+            );
+        }
+
+        async function processWithFreepeek() {
+            // Implementación de Freepeek AI (IA local)
+            showAlert('🚧 Freepeek AI (Local) estará disponible próximamente.\n\nEsta función permitirá procesar imágenes localmente sin conexión a internet.\n\nPor ahora, usa GPT-Image-1 (OpenAI).');
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('editorSection').classList.remove('hidden');
+
+            // TODO: Integrar con Freepeek API cuando esté disponible
+            // const result = await freepeekInpaint(originalCanvas, maskCanvas);
+        }
+
+        function showResult() {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('resultImage').src = resultUrl;
+        }
+
+        function downloadResult() {
+            const a = document.createElement('a');
+            a.href = resultUrl;
+            a.download = 'erased-image.png';
+            a.click();
+        }
+
+        function editAgain() {
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('editorSection').classList.remove('hidden');
+        }
+
+        function reset() {
+            document.getElementById('editorSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+            fileInput.value = '';
+            originalImage = null;
+            history = [];
+        }
+
+        function showAlert(message) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;';
+            modal.innerHTML = `
+                <div style="background:white;padding:30px;border-radius:15px;max-width:400px;text-align:center;">
+                    <p style="margin-bottom:20px;font-size:16px;color:#333;">${message}</p>
+                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#667eea;color:white;padding:10px 30px;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                        Entendido
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // AVIA Functions
+        let currentAviaMessage = null;
+
+        window.Poe.registerHandler('avia-response', (result) => {
+            const msg = result.responses[0];
+            const loading = document.getElementById('aviaLoading');
+
+            if (msg.status === 'incomplete') {
+                updateAviaMessage(msg.content);
+            } else if (msg.status === 'complete') {
+                loading.classList.remove('active');
+                updateAviaMessage(msg.content, true);
+                document.getElementById('aviaSendBtn').disabled = false;
+            } else if (msg.status === 'error') {
+                loading.classList.remove('active');
+                addAviaMessage('system', 'Error: ' + (msg.statusText || 'Error desconocido'));
+                document.getElementById('aviaSendBtn').disabled = false;
+            }
+        });
+
+        function toggleAviaModal() {
+            const modal = document.getElementById('aviaModal');
+            modal.classList.toggle('active');
+        }
+
+        function addAviaMessage(type, content) {
+            const chat = document.getElementById('aviaChat');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `avia-message ${type}`;
+
+            const label = type === 'user' ? 'Tú' :
+                         type === 'assistant' ? 'AVIA Tillo' :
+                         'Sistema';
+
+            messageDiv.innerHTML = `
+                <div class="avia-message-label">${label}</div>
+                <div>${content}</div>
+            `;
+
+            chat.appendChild(messageDiv);
+            chat.scrollTop = chat.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateAviaMessage(content, isFinal = false) {
+            if (!currentAviaMessage) {
+                currentAviaMessage = addAviaMessage('assistant', content);
+            } else {
+                currentAviaMessage.lastChild.textContent = content;
+            }
+
+            if (isFinal) {
+                currentAviaMessage = null;
+            }
+        }
+
+        async function sendAviaMessage() {
+            const input = document.getElementById('aviaInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            addAviaMessage('user', message);
+            input.value = '';
+
+            document.getElementById('aviaLoading').classList.add('active');
+            document.getElementById('aviaSendBtn').disabled = true;
+
+            try {
+                await window.Poe.sendUserMessage(
+                    `@Claude-Opus-4.5 Actúa como AVIA Tillo, un experto asistente de código que ayuda a desarrolladores. Responde de forma clara, técnica y directa.
+
+${message}`,
+                    {
+                        handler: 'avia-response',
+                        stream: true,
+                        openChat: false
+                    }
+                );
+            } catch (error) {
+                document.getElementById('aviaLoading').classList.remove('active');
+                addAviaMessage('system', 'Error al enviar mensaje: ' + error.message);
+                document.getElementById('aviaSendBtn').disabled = false;
+            }
+        }
+
+        function sendAviaQuick(action) {
+            const input = document.getElementById('aviaInput');
+
+            const messages = {
+                'fix-eraser': `PROBLEMA URGENTE: El borrador (eraser tool) NO funciona en mi aplicación AI Object Eraser.
+
+SITUACIÓN:
+✅ El PINCEL funciona perfectamente:
+   - Pinta blanco (rgba(255,255,255,1))
+   - Muestra overlay rojo visible
+   - Se actualiza en tiempo real
+
+❌ El BORRADOR no hace NADA:
+   - Debería pintar negro (rgba(0,0,0,1))
+   - Debería eliminar el overlay rojo
+   - NO se ve ningún efecto visual cuando lo uso
+
+CÓDIGO ACTUAL:
+Ambas herramientas usan:
+- globalCompositeOperation: 'source-over'
+- drawPoint() y drawLine() con fillStyle diferente
+- redraw() muestra overlay rojo si maskData.data[i] > 128
+
+NECESITO: Una solución que haga que el borrador elimine visualmente el overlay rojo cuando pinto sobre él. Dame el código exacto que debo usar en drawPoint() y drawLine() para el borrador.`,
+
+                'explain': 'Explica detalladamente cómo funciona el sistema de máscara en mi código, especialmente por qué el pincel funciona pero el borrador no.'
+            };
+
+            input.value = messages[action] || '';
+            sendAviaMessage();
+        }
+
+        function clearAviaChat() {
+            const chat = document.getElementById('aviaChat');
+            chat.innerHTML = `
+                <div class="avia-message system">
+                    <div class="avia-message-label">Sistema</div>
+                    <div>Chat limpiado. Puedes empezar una nueva conversación.</div>
+                </div>
+            `;
+        }
+
+        // Debug function to see the actual mask
+        let debugMode = false;
+        function toggleDebugMask() {
+            debugMode = !debugMode;
+            if (debugMode) {
+                // Show the raw mask (black and white)
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(maskCanvas, 0, 0);
+                showAlert('Modo Debug: Mostrando máscara real (blanco = marca, negro = sin marca). Presiona Debug de nuevo para volver al modo normal.');
+            } else {
+                // Return to normal view
+                redraw();
+            }
+        }
+
+        // Test function to download mask and verify it
+        async function testMask() {
+            // Count white pixels
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            let whitePixels = 0;
+            let totalPixels = maskCanvas.width * maskCanvas.height;
+
+            for (let i = 0; i < maskData.data.length; i += 4) {
+                if (maskData.data[i] > 128) whitePixels++;
+            }
+
+            const percentage = ((whitePixels / totalPixels) * 100).toFixed(2);
+
+            console.log('🧪 TEST DE MÁSCARA:');
+            console.log(`   Tamaño: ${maskCanvas.width}x${maskCanvas.height}`);
+            console.log(`   Píxeles blancos: ${whitePixels} (${percentage}%)`);
+            console.log(`   Píxeles negros: ${totalPixels - whitePixels}`);
+
+            if (whitePixels === 0) {
+                showAlert('⚠️ PROBLEMA DETECTADO:\n\nLa máscara está completamente VACÍA (sin píxeles blancos).\n\nEsto significa que tus marcas no se están guardando en la máscara.\n\nPor favor, informa de este error.');
+                return;
+            }
+
+            // Download both images for inspection
+            const originalBlob = await new Promise(r => originalCanvas.toBlob(r, 'image/png'));
+            const maskBlob = await new Promise(r => maskCanvas.toBlob(r, 'image/png'));
+
+            // Download original
+            const aOriginal = document.createElement('a');
+            aOriginal.href = URL.createObjectURL(originalBlob);
+            aOriginal.download = 'test-original.png';
+            aOriginal.click();
+
+            // Download mask
+            setTimeout(() => {
+                const aMask = document.createElement('a');
+                aMask.href = URL.createObjectURL(maskBlob);
+                aMask.download = 'test-mask.png';
+                aMask.click();
+
+                showAlert(`✅ Test completado:\n\n` +
+                         `📊 Estadísticas:\n` +
+                         `• Tamaño: ${maskCanvas.width}x${maskCanvas.height}\n` +
+                         `• Píxeles marcados: ${whitePixels} (${percentage}%)\n` +
+                         `• Estado: ${whitePixels > 0 ? 'OK ✅' : 'VACÍA ❌'}\n\n` +
+                         `📥 Descargados:\n` +
+                         `• test-original.png\n` +
+                         `• test-mask.png\n\n` +
+                         `Abre test-mask.png y verifica que hay marcas blancas sobre fondo negro.`);
+            }, 500);
+        }
+    </script>
+</body>
+</html>
+

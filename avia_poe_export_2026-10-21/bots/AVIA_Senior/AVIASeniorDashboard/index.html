@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior Dashboard</title>
+    
+    <!-- Socket.IO CDN - CARGA PRIORITARIA -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .status-item {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-connecting {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .log-container {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-success { color: #86efac; }
+        .log-error { color: #fca5a5; }
+        .log-info { color: #7dd3fc; }
+        .log-warning { color: #fde047; }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #64748b;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #475569;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            color: #1e293b;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 AVIA Senior Dashboard</h1>
+            <p style="color: #64748b; font-size: 1.1em;">ORQUESTADOR - Sistema de Coordinación y Monitoreo</p>
+            <div class="status-bar">
+                <div id="connectionStatus" class="status-item status-connecting">
+                    ⏳ Inicializando...
+                </div>
+                <div class="status-item" style="background: #e0e7ff; color: #3730a3;">
+                    🕐 <span id="currentTime">--:--:--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2>📊 Métricas del Sistema</h2>
+                <div id="metrics">
+                    <div class="metric">
+                        <span class="metric-label">Estado WebSocket:</span>
+                        <span class="metric-value" id="wsState">Desconectado</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Mensajes Recibidos:</span>
+                        <span class="metric-value" id="msgCount">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Tiempo Activo:</span>
+                        <span class="metric-value" id="uptime">0s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Último Ping:</span>
+                        <span class="metric-value" id="lastPing">N/A</span>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn-primary" onclick="reconnectWebSocket()">🔄 Reconectar</button>
+                    <button class="btn-secondary" onclick="clearLogs()">🗑️ Limpiar Logs</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📝 Registro de Eventos</h2>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry log-info">Sistema iniciando...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>⚙️ Configuración</h2>
+                <div class="metric">
+                    <span class="metric-label">Servidor:</span>
+                    <span class="metric-value" id="serverUrl">Modo Demo</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Modo:</span>
+                    <span class="metric-value">Simulación Local</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Versión:</span>
+                    <span class="metric-value">1.0.0</span>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn-primary" onclick="sendTestMessage()">📤 Enviar Test</button>
+                    <button class="btn-danger" onclick="disconnectWebSocket()">⛔ Desconectar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let socket = null;
+        let messageCount = 0;
+        let startTime = Date.now();
+        let uptimeInterval = null;
+
+        // Función de logging
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString('es-ES');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Actualizar estado de conexión
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            const wsStateEl = document.getElementById('wsState');
+            
+            statusEl.className = 'status-item';
+            
+            switch(status) {
+                case 'connecting':
+                    statusEl.classList.add('status-connecting');
+                    statusEl.textContent = '⏳ ' + message;
+                    wsStateEl.textContent = 'Conectando...';
+                    break;
+                case 'connected':
+                    statusEl.classList.add('status-connected');
+                    statusEl.textContent = '✅ ' + message;
+                    wsStateEl.textContent = 'Conectado';
+                    break;
+                case 'error':
+                    statusEl.classList.add('status-error');
+                    statusEl.textContent = '❌ ' + message;
+                    wsStateEl.textContent = 'Error';
+                    break;
+                case 'disconnected':
+                    statusEl.classList.add('status-error');
+                    statusEl.textContent = '⚠️ ' + message;
+                    wsStateEl.textContent = 'Desconectado';
+                    break;
+            }
+        }
+
+        // Conectar WebSocket
+        function connectWebSocket() {
+            // Verificar disponibilidad de Socket.IO
+            if (typeof io === 'undefined') {
+                addLog('❌ Socket.IO no está disponible. Iniciando modo demo...', 'error');
+                updateConnectionStatus('error', 'Modo Demo (Sin WebSocket)');
+                startDemoMode();
+                return null;
+            }
+
+            try {
+                addLog('🔌 Intentando conectar WebSocket...', 'info');
+                updateConnectionStatus('connecting', 'Conectando...');
+
+                // Configuración del socket (ajusta la URL a tu servidor)
+                socket = io('wss://tu-servidor.com', {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    timeout: 10000
+                });
+
+                // Eventos del socket
+                socket.on('connect', () => {
+                    addLog('✅ WebSocket conectado exitosamente', 'success');
+                    updateConnectionStatus('connected', 'Conectado');
+                    startUptime();
+                });
+
+                socket.on('disconnect', (reason) => {
+                    addLog(`⚠️ WebSocket desconectado: ${reason}`, 'warning');
+                    updateConnectionStatus('disconnected', 'Desconectado');
+                });
+
+                socket.on('connect_error', (error) => {
+                    addLog(`❌ Error de conexión: ${error.message}`, 'error');
+                    updateConnectionStatus('error', 'Error de Conexión');
+                    
+                    // Fallback a modo demo
+                    addLog('🔄 Cambiando a modo demo...', 'info');
+                    startDemoMode();
+                });
+
+                socket.on('message', (data) => {
+                    messageCount++;
+                    document.getElementById('msgCount').textContent = messageCount;
+                    addLog(`📨 Mensaje recibido: ${JSON.stringify(data)}`, 'info');
+                });
+
+                socket.on('pong', () => {
+                    const now = new Date().toLocaleTimeString('es-ES');
+                    document.getElementById('lastPing').textContent = now;
+                });
+
+                return socket;
+
+            } catch (error) {
+                addLog(`❌ Error al inicializar WebSocket: ${error.message}`, 'error');
+                updateConnectionStatus('error', 'Error Fatal');
+                startDemoMode();
+                return null;
+            }
+        }
+
+        // Modo demo (sin servidor real)
+        function startDemoMode() {
+            addLog('🎭 Modo Demo activado - Simulando eventos...', 'info');
+            updateConnectionStatus('connected', 'Modo Demo Activo');
+            document.getElementById('serverUrl').textContent = 'Local (Demo)';
+            startUptime();
+            
+            // Simular eventos periódicos
+            setInterval(() => {
+                messageCount++;
+                document.getElementById('msgCount').textContent = messageCount;
+                addLog(`📨 Evento simulado #${messageCount}`, 'info');
+            }, 10000);
+        }
+
+        // Iniciar contador de tiempo activo
+        function startUptime() {
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            
+            startTime = Date.now();
+            uptimeInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const hours = Math.floor(elapsed / 3600);
+                const minutes = Math.floor((elapsed % 3600) / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('uptime').textContent = 
+                    `${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
+        // Reconectar
+        function reconnectWebSocket() {
+            addLog('🔄 Reconectando...', 'info');
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            setTimeout(connectWebSocket, 500);
+        }
+
+        // Desconectar
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.disconnect();
+                addLog('⛔ Desconectado manualmente', 'warning');
+                updateConnectionStatus('disconnected', 'Desconectado');
+            }
+        }
+
+        // Enviar mensaje de prueba
+        function sendTestMessage() {
+            if (socket && socket.connected) {
+                const testMsg = { type: 'test', timestamp: Date.now() };
+                socket.emit('message', testMsg);
+                addLog('📤 Mensaje de prueba enviado', 'success');
+            } else {
+                addLog('⚠️ No hay conexión activa para enviar mensajes', 'warning');
+            }
+        }
+
+        // Limpiar logs
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = 
+                '<div class="log-entry log-info">Logs limpiados...</div>';
+        }
+
+        // Reloj en tiempo real
+        function updateClock() {
+            document.getElementById('currentTime').textContent = 
+                new Date().toLocaleTimeString('es-ES');
+        }
+        setInterval(updateClock, 1000);
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🚀 Inicializando AVIA Senior Dashboard', 'success');
+            addLog('📋 Verificando dependencias...', 'info');
+            
+            if (typeof io !== 'undefined') {
+                addLog('✅ Socket.IO cargado correctamente', 'success');
+            } else {
+                addLog('⚠️ Socket.IO no disponible, usando modo demo', 'warning');
+            }
+            
+            updateClock();
+            
+            // Conectar después de 1 segundo
+            setTimeout(() => {
+                connectWebSocket();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

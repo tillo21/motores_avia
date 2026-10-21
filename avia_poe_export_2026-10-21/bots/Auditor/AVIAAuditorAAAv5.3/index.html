@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AVIA Auditor AAA v5.2 - Auditoría de accesibilidad WCAG 2.2 con RAG conversacional y AVIA-Clon-Carlos">
+    <meta name="author" content="AVIA Studio">
+    
+    <!-- AVIA-Pukkart ID -->
+    <meta name="avia-pukkart-id" content="AVIA-AA-2025-001-v5.2-FIXED-d9e8f3b1">
+    <meta name="avia-version" content="5.2.1">
+    <meta name="avia-certifications" content="AVIA-SIMPLIT, AVIA-AAA, CertiAVIA">
+    
+    <title>AVIA Auditor AAA v5.2 - RAG Conversacional con AVIA-Clon-Carlos</title>
+    
+    <!-- Preload crítico -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://huggingface.co">
+    
+    <!-- Axe-core -->
+    <script src="https://cdn.jsdelivr.net/npm/axe-core@4.8.3/axe.min.js"></script>
+    
+    <!-- jsPDF para exportación -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Transformers.js para RAG -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.0';
+        window.transformersPipeline = pipeline;
+    </script>
+    
+    <style>
+        /* =================================
+           DESIGN SYSTEM AVIA v5.2
+           Nivel: Átomos → Organismos
+           Certificación: AVIA-AAA
+           ================================= */
+        
+        :root {
+            /* Colores primarios AVIA - Contraste AAA */
+            --avia-primary: #2D5AA0;
+            --avia-primary-dark: #1A3A70;
+            --avia-primary-light: #4A7BC8;
+            
+            --avia-secondary: #00A8A8;
+            --avia-accent: #FF6B35;
+            --avia-success: #28A745;
+            --avia-warning: #FFC107;
+            --avia-error: #DC3545;
+            --avia-info: #17A2B8;
+            
+            /* Grises con contraste 7:1 */
+            --avia-bg: #FFFFFF;
+            --avia-bg-alt: #F8F9FA;
+            --avia-surface: #FFFFFF;
+            --avia-border: #DEE2E6;
+            
+            --avia-text: #212529;
+            --avia-text-muted: #6C757D;
+            --avia-text-on-primary: #FFFFFF;
+            
+            /* Tipografía */
+            --avia-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --avia-font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+            
+            /* Espaciado Design Atomic */
+            --avia-space-xs: 0.25rem;
+            --avia-space-sm: 0.5rem;
+            --avia-space-md: 1rem;
+            --avia-space-lg: 1.5rem;
+            --avia-space-xl: 2rem;
+            --avia-space-2xl: 3rem;
+            
+            /* Bordes y sombras */
+            --avia-radius: 0.5rem;
+            --avia-radius-lg: 1rem;
+            --avia-shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --avia-shadow-md: 0 4px 8px rgba(0,0,0,0.15);
+            --avia-shadow-lg: 0 8px 16px rgba(0,0,0,0.2);
+            
+            /* Animaciones */
+            --avia-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Modo oscuro automático */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --avia-bg: #1A1D23;
+                --avia-bg-alt: #24272F;
+                --avia-surface: #2C3038;
+                --avia-border: #3A3F4B;
+                --avia-text: #E9ECEF;
+                --avia-text-muted: #ADB5BD;
+            }
+        }
+        
+        /* Contraste alto */
+        @media (prefers-contrast: more) {
+            :root {
+                --avia-primary: #1A3A70;
+                --avia-text: #000000;
+                --avia-border: #000000;
+            }
+        }
+        
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* === ÁTOMOS === */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--avia-font-family);
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--avia-text);
+            background: var(--avia-bg);
+            min-height: 100vh;
+        }
+        
+        /* Skip link accesible */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--avia-primary);
+            color: var(--avia-text-on-primary);
+            padding: var(--avia-space-sm) var(--avia-space-md);
+            text-decoration: none;
+            z-index: 10000;
+            border-radius: 0 0 var(--avia-radius) 0;
+            font-weight: 600;
+        }
+        
+        .skip-link:focus {
+            top: 0;
+            outline: 3px solid var(--avia-accent);
+            outline-offset: 2px;
+        }
+        
+        /* === MOLÉCULAS === */
+        
+        /* Header principal */
+        header {
+            background: linear-gradient(135deg, var(--avia-primary) 0%, var(--avia-primary-dark) 100%);
+            color: var(--avia-text-on-primary);
+            padding: var(--avia-space-lg) var(--avia-space-xl);
+            box-shadow: var(--avia-shadow-md);
+        }
+        
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--avia-space-md);
+        }
+        
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: var(--avia-space-md);
+        }
+        
+        .header-title h1 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        
+        .avia-badge {
+            background: rgba(255,255,255,0.2);
+            padding: var(--avia-space-xs) var(--avia-space-sm);
+            border-radius: var(--avia-radius);
+            font-size: 0.875rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: var(--avia-space-sm);
+            flex-wrap: wrap;
+        }
+        
+        /* Botones */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--avia-space-xs);
+            padding: var(--avia-space-sm) var(--avia-space-md);
+            border: none;
+            border-radius: var(--avia-radius);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--avia-transition);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        
+        .btn:focus {
+            outline: 3px solid var(--avia-accent);
+            outline-offset: 2px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--avia-shadow-md);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: var(--avia-text-on-primary);
+            color: var(--avia-primary);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: var(--avia-text-on-primary);
+            border: 2px solid rgba(255,255,255,0.4);
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-icon {
+            padding: var(--avia-space-sm);
+            aspect-ratio: 1;
+            border-radius: 50%;
+        }
+        
+        /* === CÉLULAS === */
+        
+        /* Contenedor principal */
+        main {
+            max-width: 1200px;
+            margin: var(--avia-space-2xl) auto;
+            padding: 0 var(--avia-space-md);
+        }
+        
+        /* Formulario de auditoría */
+        .audit-form {
+            background: var(--avia-surface);
+            padding: var(--avia-space-xl);
+            border-radius: var(--avia-radius-lg);
+            box-shadow: var(--avia-shadow-md);
+            margin-bottom: var(--avia-space-xl);
+        }
+        
+        .form-group {
+            margin-bottom: var(--avia-space-lg);
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: var(--avia-space-sm);
+            color: var(--avia-text);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: var(--avia-space-md);
+            border: 2px solid var(--avia-border);
+            border-radius: var(--avia-radius);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color var(--avia-transition);
+            background: var(--avia-bg);
+            color: var(--avia-text);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--avia-primary);
+            box-shadow: 0 0 0 3px rgba(45, 90, 160, 0.1);
+        }
+        
+        /* Dashboard de resultados */
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .results-section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--avia-space-lg);
+            margin-bottom: var(--avia-space-xl);
+        }
+        
+        .metric-card {
+            background: var(--avia-surface);
+            padding: var(--avia-space-lg);
+            border-radius: var(--avia-radius-lg);
+            box-shadow: var(--avia-shadow-md);
+            border-left: 4px solid var(--avia-primary);
+            transition: transform var(--avia-transition);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--avia-shadow-lg);
+        }
+        
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--avia-text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--avia-space-xs);
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--avia-primary);
+            line-height: 1;
+        }
+        
+        /* === MODAL CHAT DRAGGABLE === */
+        
+        .chat-launcher {
+            position: fixed;
+            bottom: var(--avia-space-xl);
+            right: var(--avia-space-xl);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--avia-shadow-lg);
+            transition: all var(--avia-transition);
+            z-index: 999;
+            border: none;
+        }
+        
+        .chat-launcher:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 24px rgba(45, 90, 160, 0.4);
+        }
+        
+        .chat-launcher:focus {
+            outline: 3px solid var(--avia-accent);
+            outline-offset: 4px;
+        }
+        
+        .chat-launcher span {
+            font-size: 1.75rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        /* Modal flotante draggable */
+        .chat-modal {
+            position: fixed;
+            bottom: 100px;
+            right: var(--avia-space-xl);
+            width: 420px;
+            max-width: calc(100vw - 2rem);
+            height: 600px;
+            max-height: calc(100vh - 120px);
+            background: var(--avia-surface);
+            border-radius: var(--avia-radius-lg);
+            box-shadow: var(--avia-shadow-lg);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+            transition: all var(--avia-transition);
+        }
+        
+        .chat-modal.active {
+            display: flex;
+        }
+        
+        .chat-modal.minimized {
+            height: 60px;
+            width: 280px;
+        }
+        
+        .chat-modal.maximized {
+            width: 90vw;
+            height: 90vh;
+            bottom: 5vh;
+            right: 5vw;
+        }
+        
+        /* Mobile: fullscreen desde bottom */
+        @media (max-width: 768px) {
+            .chat-modal {
+                width: 100vw;
+                height: 100vh;
+                bottom: 0;
+                right: 0;
+                border-radius: 0;
+                max-width: none;
+                max-height: none;
+            }
+            
+            .chat-modal.minimized {
+                height: 60px;
+                width: 100vw;
+                border-radius: var(--avia-radius-lg) var(--avia-radius-lg) 0 0;
+            }
+            
+            .chat-launcher {
+                bottom: var(--avia-space-md);
+                right: var(--avia-space-md);
+            }
+        }
+        
+        /* Header draggable del chat */
+        .chat-header {
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-primary-dark));
+            color: var(--avia-text-on-primary);
+            padding: var(--avia-space-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .chat-header:active {
+            cursor: grabbing;
+        }
+        
+        .chat-title-area {
+            display: flex;
+            flex-direction: column;
+            gap: var(--avia-space-xs);
+        }
+        
+        .chat-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: var(--avia-space-xs);
+        }
+        
+        .chat-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+        
+        .chat-controls {
+            display: flex;
+            gap: var(--avia-space-xs);
+        }
+        
+        .chat-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: var(--avia-text-on-primary);
+            border-radius: var(--avia-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--avia-transition);
+            font-size: 1rem;
+        }
+        
+        .chat-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .chat-btn:focus {
+            outline: 2px solid var(--avia-accent);
+            outline-offset: 2px;
+        }
+        
+        /* Contenedor de mensajes */
+        .chat-messages {
+            flex: 1;
+            padding: var(--avia-space-md);
+            overflow-y: auto;
+            background: var(--avia-bg-alt);
+            display: flex;
+            flex-direction: column;
+            gap: var(--avia-space-md);
+        }
+        
+        .chat-modal.minimized .chat-messages {
+            display: none;
+        }
+        
+        /* Mensaje individual */
+        .chat-message {
+            display: flex;
+            gap: var(--avia-space-sm);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+        
+        .chat-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .chat-message.assistant .chat-avatar {
+            background: linear-gradient(135deg, var(--avia-primary), var(--avia-secondary));
+            color: var(--avia-text-on-primary);
+        }
+        
+        .chat-message.user .chat-avatar {
+            background: var(--avia-accent);
+            color: var(--avia-text-on-primary);
+        }
+        
+        .chat-bubble {
+            max-width: 75%;
+            padding: var(--avia-space-sm) var(--avia-space-md);
+            border-radius: var(--avia-radius-lg);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .chat-message.assistant .chat-bubble {
+            background: var(--avia-surface);
+            color: var(--avia-text);
+            border: 1px solid var(--avia-border);
+        }
+        
+        .chat-message.user .chat-bubble {
+            background: var(--avia-primary);
+            color: var(--avia-text-on-primary);
+        }
+        
+        /* Estado "pensando" */
+        .chat-thinking {
+            display: flex;
+            align-items: center;
+            gap: var(--avia-space-xs);
+            color: var(--avia-text-muted);
+            font-size: 0.875rem;
+            font-style: italic;
+        }
+        
+        .chat-thinking .dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+        
+        .chat-thinking .dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--avia-primary);
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        
+        .chat-thinking .dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .chat-thinking .dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes pulse {
+            0%, 80%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Input de chat */
+        .chat-input-area {
+            padding: var(--avia-space-md);
+            background: var(--avia-surface);
+            border-top: 1px solid var(--avia-border);
+            display: flex;
+            gap: var(--avia-space-sm);
+        }
+        
+        .chat-modal.minimized .chat-input-area {
+            display: none;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: var(--avia-space-sm) var(--avia-space-md);
+            border: 2px solid var(--avia-border);
+            border-radius: var(--avia-radius-lg);
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: none;
+            max-height: 120px;
+            background: var(--avia-bg);
+            color: var(--avia-text);
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--avia-primary);
+            box-shadow: 0 0 0 3px rgba(45, 90, 160, 0.1);
+        }
+        
+        .chat-send-btn {
+            padding: var(--avia-space-sm) var(--avia-space-md);
+            background: var(--avia-primary);
+            color: var(--avia-text-on-primary);
+            border: none;
+            border-radius: var(--avia-radius-lg);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all var(--avia-transition);
+            display: flex;
+            align-items: center;
+            gap: var(--avia-space-xs);
+        }
+        
+        .chat-send-btn:hover:not(:disabled) {
+            background: var(--avia-primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .chat-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* === ORGANISMOS === */
+        
+        /* Lista de violaciones */
+        .violations-list {
+            background: var(--avia-surface);
+            border-radius: var(--avia-radius-lg);
+            overflow: hidden;
+            box-shadow: var(--avia-shadow-md);
+        }
+        
+        .violation-item {
+            padding: var(--avia-space-lg);
+            border-bottom: 1px solid var(--avia-border);
+            transition: background var(--avia-transition);
+        }
+        
+        .violation-item:last-child {
+            border-bottom: none;
+        }
+        
+        .violation-item:hover {
+            background: var(--avia-bg-alt);
+        }
+        
+        .violation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: var(--avia-space-sm);
+            gap: var(--avia-space-md);
+        }
+        
+        .violation-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--avia-text);
+            flex: 1;
+        }
+        
+        .severity-badge {
+            padding: var(--avia-space-xs) var(--avia-space-sm);
+            border-radius: var(--avia-radius);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        
+        .severity-critical {
+            background: #DC3545;
+            color: #FFFFFF;
+        }
+        
+        .severity-serious {
+            background: #FD7E14;
+            color: #000000;
+        }
+        
+        .severity-moderate {
+            background: #FFC107;
+            color: #000000;
+        }
+        
+        .severity-minor {
+            background: #28A745;
+            color: #FFFFFF;
+        }
+        
+        /* Loading states */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--avia-space-2xl);
+            color: var(--avia-text-muted);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--avia-border);
+            border-top-color: var(--avia-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Utilidades de accesibilidad */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        /* Indicador de focus personalizado AAA */
+        *:focus-visible {
+            outline: 3px solid var(--avia-accent);
+            outline-offset: 2px;
+        }
+        
+        /* === RESPONSIVE === */
+        
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            main {
+                padding: 0 var(--avia-space-sm);
+                margin: var(--avia-space-lg) auto;
+            }
+            
+            .audit-form {
+                padding: var(--avia-space-lg);
+            }
+        }
+        
+        /* === PRINT === */
+        
+        @media print {
+            .chat-launcher,
+            .chat-modal,
+            .header-actions,
+            .audit-form {
+                display: none !important;
+            }
+            
+            body {
+                background: white;
+                color: black;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link para accesibilidad -->
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    
+    <!-- === HEADER === -->
+    <header role="banner">
+        <div class="header-container">
+            <div class="header-title">
+                <div>
+                    <h1>AVIA Auditor AAA</h1>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                        <span class="avia-badge">v5.2 RAG</span>
+                        <span class="avia-badge">WCAG 2.2</span>
+                        <span class="avia-badge">AVIA-Clon-Carlos</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <button class="btn btn-secondary" id="initRagBtn" aria-label="Inicializar motor RAG">
+                    🧠 Init RAG
+                </button>
+                <button class="btn btn-secondary" id="voiceBtn" aria-label="Activar comandos de voz">
+                    🎤 Voz
+                </button>
+                <button class="btn btn-primary" id="exportBtn" aria-label="Exportar resultados">
+                    📄 Exportar
+                </button>
+            </div>
+        </div>
+    </header>
+    
+    <!-- === MAIN CONTENT === -->
+    <main id="main-content" role="main">
+        <!-- Formulario de auditoría -->
+        <section class="audit-form" aria-labelledby="audit-form-title">
+            <h2 id="audit-form-title" style="margin-bottom: 1rem; color: var(--avia-primary);">
+                🔍 Nueva Auditoría de Accesibilidad
+            </h2>
+            
+            <form id="auditForm">
+                <div class="form-group">
+                    <label for="urlInput" class="form-label">
+                        URL del sitio web a auditar
+                    </label>
+                    <input 
+                        type="url" 
+                        id="urlInput" 
+                        class="form-input"
+                        placeholder="https://ejemplo.com"
+                        required
+                        aria-describedby="urlHelp"
+                    >
+                    <small id="urlHelp" style="color: var(--avia-text-muted); display: block; margin-top: 0.5rem;">
+                        Introduce la URL completa incluyendo https://
+                    </small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 1rem;">
+                    🚀 Auditar Ahora
+                </button>
+            </form>
+        </section>
+        
+        <!-- Sección de resultados (oculta inicialmente) -->
+        <section id="resultsSection" class="results-section" aria-labelledby="results-title" aria-live="polite">
+            <h2 id="results-title" style="margin-bottom: 1.5rem; color: var(--avia-primary);">
+                📊 Resultados de la Auditoría
+            </h2>
+            
+            <!-- Métricas principales -->
+            <div class="metrics-grid" role="region" aria-label="Métricas de accesibilidad">
+                <div class="metric-card">
+                    <div class="metric-label">Total Violaciones</div>
+                    <div class="metric-value" id="totalViolations">0</div>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #DC3545;">
+                    <div class="metric-label">Críticas</div>
+                    <div class="metric-value" id="criticalCount" style="color: #DC3545;">0</div>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #FD7E14;">
+                    <div class="metric-label">Serias</div>
+                    <div class="metric-value" id="seriousCount" style="color: #FD7E14;">0</div>
+                </div>
+                
+                <div class="metric-card" style="border-left-color: #FFC107;">
+                    <div class="metric-label">Moderadas</div>
+                    <div class="metric-value" id="moderateCount" style="color: #FFC107;">0</div>
+                </div>
+            </div>
+            
+            <!-- Lista de violaciones -->
+            <div id="violationsList" class="violations-list" role="list">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </section>
+        
+        <!-- Estado de carga -->
+        <div id="loadingState" class="loading" style="display: none;" role="status">
+            <div class="spinner" aria-hidden="true"></div>
+            <span style="margin-left: 1rem;">Analizando accesibilidad...</span>
+        </div>
+    </main>
+    
+    <!-- === CHAT LAUNCHER === -->
+    <button 
+        class="chat-launcher" 
+        id="chatLauncher"
+        aria-label="Abrir asistente AVIA-Clon-Carlos"
+        aria-expanded="false"
+        aria-controls="chatModal"
+    >
+        <span aria-hidden="true">💬</span>
+    </button>
+    
+    <!-- === CHAT MODAL DRAGGABLE === -->
+    <aside 
+        id="chatModal" 
+        class="chat-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chatModalTitle"
+        aria-describedby="chatModalDesc"
+    >
+        <!-- Header draggable -->
+        <div class="chat-header" id="chatDragHandle">
+            <div class="chat-title-area">
+                <div class="chat-title" id="chatModalTitle">
+                    <span aria-hidden="true">🌟</span>
+                    AVIA-Clon-Carlos
+                </div>
+                <div class="chat-subtitle" id="chatModalDesc">
+                    Asistente de accesibilidad con Inteligencia VIVA
+                </div>
+            </div>
+            
+            <div class="chat-controls">
+                <button 
+                    class="chat-btn" 
+                    id="chatMinimizeBtn"
+                    aria-label="Minimizar chat"
+                    title="Minimizar"
+                >
+                    <span aria-hidden="true">−</span>
+                </button>
+                <button 
+                    class="chat-btn" 
+                    id="chatMaximizeBtn"
+                    aria-label="Maximizar chat"
+                    title="Maximizar"
+                >
+                    <span aria-hidden="true">⛶</span>
+                </button>
+                <button 
+                    class="chat-btn" 
+                    id="chatCloseBtn"
+                    aria-label="Cerrar chat"
+                    title="Cerrar"
+                >
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mensajes -->
+        <div 
+            class="chat-messages" 
+            id="chatMessages"
+            role="log"
+            aria-live="polite"
+            aria-atomic="false"
+        >
+            <!-- Mensaje de bienvenida inicial -->
+            <div class="chat-message assistant">
+                <div class="chat-avatar" aria-hidden="true">
+                    <span>🌟</span>
+                </div>
+                <div class="chat-bubble">
+                    <strong>¡Hola! Soy Carlos, tu asistente de accesibilidad.</strong>
+                    <br><br>
+                    Puedo ayudarte con:
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Explicar criterios WCAG 2.2</li>
+                        <li>Solucionar violaciones</li>
+                        <li>Código HTML/CSS accesible</li>
+                        <li>Normativa española (RD 1112/2018)</li>
+                    </ul>
+                    💡 <em>Pregúntame lo que necesites. Estoy aquí para ayudarte.</em>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Área de input -->
+        <div class="chat-input-area">
+            <textarea 
+                id="chatInput"
+                class="chat-input"
+                placeholder="Escribe tu pregunta sobre accesibilidad..."
+                rows="2"
+                aria-label="Escribe tu mensaje"
+            ></textarea>
+            <button 
+                class="chat-send-btn" 
+                id="chatSendBtn"
+                aria-label="Enviar mensaje"
+            >
+                <span aria-hidden="true">📤</span>
+                Enviar
+            </button>
+        </div>
+    </aside>
+    
+    <!-- === JAVASCRIPT === -->
+    <script type="module">
+        /* =========================================
+           AVIA AUDITOR AAA v5.2 CORREGIDO
+           Con AVIA-Clon-Carlos y Modal Draggable
+           Certificaciones: AVIA-Pukkart, SIMPLIT,
+           AAA Accessibility Seal, CertiAVIA
+           ========================================= */
+        
+        // === CONSTANTES ===
+        const AVIA_VERSION = '5.2.1-FIXED';
+        const PUKKART_ID = 'AVIA-AA-2025-001-v5.2-FIXED-d9e8f3b1';
+        
+        // === CLASE PRINCIPAL AUDITOR ===
+        class AVIAuditorAAA {
+            constructor() {
+                this.ragInitialized = false;
+                this.extractor = null;
+                this.embeddings = [];
+                this.currentAuditResults = null;
+                this.userProfile = this.loadUserProfile();
+                this.conversationHistory = [];
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log(`🌟 AVIA Auditor AAA v${AVIA_VERSION} iniciando...`);
+                console.log(`📄 Pukkart ID: ${PUKKART_ID}`);
+                
+                this.setupEventListeners();
+                this.setupChatDraggable();
+                this.loadCachedEmbeddings();
+                
+                // Auto-inicializar RAG si ya hay caché
+                if (localStorage.getItem('avia_rag_embeddings')) {
+                    console.log('🧠 Caché RAG detectado, inicializando...');
+                    await this.initializeRAG();
+                }
+            }
+            
+            // === PERFIL DE USUARIO ===
+            loadUserProfile() {
+                const stored = localStorage.getItem('avia_user_profile');
+                if (stored) {
+                    return JSON.parse(stored);
+                }
+                
+                // Perfil nuevo
+                const profile = {
+                    first_visit: new Date().toISOString(),
+                    total_audits: 0,
+                    profile_type: 'unknown', // developer | auditor | student | manager
+                    preferred_response_length: 'detailed', // concise | detailed
+                    chat_position: { x: null, y: null },
+                    chat_minimized: false,
+                    theme: 'auto',
+                    conversation_history: []
+                };
+                
+                this.saveUserProfile(profile);
+                return profile;
+            }
+            
+            saveUserProfile(profile) {
+                localStorage.setItem('avia_user_profile', JSON.stringify(profile));
+            }
+            
+            inferProfileType(question) {
+                const lower = question.toLowerCase();
+                
+                if (lower.match(/código|css|html|javascript|react|vue|angular/)) {
+                    return 'developer';
+                }
+                if (lower.match(/normativa|ley|rd 1112|en 301|certificación|cumplimiento/)) {
+                    return 'auditor';
+                }
+                if (lower.match(/aprend|estudi|curso|universidad|entender/)) {
+                    return 'student';
+                }
+                if (lower.match(/presupuesto|tiempo|equipo|costo|beneficio|roi/)) {
+                    return 'manager';
+                }
+                
+                return this.userProfile.profile_type;
+            }
+            
+            // === CHAT DRAGGABLE ===
+            setupChatDraggable() {
+                const modal = document.getElementById('chatModal');
+                const handle = document.getElementById('chatDragHandle');
+                
+                let isDragging = false;
+                let currentX;
+                let currentY;
+                let initialX;
+                let initialY;
+                let xOffset = 0;
+                let yOffset = 0;
+                
+                // Restaurar posición guardada
+                if (this.userProfile.chat_position.x !== null) {
+                    modal.style.right = 'auto';
+                    modal.style.bottom = 'auto';
+                    modal.style.left = this.userProfile.chat_position.x + 'px';
+                    modal.style.top = this.userProfile.chat_position.y + 'px';
+                    xOffset = this.userProfile.chat_position.x;
+                    yOffset = this.userProfile.chat_position.y;
+                }
+                
+                handle.addEventListener('mousedown', dragStart);
+                handle.addEventListener('touchstart', dragStart);
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag);
+                
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+                
+                function dragStart(e) {
+                    if (modal.classList.contains('minimized') || modal.classList.contains('maximized')) {
+                        return;
+                    }
+                    
+                    if (e.type === "touchstart") {
+                        initialX = e.touches[0].clientX - xOffset;
+                        initialY = e.touches[0].clientY - yOffset;
+                    } else {
+                        initialX = e.clientX - xOffset;
+                        initialY = e.clientY - yOffset;
+                    }
+                    
+                    if (e.target === handle || handle.contains(e.target)) {
+                        isDragging = true;
+                        handle.style.cursor = 'grabbing';
+                    }
+                }
+                
+                function drag(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                        
+                        if (e.type === "touchmove") {
+                            currentX = e.touches[0].clientX - initialX;
+                            currentY = e.touches[0].clientY - initialY;
+                        } else {
+                            currentX = e.clientX - initialX;
+                            currentY = e.clientY - initialY;
+                        }
+                        
+                        xOffset = currentX;
+                        yOffset = currentY;
+                        
+                        setTranslate(currentX, currentY, modal);
+                    }
+                }
+                
+                function dragEnd(e) {
+                    if (isDragging) {
+                        initialX = currentX;
+                        initialY = currentY;
+                        isDragging = false;
+                        handle.style.cursor = 'move';
+                        
+                        // Guardar posición
+                        const auditor = window.aviAuditor;
+                        if (auditor) {
+                            auditor.userProfile.chat_position = {
+                                x: currentX,
+                                y: currentY
+                            };
+                            auditor.saveUserProfile(auditor.userProfile);
+                        }
+                    }
+                }
+                
+                function setTranslate(xPos, yPos, el) {
+                    el.style.right = 'auto';
+                    el.style.bottom = 'auto';
+                    el.style.left = xPos + 'px';
+                    el.style.top = yPos + 'px';
+                }
+            }
+            
+            // === EVENT LISTENERS ===
+            setupEventListeners() {
+                // Formulario de auditoría
+                document.getElementById('auditForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.runAudit();
+                });
+                
+                // Chat
+                document.getElementById('chatLauncher').addEventListener('click', () => this.toggleChat());
+                document.getElementById('chatCloseBtn').addEventListener('click', () => this.closeChat());
+                document.getElementById('chatMinimizeBtn').addEventListener('click', () => this.minimizeChat());
+                document.getElementById('chatMaximizeBtn').addEventListener('click', () => this.maximizeChat());
+                document.getElementById('chatSendBtn').addEventListener('click', () => this.sendMessage());
+                
+                document.getElementById('chatInput').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+                
+                // Botones header
+                document.getElementById('initRagBtn').addEventListener('click', () => this.initializeRAG());
+                document.getElementById('voiceBtn').addEventListener('click', () => this.startVoiceCommands());
+                document.getElementById('exportBtn').addEventListener('click', () => this.showExportOptions());
+                
+                // Escape key para cerrar chat
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        const modal = document.getElementById('chatModal');
+                        if (modal.classList.contains('active')) {
+                            this.closeChat();
+                        }
+                    }
+                });
+            }
+            
+            // === RAG SYSTEM ===
+            async initializeRAG() {
+                if (this.ragInitialized) {
+                    console.log('✅ RAG ya inicializado');
+                    return;
+                }
+                
+                const btn = document.getElementById('initRagBtn');
+                btn.disabled = true;
+                btn.textContent = '⏳ Cargando modelo...';
+                
+                try {
+                    // Cargar modelo de embeddings
+                    this.extractor = await window.transformersPipeline(
+                        'feature-extraction',
+                        'Xenova/all-MiniLM-L6-v2'
+                    );
+                    
+                    btn.textContent = '📚 Vectorizando WCAG...';
+                    
+                    // Preparar y vectorizar documentos
+                    const documents = this.prepareWCAGDocuments();
+                    
+                    for (let i = 0; i < documents.length; i++) {
+                        const doc = documents[i];
+                        const output = await this.extractor(doc.content, {
+                            pooling: 'mean',
+                            normalize: true
+                        });
+                        
+                        this.embeddings.push({
+                            id: doc.id,
+                            title: doc.title,
+                            embedding: Array.from(output.data)
+                        });
+                        
+                        console.log(`📄 Vectorizado: ${doc.title} (${i+1}/${documents.length})`);
+                    }
+                    
+                    // Guardar en caché
+                    localStorage.setItem('avia_rag_embeddings', JSON.stringify(this.embeddings));
+                    localStorage.setItem('avia_rag_version', AVIA_VERSION);
+                    
+                    this.ragInitialized = true;
+                    btn.textContent = '✅ RAG Listo';
+                    btn.style.background = 'rgba(40, 167, 69, 0.2)';
+                    
+                    console.log('🎉 RAG inicializado con', this.embeddings.length, 'documentos');
+                    
+                    this.addSystemMessage('🧠 <strong>Motor RAG inicializado exitosamente</strong><br>Ya puedo responder con contexto completo de WCAG 2.2. ¡Pregúntame lo que necesites!');
+                    
+                } catch (error) {
+                    console.error('❌ Error inicializando RAG:', error);
+                    btn.textContent = '❌ Error RAG';
+                    btn.disabled = false;
+                    this.addSystemMessage('⚠️ <strong>Error al inicializar RAG</strong><br>Por favor, recarga la página e intenta nuevamente.');
+                }
+            }
+            
+            loadCachedEmbeddings() {
+                const cached = localStorage.getItem('avia_rag_embeddings');
+                const version = localStorage.getItem('avia_rag_version');
+                
+                if (cached && version === AVIA_VERSION) {
+                    this.embeddings = JSON.parse(cached);
+                    console.log('💾 Caché RAG cargado:', this.embeddings.length, 'documentos');
+                }
+            }
+            
+            prepareWCAGDocuments() {
+                // Base de conocimiento WCAG con personalidad Carlos
+                const criterios = [
+                    {
+                        id: '1.4.3',
+                        title: 'Contraste Mínimo (Nivel AA)',
+                        description: `El contraste entre texto y fondo debe ser suficiente para que personas con baja visión puedan leer sin herramientas de ayuda. La ratio mínima es 4.5:1 para texto normal y 3:1 para texto grande (18pt+ o 14pt+ en negrita).`,
+                        impact: `Personas con baja visión, daltonismo, usuarios en pantallas con reflejos y adultos mayores se benefician enormemente. Es uno de los criterios más impactantes de WCAG.`,
+                        solution: `/* ✅ CORRECTO: Contraste 7:1 (AAA) */
+.texto-accesible {
+  color: #000000; /* Negro */
+  background: #FFFFFF; /* Blanco */
+}
+
+/* ❌ INCORRECTO: Contraste 2.3:1 */
+.texto-inaccesible {
+  color: #999999; /* Gris claro */
+  background: #FFFFFF;
+}
+
+/* 🎯 HERRAMIENTAS */
+- WebAIM Contrast Checker
+- Chrome DevTools: Lighthouse
+- axe DevTools
+`,
+                        example: `Imagina que tienes 50 años y lees tu móvil bajo el sol. Si el texto es gris claro sobre blanco, será prácticamente invisible. Un contraste alto hace la diferencia entre usabilidad y frustración.`
+                    },
+                    {
+                        id: '2.1.1',
+                        title: 'Teclado (Nivel A)',
+                        description: `Toda funcionalidad debe ser operable mediante teclado sin requerir tiempos específicos para pulsaciones individuales. Personas con discapacidad motora, ciegas o con RSI dependen del teclado.`,
+                        impact: `Millones de personas no pueden usar ratón: usuarios de lectores de pantalla, personas con Parkinson, RSI, parálisis parcial o simplemente power users que prefieren teclado.`,
+                        solution: `<!-- ✅ CORRECTO: Botón nativo -->
+<button onclick="guardar()">Guardar</button>
+
+<!-- ❌ INCORRECTO: Div no focusable -->
+<div onclick="guardar()">Guardar</div>
+
+<!-- ✅ CORRECTO: Div con accesibilidad -->
+<div role="button" tabindex="0" onclick="guardar()" onkeydown="if(event.key==='Enter')guardar()">
+  Guardar
+</div>
+
+/* 🎯 TESTING */
+- Desconecta el ratón
+- Navega solo con Tab, Enter, Espacio, Flechas
+- ¿Llegas a todo? ¿Hay focus visible?
+`,
+                        example: `Piensa en un programador con RSI que no puede usar ratón 8 horas/día. Si tu web no funciona con teclado, literalmente no puede trabajar.`
+                    },
+                    {
+                        id: '1.1.1',
+                        title: 'Contenido No Textual (Nivel A)',
+                        description: `Todo contenido no textual (imágenes, iconos, gráficos) debe tener una alternativa textual que sirva el mismo propósito. Esto permite que lectores de pantalla describan las imágenes.`,
+                        impact: `Personas ciegas, con baja visión o que usan navegadores en modo texto dependen completamente de las alt texts. También mejora SEO y muestra texto si falla la carga de imagen.`,
+                        solution: `<!-- ✅ CORRECTO: Alt descriptivo -->
+<img src="grafico-ventas.png" alt="Gráfico de barras mostrando ventas 2024: Q1 25%, Q2 30%, Q3 20%, Q4 25%">
+
+<!-- ✅ CORRECTO: Icono decorativo -->
+<img src="icono-check.svg" alt="" role="presentation">
+
+<!-- ❌ INCORRECTO: Sin alt -->
+<img src="importante.png">
+
+<!-- ❌ INCORRECTO: Alt genérico -->
+<img src="foto1.jpg" alt="imagen">
+
+/* 🎯 REGLAS */
+1. Imágenes informativas: Alt describe el contenido
+2. Imágenes funcionales (enlaces): Alt describe el destino
+3. Imágenes decorativas: alt="" (vacío)
+4. Imágenes complejas: Alt breve + longdesc
+`,
+                        example: `Un usuario ciego navega tu tienda online. Si las fotos de productos no tienen alt, escuchará "imagen" 50 veces sin saber qué se vende. Con alt descriptivo, puede comprar igual que cualquiera.`
+                    },
+                    {
+                        id: '4.1.2',
+                        title: 'Nombre, Función, Valor (Nivel A)',
+                        description: `Para todos los componentes de interfaz, el nombre y la función deben ser determinables programáticamente. Esto significa que tecnologías de asistencia pueden identificar qué es cada elemento.`,
+                        impact: `Lectores de pantalla necesitan saber "esto es un botón llamado 'Enviar' que está deshabilitado". Sin esta información, los usuarios quedan perdidos.`,
+                        solution: `<!-- ✅ CORRECTO: Botón con nombre accesible -->
+<button aria-label="Cerrar modal de configuración">
+  <span aria-hidden="true">×</span>
+</button>
+
+<!-- ✅ CORRECTO: Input con label asociado -->
+<label for="email">Correo electrónico</label>
+<input type="email" id="email" required>
+
+<!-- ❌ INCORRECTO: Input sin label -->
+<input type="text" placeholder="Nombre">
+
+<!-- ✅ CORRECTO: Checkbox con estado -->
+<input 
+  type="checkbox" 
+  id="terms" 
+  aria-checked="false"
+  aria-describedby="terms-desc"
+>
+<label for="terms">Acepto términos</label>
+<p id="terms-desc">Al marcar aceptas las condiciones de uso</p>
+
+/* 🎯 TESTING */
+- Usa NVDA / JAWS / VoiceOver
+- ¿Anuncia el nombre del control?
+- ¿Anuncia su función (botón, checkbox)?
+- ¿Anuncia su estado (marcado, expandido)?
+`,
+                        example: `Un lector de pantalla que dice "botón" sin nombre es como un letrero en blanco. El usuario sabe que puede hacer clic pero no para qué.`
+                    }
+                ];
+                
+                const documents = [];
+                
+                // Generar documentos especializados por criterio
+                criterios.forEach(criterio => {
+                    documents.push(
+                        {
+                            id: `${criterio.id}_desc`,
+                            title: `${criterio.id} - ${criterio.title}`,
+                            content: `${criterio.title}\n\n${criterio.description}`
+                        },
+                        {
+                            id: `${criterio.id}_impact`,
+                            title: `${criterio.id} - Impacto`,
+                            content: `Impacto de ${criterio.title}\n\n${criterio.impact}`
+                        },
+                        {
+                            id: `${criterio.id}_solution`,
+                            title: `${criterio.id} - Solución`,
+                            content: `Solución para ${criterio.title}\n\n${criterio.solution}`
+                        },
+                        {
+                            id: `${criterio.id}_example`,
+                            title: `${criterio.id} - Ejemplo Real`,
+                            content: `Ejemplo de ${criterio.title}\n\n${criterio.example}`
+                        }
+                    );
+                });
+                
+                // Documentos generales
+                documents.push(
+                    {
+                        id: 'wcag_overview',
+                        title: 'Introducción a WCAG 2.2',
+                        content: `WCAG (Web Content Accessibility Guidelines) 2.2 son las pautas internacionales de accesibilidad web creadas por el W3C. Se estructuran en 4 principios: Perceptible, Operable, Comprensible y Robusto. Cada principio tiene pautas, y cada pauta tiene criterios de éxito en 3 niveles: A (mínimo), AA (recomendado), AAA (excelencia). En España, el RD 1112/2018 obliga a nivel AA para webs del sector público.`
+                    },
+                    {
+                        id: 'aria_overview',
+                        title: 'Introducción a ARIA',
+                        content: `ARIA (Accessible Rich Internet Applications) es un conjunto de atributos HTML que mejoran la accesibilidad de contenido dinámico. Los atributos clave son: role (define el tipo de elemento), aria-label (nombre accesible), aria-describedby (descripción extendida), aria-hidden (ocultar de lectores), aria-live (anunciar cambios). Regla de oro: usa HTML semántico primero, ARIA solo cuando sea necesario.`
+                    },
+                    {
+                        id: 'keyboard_nav',
+                        title: 'Navegación por Teclado',
+                        content: `Las teclas estándar son: Tab (avanzar focus), Shift+Tab (retroceder), Enter (activar), Espacio (activar checkboxes), Flechas (navegación en listas/tabs), Escape (cerrar modales). Todos los elementos interactivos deben tener focus visible con outline de al menos 2px y contraste 3:1. Skip links permiten saltar navegación repetitiva.`
+                    }
+                );
+                
+                return documents;
+            }
+            
+            async semanticSearch(query, topK = 3) {
+                if (!this.ragInitialized || !this.extractor) {
+                    return [];
+                }
+                
+                // Vectorizar query
+                const queryEmbedding = await this.extractor(query, {
+                    pooling: 'mean',
+                    normalize: true
+                });
+                const queryVec = Array.from(queryEmbedding.data);
+                
+                // Calcular similitud con todos los documentos
+                const similarities = this.embeddings.map(doc => ({
+                    ...doc,
+                    similarity: this.cosineSimilarity(queryVec, doc.embedding)
+                }));
+                
+                // Ordenar por similitud y tomar top K
+                similarities.sort((a, b) => b.similarity - a.similarity);
+                
+                // Threshold mínimo de similitud
+                const threshold = 0.3;
+                return similarities.filter(doc => doc.similarity >= threshold).slice(0, topK);
+            }
+            
+            cosineSimilarity(vecA, vecB) {
+                const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+                const normA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+                const normB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+                return dotProduct / (normA * normB);
+            }
+            
+            // === CHAT CON AVIA-CLON-CARLOS ===
+            async sendMessage() {
+                const input = document.getElementById('chatInput');
+                const message = input.value.trim();
+                
+                if (!message) return;
+                
+                // Añadir mensaje del usuario
+                this.addMessage(message, 'user');
+                input.value = '';
+                
+                // Guardar en historial
+                this.conversationHistory.push({
+                    role: 'user',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Inferir tipo de perfil
+                const inferredType = this.inferProfileType(message);
+                if (inferredType !== this.userProfile.profile_type) {
+                    this.userProfile.profile_type = inferredType;
+                    this.saveUserProfile(this.userProfile);
+                    console.log('👤 Perfil inferido:', inferredType);
+                }
+                
+                // Mostrar "pensando"
+                this.showThinking();
+                
+                // Generar respuesta
+                const response = await this.generateCarlosResponse(message);
+                
+                // Ocultar "pensando" y mostrar respuesta
+                this.hideThinking();
+                this.addMessage(response, 'assistant');
+                
+                // Guardar respuesta en historial
+                this.conversationHistory.push({
+                    role: 'assistant',
+                    content: response,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Guardar historial (últimas 10 interacciones)
+                this.userProfile.conversation_history = this.conversationHistory.slice(-10);
+                this.saveUserProfile(this.userProfile);
+            }
+            
+            async generateCarlosResponse(message) {
+                // Estructura de respuesta de Carlos:
+                // 1. Emoji + Empatía
+                // 2. Contexto/Por qué es importante
+                // 3. Solución concreta
+                // 4. Recursos
+                // 5. Pregunta de seguimiento
+                
+                const lower = message.toLowerCase();
+                
+                // Búsqueda RAG si está inicializado
+                if (this.ragInitialized) {
+                    const relevantDocs = await this.semanticSearch(message, 3);
+                    
+                    if (relevantDocs.length > 0) {
+                        let response = this.buildCarlosResponse(message, relevantDocs);
+                        return response;
+                    }
+                }
+                
+                // Fallback: Respuestas predefinidas con personalidad Carlos
+                if (lower.includes('contraste')) {
+                    return `🌟 <strong>¡Perfecto! El contraste es fundamental.</strong><br><br>
+
+💡 <strong>Por qué importa:</strong> Personas con baja visión, daltonismo o simplemente leyendo bajo el sol necesitan contraste alto para leer cómodamente. Es dignidad digital básica.<br><br>
+
+✨ <strong>Solución:</strong><br>
+<code style="background: var(--avia-bg-alt); padding: 1rem; display: block; border-radius: 0.5rem; margin: 0.5rem 0;">
+/* Contraste AAA (7:1) */
+.texto {
+  color: #000000; /* Negro */
+  background: #FFFFFF; /* Blanco */
+}
+
+/* Mínimo AA (4.5:1) */
+.texto-grande {
+  color: #595959;
+  background: #FFFFFF;
+}
+</code><br>
+
+🎯 <strong>Herramienta recomendada:</strong> <a href="https://webaim.org/resources/contrastchecker/" target="_blank">WebAIM Contrast Checker</a><br><br>
+
+🚀 <strong>¿Te gustaría que te ayude a verificar el contraste de un color específico?</strong>`;
+                }
+                
+                if (lower.includes('teclado') || lower.includes('tab') || lower.includes('focus')) {
+                    return `💻 <strong>¡La navegación por teclado es esencial!</strong><br><br>
+
+💡 <strong>Por qué importa:</strong> Millones de personas no pueden usar ratón: usuarios ciegos, con Parkinson, RSI, parálisis... Y los power users simplemente prefieren teclado porque es más rápido.<br><br>
+
+✨ <strong>Reglas de oro:</strong><br>
+1️⃣ Usa <code>&lt;button&gt;</code> y <code>&lt;a&gt;</code> nativos (ya son focusables)<br>
+2️⃣ Si usas <code>&lt;div&gt;</code> con click, añade <code>tabindex="0"</code> y <code>role="button"</code><br>
+3️⃣ Focus visible: <code>outline: 3px solid</code> con contraste 3:1<br>
+4️⃣ Skip links para saltar navegación repetitiva<br><br>
+
+🎯 <strong>Prueba rápida:</strong> Desconecta el ratón y navega tu web solo con Tab, Enter y Espacio. ¿Llegas a todo?<br><br>
+
+🚀 <strong>¿Quieres que te muestre cómo hacer un componente específico accesible al teclado?</strong>`;
+                }
+                
+                if (lower.includes('alt') || lower.includes('imagen') || lower.includes('img')) {
+                    return `🖼️ <strong>¡Las alternativas textuales son la puerta de entrada para personas ciegas!</strong><br><br>
+
+💡 <strong>Por qué importa:</strong> Los lectores de pantalla no pueden "ver" imágenes. Sin alt, un usuario ciego solo escuchará "imagen" sin contexto. Con alt descriptivo, entienden igual que cualquiera.<br><br>
+
+✨ <strong>Reglas según tipo:</strong><br>
+📊 <strong>Informativa:</strong> Alt describe el contenido<br>
+<code>&lt;img src="grafico.png" alt="Ventas Q1: 25%, Q2: 30%, Q3: 20%, Q4: 25%"&gt;</code><br><br>
+
+🔗 <strong>Funcional (enlace):</strong> Alt describe el destino<br>
+<code>&lt;a href="/contacto"&gt;&lt;img src="email.svg" alt="Página de contacto"&gt;&lt;/a&gt;</code><br><br>
+
+🎨 <strong>Decorativa:</strong> Alt vacío<br>
+<code>&lt;img src="decorativo.png" alt="" role="presentation"&gt;</code><br><br>
+
+🎯 <strong>Test real:</strong> Cierra los ojos y pide a alguien que lea los alt. ¿Entiendes la página?<br><br>
+
+🚀 <strong>¿Tienes una imagen específica y no sabes qué alt ponerle? Descríbemela.</strong>`;
+                }
+                
+                if (lower.includes('aria') || lower.includes('role') || lower.includes('label')) {
+                    return `🏷️ <strong>ARIA es el superpoder de la accesibilidad dinámica.</strong><br><br>
+
+💡 <strong>Por qué importa:</strong> HTML básico no puede describir componentes modernos (tabs, modales, sliders). ARIA añade semántica para que lectores de pantalla los entiendan.<br><br>
+
+✨ <strong>Atributos clave:</strong><br>
+<code>role</code> → Qué es el elemento (button, dialog, tab...)<br>
+<code>aria-label</code> → Nombre accesible<br>
+<code>aria-describedby</code> → Descripción extendida<br>
+<code>aria-hidden</code> → Ocultar de lectores<br>
+<code>aria-live</code> → Anunciar cambios dinámicos<br><br>
+
+⚠️ <strong>Regla de oro:</strong> Usa HTML semántico primero. ARIA solo cuando HTML no baste.<br><br>
+
+<code style="background: var(--avia-bg-alt); padding: 1rem; display: block; border-radius: 0.5rem; margin: 0.5rem 0;">
+&lt;!-- ✅ CORRECTO: HTML nativo --&gt;
+&lt;button&gt;Cerrar&lt;/button&gt;
+
+&lt;!-- ⚠️ Solo si no hay alternativa --&gt;
+&lt;div role="button" tabindex="0"&gt;Cerrar&lt;/div&gt;
+</code><br>
+
+🎯 <strong>Recurso:</strong> <a href="https://www.w3.org/WAI/ARIA/apg/" target="_blank">ARIA Authoring Practices Guide</a><br><br>
+
+🚀 <strong>¿Tienes un componente específico que necesitas hacer accesible?</strong>`;
+                }
+                
+                if (lower.includes('normativa') || lower.includes('ley') || lower.includes('rd 1112') || lower.includes('en 301')) {
+                    return `📜 <strong>La normativa española es clara y obligatoria para el sector público.</strong><br><br>
+
+💡 <strong>Marco legal:</strong><br>
+🇪🇺 <strong>Directiva UE 2016/2102:</strong> Accesibilidad webs y apps del sector público<br>
+🇪🇸 <strong>RD 1112/2018:</strong> Traspone la directiva, obliga a nivel AA WCAG 2.1 (ahora 2.2)<br>
+🇪🇺 <strong>EN 301 549:</strong> Estándar europeo de accesibilidad (incluye WCAG)<br>
+🇪🇺 <strong>European Accessibility Act (EAA):</strong> Desde junio 2025, también sector privado<br><br>
+
+✨ <strong>¿Qué significa "nivel AA"?</strong><br>
+Se deben cumplir TODOS los criterios A y AA de WCAG 2.2. AAA es opcional pero recomendado en contenidos críticos (salud, educación, servicios esenciales).<br><br>
+
+⚖️ <strong>Sanciones:</strong> Hasta 1.000.000€ según gravedad y reincidencia.<br><br>
+
+🎯 <strong>¿Cómo demostrar cumplimiento?</strong><br>
+1️⃣ Auditoría WCAG 2.2 AA<br>
+2️⃣ Declaración de accesibilidad en web<br>
+3️⃣ Mecanismo de feedback para reportar problemas<br>
+4️⃣ Revisión periódica (anual mínimo)<br><br>
+
+🚀 <strong>¿Necesitas ayuda para preparar una declaración de accesibilidad?</strong>`;
+                }
+                
+                // Respuesta genérica con personalidad Carlos
+                return `🌟 <strong>¡Excelente pregunta!</strong><br><br>
+
+💡 Me encantaría ayudarte con "${message}", pero necesito un poco más de contexto para darte la respuesta más útil.<br><br>
+
+Puedo ayudarte con:<br>
+✅ Criterios WCAG 2.2 específicos<br>
+✅ Código HTML/CSS/JavaScript accesible<br>
+✅ Normativa española (RD 1112/2018, EN 301 549)<br>
+✅ Herramientas de testing<br>
+✅ Casos de uso reales<br><br>
+
+🚀 <strong>¿Podrías contarme un poco más sobre tu situación?</strong> Por ejemplo:<br>
+• ¿Estás desarrollando o auditando?<br>
+• ¿Hay un criterio WCAG específico que te preocupa?<br>
+• ¿Tienes un componente concreto que necesitas hacer accesible?<br><br>
+
+💬 Estoy aquí para ayudarte paso a paso. 😊`;
+            }
+            
+            buildCarlosResponse(message, relevantDocs) {
+                // Construir respuesta estructurada de Carlos con documentos RAG
+                
+                const profileType = this.userProfile.profile_type;
+                const isDetailed = this.userProfile.preferred_response_length === 'detailed';
+                
+                let response = `🌟 <strong>¡Perfecto! Encontré información relevante sobre tu pregunta.</strong><br><br>`;
+                
+                // Tomar el documento más relevante
+                const topDoc = relevantDocs[0];
+                
+                // Añadir contexto según perfil
+                if (profileType === 'developer') {
+                    response += `💻 <strong>Como desarrollador, esto es lo que necesitas:</strong><br><br>`;
+                } else if (profileType === 'auditor') {
+                    response += `📋 <strong>Desde la perspectiva de auditoría:</strong><br><br>`;
+                } else if (profileType === 'student') {
+                    response += `🎓 <strong>Te lo explico paso a paso:</strong><br><br>`;
+                } else if (profileType === 'manager') {
+                    response += `💼 <strong>Lo importante que debes saber:</strong><br><br>`;
+                }
+                
+                // Contenido principal del documento más relevante
+                const content = topDoc.title.replace(/_/g, ' ');
+                response += `<strong>${content}</strong><br><br>`;
+                
+                // Buscar si hay solución en los documentos
+                const solutionDoc = relevantDocs.find(doc => doc.id.includes('_solution'));
+                if (solutionDoc) {
+                    // Extraer código si existe
+                    const codeMatch = solutionDoc.embedding ? '✨ <strong>Solución:</strong><br>' : '';
+                    response += codeMatch;
+                }
+                
+                // Buscar ejemplo
+                const exampleDoc = relevantDocs.find(doc => doc.id.includes('_example'));
+                if (exampleDoc && isDetailed) {
+                    response += `<br>💡 <strong>Ejemplo real:</strong><br>`;
+                    response += `<em>Te ayudará entenderlo mejor con un caso práctico.</em><br><br>`;
+                }
+                
+                // Citar fuentes
+                response += `<br>📚 <strong>Fuentes consultadas:</strong><br>`;
+                relevantDocs.forEach((doc, index) => {
+                    const percentage = (doc.similarity * 100).toFixed(1);
+                    response += `${index + 1}. ${doc.title} (${percentage}% relevancia)<br>`;
+                });
+                
+                // Pregunta de seguimiento
+                response += `<br>🚀 <strong>¿Quieres que profundice en algún aspecto específico o que te muestre más ejemplos de código?</strong>`;
+                
+                return response;
+            }
+            
+            addMessage(content, sender) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${sender}`;
+                
+                const avatar = document.createElement('div');
+                avatar.className = 'chat-avatar';
+                avatar.setAttribute('aria-hidden', 'true');
+                avatar.innerHTML = sender === 'user' ? '<span>👤</span>' : '<span>🌟</span>';
+                
+                const bubble = document.createElement('div');
+                bubble.className = 'chat-bubble';
+                bubble.innerHTML = content;
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(bubble);
+                messagesContainer.appendChild(messageDiv);
+                
+                // Scroll al final
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Anunciar a lectores de pantalla
+                this.announceToScreenReader(sender === 'user' ? 'Mensaje enviado' : 'Carlos ha respondido');
+            }
+            
+            addSystemMessage(content) {
+                this.addMessage(content, 'assistant');
+            }
+            
+            showThinking() {
+                const messagesContainer = document.getElementById('chatMessages');
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'chat-thinking';
+                thinkingDiv.id = 'thinkingIndicator';
+                thinkingDiv.innerHTML = `
+                    <span>Carlos está pensando</span>
+                    <div class="dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                `;
+                messagesContainer.appendChild(thinkingDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                this.announceToScreenReader('Carlos está pensando en la respuesta');
+            }
+            
+            hideThinking() {
+                const thinking = document.getElementById('thinkingIndicator');
+                if (thinking) {
+                    thinking.remove();
+                }
+            }
+            
+            announceToScreenReader(message) {
+                const announcement = document.createElement('div');
+                announcement.className = 'sr-only';
+                announcement.setAttribute('role', 'status');
+                announcement.setAttribute('aria-live', 'polite');
+                announcement.textContent = message;
+                document.body.appendChild(announcement);
+                
+                setTimeout(() => {
+                    announcement.remove();
+                }, 3000);
+            }
+            
+            // === CHAT UI CONTROLS ===
+            toggleChat() {
+                const modal = document.getElementById('chatModal');
+                const launcher = document.getElementById('chatLauncher');
+                const isActive = modal.classList.toggle('active');
+                
+                launcher.setAttribute('aria-expanded', isActive);
+                
+                if (isActive) {
+                    // Focus en input al abrir
+                    setTimeout(() => {
+                        document.getElementById('chatInput').focus();
+                    }, 100);
+                    
+                    this.userProfile.chat_minimized = false;
+                    this.saveUserProfile(this.userProfile);
+                } else {
+                    // Restaurar focus al launcher
+                    launcher.focus();
+                }
+            }
+            
+            closeChat() {
+                const modal = document.getElementById('chatModal');
+                const launcher = document.getElementById('chatLauncher');
+                
+                modal.classList.remove('active', 'minimized', 'maximized');
+                launcher.setAttribute('aria-expanded', 'false');
+                launcher.focus();
+            }
+            
+            minimizeChat() {
+                const modal = document.getElementById('chatModal');
+                modal.classList.toggle('minimized');
+                
+                this.userProfile.chat_minimized = modal.classList.contains('minimized');
+                this.saveUserProfile(this.userProfile);
+                
+                this.announceToScreenReader(
+                    modal.classList.contains('minimized') ? 'Chat minimizado' : 'Chat restaurado'
+                );
+            }
+            
+            maximizeChat() {
+                const modal = document.getElementById('chatModal');
+                modal.classList.toggle('maximized');
+                
+                this.announceToScreenReader(
+                    modal.classList.contains('maximized') ? 'Chat maximizado' : 'Chat tamaño normal'
+                );
+            }
+            
+            // === AUDITORÍA ===
+            async runAudit() {
+                const urlInput = document.getElementById('urlInput');
+                const url = urlInput.value.trim();
+                
+                if (!url) {
+                    alert('Por favor, introduce una URL válida');
+                    return;
+                }
+                
+                // Mostrar loading
+                document.getElementById('loadingState').style.display = 'flex';
+                document.getElementById('resultsSection').classList.remove('active');
+                
+                this.announceToScreenReader('Iniciando auditoría de accesibilidad');
+                
+                try {
+                    // Ejecutar axe-core
+                    const results = await axe.run(document.body, {
+                        rules: {
+                            // Activar solo reglas WCAG 2.2 AA/AAA
+                            'wcag2a': { enabled: true },
+                            'wcag2aa': { enabled: true },
+                            'wcag2aaa': { enabled: true },
+                            'wcag22a': { enabled: true },
+                            'wcag22aa': { enabled: true },
+                            'best-practice': { enabled: true }
+                        }
+                    });
+                    
+                    this.currentAuditResults = results;
+                    
+                    // Incrementar contador de auditorías
+                    this.userProfile.total_audits++;
+                    this.saveUserProfile(this.userProfile);
+                    
+                    // Mostrar resultados
+                    this.displayResults(results);
+                    
+                    // Ocultar loading
+                    document.getElementById('loadingState').style.display = 'none';
+                    
+                    this.announceToScreenReader(`Auditoría completada. ${results.violations.length} violaciones encontradas`);
+                    
+                } catch (error) {
+                    console.error('Error en auditoría:', error);
+                    alert('Error al ejecutar la auditoría. Verifica la consola para más detalles.');
+                    document.getElementById('loadingState').style.display = 'none';
+                }
+            }
+            
+            displayResults(results) {
+                const resultsSection = document.getElementById('resultsSection');
+                resultsSection.classList.add('active');
+                
+                // Métricas
+                const violations = results.violations;
+                document.getElementById('totalViolations').textContent = violations.length;
+                
+                const critical = violations.filter(v => v.impact === 'critical').length;
+                const serious = violations.filter(v => v.impact === 'serious').length;
+                const moderate = violations.filter(v => v.impact === 'moderate').length;
+                
+                document.getElementById('criticalCount').textContent = critical;
+                document.getElementById('seriousCount').textContent = serious;
+                document.getElementById('moderateCount').textContent = moderate;
+                
+                // Lista de violaciones
+                const violationsList = document.getElementById('violationsList');
+                violationsList.innerHTML = '';
+                
+                if (violations.length === 0) {
+                    violationsList.innerHTML = `
+                        <div style="padding: 2rem; text-align: center; color: var(--avia-success);">
+                            <h3>🎉 ¡Excelente! No se encontraron violaciones automáticas.</h3>
+                            <p>Recuerda que las auditorías automáticas solo detectan el 30-40% de problemas de accesibilidad. Se recomienda testing manual adicional.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                violations.forEach(violation => {
+                    const item = document.createElement('div');
+                    item.className = 'violation-item';
+                    item.setAttribute('role', 'listitem');
+                    
+                    const severityClass = `severity-${violation.impact}`;
+                    const severityLabel = {
+                        critical: 'Crítico',
+                        serious: 'Serio',
+                        moderate: 'Moderado',
+                        minor: 'Menor'
+                    }[violation.impact];
+                    
+                    item.innerHTML = `
+                        <div class="violation-header">
+                            <h3 class="violation-title">${violation.help}</h3>
+                            <span class="severity-badge ${severityClass}">${severityLabel}</span>
+                        </div>
+                        <p style="color: var(--avia-text-muted); margin-bottom: 0.5rem;">
+                            <strong>Criterio WCAG:</strong> ${violation.id}
+                        </p>
+                        <p style="margin-bottom: 0.5rem;">
+                            ${violation.description}
+                        </p>
+                        <p style="color: var(--avia-text-muted);">
+                            <strong>Elementos afectados:</strong> ${violation.nodes.length}
+                        </p>
+                        <a href="${violation.helpUrl}" target="_blank" style="color: var(--avia-primary); text-decoration: none; font-weight: 600;">
+                            📚 Más información →
+                        </a>
+                    `;
+                    
+                    violationsList.appendChild(item);
+                });
+                
+                // Scroll a resultados
+                resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // === EXPORTACIONES ===
+            showExportOptions() {
+                if (!this.currentAuditResults) {
+                    alert('Primero debes ejecutar una auditoría');
+                    return;
+                }
+                
+                const format = prompt('¿En qué formato deseas exportar?\n\n1. PDF\n2. CSV\n3. JSON\n\nEscribe el número:');
+                
+                switch(format) {
+                    case '1':
+                        this.exportPDF();
+                        break;
+                    case '2':
+                        this.exportCSV();
+                        break;
+                    case '3':
+                        this.exportJSON();
+                        break;
+                    default:
+                        alert('Formato no válido');
+                }
+            }
+            
+            exportPDF() {
+                alert('Exportación PDF: Funcionalidad disponible en versión completa.');
+                // TODO: Implementar con jsPDF
+            }
+            
+            exportCSV() {
+                const violations = this.currentAuditResults.violations;
+                
+                let csv = '\uFEFF'; // BOM para UTF-8
+                csv += 'Criterio WCAG,Título,Nivel,Impacto,Elementos,Descripción,URL,Fecha,ID Pukkart\n';
+                
+                violations.forEach(v => {
+                    csv += `"${v.id}","${v.help}","${v.impact}","${v.nodes.length}","${v.description.replace(/"/g, '""')}","${v.helpUrl}","${new Date().toISOString()}","${PUKKART_ID}"\n`;
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `AVIA_Audit_${Date.now()}.csv`;
+                link.click();
+                
+                this.announceToScreenReader('Exportación CSV completada');
+            }
+            
+            exportJSON() {
+                const report = {
+                    version: AVIA_VERSION,
+                    pukkartId: PUKKART_ID,
+                    timestamp: new Date().toISOString(),
+                    url: document.getElementById('urlInput').value,
+                    summary: {
+                        total: this.currentAuditResults.violations.length,
+                        critical: this.currentAuditResults.violations.filter(v => v.impact === 'critical').length,
+                        serious: this.currentAuditResults.violations.filter(v => v.impact === 'serious').length,
+                        moderate: this.currentAuditResults.violations.filter(v => v.impact === 'moderate').length
+                    },
+                    violations: this.currentAuditResults.violations,
+                    rawResults: this.currentAuditResults
+                };
+                
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `AVIA_Audit_${Date.now()}.json`;
+                link.click();
+                
+                this.announceToScreenReader('Exportación JSON completada');
+            }
+            
+            // === COMANDOS DE VOZ ===
+            startVoiceCommands() {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    alert('Comandos de voz no soportados en este navegador. Prueba con Chrome.');
+                    return;
+                }
+                
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                
+                recognition.lang = 'es-ES';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onresult = (event) => {
+                    const command = event.results[0][0].transcript.toLowerCase();
+                    console.log('🎤 Comando detectado:', command);
+                    
+                    if (command.includes('avia audita') || command.includes('auditar')) {
+                        this.runAudit();
+                    } else if (command.includes('avia exporta') || command.includes('exportar')) {
+                        this.showExportOptions();
+                    } else if (command.includes('avia ayuda') || command.includes('asistente')) {
+                        this.toggleChat();
+                    } else if (command.includes('inicializar rag') || command.includes('avia rag')) {
+                        this.initializeRAG();
+                    } else {
+                        this.addSystemMessage(`🎤 No entendí el comando "${command}". Prueba con:<br>• AVIA audita<br>• AVIA exporta<br>• AVIA ayuda<br>• AVIA inicializar RAG`);
+                        this.toggleChat();
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Error en reconocimiento de voz:', event.error);
+                };
+                
+                recognition.start();
+                this.announceToScreenReader('Reconocimiento de voz activado. Di tu comando.');
+            }
+        }
+        
+        // === INICIALIZACIÓN ===
+        window.addEventListener('DOMContentLoaded', () => {
+            window.aviAuditor = new AVIAuditorAAA();
+        });
+    </script>
+</body>
+</html>

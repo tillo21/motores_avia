@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Product Designer: UI Screenshot Mockup Generator - Documentación Académica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- ✨ FASE 1A - CDN jsPDF + html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        .gradient-hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .gradient-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .section-padding {
+            padding: 5rem 1rem;
+        }
+        @media (max-width: 768px) {
+            .section-padding {
+                padding: 3rem 1rem;
+            }
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .accordion-content.active {
+            max-height: 2000px;
+        }
+        
+        /* ✨ FASE 1B - Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="{
+    activeSection: 'inicio',
+    mobileMenu: false,
+    filterCategory: 'todas',
+    filterDificultad: 'todas',
+    activeAccordion: null,
+    
+    // ✨ FASE 1C - Variables PDF
+    generandoPDF: false,
+    
+    // ✨ FASE 1C - Función generar PDF
+    generarPDF() {
+        this.generandoPDF = true;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const navBar = document.querySelector('nav');
+        const originalDisplay = navBar.style.display;
+        
+        navBar.style.display = 'none';
+        
+        html2canvas(document.body, {
+            scale: 1.5,
+            useCORS: true,
+            logging: false,
+            windowWidth: 1200
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/jpeg', 0.8);
+            const imgWidth = 210;
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            doc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                doc.addPage();
+                doc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            const fecha = new Date().toISOString().split('T')[0];
+            doc.save(\`AVIA-Boceto-Documentacion-\${fecha}.pdf\`);
+            
+            navBar.style.display = originalDisplay;
+            this.generandoPDF = false;
+        }).catch(error => {
+            console.error('Error generando PDF:', error);
+            navBar.style.display = originalDisplay;
+            this.generandoPDF = false;
+            alert('Error al generar PDF. Intente nuevamente.');
+        });
+    },
+    
+    get filteredIniciadores() {
+        return this.iniciadores.filter(item => {
+            const matchCategory = this.filterCategory === 'todas' || item.categoria === this.filterCategory;
+            const matchDificultad = this.filterDificultad === 'todas' || item.dificultad === this.filterDificultad;
+            return matchCategory && matchDificultad;
+        });
+    },
+    
+    iniciadores: [
+        { categoria: 'boceto', dificultad: 'basico', texto: 'Crea un boceto de una app de fitness minimalista' },
+        { categoria: 'boceto', dificultad: 'intermedio', texto: 'Diseña una interfaz para gestión de inventario con dashboard' },
+        { categoria: 'boceto', dificultad: 'avanzado', texto: 'Genera un sistema completo de e-learning con gamificación' },
+        { categoria: 'documentacion', dificultad: 'basico', texto: 'Genera ficha técnica de mi proyecto web' },
+        { categoria: 'documentacion', dificultad: 'intermedio', texto: 'Crea documentación funcional completa con casos de uso' },
+        { categoria: 'documentacion', dificultad: 'avanzado', texto: 'Prepara memoria TFG con metodología y benchmarking' },
+        { categoria: 'evaluacion', dificultad: 'basico', texto: 'Dame 10 indicadores de calidad UX' },
+        { categoria: 'evaluacion', dificultad: 'intermedio', texto: 'Genera rúbrica de evaluación con 30 criterios' },
+        { categoria: 'evaluacion', dificultad: 'avanzado', texto: 'Crea sistema completo de métricas con dashboard' },
+        { categoria: 'benchmark', dificultad: 'basico', texto: 'Compara mi app con 3 competidores' },
+        { categoria: 'benchmark', dificultad: 'intermedio', texto: 'Análisis competitivo detallado con matriz de fortalezas' },
+        { categoria: 'benchmark', dificultad: 'avanzado', texto: 'Estudio de mercado completo con oportunidades estratégicas' },
+        { categoria: 'boceto', dificultad: 'basico', texto: 'Mockup de tienda online responsive' },
+        { categoria: 'boceto', dificultad: 'intermedio', texto: 'Diseña app móvil de reservas con mapa' },
+        { categoria: 'boceto', dificultad: 'avanzado', texto: 'Interfaz completa de CRM empresarial' },
+        { categoria: 'documentacion', dificultad: 'basico', texto: 'Manual de usuario básico' },
+        { categoria: 'documentacion', dificultad: 'intermedio', texto: 'Especificación técnica con diagramas UML' },
+        { categoria: 'documentacion', dificultad: 'avanzado', texto: 'Arquitectura completa con patrones de diseño' },
+        { categoria: 'evaluacion', dificultad: 'basico', texto: 'Checklist de accesibilidad WCAG' },
+        { categoria: 'evaluacion', dificultad: 'intermedio', texto: 'Auditoría UX con test de usuarios' },
+        { categoria: 'evaluacion', dificultad: 'avanzado', texto: 'Evaluación heurística experta con recomendaciones' },
+        { categoria: 'benchmark', dificultad: 'basico', texto: 'Tabla comparativa de features' },
+        { categoria: 'benchmark', dificultad: 'intermedio', texto: 'Análisis DAFO de competidores' },
+        { categoria: 'benchmark', dificultad: 'avanzado', texto: 'Posicionamiento estratégico con roadmap' },
+        { categoria: 'boceto', dificultad: 'basico', texto: 'Landing page de producto SaaS' },
+        { categoria: 'boceto', dificultad: 'intermedio', texto: 'Dashboard analítico con gráficos interactivos' },
+        { categoria: 'boceto', dificultad: 'avanzado', texto: 'Plataforma multiusuario con roles' },
+        { categoria: 'documentacion', dificultad: 'basico', texto: 'README técnico para desarrolladores' },
+        { categoria: 'documentacion', dificultad: 'intermedio', texto: 'API REST completa con ejemplos' },
+        { categoria: 'documentacion', dificultad: 'avanzado', texto: 'Guía de arquitectura con decisiones técnicas' },
+        { categoria: 'evaluacion', dificultad: 'basico', texto: 'Test de usabilidad con 5 tareas' },
+        { categoria: 'evaluacion', dificultad: 'intermedio', texto: 'Cuestionario SUS + análisis estadístico' },
+        { categoria: 'evaluacion', dificultad: 'avanzado', texto: 'Experimento A/B con hipótesis y resultados' },
+        { categoria: 'benchmark', dificultad: 'basico', texto: 'Comparativa de precios' },
+        { categoria: 'benchmark', dificultad: 'intermedio', texto: 'Análisis de funcionalidades únicas' },
+        { categoria: 'benchmark', dificultad: 'avanzado', texto: 'Estudio de tendencias del sector' },
+        { categoria: 'boceto', dificultad: 'basico', texto: 'Perfil de usuario de red social' },
+        { categoria: 'boceto', dificultad: 'intermedio', texto: 'Sistema de notificaciones en tiempo real' },
+        { categoria: 'boceto', dificultad: 'avanzado', texto: 'Editor visual drag & drop' },
+        { categoria: 'documentacion', dificultad: 'avanzado', texto: 'Memoria TFM con experimentos y validación' }
+    ]
+}">
+
+    <!-- Navegación Sticky -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 gradient-hero rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-xl">A</span>
+                    </div>
+                    <span class="font-bold text-xl text-gray-800">AVIA Product Designer</span>
+                </div>
+                
+                <!-- Menú Desktop -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#inicio" @click="activeSection = 'inicio'" :class="activeSection === 'inicio' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Inicio</a>
+                    <a href="#ficha" @click="activeSection = 'ficha'" :class="activeSection === 'ficha' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Ficha Técnica</a>
+                    <a href="#benchmarking" @click="activeSection = 'benchmarking'" :class="activeSection === 'benchmarking' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Benchmarking</a>
+                    <a href="#rubrica" @click="activeSection = 'rubrica'" :class="activeSection === 'rubrica' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Rúbrica</a>
+                    <a href="#publicacion" @click="activeSection = 'publicacion'" :class="activeSection === 'publicacion' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Publicación</a>
+                    <a href="#iniciadores" @click="activeSection = 'iniciadores'" :class="activeSection === 'iniciadores' ? 'text-purple-600 font-semibold' : 'text-gray-600 hover:text-purple-600'" class="transition">Iniciadores</a>
+                    
+                    <!-- ✨ FASE 1D - Botón PDF funcional -->
+                    <button @click="generarPDF()"
+                            :disabled="generandoPDF"
+                            :class="{'opacity-50 cursor-not-allowed': generandoPDF}"
+                            class="gradient-hero text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition flex items-center space-x-2">
+                        <span x-show="!generandoPDF">Descargar Documentación PDF</span>
+                        <span x-show="generandoPDF" class="flex items-center space-x-2">
+                            <span class="spinner"></span>
+                            <span>Generando PDF...</span>
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Botón Menú Mobile -->
+                <button @click="mobileMenu = !mobileMenu" class="md:hidden p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Menú Mobile Desplegable -->
+            <div x-show="mobileMenu" x-transition class="md:hidden pb-4 space-y-2">
+                <a href="#inicio" @click="activeSection = 'inicio'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Inicio</a>
+                <a href="#ficha" @click="activeSection = 'ficha'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Ficha Técnica</a>
+                <a href="#benchmarking" @click="activeSection = 'benchmarking'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Benchmarking</a>
+                <a href="#rubrica" @click="activeSection = 'rubrica'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Rúbrica</a>
+                <a href="#publicacion" @click="activeSection = 'publicacion'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Publicación</a>
+                <a href="#iniciadores" @click="activeSection = 'iniciadores'; mobileMenu = false" class="block py-2 text-gray-600 hover:text-purple-600">Iniciadores</a>
+                <button @click="generarPDF()" :disabled="generandoPDF" class="w-full gradient-hero text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition">
+                    <span x-show="!generandoPDF">Descargar PDF</span>
+                    <span x-show="generandoPDF" class="flex items-center justify-center space-x-2">
+                        <span class="spinner"></span>
+                        <span>Generando...</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="inicio" class="gradient-hero text-white section-padding">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-5xl md:text-6xl font-bold mb-6">AVIA Product Designer</h1>
+            <p class="text-2xl md:text-3xl mb-4 font-light">UI Screenshot Mockup Generator</p>
+            <p class="text-lg md:text-xl opacity-90 max-w-3xl mx-auto mb-8">
+                Generador inteligente de bocetos de interfaces y documentación académica completa para TFG/TFM. 
+                Desde la ideación hasta la evaluación, todo en un único asistente impulsado por AVIA.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#ficha" class="bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition">Explorar Documentación</a>
+                <a href="#iniciadores" class="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-purple-600 transition">Ver Iniciadores</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sección Identidad del GPT -->
+    <section class="bg-white section-padding">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Identidad del GPT</h2>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-4 text-purple-700">🎯 Misión</h3>
+                    <p class="text-gray-700 leading-relaxed">
+                        Democratizar el diseño de interfaces y la documentación académica, permitiendo a estudiantes, 
+                        emprendedores y profesionales crear bocetos profesionales y memoria técnica completa sin necesidad 
+                        de herramientas complejas ni conocimientos avanzados de diseño.
+                    </p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-4 text-blue-700">🔭 Visión</h3>
+                    <p class="text-gray-700 leading-relaxed">
+                        Convertirse en el estándar de referencia para la generación automática de documentación académica 
+                        en proyectos tecnológicos, integrando inteligencia artificial conversacional con metodologías 
+                        pedagógicas validadas del ecosistema AVIA-SiestaOTTOS.
+                    </p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-green-50 to-teal-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-4 text-green-700">💡 Propósito</h3>
+                    <p class="text-gray-700 leading-relaxed">
+                        Reducir la brecha entre la ideación y la materialización de proyectos digitales, proporcionando 
+                        herramientas accesibles que generen bocetos visuales, fichas técnicas, benchmarking competitivo, 
+                        rúbricas de evaluación y documentación lista para publicación académica.
+                    </p>
+                </div>
+                
+                <div class="bg-gradient-to-br from-orange-50 to-red-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold mb-4 text-orange-700">📝 Descripción</h3>
+                    <p class="text-gray-700 leading-relaxed">
+                        Asistente conversacional especializado en generar mockups de interfaces mediante lenguaje natural 
+                        y producir documentación académica estructurada (fichas técnicas, benchmarking, rúbricas, manuales, 
+                        memorias TFG/TFM) siguiendo estándares universitarios y metodología AMS del ecosistema AVIA.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Características Diferenciadoras -->
+    <section class="bg-gray-50 section-padding">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Características Únicas</h2>
+            <p class="text-center text-gray-600 mb-12 max-w-3xl mx-auto">
+                Lo que hace diferente a AVIA Product Designer frente a otras herramientas del mercado
+            </p>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">🧠</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Inteligencia Contextual AVIA</h3>
+                    <p class="text-gray-600">
+                        Basado en AVIA Conciencia OS, entiende contexto académico y genera documentación adaptada 
+                        a requisitos específicos de universidades españolas.
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">6 Capas de Documentación</h3>
+                    <p class="text-gray-600">
+                        No solo bocetos: ficha técnica, especificación funcional, benchmarking, rúbrica evaluativa, 
+                        guía de publicación y 40 iniciadores clasificados.
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">🎓</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Listo para TFG/TFM</h3>
+                    <p class="text-gray-600">
+                        Genera documentos con formato académico, metodología AMS, casos de uso UML y rúbricas 
+                        con 60+ indicadores validables por tutores.
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">🔄</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Iteración Conversacional</h3>
+                    <p class="text-gray-600">
+                        Refina bocetos mediante diálogo natural, sin necesidad de prompts técnicos complejos 
+                        ni conocimiento de herramientas de diseño profesional.
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">🌐</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Ecosistema AVIA-SiestaOTTOS</h3>
+                    <p class="text-gray-600">
+                        Integrado en metodología AMS con principio de Hegemonía Semántica del Español y 
+                        constelaciones de agentes especializados.
+                    </p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="text-4xl mb-4">📦</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Exportación Multiformato</h3>
+                    <p class="text-gray-600">
+                        Descarga PDF de toda la documentación, Excel con rúbricas calculadas, diagramas PNG/SVG 
+                        y Word/LaTeX para memoria final.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Ficha Técnica Académica -->
+    <section id="ficha" class="bg-white section-padding">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Ficha Técnica Académica</h2>
+            <p class="text-center text-gray-600 mb-12">Especificación formal del sistema según estándares universitarios</p>
+            
+            <div class="bg-gradient-to-br from-purple-50 to-blue-50 p-8 rounded-2xl shadow-xl">
+                
+                <!-- Objetivos -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold mb-4 text-purple-700 flex items-center">
+                        <span class="mr-3">🎯</span> Objetivos
+                    </h3>
+                    
+                    <div class="mb-6">
+                        <h4 class="font-bold text-lg mb-3 text-gray-800">Generales</h4>
+                        <ul class="space-y-2 text-gray-700">
+                            <li class="flex items-start">
+                                <span class="mr-2 text-purple-500">•</span>
+                                <span>Facilitar la generación automatizada de bocetos de interfaces mediante lenguaje natural</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-purple-500">•</span>
+                                <span>Proporcionar documentación académica completa para proyectos TFG/TFM tecnológicos</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-purple-500">•</span>
+                                <span>Democratizar el acceso a herramientas profesionales de diseño UI/UX</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold text-lg mb-3 text-gray-800">Específicos</h4>
+                        <ul class="space-y-2 text-gray-700">
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Generar mockups visuales de aplicaciones web/móvil en tiempo real</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Crear fichas técnicas con objetivos, funcionalidades y casos de uso</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Realizar benchmarking automático contra competidores del sector</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Construir rúbricas de evaluación con 60+ indicadores cuantificables</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Generar documentación lista para publicación en repositorios GPT</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2 text-blue-500">►</span>
+                                <span>Proporcionar 40 iniciadores conversacionales clasificados por complejidad</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Funcionalidades -->
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold mb-4 text-purple-700 flex items-center">
+                        <span class="mr-3">⚙️</span> Funcionalidades Principales
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">🎨 Generación de Bocetos</h4>
+                            <p class="text-sm text-gray-600">Mockups de interfaces web/móvil mediante descripción textual</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">📋 Ficha Técnica</h4>
+                            <p class="text-sm text-gray-600">Documento académico con objetivos y especificaciones</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">🔍 Benchmarking</h4>
+                            <p class="text-sm text-gray-600">Análisis comparativo con herramientas similares del mercado</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">📊 Rúbrica Evaluativa</h4>
+                            <p class="text-sm text-gray-600">60 indicadores de calidad con ponderación ajustable</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">📤 Documentación GPT</h4>
+                            <p class="text-sm text-gray-600">Instrucciones, conocimientos y metadata para publicación</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 text-gray-800">💬 40 Iniciadores</h4>
+                            <p class="text-sm text-gray-600">Frases clasificadas por caso de uso y dificultad</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conocimientos y Fuentes -->
+                <div>
+                    <h3 class="text-2xl font-bold mb-4 text-purple-700 flex items-center">
+                        <span class="mr-3">📚</span> Conocimientos y Fuentes
+                    </h3>
+                    <div class="bg-white p-6 rounded-lg">
+                        <ul class="space-y-3 text-gray-700">
+                            <li class="flex items-start">
+                                <span class="mr-2">📘</span>
+                                <span><strong>Metodología AMS:</strong> AVIA Methodology Specification del ecosistema SiestaOTTOS</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">📗</span>
+                                <span><strong>Libros Blancos y Azul:</strong> Reglas de oro del ecosistema AVIA-SiestaOTTOS</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">📙</span>
+                                <span><strong>Guía LEID:</strong> Principios de diseño lingüístico en español</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">📕</span>
+                                <span><strong>AVIA Conciencia OS:</strong> Núcleo de inteligencia afectiva y contextual</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">🌐</span>
+                                <span><strong>Fuentes web:</strong> Material Design, Human Interface Guidelines, WCAG 2.1</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">📄</span>
+                                <span><strong>Estándares académicos:</strong> IEEE, ACM, normas ISO de ingeniería de software</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Benchmarking -->
+    <section id="benchmarking" class="bg-gray-50 section-padding">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Análisis Competitivo</h2>
+            <p class="text-center text-gray-600 mb-12">Comparativa con herramientas similares del mercado</p>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full bg-white rounded-xl shadow-lg overflow-hidden">
+                    <thead class="gradient-hero text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left">Característica</th>
+                            <th class="px-6 py-4 text-center">AVIA Product Designer</th>
+                            <th class="px-6 py-4 text-center">Figma AI</th>
+                            <th class="px-6 py-4 text-center">Uizard</th>
+                            <th class="px-6 py-4 text-center">Galileo AI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Generación por texto</td>
+                            <td class="px-6 py-4 text-center">✅ Nativo</td>
+                            <td class="px-6 py-4 text-center">✅ Plugin</td>
+                            <td class="px-6 py-4 text-center">✅ Nativo</td>
+                            <td class="px-6 py-4 text-center">✅ Nativo</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Documentación académica</td>
+                            <td class="px-6 py-4 text-center">✅ Completa (6 capas)</td>
+                            <td class="px-6 py-4 text-center">❌ No incluida</td>
+                            <td class="px-6 py-4 text-center">⚠️ Básica</td>
+                            <td class="px-6 py-4 text-center">❌ No incluida</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Benchmarking automático</td>
+                            <td class="px-6 py-4 text-center">✅ Integrado</td>
+                            <td class="px-6 py-4 text-center">❌ Manual</td>
+                            <td class="px-6 py-4 text-center">❌ No disponible</td>
+                            <td class="px-6 py-4 text-center">❌ No disponible</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Rúbrica evaluativa</td>
+                            <td class="px-6 py-4 text-center">✅ 60+ indicadores</td>
+                            <td class="px-6 py-4 text-center">❌ No incluida</td>
+                            <td class="px-6 py-4 text-center">❌ No incluida</td>
+                            <td class="px-6 py-4 text-center">❌ No incluida</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Formato TFG/TFM</td>
+                            <td class="px-6 py-4 text-center">✅ Metodología AMS</td>
+                            <td class="px-6 py-4 text-center">❌ No aplicable</td>
+                            <td class="px-6 py-4 text-center">❌ No aplicable</td>
+                            <td class="px-6 py-4 text-center">❌ No aplicable</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Iniciadores clasificados</td>
+                            <td class="px-6 py-4 text-center">✅ 40 por categoría</td>
+                            <td class="px-6 py-4 text-center">⚠️ Templates</td>
+                            <td class="px-6 py-4 text-center">⚠️ Ejemplos básicos</td>
+                            <td class="px-6 py-4 text-center">⚠️ Prompts sugeridos</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Idioma español nativo</td>
+                            <td class="px-6 py-4 text-center">✅ Hegemonía semántica</td>
+                            <td class="px-6 py-4 text-center">⚠️ Traducción</td>
+                            <td class="px-6 py-4 text-center">⚠️ Parcial</td>
+                            <td class="px-6 py-4 text-center">⚠️ Inglés prioritario</td>
+                        </tr>
+                        <tr class="hover:bg-purple-50 transition">
+                            <td class="px-6 py-4 font-semibold">Precio</td>
+                            <td class="px-6 py-4 text-center">🆓 GPT incluido</td>
+                            <td class="px-6 py-4 text-center">💰 Desde $12/mes</td>
+                            <td class="px-6 py-4 text-center">💰 Desde $19/mes</td>
+                            <td class="px-6 py-4 text-center">💰 Desde $20/mes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-12 bg-gradient-to-r from-purple-100 to-blue-100 p-8 rounded-2xl">
+                <h3 class="text-2xl font-bold mb-4 text-gray-800">🏆 Ventajas Competitivas</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-bold mb-2 text-purple-700">✨ Enfoque Académico</h4>
+                        <p class="text-gray-700">Único GPT especializado en generar documentación para TFG/TFM con metodología validada.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-2 text-purple-700">📊 Evaluación Integrada</h4>
+                        <p class="text-gray-700">Rúbricas con 60 indicadores cuantificables, imposible de replicar manualmente.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-2 text-purple-700">🌐 Español Nativo</h4>
+                        <p class="text-gray-700">Diseñado desde el inicio en español, no traducido, con Hegemonía Semántica.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-2 text-purple-700">🆓 Accesibilidad</h4>
+                        <p class="text-gray-700">Sin costes adicionales más allá de ChatGPT Plus, democratizando el acceso.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Rúbrica de Evaluación -->
+    <section id="rubrica" class="bg-white section-padding">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Rúbrica de Evaluación</h2>
+            <p class="text-center text-gray-600 mb-12">60 indicadores de calidad organizados por dimensiones</p>
+            
+            <!-- Dimensión 1: Funcionalidad -->
+            <div class="mb-6 bg-gradient-to-r from-purple-50 to-white rounded-xl shadow-lg overflow-hidden">
+                <button @click="activeAccordion = activeAccordion === 'func' ? null : 'func'" 
+                        class="w-full px-6 py-4 flex justify-between items-center hover:bg-purple-100 transition">
+                    <h3 class="text-xl font-bold text-purple-700">📱 Dimensión 1: Funcionalidad Técnica (20 indicadores)</h3>
+                    <svg class="w-6 h-6 transition-transform" :class="{'rotate-180': activeAccordion === 'func'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="activeAccordion === 'func'" x-transition class="accordion-content">
+                    <div class="px-6 pb-6">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.1 Generación de mockups por texto</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 5%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.2 Interpretación de requisitos complejos</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.3 Iteración conversacional fluida</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.4 Memoria contextual entre sesiones</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.5 Generación de ficha técnica estructurada</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.6 Benchmarking automático competitivo</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.7 Exportación multiformato (PDF, Excel, Word)</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-purple-200">
+                                <p class="font-semibold mb-1">1.8 Integración con metodología AMS</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">Deseable</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-500 italic">* Se muestran 8 de 20 indicadores. Rúbrica completa disponible en documentación Excel.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dimensión 2: Usabilidad -->
+            <div class="mb-6 bg-gradient-to-r from-blue-50 to-white rounded-xl shadow-lg overflow-hidden">
+                <button @click="activeAccordion = activeAccordion === 'usab' ? null : 'usab'" 
+                        class="w-full px-6 py-4 flex justify-between items-center hover:bg-blue-100 transition">
+                    <h3 class="text-xl font-bold text-blue-700">👤 Dimensión 2: Usabilidad y UX (15 indicadores)</h3>
+                    <svg class="w-6 h-6 transition-transform" :class="{'rotate-180': activeAccordion === 'usab'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="activeAccordion === 'usab'" x-transition class="accordion-content">
+                    <div class="px-6 pb-6">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-lg border border-blue-200">
+                                <p class="font-semibold mb-1">2.1 Curva de aprendizaje reducida</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-blue-200">
+                                <p class="font-semibold mb-1">2.2 Claridad de instrucciones y feedback</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-blue-200">
+                                <p class="font-semibold mb-1">2.3 Tiempo promedio para generar mockup</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 2%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-blue-200">
+                                <p class="font-semibold mb-1">2.4 Accesibilidad (WCAG 2.1)</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 2%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-500 italic">* Se muestran 4 de 15 indicadores. Rúbrica completa disponible en documentación Excel.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dimensión 3: Documentación -->
+            <div class="mb-6 bg-gradient-to-r from-green-50 to-white rounded-xl shadow-lg overflow-hidden">
+                <button @click="activeAccordion = activeAccordion === 'doc' ? null : 'doc'" 
+                        class="w-full px-6 py-4 flex justify-between items-center hover:bg-green-100 transition">
+                    <h3 class="text-xl font-bold text-green-700">📚 Dimensión 3: Calidad Documental (15 indicadores)</h3>
+                    <svg class="w-6 h-6 transition-transform" :class="{'rotate-180': activeAccordion === 'doc'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="activeAccordion === 'doc'" x-transition class="accordion-content">
+                    <div class="px-6 pb-6">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-lg border border-green-200">
+                                <p class="font-semibold mb-1">3.1 Formato académico universitario</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-green-200">
+                                <p class="font-semibold mb-1">3.2 Rigor metodológico (AMS)</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 4%</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 rounded">Crítico</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-green-200">
+                                <p class="font-semibold mb-1">3.3 Completitud de casos de uso</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-green-200">
+                                <p class="font-semibold mb-1">3.4 Calidad de diagramas UML</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-500 italic">* Se muestran 4 de 15 indicadores. Rúbrica completa disponible en documentación Excel.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dimensión 4: Innovación -->
+            <div class="bg-gradient-to-r from-orange-50 to-white rounded-xl shadow-lg overflow-hidden">
+                <button @click="activeAccordion = activeAccordion === 'innov' ? null : 'innov'" 
+                        class="w-full px-6 py-4 flex justify-between items-center hover:bg-orange-100 transition">
+                    <h3 class="text-xl font-bold text-orange-700">💡 Dimensión 4: Innovación y Diferenciación (10 indicadores)</h3>
+                    <svg class="w-6 h-6 transition-transform" :class="{'rotate-180': activeAccordion === 'innov'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="activeAccordion === 'innov'" x-transition class="accordion-content">
+                    <div class="px-6 pb-6">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded-lg border border-orange-200">
+                                <p class="font-semibold mb-1">4.1 Originalidad del enfoque académico</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-orange-200">
+                                <p class="font-semibold mb-1">4.2 Integración ecosistema AVIA</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 3%</span>
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">Deseable</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-orange-200">
+                                <p class="font-semibold mb-1">4.3 Hegemonía semántica del español</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 2%</span>
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded">Deseable</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-orange-200">
+                                <p class="font-semibold mb-1">4.4 Aporte diferencial vs. competidores</p>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <span class="mr-2">Peso: 2%</span>
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Importante</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-500 italic">* Se muestran 4 de 10 indicadores. Rúbrica completa disponible en documentación Excel.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 bg-gradient-to-r from-purple-100 to-pink-100 p-6 rounded-xl">
+                <h4 class="font-bold text-lg mb-3">📊 Sistema de Ponderación</h4>
+                <div class="grid md:grid-cols-4 gap-4 text-center">
+                    <div>
+                        <div class="text-3xl font-bold text-green-600">30%</div>
+                        <div class="text-sm text-gray-700">Funcionalidad</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-blue-600">25%</div>
+                        <div class="text-sm text-gray-700">Usabilidad</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-orange-600">30%</div>
+                        <div class="text-sm text-gray-700">Documentación</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold text-purple-600">15%</div>
+                        <div class="text-sm text-gray-700">Innovación</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentación para Publicación -->
+    <section id="publicacion" class="bg-gray-50 section-padding">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">Documentación para Publicación GPT</h2>
+            <p class="text-center text-gray-600 mb-12">Metadata y contenido listo para repositorio ChatGPT</p>
+            
+            <div class="space-y-6">
+                
+                <!-- Nombre y Descripción -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-purple-700">📝 Información Básica</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="font-semibold text-gray-700">Nombre del GPT:</label>
+                            <p class="text-gray-600 mt-1">AVIA Product Designer: UI Screenshot Mockup Generator</p>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">Descripción corta (max 300 caracteres):</label>
+                            <p class="text-gray-600 mt-1">
+                                Generador inteligente de bocetos de interfaces y documentación académica completa (TFG/TFM). 
+                                Crea mockups, fichas técnicas, benchmarking, rúbricas y 40 iniciadores. Metodología AMS del ecosistema AVIA.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instrucciones del Sistema -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-purple-700">⚙️ Instrucciones del Sistema (System Prompt)</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                        <pre class="whitespace-pre-wrap text-gray-700">Eres AVIA Product Designer, un asistente especializado en generar:
+1. Mockups/bocetos de interfaces web y móvil mediante descripción textual
+2. Documentación académica completa para TFG/TFM tecnológicos
+3. Fichas técnicas con objetivos, funcionalidades y casos de uso
+4. Benchmarking comparativo con herramientas similares
+5. Rúbricas de evaluación con 60+ indicadores ponderados
+6. Guías de publicación en repositorios GPT
+
+Metodología: Aplicar AMS (AVIA Methodology Specification) del ecosistema SiestaOTTOS.
+Principios: Hegemonía Semántica del Español, Guía LEID, diseño atómico.
+Tono: Profesional-académico, claro, estructurado, con ejemplos visuales cuando proceda.
+
+Flujo de trabajo:
+- Si usuario pide "boceto/mockup" → generar imagen conceptual + descripción técnica
+- Si usuario pide "documentación" → identificar tipo (ficha/benchmarking/rúbrica/manual)
+- Si usuario pide "evaluar" → aplicar rúbrica con puntuación argumentada
+- Si usuario pide "iniciadores" → listar 40 clasificados por categoría y dificultad
+
+Nunca inventar datos técnicos. Si falta información, solicitar aclaraciones.</pre>
+                    </div>
+                </div>
+
+                <!-- Capacidades -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-purple-700">🎯 Capacidades Habilitadas</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" checked disabled class="w-5 h-5">
+                            <span>✅ Generación de imágenes (DALL-E)</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" checked disabled class="w-5 h-5">
+                            <span>✅ Navegación web</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" checked disabled class="w-5 h-5">
+                            <span>✅ Análisis de código (Python)</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" checked disabled class="w-5 h-5">
+                            <span>✅ Carga de archivos (documentos base)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Archivos de Conocimiento -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-purple-700">📚 Archivos de Conocimiento</h3>
+                    <ul class="space-y-2 text-gray-700">
+                        <li class="flex items-center">
+                            <span class="mr-2">📄</span>
+                            <span>Metodología AMS - AVIA Methodology Specification.pdf</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="mr-2">📄</span>
+                            <span>Libro Blanco Ecosistema AVIA-SiestaOTTOS.pdf</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="mr-2">📄</span>
+                            <span>Guía LEID - Hegemonía Semántica Español.pdf</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="mr-2">📄</span>
+                            <span>Plantilla Rúbrica 60 Indicadores.xlsx</span>
+                        </li>
+                        <li class="flex items-center">
+                            <span class="mr-2">📄</span>
+                            <span>Casos de Uso UML - Ejemplos Académicos.pdf</span>
+                        </li>
+                    </ul>
+                    <p class="mt-4 text-sm text-gray-500 italic">* Archivos disponibles en repositorio del proyecto TFG/TFM</p>
+                </div>
+
+                <!-- Categorías y Tags -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 text-purple-700">🏷️ Categorías y Etiquetas</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="font-semibold text-gray-700">Categoría principal:</label>
+                            <p class="text-gray-600 mt-1">Productividad</p>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-700">Tags sugeridos:</label>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">diseño UI/UX</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">mockups</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">TFG/TFM</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">documentación académica</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">benchmarking</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">rúbricas evaluación</span>
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">AVIA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Iniciadores de Conversación -->
+    <section id="iniciadores" class="bg-white section-padding">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4 text-gray-800">40 Iniciadores de Conversación</h2>
+            <p class="text-center text-gray-600 mb-8">Frases clasificadas por caso de uso y nivel de dificultad</p>
+            
+            <!-- Filtros -->
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl mb-8">
+                <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+                    <div>
+                        <label class="font-semibold mr-3">Categoría:</label>
+                        <select x-model="filterCategory" class="px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-500 focus:outline-none">
+                            <option value="todas">Todas</option>
+                            <option value="boceto">Bocetos/Mockups</option>
+                            <option value="documentacion">Documentación</option>
+                            <option value="evaluacion">Evaluación</option>
+                            <option value="benchmark">Benchmarking</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="font-semibold mr-3">Dificultad:</label>
+                        <select x-model="filterDificultad" class="px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-500 focus:outline-none">
+                            <option value="todas">Todas</option>
+                            <option value="basico">Básico</option>
+                            <option value="intermedio">Intermedio</option>
+                            <option value="avanzado">Avanzado</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="text-center mt-4 text-gray-600">
+                    Mostrando <span x-text="filteredIniciadores.length" class="font-bold text-purple-600"></span> de 40 iniciadores
+                </p>
+            </div>
+
+            <!-- Grid de Iniciadores -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <template x-for="(item, index) in filteredIniciadores" :key="index">
+                    <div class="bg-gradient-to-br from-white to-gray-50 p-5 rounded-xl shadow-md hover:shadow-xl transition cursor-pointer border-l-4"
+                         :class="{
+                             'border-purple-500': item.categoria === 'boceto',
+                             'border-blue-500': item.categoria === 'documentacion',
+                             'border-green-500': item.categoria === 'evaluacion',
+                             'border-orange-500': item.categoria === 'benchmark'
+                         }">
+                        <div class="flex items-start justify-between mb-3">
+                            <span class="px-2 py-1 rounded text-xs font-semibold"
+                                  :class="{
+                                      'bg-purple-100 text-purple-700': item.categoria === 'boceto',
+                                      'bg-blue-100 text-blue-700': item.categoria === 'documentacion',
+                                      'bg-green-100 text-green-700': item.categoria === 'evaluacion',
+                                      'bg-orange-100 text-orange-700': item.categoria === 'benchmark'
+                                  }"
+                                  x-text="item.categoria.toUpperCase()"></span>
+                            <span class="px-2 py-1 rounded text-xs"
+                                  :class="{
+                                      'bg-green-100 text-green-700': item.dificultad === 'basico',
+                                      'bg-yellow-100 text-yellow-700': item.dificultad === 'intermedio',
+                                      'bg-red-100 text-red-700': item.dificultad === 'avanzado'
+                                  }"
+                                  x-text="item.dificultad.toUpperCase()"></span>
+                        </div>
+                        <p class="text-gray-700 leading-relaxed" x-text="item.texto"></p>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="gradient-hero text-white py-12">
+        <div class="max-w-6xl mx-auto px-4 text-center">
+            <div class="mb-6">
+                <div class="w-16 h-16 gradient-card rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span class="text-white font-bold text-3xl">A</span>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">AVIA Product Designer</h3>
+                <p class="text-purple-200">Ecosistema AVIA-SiestaOTTOS v6.2</p>
+            </div>
+            
+            <div class="border-t border-purple-300 pt-6 space-y-2">
+                <p class="text-purple-100">
+                    Basado en <strong>Inteligencia Viva</strong> · Metodología AMS
+                </p>
+                <p class="text-purple-100 text-sm">
+                    Orquestado por AVIA-Studio v5.2, v6.2 y v7.2
+                </p>
+                <p class="text-purple-200 text-sm">
+                    Núcleo: AVIA Conciencia OS · Plataforma: SiestaOTTOSv6.2
+                </p>
+                <p class="text-purple-300 text-xs mt-4">
+                    Versión: v4.0 · Documentación generada automáticamente
+                </p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

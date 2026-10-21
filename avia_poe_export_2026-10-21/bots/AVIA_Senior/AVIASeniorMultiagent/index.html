@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Senior - Multi-Agent Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .agent-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .progress-bar {
+            transition: width 1s ease-in-out;
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .status-available { color: #10b981; }
+        .status-busy { color: #f59e0b; }
+        .status-offline { color: #ef4444; }
+        
+        .task-completed { background: #d1fae5; color: #065f46; }
+        .task-in-progress { background: #fef3c7; color: #92400e; }
+        .task-pending { background: #e0e7ff; color: #3730a3; }
+        
+        .notification {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .chart-bar {
+            transition: height 0.8s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-2xl">
+        <div class="container mx-auto px-6 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                        <i class="fas fa-robot text-purple-600 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">AVIA SENIOR</h1>
+                        <p class="text-purple-200 text-sm">Multi-Agent Development Platform</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-6">
+                    <div class="glass px-4 py-2 rounded-lg">
+                        <span class="text-sm">Staging Environment</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-green-400 rounded-full pulse-dot"></div>
+                        <span class="text-sm font-medium">All Systems Operational</span>
+                    </div>
+                    <button class="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-purple-50 transition">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-6 py-8">
+        
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-2xl shadow-lg p-6 fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                    <span class="text-green-600 text-sm font-semibold">+2 hoy</span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">Agentes Activos</h3>
+                <p class="text-3xl font-bold text-gray-800" id="stat-agents">4</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 fade-in" style="animation-delay: 0.1s">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-tasks text-purple-600 text-xl"></i>
+                    </div>
+                    <span class="text-blue-600 text-sm font-semibold">85% completo</span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">Tareas Totales</h3>
+                <p class="text-3xl font-bold text-gray-800" id="stat-tasks">23</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 fade-in" style="animation-delay: 0.2s">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-project-diagram text-green-600 text-xl"></i>
+                    </div>
+                    <span class="text-purple-600 text-sm font-semibold">1 activo</span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">Proyectos</h3>
+                <p class="text-3xl font-bold text-gray-800" id="stat-projects">1</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-lg p-6 fade-in" style="animation-delay: 0.3s">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-clock text-orange-600 text-xl"></i>
+                    </div>
+                    <span class="text-red-600 text-sm font-semibold">Crítico</span>
+                </div>
+                <h3 class="text-gray-500 text-sm font-medium mb-1">Deploy en</h3>
+                <p class="text-3xl font-bold text-gray-800" id="countdown">2:45:30</p>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Agents -->
+            <div class="lg:col-span-2">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-robot text-purple-600 mr-2"></i>
+                        Agentes del Sistema
+                    </h2>
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition">
+                        <i class="fas fa-plus mr-2"></i>Nuevo Agente
+                    </button>
+                </div>
+                
+                <div id="agents-container" class="space-y-4">
+                    <!-- Agents will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Right Column: Tasks & Activity -->
+            <div class="space-y-6">
+                
+                <!-- Active Tasks -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-list-check text-blue-600 mr-2"></i>
+                        Tareas Activas
+                    </h3>
+                    <div id="tasks-container" class="space-y-3">
+                        <!-- Tasks will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- System Activity -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-activity text-green-600 mr-2"></i>
+                        Actividad Reciente
+                    </h3>
+                    <div id="activity-container" class="space-y-3">
+                        <!-- Activity will be loaded here -->
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Performance Chart -->
+        <div class="mt-8 bg-white rounded-2xl shadow-lg p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-chart-line text-indigo-600 mr-2"></i>
+                Rendimiento del Equipo
+            </h3>
+            <div class="flex items-end justify-around h-64" id="chart-container">
+                <!-- Chart bars will be generated here -->
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notifications" class="fixed top-20 right-6 space-y-3 z-50"></div>
+
+    <script>
+        // API Configuration
+        const API_URL = 'https://avia-senior-api-staging.onrender.com/api';
+        const USE_MOCK_DATA = true; // Set to false when API is ready
+        
+        // Mock Data
+        const MOCK_AGENTS = [
+            {
+                id: '1',
+                name: 'Carlos',
+                role: 'ORCHESTRATOR',
+                status: 'available',
+                capabilities: ['Orquestación', 'Decisión', 'Coordinación'],
+                currentTask: 'Supervisión del deployment',
+                progress: 100,
+                avatar: '👨‍💼'
+            },
+            {
+                id: '2',
+                name: 'Ulises',
+                role: 'BACKEND_LEAD',
+                status: 'busy',
+                capabilities: ['APIs', 'Database', 'Architecture'],
+                currentTask: 'Implementación CRUD de agentes',
+                progress: 85,
+                avatar: '👨‍💻'
+            },
+            {
+                id: '3',
+                name: 'Diego',
+                role: 'FRONTEND_LEAD',
+                status: 'busy',
+                capabilities: ['React', 'UI/UX', 'TypeScript'],
+                currentTask: 'Integración con backend',
+                progress: 90,
+                avatar: '👨‍🎨'
+            },
+            {
+                id: '4',
+                name: 'Armando',
+                role: 'DEVOPS',
+                status: 'busy',
+                capabilities: ['CI/CD', 'Docker', 'Cloud'],
+                currentTask: 'Pipeline de staging',
+                progress: 95,
+                avatar: '👨‍🔧'
+            },
+            {
+                id: '5',
+                name: 'Javier',
+                role: 'QA_LEAD',
+                status: 'available',
+                capabilities: ['Testing', 'Automation', 'Quality'],
+                currentTask: 'Smoke tests staging',
+                progress: 75,
+                avatar: '👨‍🔬'
+            }
+        ];
+        
+        const MOCK_TASKS = [
+            { id: '1', title: 'CI/CD Pipeline Setup', status: 'in_progress', assignedTo: 'Armando', priority: 'critical', dueDate: '2026-03-20' },
+            { id: '2', title: 'API Integration', status: 'in_progress', assignedTo: 'Diego', priority: 'high', dueDate: '2026-03-20' },
+            { id: '3', title: 'Database Seeding', status: 'pending', assignedTo: 'Ulises', priority: 'high', dueDate: '2026-03-20' },
+            { id: '4', title: 'Smoke Tests', status: 'pending', assignedTo: 'Javier', priority: 'medium', dueDate: '2026-03-20' },
+            { id: '5', title: 'Documentation', status: 'pending', assignedTo: 'Carlos', priority: 'medium', dueDate: '2026-03-20' }
+        ];
+        
+        const MOCK_ACTIVITY = [
+            { agent: 'Armando', action: 'completó Dockerfile configuration', time: '2 min ago', type: 'success' },
+            { agent: 'Javier', action: 'ejecutó tests con 100% coverage', time: '5 min ago', type: 'success' },
+            { agent: 'Diego', action: 'actualizó Dashboard UI', time: '12 min ago', type: 'info' },
+            { agent: 'Ulises', action: 'optimizó queries MongoDB', time: '18 min ago', type: 'info' },
+            { agent: 'Carlos', action: 'revisó deployment strategy', time: '25 min ago', type: 'info' }
+        ];
+        
+        // Utility Functions
+        function getStatusColor(status) {
+            const colors = {
+                available: 'text-green-600 bg-green-100',
+                busy: 'text-orange-600 bg-orange-100',
+                offline: 'text-red-600 bg-red-100'
+            };
+            return colors[status] || colors.offline;
+        }
+        
+        function getStatusIcon(status) {
+            const icons = {
+                available: 'fa-circle-check',
+                busy: 'fa-clock',
+                offline: 'fa-circle-xmark'
+            };
+            return icons[status] || icons.offline;
+        }
+        
+        function getTaskStatusClass(status) {
+            const classes = {
+                completed: 'task-completed',
+                in_progress: 'task-in-progress',
+                pending: 'task-pending'
+            };
+            return classes[status] || classes.pending;
+        }
+        
+        function showNotification(message, type = 'info') {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500',
+                warning: 'bg-orange-500'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3`;
+            notification.innerHTML = `
+                <i class="fas fa-bell"></i>
+                <span>${message}</span>
+            `;
+            
+            document.getElementById('notifications').appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+        
+        // Render Functions
+        function renderAgent(agent) {
+            return `
+                <div class="agent-card bg-white rounded-2xl shadow-lg p-6" data-testid="agent-card">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="text-5xl">${agent.avatar}</div>
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">${agent.name}</h3>
+                                <p class="text-gray-500 text-sm font-medium">${agent.role.replace(/_/g, ' ')}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2 ${getStatusColor(agent.status)} px-3 py-1 rounded-full">
+                            <i class="fas ${getStatusIcon(agent.status)} text-sm"></i>
+                            <span class="text-xs font-semibold uppercase">${agent.status}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-gray-600 text-sm mb-2">
+                            <i class="fas fa-tasks text-purple-600 mr-2"></i>
+                            ${agent.currentTask}
+                        </p>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div class="progress-bar bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-full" 
+                                     style="width: ${agent.progress}%"></div>
+                            </div>
+                            <span class="text-sm font-bold text-gray-700">${agent.progress}%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        ${agent.capabilities.map(cap => `
+                            <span class="bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full font-medium">
+                                ${cap}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderTask(task) {
+            const priorityIcons = {
+                critical: 'fa-circle-exclamation text-red-600',
+                high: 'fa-arrow-up text-orange-600',
+                medium: 'fa-minus text-blue-600',
+                low: 'fa-arrow-down text-gray-600'
+            };
+            
+            return `
+                <div class="flex items-center justify-between p-3 rounded-lg ${getTaskStatusClass(task.status)}">
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm">${task.title}</p>
+                        <p class="text-xs opacity-75 mt-1">${task.assignedTo}</p>
+                    </div>
+                    <i class="fas ${priorityIcons[task.priority]} text-lg"></i>
+                </div>
+            `;
+        }
+        
+        function renderActivity(activity) {
+            const typeColors = {
+                success: 'bg-green-100 text-green-800',
+                info: 'bg-blue-100 text-blue-800',
+                warning: 'bg-orange-100 text-orange-800'
+            };
+            
+            return `
+                <div class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition">
+                    <div class="w-2 h-2 ${typeColors[activity.type]} rounded-full mt-2"></div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-800">
+                            <span class="font-semibold">${activity.agent}</span> ${activity.action}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">${activity.time}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderChart() {
+            const agents = ['Carlos', 'Ulises', 'Diego', 'Armando', 'Javier'];
+            const performances = [100, 85, 90, 95, 75];
+            const colors = ['bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500'];
+            
+            return agents.map((agent, i) => `
+                <div class="flex flex-col items-center flex-1">
+                    <div class="w-full flex flex-col items-center justify-end h-full">
+                        <div class="chart-bar ${colors[i]} rounded-t-lg w-16 transition-all duration-1000" 
+                             style="height: ${performances[i]}%"
+                             data-height="${performances[i]}">
+                        </div>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-700 mt-3">${agent}</p>
+                    <p class="text-xs text-gray-500">${performances[i]}%</p>
+                </div>
+            `).join('');
+        }
+        
+        // Data Loading
+        async function loadData() {
+            try {
+                let agents, tasks;
+                
+                if (USE_MOCK_DATA) {
+                    agents = MOCK_AGENTS;
+                    tasks = MOCK_TASKS;
+                } else {
+                    const [agentsRes, tasksRes] = await Promise.all([
+                        fetch(`${API_URL}/agents`),
+                        fetch(`${API_URL}/tasks`)
+                    ]);
+                    
+                    agents = await agentsRes.json();
+                    tasks = await tasksRes.json();
+                }
+                
+                // Render agents
+                document.getElementById('agents-container').innerHTML = agents.map(renderAgent).join('');
+                
+                // Render tasks
+                document.getElementById('tasks-container').innerHTML = tasks.slice(0, 5).map(renderTask).join('');
+                
+                // Render activity
+                document.getElementById('activity-container').innerHTML = MOCK_ACTIVITY.map(renderActivity).join('');
+                
+                // Render chart
+                document.getElementById('chart-container').innerHTML = renderChart();
+                
+                // Update stats
+                document.getElementById('stat-agents').textContent = agents.length;
+                document.getElementById('stat-tasks').textContent = tasks.length;
+                
+                // Animate chart bars
+                setTimeout(() => {
+                    document.querySelectorAll('.chart-bar').forEach(bar => {
+                        const height = bar.getAttribute('data-height');
+                        bar.style.height = height + '%';
+                    });
+                }, 100);
+                
+                showNotification('Dashboard actualizado correctamente', 'success');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showNotification('Error cargando datos. Usando datos de demostración.', 'warning');
+                
+                // Fallback to mock data
+                document.getElementById('agents-container').innerHTML = MOCK_AGENTS.map(renderAgent).join('');
+                document.getElementById('tasks-container').innerHTML = MOCK_TASKS.slice(0, 5).map(renderTask).join('');
+                document.getElementById('activity-container').innerHTML = MOCK_ACTIVITY.map(renderActivity).join('');
+                document.getElementById('chart-container').innerHTML = renderChart();
+            }
+        }
+        
+        // Countdown Timer
+        function startCountdown() {
+            const targetTime = new Date();
+            targetTime.setHours(16, 0, 0, 0);
+            
+            setInterval(() => {
+                const now = new Date();
+                const diff = targetTime - now;
+                
+                if (diff > 0) {
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    document.getElementById('countdown').textContent = 
+                        `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    document.getElementById('countdown').textContent = '🎉 DEMO TIME!';
+                }
+            }, 1000);
+        }
+        
+        // Auto-refresh
+        function startAutoRefresh() {
+            setInterval(() => {
+                loadData();
+            }, 30000); // Refresh every 30 seconds
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            startCountdown();
+            startAutoRefresh();
+            
+            showNotification('¡Bienvenido a AVIA Senior Platform!', 'info');
+        });
+        
+        // Simulate real-time updates
+        setInterval(() => {
+            const randomAgent = MOCK_AGENTS[Math.floor(Math.random() * MOCK_AGENTS.length)];
+            const actions = ['completó una tarea', 'actualizó el código', 'revisó un PR', 'deployó cambios'];
+            const randomAction = actions[Math.floor(Math.random() * actions.length)];
+            
+            showNotification(`${randomAgent.name} ${randomAction}`, 'info');
+        }, 45000);
+    </script>
+</body>
+</html>

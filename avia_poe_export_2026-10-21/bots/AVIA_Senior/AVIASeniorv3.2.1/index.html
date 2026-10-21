@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AVIA Senior v3.2.1 - Constelación Autónoma de 19 Bots IA">
+<meta name="theme-color" content="#03050a">
+<title>AVIA Senior v3.2.1 | Constelación Autónoma</title>
+
+<!-- ╔════════════════════════════════════════════════════════════╗
+     ║ AVIA SENIOR - v3.2.1 "Constelación Autónoma"             ║
+     ║ Fecha: 2026-03-25 | Mejoras A11Y + Robustez             ║
+     ╚════════════════════════════════════════════════════════════╝ -->
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+
+<style>
+:root{--void:#03050a;--nebula-dark:#0a0e1a;--nebula-mid:#111929;--starfield:#1a2540;--cosmic-purple:#6c3ce9;--cosmic-blue:#00bfff;--cosmic-cyan:#00f5d4;--cosmic-gold:#ffd700;--cosmic-pink:#ff3864;--cosmic-orange:#ff6b35;--nova-white:#f0f4ff;--stellar-gray:#8b98b8;--orbit-line:rgba(108,60,233,0.3);--tv-red:#e53935;--tv-green:#43a047;--tv-yellow:#fdd835;--tv-blue:#1e88e5;--tv-purple:#8e24aa}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Rajdhani',sans-serif;background:var(--void);color:var(--nova-white);min-height:100vh;overflow-x:hidden}
+.space-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;background:radial-gradient(ellipse at 20% 80%,rgba(108,60,233,0.15) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,rgba(0,191,255,0.1) 0%,transparent 50%),var(--void)}
+.stars{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.star{position:absolute;width:2px;height:2px;background:white;border-radius:50%;animation:twinkle var(--duration) ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+.header{padding:1.5rem 2rem;background:linear-gradient(180deg,rgba(10,14,26,0.95) 0%,transparent 100%);position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center}
+.logo{display:flex;align-items:center;gap:1rem}
+.logo-icon{width:50px;height:50px;background:conic-gradient(from 0deg,var(--cosmic-purple),var(--cosmic-blue),var(--cosmic-cyan),var(--cosmic-purple));border-radius:50%;display:flex;align-items:center;justify-content:center;animation:rotate-halo 8s linear infinite;position:relative}
+.logo-icon::before{content:'';position:absolute;inset:3px;background:var(--void);border-radius:50%}
+.logo-icon i{position:relative;z-index:1;font-size:1.2rem;color:var(--cosmic-cyan)}
+@keyframes rotate-halo{to{transform:rotate(360deg)}}
+.logo h1{font-family:'Orbitron',sans-serif;font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,var(--cosmic-cyan),var(--cosmic-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo span{font-size:0.7rem;color:var(--stellar-gray);display:block;letter-spacing:3px;text-transform:uppercase}
+.header-actions{display:flex;gap:1rem}
+.btn{padding:0.75rem 1.5rem;border:none;border-radius:8px;font-family:'Rajdhani',sans-serif;font-weight:600;font-size:1rem;cursor:pointer;transition:all 0.3s ease;display:flex;align-items:center;gap:0.5rem}
+.btn-primary{background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));color:white;box-shadow:0 4px 20px rgba(108,60,233,0.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(108,60,233,0.6)}
+.btn-ghost{background:rgba(255,255,255,0.05);color:var(--nova-white);border:1px solid rgba(255,255,255,0.1)}
+.btn-ghost:hover{background:rgba(255,255,255,0.1)}
+.main-content{padding-top:100px;min-height:100vh}
+.constellation-container{width:100%;height:70vh;position:relative;overflow:hidden}
+#constellation-map{width:100%;height:100%}
+.node-group{cursor:pointer}
+.node-orbit{fill:none;stroke:var(--orbit-line);stroke-width:1;stroke-dasharray:4 4;animation:dash 20s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-100}}
+.node-core{filter:drop-shadow(0 0 20px currentColor)}
+.node-label{font-family:'Orbitron',sans-serif;font-size:11px;fill:var(--nova-white);text-anchor:middle;pointer-events:none}
+.link{stroke-linecap:round;stroke-opacity:0.6}
+.info-panel{position:fixed;top:100px;right:20px;width:380px;max-height:calc(100vh - 140px);background:linear-gradient(135deg,rgba(10,14,26,0.95),rgba(26,37,64,0.9));border:1px solid rgba(108,60,233,0.3);border-radius:16px;padding:1.5rem;overflow-y:auto;transform:translateX(420px);transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);backdrop-filter:blur(20px);z-index:50}
+.info-panel.active{transform:translateX(0)}
+.info-panel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.1)}
+.bot-icon-large{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:0.5rem}
+.bot-name{font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--cosmic-cyan);margin-bottom:0.25rem}
+.bot-role{font-size:0.9rem;color:var(--stellar-gray)}
+.close-panel{background:rgba(255,255,255,0.1);border:none;width:32px;height:32px;border-radius:8px;color:var(--stellar-gray);cursor:pointer;transition:all 0.3s}
+.close-panel:hover{background:rgba(255,56,100,0.2);color:var(--cosmic-pink)}
+.info-section{margin-bottom:1.25rem}
+.info-section h4{font-family:'Orbitron',sans-serif;font-size:0.75rem;color:var(--cosmic-purple);text-transform:uppercase;letter-spacing:2px;margin-bottom:0.75rem}
+.info-section p{font-size:0.95rem;line-height:1.6;color:var(--nova-white)}
+.capability-list{display:flex;flex-wrap:wrap;gap:0.5rem}
+.capability-tag{padding:0.4rem 0.8rem;background:rgba(108,60,233,0.2);border:1px solid rgba(108,60,233,0.3);border-radius:20px;font-size:0.8rem;color:var(--cosmic-cyan)}
+.dependency-list{list-style:none}
+.dependency-list li{padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:0.75rem;font-size:0.9rem}
+.dependency-list li i{color:var(--cosmic-gold);font-size:0.8rem}
+.status-indicator{display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;border-radius:20px;font-size:0.85rem;font-weight:600}
+.status-active{background:rgba(0,245,212,0.15);color:var(--cosmic-cyan)}
+.status-active::before{content:'';width:8px;height:8px;background:var(--cosmic-cyan);border-radius:50%;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.panel-actions{display:flex;gap:0.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.1);flex-wrap:wrap}
+.btn-pipeline,.btn-assistant,.btn-execute{padding:0.75rem 1.25rem;border:none;border-radius:25px;font-family:'Rajdhani',sans-serif;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all 0.3s;font-size:0.9rem;flex:1;min-width:90px;justify-content:center}
+.btn-pipeline{background:linear-gradient(135deg,var(--cosmic-cyan),var(--cosmic-blue));color:var(--void)}
+.btn-assistant{background:linear-gradient(135deg,var(--tv-purple),#6a1b9a);color:white}
+.btn-execute{background:linear-gradient(135deg,#10b981,#059669);color:white}
+.btn-pipeline:hover,.btn-assistant:hover,.btn-execute:hover{filter:brightness(1.15);transform:translateY(-2px)}
+.architecture-panel{padding:2rem;max-width:1400px;margin:0 auto}
+.section-title{font-family:'Orbitron',sans-serif;font-size:1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem}
+.section-title i{color:var(--cosmic-purple)}
+.ontology-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin-bottom:3rem}
+.ontology-card{background:linear-gradient(135deg,rgba(26,37,64,0.6),rgba(10,14,26,0.8));border:1px solid rgba(108,60,233,0.2);border-radius:16px;padding:1.5rem;transition:all 0.3s ease;position:relative;overflow:hidden;cursor:pointer}
+.ontology-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cosmic-purple),var(--cosmic-cyan))}
+.ontology-card:hover{transform:translateY(-4px);border-color:rgba(108,60,233,0.5);box-shadow:0 10px 40px rgba(108,60,233,0.2)}
+.card-header{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.card-title{font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--nova-white)}
+.card-subtitle{font-size:0.8rem;color:var(--stellar-gray)}
+.card-description{font-size:0.9rem;color:var(--stellar-gray);line-height:1.6;margin-bottom:1rem}
+.card-footer{display:flex;flex-wrap:wrap;gap:0.5rem}
+.layer-tag{padding:0.3rem 0.6rem;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.layer-orchestrator{background:linear-gradient(135deg,var(--cosmic-gold),var(--cosmic-orange));color:var(--void)}
+.layer-cognitive{background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));color:white}
+.layer-creative{background:linear-gradient(135deg,var(--cosmic-pink),var(--cosmic-orange));color:white}
+.layer-support{background:linear-gradient(135deg,var(--cosmic-cyan),var(--cosmic-blue));color:var(--void)}
+.layer-production{background:linear-gradient(135deg,#f59e0b,#ff6b35);color:var(--void)}
+.layer-automation{background:linear-gradient(135deg,#e879f9,#a855f7);color:white}
+.layer-execution{background:linear-gradient(135deg,#22d3ee,#06b6d4);color:var(--void)}
+.legend{display:flex;flex-wrap:wrap;gap:2rem;padding:1.5rem;background:rgba(26,37,64,0.4);border-radius:12px;margin:0 2rem 2rem;display:none}
+.legend-item{display:flex;align-items:center;gap:0.75rem}
+.legend-dot{width:16px;height:16px;border-radius:50%;box-shadow:0 0 10px currentColor}
+.legend-label{font-size:0.9rem;color:var(--stellar-gray)}
+.matrix-container{background:rgba(10,14,26,0.8);border:1px solid rgba(108,60,233,0.2);border-radius:16px;padding:1.5rem;overflow-x:auto;margin-bottom:3rem}
+.matrix-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.matrix-table th,.matrix-table td{padding:0.75rem;text-align:center;border:1px solid rgba(255,255,255,0.05)}
+.matrix-table th{background:rgba(108,60,233,0.2);font-family:'Orbitron',sans-serif;font-size:0.7rem;color:var(--cosmic-cyan);letter-spacing:1px}
+.matrix-table th:first-child{text-align:left}
+.matrix-table td:first-child{text-align:left;font-weight:600;color:var(--nova-white);background:rgba(26,37,64,0.5)}
+.dep-cell{width:24px;height:24px;margin:0 auto;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.7rem}
+.dep-primary{background:var(--cosmic-gold);color:var(--void)}
+.dep-secondary{background:var(--cosmic-purple);color:white}
+.roadmap-panel{background:linear-gradient(135deg,rgba(26,37,64,0.6),rgba(10,14,26,0.8));border:1px solid rgba(0,245,212,0.3);border-radius:16px;padding:1.5rem;margin-bottom:2rem;display:none}
+.roadmap-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.1)}
+.roadmap-header h3{font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--cosmic-cyan);display:flex;align-items:center;gap:0.75rem}
+.version-badge{padding:0.4rem 1rem;background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));border-radius:20px;font-size:0.8rem;font-weight:600}
+.roadmap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.roadmap-card{background:rgba(10,14,26,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:1.25rem;transition:all 0.3s}
+.roadmap-card:hover{border-color:var(--cosmic-purple);transform:translateY(-2px)}
+.roadmap-card.completed{border-left:3px solid var(--cosmic-cyan)}
+.roadmap-card.in-progress{border-left:3px solid var(--cosmic-gold)}
+.roadmap-card.pending{border-left:3px solid var(--stellar-gray)}
+.roadmap-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem}
+.roadmap-card h4{font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:600;color:var(--nova-white)}
+.roadmap-status{padding:0.2rem 0.6rem;border-radius:12px;font-size:0.7rem;font-weight:600}
+.roadmap-status.completed{background:rgba(0,245,212,0.2);color:var(--cosmic-cyan)}
+.roadmap-status.in-progress{background:rgba(255,215,0,0.2);color:var(--cosmic-gold)}
+.roadmap-status.pending{background:rgba(139,152,184,0.2);color:var(--stellar-gray)}
+.roadmap-card p{font-size:0.85rem;color:var(--stellar-gray);line-height:1.5;margin-bottom:0.75rem}
+.roadmap-contributors{display:flex;gap:0.5rem;flex-wrap:wrap}
+.contributor-tag{padding:0.2rem 0.5rem;background:rgba(108,60,233,0.2);border-radius:8px;font-size:0.7rem;color:var(--cosmic-purple)}
+.pipeline-overlay{position:fixed;inset:0;background:rgba(3,5,10,0.95);backdrop-filter:blur(20px);z-index:1000;display:none;flex-direction:column}
+.pipeline-overlay.active{display:flex}
+.pipeline-overlay-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 2rem;border-bottom:1px solid rgba(255,255,255,0.1)}
+.pipeline-overlay-title{display:flex;align-items:center;gap:1rem}
+.pipeline-overlay-title h2{font-family:'Orbitron',sans-serif;font-size:1.3rem;color:var(--nova-white)}
+.bot-badge{padding:0.4rem 1rem;background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));border-radius:20px;font-size:0.8rem;font-weight:600}
+.pipeline-overlay-close{background:rgba(255,255,255,0.1);border:none;width:44px;height:44px;border-radius:12px;color:var(--nova-white);cursor:pointer;font-size:1.2rem}
+.pipeline-overlay-close:hover{background:rgba(255,56,100,0.3);color:var(--cosmic-pink)}
+.pipeline-overlay-body{flex:1;display:flex;flex-direction:column;padding:2rem;overflow:hidden}
+.pipeline-content{flex:1;background:rgba(26,37,64,0.4);border:1px solid rgba(108,60,233,0.2);border-radius:16px;padding:2rem;margin-bottom:1.5rem;overflow-y:auto}
+.pipeline-content h3{font-family:'Orbitron',sans-serif;font-size:1.2rem;color:var(--cosmic-cyan);margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem}
+.section-number{background:var(--cosmic-purple);color:white;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.85rem}
+.pipeline-content p{color:var(--nova-white);line-height:1.8}
+.pipeline-content ul{list-style:none;padding:0;margin:1rem 0}
+.pipeline-content ul li{padding:0.5rem 0 0.5rem 1.5rem;position:relative;color:var(--stellar-gray)}
+.pipeline-content ul li::before{content:'▸';position:absolute;left:0;color:var(--cosmic-cyan)}
+.pipeline-nav-container{display:flex;flex-direction:column;gap:1rem}
+.pipeline-minimap{display:flex;justify-content:center;gap:0.5rem;padding:0.75rem}
+.minimap-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.3);cursor:pointer;transition:all 0.3s}
+.minimap-dot.active{background:var(--cosmic-cyan);box-shadow:0 0 10px var(--cosmic-cyan);transform:scale(1.3)}
+.page-indicator{display:flex;align-items:center;justify-content:center;gap:0.5rem;font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--stellar-gray)}
+.page-indicator-btn{background:rgba(255,255,255,0.1);border:none;width:32px;height:32px;border-radius:8px;color:var(--nova-white);cursor:pointer}
+.page-indicator-btn:disabled{opacity:0.3;cursor:not-allowed}
+.tv-nav-row{display:flex;justify-content:center;gap:1rem;padding:1rem;background:rgba(10,14,26,0.9);border-radius:16px;flex-wrap:wrap}
+.btn-tv{min-width:180px;padding:1rem 1.5rem;border:none;border-radius:12px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1rem;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;gap:0.5rem;transition:all 0.2s}
+.btn-tv:hover{transform:scale(1.02);filter:brightness(1.1)}
+.btn-tv:disabled{opacity:0.3;cursor:not-allowed}
+.btn-tv-red{background:linear-gradient(135deg,var(--tv-red),#c62828)}
+.btn-tv-green{background:linear-gradient(135deg,var(--tv-green),#2e7d32)}
+.btn-tv-yellow{background:linear-gradient(135deg,var(--tv-yellow),#f9a825);color:#1a1a1a}
+.btn-tv-blue{background:linear-gradient(135deg,var(--tv-blue),#1565c0)}
+.assistant-overlay{position:fixed;inset:0;background:rgba(3,5,10,0.96);backdrop-filter:blur(20px);z-index:1100;display:none;flex-direction:column}
+.assistant-overlay.active{display:flex}
+.assistant-header{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 2rem;border-bottom:1px solid rgba(108,60,233,0.3);background:rgba(10,14,26,0.9)}
+.assistant-header-left{display:flex;align-items:center;gap:1rem}
+.assistant-bot-avatar{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:white}
+.assistant-header-info h3{font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--nova-white)}
+.assistant-header-info p{font-size:0.75rem;color:var(--stellar-gray)}
+.assistant-status{display:flex;align-items:center;gap:0.4rem;font-size:0.75rem;color:var(--cosmic-cyan)}
+.assistant-status-dot{width:8px;height:8px;border-radius:50%;background:var(--cosmic-cyan)}
+.assistant-status-dot.thinking{animation:blink 0.6s ease-in-out infinite}
+.assistant-close{background:rgba(255,255,255,0.1);border:none;width:40px;height:40px;border-radius:10px;color:var(--nova-white);cursor:pointer;font-size:1.1rem}
+.assistant-close:hover{background:rgba(255,56,100,0.3);color:var(--cosmic-pink)}
+.assistant-messages{flex:1;overflow-y:auto;padding:1.5rem 2rem;display:flex;flex-direction:column;gap:1rem}
+.assistant-msg{max-width:85%;padding:1rem 1.25rem;border-radius:16px;font-size:0.95rem;line-height:1.7;animation:msg-in 0.3s ease}
+@keyframes msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.assistant-msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));color:white;border-bottom-right-radius:4px}
+.assistant-msg.bot{align-self:flex-start;background:rgba(26,37,64,0.8);border:1px solid rgba(108,60,233,0.2);color:var(--nova-white);border-bottom-left-radius:4px}
+.assistant-msg.bot.error{border-color:var(--cosmic-pink);background:rgba(255,56,100,0.1)}
+.assistant-msg.bot h1,.assistant-msg.bot h2,.assistant-msg.bot h3{font-family:'Orbitron',sans-serif;color:var(--cosmic-cyan);margin:0.75rem 0 0.5rem;font-size:1.1rem}
+.assistant-msg.bot h1{font-size:1.2rem}
+.assistant-msg.bot code{background:rgba(0,0,0,0.3);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.85rem;color:var(--cosmic-cyan)}
+.assistant-msg.bot pre{background:rgba(0,0,0,0.4);border:1px solid rgba(108,60,233,0.2);border-radius:8px;padding:1rem;overflow-x:auto;margin:0.5rem 0}
+.assistant-msg.bot pre code{background:none;padding:0}
+.assistant-msg.bot ul,.assistant-msg.bot ol{padding-left:1.5rem;margin:0.5rem 0}
+.assistant-msg.bot li{margin:0.25rem 0;color:var(--stellar-gray)}
+.assistant-msg.bot strong{color:var(--cosmic-gold)}
+.assistant-msg.bot a{color:var(--cosmic-cyan);text-decoration:underline}
+.assistant-msg.typing::after{content:'▍';animation:cursor-blink 0.8s step-end infinite;color:var(--cosmic-cyan)}
+@keyframes cursor-blink{50%{opacity:0}}
+.assistant-input-bar{display:flex;gap:0.75rem;padding:1.25rem 2rem;background:rgba(10,14,26,0.9);border-top:1px solid rgba(108,60,233,0.2)}
+.assistant-input{flex:1;background:rgba(26,37,64,0.6);border:1px solid rgba(108,60,233,0.3);border-radius:12px;padding:0.9rem 1.25rem;font-family:'Rajdhani',sans-serif;font-size:1rem;color:var(--nova-white);outline:none;transition:border-color 0.3s}
+.assistant-input:focus{border-color:var(--cosmic-cyan)}
+.assistant-input::placeholder{color:var(--stellar-gray)}
+.assistant-send{background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));border:none;border-radius:12px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;font-size:1.1rem;transition:all 0.3s}
+.assistant-send:hover{transform:scale(1.05);filter:brightness(1.2)}
+.assistant-send:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.loading-overlay{position:fixed;inset:0;background:var(--void);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s ease}
+.loading-overlay.hidden{opacity:0;pointer-events:none}
+.loading-constellation{position:relative;width:120px;height:120px}
+.loading-orbit{position:absolute;border:2px solid transparent;border-top-color:var(--cosmic-cyan);border-radius:50%;animation:orbit-spin 1.5s linear infinite}
+.loading-orbit:nth-child(1){inset:0}
+.loading-orbit:nth-child(2){inset:15px;border-top-color:var(--cosmic-purple);animation-direction:reverse}
+.loading-orbit:nth-child(3){inset:30px;border-top-color:var(--cosmic-gold);animation-duration:0.9s}
+.loading-core{position:absolute;inset:45px;background:conic-gradient(from 0deg,var(--cosmic-purple),var(--cosmic-cyan),var(--cosmic-gold),var(--cosmic-purple));border-radius:50%;animation:core-pulse 2s ease-in-out infinite}
+@keyframes orbit-spin{to{transform:rotate(360deg)}}
+@keyframes core-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.loading-text{margin-top:2rem;font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--stellar-gray);letter-spacing:4px}
+.footer{padding:2rem;text-align:center;border-top:1px solid rgba(255,255,255,0.05);margin-top:2rem}
+.footer p{font-size:0.85rem;color:var(--stellar-gray)}
+@media (max-width:768px){
+.header{flex-direction:column;gap:1rem;padding:1rem}
+.constellation-container{height:50vh}
+.info-panel{width:calc(100% - 40px);right:20px;left:20px}
+.tv-nav-row{flex-direction:column}
+.btn-tv{min-width:100%}
+.panel-actions{flex-direction:column}
+.btn-pipeline,.btn-assistant,.btn-execute{min-width:100%}
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--void)}
+::-webkit-scrollbar-thumb{background:var(--cosmic-purple);border-radius:4px}
+.avia-modal-bg{position:fixed;inset:0;background:rgba(3,5,10,0.85);backdrop-filter:blur(12px);z-index:3000;display:none;align-items:center;justify-content:center}
+.avia-modal-bg.active{display:flex}
+.avia-modal{background:linear-gradient(135deg,rgba(17,25,41,0.98),rgba(10,14,26,0.98));border:1px solid rgba(108,60,233,0.4);border-radius:20px;padding:2rem;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center}
+.avia-modal-icon{font-size:2.5rem;margin-bottom:1rem}
+.avia-modal-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;color:var(--nova-white);margin-bottom:0.75rem}
+.avia-modal-body{font-size:0.95rem;color:var(--stellar-gray);line-height:1.7;margin-bottom:1.5rem;white-space:pre-line}
+.avia-modal-btns{display:flex;gap:0.75rem;justify-content:center}
+.avia-modal-btn{padding:0.65rem 1.4rem;border:none;border-radius:12px;font-family:'Rajdhani',sans-serif;font-weight:600;font-size:1rem;cursor:pointer}
+.avia-modal-btn.primary{background:linear-gradient(135deg,var(--cosmic-purple),var(--cosmic-blue));color:white}
+.avia-modal-btn.success{background:linear-gradient(135deg,#10b981,#059669);color:white}
+.avia-modal-btn.ghost{background:rgba(255,255,255,0.08);color:var(--stellar-gray);border:1px solid rgba(255,255,255,0.15)}
+.toast-box{position:fixed;bottom:24px;right:24px;z-index:3500;display:flex;flex-direction:column-reverse;gap:0.75rem;pointer-events:none}
+.toast-item{pointer-events:auto;display:flex;align-items:center;gap:0.75rem;padding:0.85rem 1.2rem;border-radius:12px;background:rgba(17,25,41,0.95);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);font-size:0.9rem;color:var(--nova-white);min-width:260px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:toast-slide 0.4s ease}
+@keyframes toast-slide{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+.toast-item.out{animation:toast-out 0.3s ease forwards}
+@keyframes toast-out{to{opacity:0;transform:translateX(40px)}}
+.toast-item i{font-size:1.1rem;flex-shrink:0}
+.toast-ok{border-left:3px solid var(--cosmic-cyan)}.toast-ok i{color:var(--cosmic-cyan)}
+.toast-err{border-left:3px solid var(--cosmic-pink)}.toast-err i{color:var(--cosmic-pink)}
+.toast-warn{border-left:3px solid var(--cosmic-gold)}.toast-warn i{color:var(--cosmic-gold)}
+.cmdk-bg{position:fixed;inset:0;background:rgba(3,5,10,0.8);backdrop-filter:blur(10px);z-index:2500;display:none;align-items:flex-start;justify-content:center;padding-top:18vh}
+.cmdk-bg.active{display:flex}
+.cmdk-box{background:linear-gradient(135deg,rgba(17,25,41,0.98),rgba(10,14,26,0.98));border:1px solid rgba(108,60,233,0.4);border-radius:16px;width:540px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden}
+.cmdk-input-wrap{display:flex;align-items:center;gap:0.75rem;padding:1rem 1.25rem;border-bottom:1px solid rgba(255,255,255,0.08)}
+.cmdk-input-wrap i{color:var(--cosmic-purple);font-size:1.1rem;flex-shrink:0}
+.cmdk-input{flex:1;background:none;border:none;font-family:'Rajdhani',sans-serif;font-size:1.1rem;color:var(--nova-white);outline:none}
+.cmdk-input::placeholder{color:var(--stellar-gray)}
+.cmdk-kbd{font-size:0.7rem;color:var(--stellar-gray);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:0.15rem 0.4rem;flex-shrink:0}
+.cmdk-results{max-height:340px;overflow-y:auto;padding:0.5rem}
+.cmdk-item{display:flex;align-items:center;gap:0.85rem;padding:0.7rem 1rem;border-radius:10px;cursor:pointer;transition:background 0.15s}
+.cmdk-item:hover,.cmdk-item.active{background:rgba(108,60,233,0.15)}
+.cmdk-item-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.95rem;color:white;flex-shrink:0}
+.cmdk-item-info{flex:1;min-width:0}
+.cmdk-item-name{font-family:'Orbitron',sans-serif;font-size:0.85rem;color:var(--nova-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmdk-item-role{font-size:0.75rem;color:var(--stellar-gray)}
+.cmdk-item-actions{display:flex;gap:0.35rem;flex-shrink:0;opacity:0;transition:opacity 0.15s}
+.cmdk-item:hover .cmdk-item-actions{opacity:1}
+.cmdk-action{width:28px;height:28px;border:none;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:0.7rem;color:white;transition:transform 0.15s}
+.cmdk-action:hover{transform:scale(1.15)}
+.cmdk-action-pipe{background:linear-gradient(135deg,var(--cosmic-cyan),var(--cosmic-blue))}
+.cmdk-action-ask{background:linear-gradient(135deg,var(--tv-purple),#6a1b9a)}
+.cmdk-action-exec{background:linear-gradient(135deg,#10b981,#059669)}
+.cmdk-empty{padding:2rem 1rem;text-align:center;color:var(--stellar-gray);font-size:0.95rem}
+.node-tooltip{position:fixed;pointer-events:none;z-index:200;background:linear-gradient(135deg,rgba(17,25,41,0.96),rgba(10,14,26,0.96));border:1px solid rgba(108,60,233,0.4);border-radius:12px;padding:0.75rem 1rem;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.5);opacity:0;transition:opacity 0.2s;font-size:0.85rem}
+.node-tooltip.visible{opacity:1}
+.node-tooltip-name{font-family:'Orbitron',sans-serif;font-size:0.8rem;color:var(--cosmic-cyan);margin-bottom:0.25rem}
+.node-tooltip-role{font-size:0.7rem;color:var(--stellar-gray);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:1px}
+.node-tooltip-caps{display:flex;flex-wrap:wrap;gap:0.25rem}
+.node-tooltip-cap{padding:0.15rem 0.4rem;background:rgba(108,60,233,0.2);border-radius:6px;font-size:0.65rem;color:var(--cosmic-purple)}
+.stats-bar{display:flex;gap:1.5rem;padding:0.75rem 2rem;background:rgba(10,14,26,0.6);border-bottom:1px solid rgba(108,60,233,0.15);flex-wrap:wrap;justify-content:center}
+.stat-item{display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;color:var(--stellar-gray)}
+.stat-value{font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--cosmic-cyan);font-weight:700}
+.stat-label{font-size:0.75rem;text-transform:uppercase;letter-spacing:1px}
+@keyframes node-pulse{0%,100%{filter:drop-shadow(0 0 20px currentColor)}50%{filter:drop-shadow(0 0 35px currentColor) brightness(1.2)}}
+.node-group:hover .node-core{animation:node-pulse 1s ease-in-out infinite}
+.layer-filters{display:flex;gap:0.5rem;padding:0.5rem 2rem;justify-content:center;flex-wrap:wrap}
+.layer-btn{padding:0.35rem 0.8rem;border:1px solid rgba(255,255,255,0.15);border-radius:20px;background:rgba(255,255,255,0.05);color:var(--stellar-gray);font-family:'Rajdhani',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.layer-btn.active{color:white;border-color:currentColor;background:rgba(255,255,255,0.1)}
+.node-group.dimmed{opacity:0.12;pointer-events:none}
+.conn{transition:stroke-opacity 0.3s,stroke-width 0.3s}
+.link-dim{stroke-opacity:0.08!important}.link-hl{stroke-opacity:1!important;stroke-width:3!important}
+.node-group{transition:opacity 0.4s ease}
+</style>
+</head>
+
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-constellation">
+<div class="loading-orbit"></div>
+<div class="loading-orbit"></div>
+<div class="loading-orbit"></div>
+<div class="loading-core"></div>
+</div>
+<p class="loading-text">INICIANDO CONSTELACIÓN</p>
+</div>
+
+<div class="space-bg"></div>
+<div class="stars" id="stars"></div>
+
+<header class="header">
+<div class="logo">
+<div class="logo-icon"><i class="fas fa-atom"></i></div>
+<div>
+<h1>AVIA SENIOR v3.2.1</h1>
+<span>Constelación Autónoma</span>
+</div>
+</div>
+<div class="header-actions">
+<button class="btn btn-ghost" id="openCmdK" title="Buscar bot (Cmd+K)"><i class="fas fa-search"></i><span>Buscar</span></button>
+<button class="btn btn-ghost" id="toggleRoadmap"><i class="fas fa-tasks"></i><span>Roadmap</span></button>
+<button class="btn btn-ghost" id="toggleLegend"><i class="fas fa-info-circle"></i><span>Leyenda</span></button>
+<button class="btn btn-primary" id="resetView"><i class="fas fa-sync-alt"></i><span>Reiniciar</span></button>
+</div>
+</header>
+
+<main class="main-content">
+<section class="constellation-container">
+<svg id="constellation-map" role="img" aria-label="Constelación de 19 bots IA"></svg>
+</section>
+
+<div class="stats-bar" id="statsBar"></div>
+<div class="layer-filters" id="layerFilters"></div>
+
+<div class="node-tooltip" id="nodeTooltip">
+<div class="node-tooltip-name" id="ttName"></div>
+<div class="node-tooltip-role" id="ttRole"></div>
+<div class="node-tooltip-caps" id="ttCaps"></div>
+</div>
+
+<div class="legend" id="legend">
+<div class="legend-item"><div class="legend-dot" style="background:var(--cosmic-gold);"></div><span class="legend-label">Orquestador</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--cosmic-purple);"></div><span class="legend-label">Cognitiva</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--cosmic-pink);"></div><span class="legend-label">Creativa</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--cosmic-cyan);"></div><span class="legend-label">Soporte</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:var(--cosmic-orange);"></div><span class="legend-label">Producción</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:#e879f9;"></div><span class="legend-label">Automatización</span></div>
+<div class="legend-item"><div class="legend-dot" style="background:#22d3ee;"></div><span class="legend-label">Ejecución</span></div>
+</div>
+
+<section class="architecture-panel">
+<div class="roadmap-panel" id="roadmapPanel">
+<div class="roadmap-header">
+<h3><i class="fas fa-road"></i> Roadmap de Desarrollo</h3>
+<span class="version-badge">v3.2.1</span>
+</div>
+<div class="roadmap-grid" id="roadmapGrid"></div>
+</div>
+
+<h2 class="section-title"><i class="fas fa-sitemap"></i> Arquitectura Ontológica</h2>
+<div class="ontology-grid" id="ontologyGrid"></div>
+
+<h2 class="section-title"><i class="fas fa-project-diagram"></i> Matriz de Dependencias</h2>
+<div class="matrix-container">
+<table class="matrix-table" id="dependencyMatrix"></table>
+</div>
+</section>
+</main>
+
+<aside class="info-panel" id="infoPanel">
+<div class="info-panel-header">
+<div>
+<div class="bot-icon-large" id="panelIcon"><i class="fas fa-robot"></i></div>
+<h3 class="bot-name" id="panelName">Bot Name</h3>
+<p class="bot-role" id="panelRole">Role</p>
+</div>
+<button class="close-panel" id="closePanel" aria-label="Cerrar panel de información"><i class="fas fa-times"></i></button>
+</div>
+
+<div class="panel-actions" id="panelActions"></div>
+
+<div class="info-section">
+<h4>Estado</h4>
+<div class="status-indicator status-active" id="panelStatus">Activo</div>
+</div>
+
+<div class="info-section">
+<h4>Descripción</h4>
+<p id="panelDescription"></p>
+</div>
+
+<div class="info-section">
+<h4>Capacidades</h4>
+<div class="capability-list" id="panelCapabilities"></div>
+</div>
+
+<div class="info-section">
+<h4>Dependencias</h4>
+<ul class="dependency-list" id="panelDependencies"></ul>
+</div>
+</aside>
+
+<div class="pipeline-overlay" id="pipelineOverlay">
+<header class="pipeline-overlay-header">
+<div class="pipeline-overlay-title">
+<h2 id="pipelineTitle">Pipeline</h2>
+<span class="bot-badge" id="pipelineBotBadge">Bot</span>
+</div>
+<button class="pipeline-overlay-close" id="pipelineClose" aria-label="Cerrar vista de pipeline"><i class="fas fa-times"></i></button>
+</header>
+
+<div class="pipeline-overlay-body">
+<div class="pipeline-content" id="pipelineContent"></div>
+
+<div class="pipeline-nav-container">
+<div class="pipeline-minimap" id="pipelineMinimap"></div>
+
+<div class="page-indicator">
+<button class="page-indicator-btn" id="pipelinePrevPage" aria-label="Página anterior"><i class="fas fa-chevron-left"></i></button>
+<span id="pipelinePageIndicator">Página 1 / 3</span>
+<button class="page-indicator-btn" id="pipelineNextPage" aria-label="Página siguiente"><i class="fas fa-chevron-right"></i></button>
+</div>
+
+<nav class="tv-nav-row" id="pipelineNavRow">
+<button class="btn-tv btn-tv-red" data-section="0"><span class="btn-tv-label">Sección 1</span></button>
+<button class="btn-tv btn-tv-green" data-section="1"><span class="btn-tv-label">Sección 2</span></button>
+<button class="btn-tv btn-tv-yellow" data-section="2"><span class="btn-tv-label">Sección 3</span></button>
+<button class="btn-tv btn-tv-blue" data-section="3"><span class="btn-tv-label">Sección 4</span></button>
+</nav>
+</div>
+</div>
+</div>
+
+<div class="assistant-overlay" id="assistantOverlay">
+<header class="assistant-header">
+<div class="assistant-header-left">
+<div class="assistant-bot-avatar" id="assistantAvatar"><i class="fas fa-brain"></i></div>
+<div class="assistant-header-info">
+<h3 id="assistantBotName">Asistente AVIA</h3>
+<div class="assistant-status">
+<div class="assistant-status-dot" id="assistantStatusDot"></div>
+<span id="assistantStatusText">Conectado</span>
+</div>
+</div>
+</div>
+<button class="assistant-close" id="assistantClose" aria-label="Cerrar asistente virtual"><i class="fas fa-times"></i></button>
+</header>
+
+<div class="assistant-messages" id="assistantMessages"></div>
+
+<div class="assistant-input-bar">
+<input type="text" class="assistant-input" id="assistantInput" placeholder="Escribe tu consulta..." aria-label="Campo de entrada para consulta al asistente">
+<button class="assistant-send" id="assistantSend" aria-label="Enviar mensaje al asistente"><i class="fas fa-paper-plane"></i></button>
+</div>
+</div>
+
+<footer class="footer">
+<p>AVIA Senior v3.2.1 — Constelación Autónoma con @AVIA-Asst-Senior</p>
+<p style="margin-top:0.5rem;font-size:0.75rem;">19 Bots | Pipeline SmartTV | Asistente IA Real | A11Y + Error Boundary</p>
+</footer>
+
+<div class="cmdk-bg" id="cmdkBg">
+<div class="cmdk-box">
+<div class="cmdk-input-wrap">
+<i class="fas fa-search"></i>
+<input type="text" class="cmdk-input" id="cmdkInput" placeholder="Buscar bot, rol o capacidad..." aria-label="Campo de búsqueda de bots">
+<span class="cmdk-kbd">ESC</span>
+</div>
+<div class="cmdk-results" id="cmdkResults"></div>
+</div>
+</div>
+
+<div class="avia-modal-bg" id="aviaModalBg">
+<div class="avia-modal">
+<div class="avia-modal-icon" id="amIcon"></div>
+<h3 class="avia-modal-title" id="amTitle"></h3>
+<div class="avia-modal-body" id="amBody"></div>
+<div class="avia-modal-btns" id="amBtns"></div>
+</div>
+</div>
+
+<div class="toast-box" id="toastBox"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIGURACIÓN GLOBAL v3.2.1
+// ═══════════════════════════════════════════════════════════
+const AVIA_CONFIG = {
+  VERSION: '3.2.1',
+  RESPONSE_TIMEOUT: 30000,
+  MIN_INPUT_LENGTH: 3,
+  MAX_INPUT_LENGTH: 500,
+  MAX_ERROR_LOG: 10,
+  RETRY_CDN_ATTEMPTS: 2,
+  ANIMATION_DURATION: 400,
+  TOAST_DURATION: 4000
+};
+
+console.log(`%c🚀 AVIA Senior v${AVIA_CONFIG.VERSION} iniciando...`, 'color:#00f5d4;font-size:16px;font-weight:bold');
+
+const _cdnOk={d3:typeof d3!=='undefined',marked:typeof marked!=='undefined',fa:!!document.querySelector('link[href*="font-awesome"]')};
+
+if(!_cdnOk.d3){
+  document.getElementById('loadingOverlay').innerHTML='<p style="color:#ff3864;font-family:Orbitron,sans-serif;font-size:1.2rem;text-align:center;padding:2rem;">Error: No se pudo cargar D3.js.<br><br><small style="color:#8b98b8;">Verifica tu conexión y recarga.</small></p>';
+  throw new Error('D3.js not loaded');
+}
+
+if(!_cdnOk.marked){
+  window.marked={parse:function(t){return t.replace(/&/g,'&amp;').replace(/\x3c/g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}};
+}
+
+window.addEventListener('load',function(){
+  var miss=[];
+  if(!_cdnOk.fa)miss.push('Font Awesome');
+  if(!_cdnOk.marked)miss.push('Marked.js');
+  if(miss.length)AviaToast.show('Modo degradado: '+miss.join(', '),'warn');
+});
+
+function darkenColor(h,f){
+  try{return d3.color(h).darker(f);}catch(e){
+    let c=h.replace('#','');
+    if(c.length===3)c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    const n=parseInt(c,16),k=1-f*0.3;
+    return `rgb(${Math.max(0,(n>>16&255)*k|0)},${Math.max(0,(n>>8&255)*k|0)},${Math.max(0,(n&255)*k|0)})`;
+  }
+}
+
+const AviaModal={
+  _r:null,
+  show(o){
+    document.getElementById('amIcon').innerHTML=o.icon||'';
+    document.getElementById('amTitle').textContent=o.title||'';
+    document.getElementById('amBody').textContent=o.body||'';
+    const f=document.getElementById('amBtns');
+    f.innerHTML='';
+    (o.btns||[]).forEach(b=>{
+      const e=document.createElement('button');
+      e.className='avia-modal-btn '+(b.c||'primary');
+      e.textContent=b.t;
+      e.onclick=()=>this.close(b.v);
+      f.appendChild(e);
+    });
+    document.getElementById('aviaModalBg').classList.add('active');
+  },
+  close(v){
+    document.getElementById('aviaModalBg').classList.remove('active');
+    if(this._r){this._r(v);this._r=null;}
+  },
+  alert(m,type){
+    const ic={warning:'⚠️',success:'✅',error:'❌'};
+    const ti={warning:'Advertencia',success:'Éxito',error:'Error'};
+    return new Promise(r=>{
+      this._r=r;
+      this.show({icon:ic[type]||'ℹ️',title:ti[type]||'Info',body:m,btns:[{t:'Aceptar',c:'primary',v:true}]});
+    });
+  },
+  confirm(m){
+    return new Promise(r=>{
+      this._r=r;
+      this.show({icon:'🚀',title:'Confirmar',body:m,btns:[{t:'Cancelar',c:'ghost',v:false},{t:'Confirmar',c:'success',v:true}]});
+    });
+  }
+};
+
+const AviaToast={
+  show(m,type){
+    const ic={ok:'fa-check-circle',err:'fa-exclamation-circle',warn:'fa-exclamation-triangle'};
+    const t=document.createElement('div');
+    t.className='toast-item toast-'+(type||'ok');
+    t.innerHTML='<i class="fas '+(ic[type]||ic.ok)+'"></i><span>'+m+'</span>';
+    document.getElementById('toastBox').appendChild(t);
+    setTimeout(()=>{
+      t.classList.add('out');
+      t.addEventListener('animationend',()=>t.remove());
+    }, AVIA_CONFIG.TOAST_DURATION);
+  }
+};
+
+document.getElementById('aviaModalBg').addEventListener('click',e=>{
+  if(e.target.id==='aviaModalBg')AviaModal.close(false);
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('aviaModalBg').classList.contains('active'))AviaModal.close(false);
+});
+
+const CommandBar={
+  open(){
+    document.getElementById('cmdkBg').classList.add('active');
+    const inp=document.getElementById('cmdkInput');
+    inp.value='';
+    inp.focus();
+    this.render('');
+  },
+  close(){
+    document.getElementById('cmdkBg').classList.remove('active');
+  },
+  render(q){
+    const res=document.getElementById('cmdkResults');
+    const lq=q.toLowerCase().trim();
+    if(!lq){
+      res.innerHTML=botsData.map(b=>this._item(b)).join('');
+      return;
+    }
+    const hits=botsData.filter(b=>
+      b.name.toLowerCase().includes(lq)||
+      b.shortName.toLowerCase().includes(lq)||
+      b.role.toLowerCase().includes(lq)||
+      b.capabilities.some(c=>c.toLowerCase().includes(lq))
+    );
+    res.innerHTML=hits.length?hits.map(b=>this._item(b)).join(''):'<div class="cmdk-empty">Sin resultados para "'+q+'"</div>';
+  },
+  _item(b){
+    return `<div class="cmdk-item" data-id="${b.id}" role="button" tabindex="0" aria-label="Seleccionar ${b.name}"><div class="cmdk-item-icon" style="background:linear-gradient(135deg,${b.color},${darkenColor(b.color,1)})"><i class="fas ${b.icon}"></i></div><div class="cmdk-item-info"><div class="cmdk-item-name">${b.name}</div><div class="cmdk-item-role">${b.role}</div></div><div class="cmdk-item-actions"><button class="cmdk-action cmdk-action-pipe" data-act="pipe" data-id="${b.id}" title="Pipeline"><i class="fas fa-stream"></i></button><button class="cmdk-action cmdk-action-ask" data-act="ask" data-id="${b.id}" title="Preguntar"><i class="fas fa-robot"></i></button><button class="cmdk-action cmdk-action-exec" data-act="exec" data-id="${b.id}" title="Ejecutar"><i class="fas fa-play"></i></button></div></div>`;
+  },
+  init(){
+    document.getElementById('cmdkInput').addEventListener('input',e=>this.render(e.target.value));
+    
+    document.getElementById('cmdkResults').addEventListener('click',e=>{
+      const actBtn=e.target.closest('.cmdk-action');
+      if(actBtn){
+        e.stopPropagation();
+        const bot=botsData.find(b=>b.id===actBtn.dataset.id);
+        if(!bot)return;
+        this.close();
+        const act=actBtn.dataset.act;
+        if(act==='pipe')PipelineController.open(bot);
+        else if(act==='ask')openAssistant(bot);
+        else if(act==='exec')executeWithBot(bot);
+        return;
+      }
+      const item=e.target.closest('.cmdk-item');
+      if(!item)return;
+      const bot=botsData.find(b=>b.id===item.dataset.id);
+      if(bot){this.close();showBotInfo(bot);}
+    });
+    
+    document.getElementById('cmdkBg').addEventListener('click',e=>{
+      if(e.target.id==='cmdkBg')this.close();
+    });
+    
+    document.getElementById('openCmdK').addEventListener('click',()=>this.open());
+    
+    document.addEventListener('keydown',e=>{
+      if((e.metaKey||e.ctrlKey)&&e.key==='k'){
+        e.preventDefault();
+        const bg=document.getElementById('cmdkBg');
+        bg.classList.contains('active')?this.close():this.open();
+      }
+      if(!document.getElementById('cmdkBg').classList.contains('active'))return;
+      if(e.key==='Escape'){e.stopPropagation();this.close();}
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();
+        const items=[...document.querySelectorAll('.cmdk-item')];
+        if(!items.length)return;
+        const cur=items.findIndex(i=>i.classList.contains('active'));
+        items.forEach(i=>i.classList.remove('active'));
+        let nxt=e.key==='ArrowDown'?(cur+1)%items.length:(cur<=0?items.length-1:cur-1);
+        items[nxt].classList.add('active');
+        items[nxt].scrollIntoView({block:'nearest'});
+      }
+      if(e.key==='Enter'){
+        const act=document.querySelector('.cmdk-item.active');
+        if(act){
+          const bot=botsData.find(b=>b.id===act.dataset.id);
+          if(bot){this.close();showBotInfo(bot);}
+        }
+      }
+    });
+  }
+};
+
+const botsData=[
+{id:'avia-clon-carlos',name:'AVIA-Clon-Carlos',shortName:'Carlos',role:'ORQUESTADOR',layer:'orchestrator',icon:'fa-crown',color:'#ffd700',description:'Coordina flujos y decisiones de alto nivel.',capabilities:['Orquestación','Decisión','Coordinación','Priorización','Delegación'],dependencies:[],position:{x:0,y:0},radius:45},
+{id:'claude-opus',name:'Claude-Opus-4.5',shortName:'Opus',role:'COGNITIVO',layer:'cognitive',icon:'fa-brain',color:'#6c3ce9',description:'Razonamiento avanzado y análisis complejos.',capabilities:['Razonamiento','Análisis','Síntesis','Evaluación','Pensamiento Crítico'],dependencies:['AVIA-Clon-Carlos'],position:{x:-120,y:-180},radius:38},
+{id:'avia-atlas',name:'AVIAAtlasv1',shortName:'Atlas',role:'NAVEGADOR',layer:'cognitive',icon:'fa-compass',color:'#00bfff',description:'Mapeo y navegación del conocimiento.',capabilities:['Indexación','Búsqueda','Mapeo','Conexiones','Navegación'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5'],position:{x:180,y:-150},radius:32},
+{id:'avia-pipeline',name:'AVIAPipeline44Beta',shortName:'Pipeline',role:'FLUJOS',layer:'support',icon:'fa-code-branch',color:'#00f5d4',description:'Pipelines automatizados y transformaciones.',capabilities:['Automatización','Secuenciación','Transformación','Validación','Monitoreo'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','AVIAAtlasv1'],position:{x:-200,y:60},radius:30},
+{id:'avia-studio',name:'AVIA-Studiov2',shortName:'Studio',role:'CREATIVO',layer:'creative',icon:'fa-palette',color:'#ff3864',description:'Genera y edita contenido visual.',capabilities:['Diseño','Composición','Generación','Edición','Estilización'],dependencies:['AVIA-Clon-Carlos','AVIAPipeline44Beta'],position:{x:220,y:80},radius:34},
+{id:'avia-care',name:'AVIACare',shortName:'Care',role:'BIENESTAR',layer:'support',icon:'fa-heart-pulse',color:'#10b981',description:'Monitoreo de bienestar y pausas.',capabilities:['Monitoreo','Recomendaciones','Pausas','Bienestar','Empatía'],dependencies:['AVIA-Clon-Carlos'],position:{x:0,y:200},radius:28},
+{id:'avia-videolab',name:'AVIAVideoLabv5.0Pro',shortName:'VideoLab',role:'VIDEO',layer:'production',icon:'fa-video',color:'#ff6b35',description:'Producción y post-producción audiovisual.',capabilities:['Producción','Efectos','Renderizado','Composición','Post-producción'],dependencies:['AVIA-Clon-Carlos','AVIAPipeline44Beta','AVIA-Studiov2'],position:{x:-180,y:180},radius:32},
+{id:'avia-creatorhub',name:'AVIACreatorHub4.5',shortName:'CreatorHub',role:'CREADORES',layer:'production',icon:'fa-rocket',color:'#f59e0b',description:'Hub de herramientas y publicación.',capabilities:['Integración','Publicación','Colaboración','Distribución','Gestión'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','AVIAAtlasv1','AVIA-Studiov2'],position:{x:200,y:200},radius:30},
+{id:'avia-siesta',name:'AVIA-Siestav4.2.3',shortName:'Siesta',role:'DESCANSO',layer:'support',icon:'fa-moon',color:'#8b5cf6',description:'Modos de reposo y relajación.',capabilities:['Hibernación','Relajación','Recuperación','Meditación','Balance'],dependencies:['AVIA-Clon-Carlos','AVIACare'],position:{x:100,y:-80},radius:26},
+{id:'script-bot-creator',name:'Script-Bot-Creator',shortName:'ScriptBot',role:'AUTOMATIZADOR',layer:'automation',icon:'fa-wand-magic-sparkles',color:'#e879f9',description:'Automatiza flujos IA sin código.',capabilities:['Automatización','Orquestación','Conexión Bots','NLP','Flujos'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','AVIAPipeline44Beta'],position:{x:-100,y:-120},radius:34},
+{id:'app-creator',name:'App-Creator',shortName:'AppCreator',role:'EJECUTOR',layer:'execution',icon:'fa-hammer',color:'#22d3ee',description:'Implementa cambios y genera código.',capabilities:['Ejecución','Implementación','Generación Código','Entrega','Reporte'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','Script-Bot-Creator'],position:{x:0,y:280},radius:36},
+{id:'sbuh',name:'SBUH',shortName:'SBUH',role:'UNIFICADOR',layer:'production',icon:'fa-sitemap',color:'#f97316',description:'Coordina bots subsidiarios.',capabilities:['Unificación','Coordinación','Integración','Routing','Orquestación'],dependencies:['AVIA-Clon-Carlos','AVIAPipeline44Beta'],position:{x:-280,y:-60},radius:28},
+{id:'rmcwa',name:'RMCWA',shortName:'RMCWA',role:'REPORTES',layer:'production',icon:'fa-file-lines',color:'#84cc16',description:'Genera reportes profesionales.',capabilities:['Reportes','Visualización','Análisis','Formateo','Exportación'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','AVIA-Studiov2'],position:{x:280,y:-60},radius:28},
+{id:'dmuh',name:'DMUH',shortName:'DMUH',role:'DOCUMENTOS',layer:'support',icon:'fa-folder-tree',color:'#06b6d4',description:'Gestión y versionado documental.',capabilities:['Gestión Docs','Indexación','Versionado','Búsqueda','Templates'],dependencies:['AVIA-Clon-Carlos','AVIAAtlasv1'],position:{x:-280,y:140},radius:26},
+{id:'scls',name:'SCLS',shortName:'SCLS',role:'CÓDIGO',layer:'cognitive',icon:'fa-code',color:'#8b5cf6',description:'Snippets y patrones reutilizables.',capabilities:['Catálogo','Snippets','Patrones','Búsqueda Semántica','Versionado'],dependencies:['AVIA-Clon-Carlos','Claude-Opus-4.5','AVIA-Siestav4.2.3'],position:{x:160,y:-220},radius:26},
+{id:'kwmag',name:'KWMAG',shortName:'KWMAG',role:'CONOCIMIENTO',layer:'cognitive',icon:'fa-database',color:'#3b82f6',description:'Centraliza el saber del ecosistema.',capabilities:['Base Conocimiento','Consultas IA','Aprendizaje','Taxonomías','Grafos'],dependencies:['AVIA-Clon-Carlos','AVIAAtlasv1','Claude-Opus-4.5'],position:{x:-160,y:-220},radius:28},
+{id:'scmh',name:'SCMH',shortName:'SCMH',role:'CREATIVO SIESTA',layer:'creative',icon:'fa-wand-sparkles',color:'#ec4899',description:'Ideación y brainstorming creativo.',capabilities:['Ideación','Creatividad Guiada','Brainstorming','Moodboards','Conceptos'],dependencies:['AVIA-Clon-Carlos','AVIA-Siestav4.2.3','AVIA-Studiov2'],position:{x:280,y:140},radius:28},
+{id:'mdct',name:'MDCT',shortName:'MDCT',role:'MULTI-DOC',layer:'production',icon:'fa-file-export',color:'#f59e0b',description:'Batches de documentos desde templates.',capabilities:['Batch Docs','Templates','Merge','Multi-formato','Automatización'],dependencies:['AVIA-Clon-Carlos','RMCWA','DMUH'],position:{x:0,y:340},radius:30},
+{id:'qcmt',name:'QCMT',shortName:'QCMT',role:'CHECKLISTS',layer:'support',icon:'fa-list-check',color:'#10b981',description:'Checklists para QA y verificación.',capabilities:['Checklists','Templates','Tracking','Validación','Exportación'],dependencies:['AVIA-Clon-Carlos','AVIAPipeline44Beta'],position:{x:-100,y:260},radius:26}
+];
+
+const _cs=['Carlos','ScriptBot'],roadmapData=[
+{id:1,title:'Versiones',description:'Changelog',status:'completed',contributors:['Carlos']},
+{id:2,title:'Roadmap',description:'Panel progreso',status:'completed',contributors:['Carlos','Studio']},
+{id:3,title:'19 Bots',description:'Constelación',status:'completed',contributors:['Carlos','Opus']},
+{id:4,title:'Pipeline TV',description:'Nav RGBY x12',status:'completed',contributors:['Carlos','Pipeline']},
+{id:5,title:'Asistente IA',description:'Poe Embed API',status:'completed',contributors:['Opus','ScriptBot']},
+{id:6,title:'Ejecutar',description:'@AVIA-Asst',status:'completed',contributors:['Carlos']},
+{id:7,title:'Optimización',description:'~500 líneas',status:'completed',contributors:['Carlos']},
+{id:8,title:'Modal+Toast',description:'Canvas OK',status:'completed',contributors:_cs},
+{id:9,title:'Cmd+K',description:'Spotlight',status:'completed',contributors:_cs},
+{id:10,title:'Partículas',description:'SVG anim',status:'completed',contributors:_cs},
+{id:11,title:'Tooltips',description:'Hover nodos',status:'completed',contributors:_cs},
+{id:12,title:'Stats Bar',description:'Contadores',status:'completed',contributors:_cs},
+{id:13,title:'Keyboard',description:'↑↓ Cmd+K',status:'completed',contributors:_cs},
+{id:14,title:'CDN Fallback',description:'Degradado',status:'completed',contributors:_cs},
+{id:15,title:'v3.1',description:'Branding',status:'completed',contributors:_cs},
+{id:16,title:'Filtros Capa',description:'Filtro capas',status:'completed',contributors:_cs},
+{id:17,title:'Stagger',description:'Entrada seq',status:'completed',contributors:_cs},
+{id:18,title:'v3.2',description:'Branding v3.2',status:'completed',contributors:_cs},
+{id:19,title:'Conn Highlight',description:'Links al hover',status:'completed',contributors:_cs},
+{id:20,title:'Conn Anim',description:'Transición suave',status:'completed',contributors:_cs},
+{id:21,title:'Zoom Focus',description:'Dblclick+pan zoom',status:'completed',contributors:_cs},
+{id:22,title:'v3.2.1',description:'A11Y + Error Boundary',status:'completed',contributors:_cs}
+];
+
+function generateStars(){
+  const c=document.getElementById('stars');
+  for(let i=0;i<150;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    s.style.left=Math.random()*100+'%';
+    s.style.top=Math.random()*100+'%';
+    s.style.setProperty('--duration',(2+Math.random()*3)+'s');
+    c.appendChild(s);
+  }
+}
+
+function generateStats(){
+  const layers=new Set(botsData.map(b=>b.layer));
+  const totalDeps=botsData.reduce((s,b)=>s+b.dependencies.length,0);
+  const completed=roadmapData.filter(r=>r.status==='completed').length;
+  document.getElementById('statsBar').innerHTML=`<div class="stat-item"><span class="stat-value">${botsData.length}</span><span class="stat-label">Bots</span></div><div class="stat-item"><span class="stat-value">${layers.size}</span><span class="stat-label">Capas</span></div><div class="stat-item"><span class="stat-value">${totalDeps}</span><span class="stat-label">Conexiones</span></div><div class="stat-item"><span class="stat-value">${completed}/${roadmapData.length}</span><span class="stat-label">Roadmap</span></div>`;
+}
+
+const LayerFilter={
+  active:null,
+  colors:{orchestrator:'#ffd700',cognitive:'#6c3ce9',creative:'#ff3864',support:'#00f5d4',production:'#f59e0b',automation:'#e879f9',execution:'#22d3ee'},
+  labels:{orchestrator:'Orquestador',cognitive:'Cognitiva',creative:'Creativa',support:'Soporte',production:'Producción',automation:'Automatización',execution:'Ejecución'},
+  init(){
+    const el=document.getElementById('layerFilters');
+    const btn=document.createElement('button');
+    btn.className='layer-btn active';
+    btn.textContent='Todos';
+    btn.style.color='var(--cosmic-cyan)';
+    btn.onclick=()=>this.set(null);
+    el.appendChild(btn);
+    Object.keys(this.labels).forEach(k=>{
+      const b=document.createElement('button');
+      b.className='layer-btn';
+      b.textContent=this.labels[k];
+      b.style.setProperty('--c',this.colors[k]);
+      b.onclick=()=>this.set(k);
+      el.appendChild(b);
+    });
+  },
+  set(layer){
+    this.active=layer;
+    document.querySelectorAll('.layer-btn').forEach((b,i)=>{
+      b.classList.toggle('active',i===0?!layer:b.textContent===this.labels[layer]);
+      if(b.classList.contains('active'))b.style.color=i===0?'var(--cosmic-cyan)':this.colors[layer]||'';
+      else b.style.color='';
+    });
+    document.querySelectorAll('.node-group').forEach(g=>{
+      const id=g.getAttribute('data-layer');
+      g.classList.toggle('dimmed',!!layer&&id!==layer);
+    });
+  }
+};
+
+function generateRoadmap(){
+  const g=document.getElementById('roadmapGrid');
+  g.innerHTML=roadmapData.map(item=>`<div class="roadmap-card ${item.status}"><div class="roadmap-card-header"><h4>${item.title}</h4><span class="roadmap-status ${item.status}">${item.status==='completed'?'✓ Completado':item.status==='in-progress'?'⏳ En progreso':'○ Pendiente'}</span></div><p>${item.description}</p><div class="roadmap-contributors">${item.contributors.map(c=>`<span class="contributor-tag">${c}</span>`).join('')}</div></div>`).join('');
+}
+
+function initConstellation(){
+  const container=document.querySelector('.constellation-container');
+  const width=container.clientWidth;
+  const height=container.clientHeight;
+  const centerX=width/2;
+  const centerY=height/2;
+  const scale=Math.min(width,height)/700;
+  
+  d3.select('#constellation-map').selectAll('*').remove();
+  
+  const svg=d3.select('#constellation-map').attr('width',width).attr('height',height);
+  const defs=svg.append('defs');
+  const glow=defs.append('filter').attr('id','glow').attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+  glow.append('feGaussianBlur').attr('stdDeviation','4').attr('result','coloredBlur');
+  const glowMerge=glow.append('feMerge');
+  glowMerge.append('feMergeNode').attr('in','coloredBlur');
+  glowMerge.append('feMergeNode').attr('in','SourceGraphic');
+  
+  botsData.forEach(bot=>{
+    bot.cx=centerX+bot.position.x*scale;
+    bot.cy=centerY+bot.position.y*scale;
+    bot.r=bot.radius*scale*0.8;
+  });
+  
+  const links=[];
+  botsData.forEach(bot=>{
+    bot.dependencies.forEach(depName=>{
+      const source=botsData.find(b=>b.name===depName||b.shortName===depName);
+      if(source)links.push({source,target:bot});
+    });
+  });
+  
+  const zoomG=svg.append('g').attr('class','zoom-layer');
+  const zoomB=d3.zoom().scaleExtent([0.5,3]).on('zoom',e=>zoomG.attr('transform',e.transform));
+  svg.call(zoomB).on('dblclick.zoom',null);
+  window._aviaZoom={svg,zoomB,w:width,h:height,focused:null};
+  
+  const linkGroup=zoomG.append('g');
+  links.forEach((link,i)=>{
+    const dx=link.target.cx-link.source.cx,dy=link.target.cy-link.source.cy;
+    const mx=(link.source.cx+link.target.cx)/2,my=(link.source.cy+link.target.cy)/2;
+    const off=Math.sqrt(dx*dx+dy*dy)*0.15;
+    const cx2=mx+(-dy/Math.sqrt(dx*dx+dy*dy||1))*off,cy2=my+(dx/Math.sqrt(dx*dx+dy*dy||1))*off;
+    const d=`M${link.source.cx},${link.source.cy} Q${cx2},${cy2} ${link.target.cx},${link.target.cy}`;
+    const pid='lpath'+i;
+    linkGroup.append('path').attr('id',pid).attr('class','conn').attr('data-from',link.source.id).attr('data-to',link.target.id).attr('d',d).attr('fill','none').attr('stroke',link.source.color).attr('stroke-width',2).attr('stroke-opacity',0.4);
+    const particle=linkGroup.append('circle').attr('r',2.5).attr('fill',link.source.color).attr('opacity',0.8);
+    const anim=document.createElementNS('http://www.w3.org/2000/svg','animateMotion');
+    anim.setAttribute('dur',(2.5+Math.random()*2)+'s');
+    anim.setAttribute('repeatCount','indefinite');
+    anim.setAttribute('begin',(Math.random()*2)+'s');
+    const mp=document.createElementNS('http://www.w3.org/2000/svg','mpath');
+    mp.setAttribute('href','#'+pid);
+    anim.appendChild(mp);
+    particle.node().appendChild(anim);
+  });
+  
+  const nodeGroup=zoomG.append('g');
+  const iconMap={'fa-crown':'\uf521','fa-brain':'\uf5dc','fa-compass':'\uf14e','fa-code-branch':'\uf126','fa-palette':'\uf53f','fa-heart-pulse':'\ue5b6','fa-video':'\uf03d','fa-rocket':'\uf135','fa-moon':'\uf186','fa-wand-magic-sparkles':'\ue2ca','fa-hammer':'\uf6e3','fa-sitemap':'\uf0e8','fa-file-lines':'\uf15c','fa-folder-tree':'\uf802','fa-code':'\uf121','fa-database':'\uf1c0','fa-wand-sparkles':'\uf72b','fa-file-export':'\uf56e','fa-list-check':'\uf0ae'};
+  
+  botsData.forEach((bot,bi)=>{
+    const g=nodeGroup.append('g')
+      .attr('class','node-group')
+      .attr('data-layer',bot.layer)
+      .attr('data-id',bot.id)
+      .attr('role','button')
+      .attr('tabindex','0')
+      .attr('aria-label',`Ver detalles de ${bot.name} - ${bot.role}`)
+      .attr('transform',`translate(${bot.cx},${bot.cy}) scale(0)`)
+      .style('cursor','pointer')
+      .style('opacity',0)
+      .on('click',()=>showBotInfo(bot))
+      .on('dblclick',(ev)=>{
+        ev.stopPropagation();
+        const z=window._aviaZoom;
+        if(!z)return;
+        if(z.focused===bot.id){
+          z.focused=null;
+          z.svg.transition().duration(600).call(z.zoomB.transform,d3.zoomIdentity);
+        }else{
+          z.focused=bot.id;
+          const t=d3.zoomIdentity.translate(z.w/2,z.h/2).scale(2).translate(-bot.cx,-bot.cy);
+          z.svg.transition().duration(600).call(z.zoomB.transform,t);
+        }
+      })
+      .on('keydown',(ev)=>{
+        if(ev.key==='Enter'||ev.key===' '){
+          ev.preventDefault();
+          showBotInfo(bot);
+        }
+      })
+      .on('mouseenter',(ev)=>{
+        const tt=document.getElementById('nodeTooltip');
+        document.getElementById('ttName').textContent=bot.name;
+        document.getElementById('ttRole').textContent=bot.role;
+        document.getElementById('ttCaps').innerHTML=bot.capabilities.slice(0,4).map(c=>'<span class="node-tooltip-cap">'+c+'</span>').join('');
+        tt.style.left=(ev.clientX+16)+'px';
+        tt.style.top=(ev.clientY-10)+'px';
+        tt.classList.add('visible');
+        document.querySelectorAll('.conn').forEach(p=>{
+          const f=p.getAttribute('data-from'),t=p.getAttribute('data-to');
+          if(f===bot.id||t===bot.id)p.classList.add('link-hl');
+          else p.classList.add('link-dim');
+        });
+      })
+      .on('mousemove',(ev)=>{
+        const tt=document.getElementById('nodeTooltip');
+        tt.style.left=Math.min(ev.clientX+16,window.innerWidth-280)+'px';
+        tt.style.top=(ev.clientY-10)+'px';
+      })
+      .on('mouseleave',()=>{
+        document.getElementById('nodeTooltip').classList.remove('visible');
+        document.querySelectorAll('.conn').forEach(p=>{
+          p.classList.remove('link-hl','link-dim');
+        });
+      });
+    
+    const grad=defs.append('radialGradient').attr('id',`grad-${bot.id}`).attr('cx','30%').attr('cy','30%');
+    grad.append('stop').attr('offset','0%').attr('stop-color',bot.color);
+    grad.append('stop').attr('offset','100%').attr('stop-color',darkenColor(bot.color,2));
+    
+    g.append('circle').attr('class','node-core').attr('r',bot.r).attr('fill',`url(#grad-${bot.id})`).attr('filter','url(#glow)');
+    g.append('text').attr('text-anchor','middle').attr('dominant-baseline','central').attr('fill','white').attr('font-family','Font Awesome 6 Free').attr('font-weight',900).attr('font-size',bot.r*0.6).text(iconMap[bot.icon]||'\uf544');
+    g.append('text').attr('y',bot.r+16).attr('text-anchor','middle').attr('fill','#f0f4ff').attr('font-size','11px').attr('font-family','Orbitron').text(bot.shortName);
+  });
+  
+  svg.selectAll('.node-group').each(function(d,i){
+    d3.select(this).transition().delay(i*60).duration(AVIA_CONFIG.ANIMATION_DURATION).style('opacity',1).attr('transform',function(){
+      return this.getAttribute('transform').replace(' scale(0)','');
+    });
+  });
+  
+  if(LayerFilter.active)LayerFilter.set(LayerFilter.active);
+}
+
+function showBotInfo(bot){
+  const $=id=>document.getElementById(id);
+  $('panelIcon').innerHTML=`<i class="fas ${bot.icon}"></i>`;
+  $('panelIcon').style.background=`linear-gradient(135deg,${bot.color},${darkenColor(bot.color,1)})`;
+  $('panelName').textContent=bot.name;
+  $('panelRole').textContent=bot.role;
+  $('panelDescription').textContent=bot.description;
+  $('panelCapabilities').innerHTML=bot.capabilities.map(c=>`<span class="capability-tag">${c}</span>`).join('');
+  $('panelDependencies').innerHTML=bot.dependencies.length?bot.dependencies.map(d=>`<li><i class="fas fa-link"></i> ${d}</li>`).join(''):'<li><i class="fas fa-star"></i> Nodo Raíz</li>';
+  $('panelActions').innerHTML=`<button class="btn-pipeline" onclick="PipelineController.open(botsData.find(b=>b.id==='${bot.id}'))"><i class="fas fa-stream"></i> Pipeline</button><button class="btn-assistant" onclick="openAssistant(botsData.find(b=>b.id==='${bot.id}'))"><i class="fas fa-robot"></i> Preguntar</button><button class="btn-execute" onclick="executeWithBot(botsData.find(b=>b.id==='${bot.id}'))"><i class="fas fa-play-circle"></i> Ejecutar</button>`;
+  $('infoPanel').classList.add('active');
+}
+
+async function executeWithBot(bot){
+  if(!bot || !bot.name){
+    AviaToast.show('Bot inválido','err');
+    return;
+  }
+  
+  if(typeof window.Poe==='undefined'||!window.Poe.sendUserMessage){
+    await AviaModal.alert('API de Poe no disponible.\n\nPara usar "Ejecutar", abre esta aplicación desde Poe.','warning');
+    return;
+  }
+  
+  const ok=await AviaModal.confirm('¿Ejecutar acción con '+bot.shortName+'?\n\nEsto enviará tu solicitud a @AVIA-Asst-Senior.');
+  if(!ok)return;
+  
+  try{
+    await window.Poe.sendUserMessage(`@AVIA-Asst-Senior Ejecutar con bot: ${bot.name} (${bot.role})\n\nCapacidades: ${bot.capabilities.join(', ')}\nDescripción: ${bot.description}`,{openChat:true});
+    AviaToast.show('Solicitud enviada — Bot: '+bot.shortName,'ok');
+  }catch(err){
+    AviaToast.show('Error: '+(err.message||err),'err');
+  }
+}
+
+const AssistantController={
+  currentBot:null,
+  isStreaming:false,
+  currentBotMsgEl:null,
+  responseTimeout:null,
+  _el(id){return document.getElementById(id);},
+  _msgs(){return this._el('assistantMessages');},
+  _addMsg(cls,html){
+    const d=document.createElement('div');
+    d.className=cls;
+    d.innerHTML=html;
+    const m=this._msgs();
+    m.appendChild(d);
+    m.scrollTop=m.scrollHeight;
+    return d;
+  },
+  _md(t){
+    if(typeof marked!=='undefined'&&marked.parse){
+      try{return marked.parse(t);}catch(e){}
+    }
+    return t.replace(/&/g,'&amp;').replace(/\x3c/g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  },
+  init(){
+    this._el('assistantClose').addEventListener('click',()=>this.close());
+    this._el('assistantSend').addEventListener('click',()=>this.sendMessage());
+    this._el('assistantInput').addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey&&!this.isStreaming)this.sendMessage();
+    });
+    
+    document.addEventListener('keydown',e=>{
+      if(e.key==='Escape'&&this._el('assistantOverlay').classList.contains('active'))this.close();
+    });
+    
+    if(typeof window.Poe!=='undefined'&&window.Poe.registerHandler){
+      window.Poe.registerHandler('avia-assistant',r=>{
+        const msg=r.responses[0];
+        if(!msg)return;
+        this.clearResponseTimeout();
+        if(msg.status==='error'){
+          this.updateBotMessage(msg.statusText||'Error',true);
+          this.setStreaming(false);
+        }else{
+          this.updateBotMessage(msg.content,false);
+          if(msg.status==='complete')this.setStreaming(false);
+        }
+      });
+    }
+  },
+  open(bot){
+    this.currentBot=bot;
+    this._el('assistantAvatar').innerHTML=`<i class="fas ${bot.icon}"></i>`;
+    this._el('assistantAvatar').style.background=`linear-gradient(135deg,${bot.color},${darkenColor(bot.color,1)})`;
+    this._el('assistantBotName').textContent='Asistente: '+bot.shortName;
+    this._msgs().innerHTML='';
+    this._addMsg('assistant-msg bot',this._md(`Hola, soy **${bot.name}** (${bot.role}).\n\nCapacidades: ${bot.capabilities.map(c=>'`'+c+'`').join(', ')}.\n\n¿En qué puedo ayudarte?`));
+    this._el('assistantOverlay').classList.add('active');
+    this.setStatus('Conectado',false);
+    setTimeout(()=>this._el('assistantInput').focus(),300);
+  },
+  close(){
+    this._el('assistantOverlay').classList.remove('active');
+    this.isStreaming=false;
+    this.clearResponseTimeout();
+  },
+  updateBotMessage(content,isError){
+    if(!this.currentBotMsgEl)return;
+    this.currentBotMsgEl.className='assistant-msg bot'+(isError?' error':'')+(this.isStreaming?' typing':'');
+    this.currentBotMsgEl.innerHTML=this._md(content);
+    this._msgs().scrollTop=this._msgs().scrollHeight;
+  },
+  setStreaming(val){
+    this.isStreaming=val;
+    this._el('assistantSend').disabled=val;
+    this._el('assistantInput').disabled=val;
+    if(!val&&this.currentBotMsgEl){
+      this.currentBotMsgEl.classList.remove('typing');
+      this.currentBotMsgEl=null;
+      this.setStatus('Conectado',false);
+      this._el('assistantInput').focus();
+    }
+  },
+  setStatus(t,th){
+    this._el('assistantStatusText').textContent=t;
+    this._el('assistantStatusDot').className='assistant-status-dot'+(th?' thinking':'');
+  },
+  setResponseTimeout(){
+    this.responseTimeout=setTimeout(()=>{
+      if(this.isStreaming){
+        this.updateBotMessage('⏱️ Timeout (30s)',true);
+        this.setStreaming(false);
+      }
+    }, AVIA_CONFIG.RESPONSE_TIMEOUT);
+  },
+  clearResponseTimeout(){
+    if(this.responseTimeout){
+      clearTimeout(this.responseTimeout);
+      this.responseTimeout=null;
+    }
+  },
+  async sendMessage(){
+    const inp=this._el('assistantInput');
+    const text=inp.value.trim();
+    
+    if(this.isStreaming)return;
+    
+    // CAMBIO 3: Validación mejorada
+    if(!text){
+      AviaToast.show('Escribe un mensaje para enviar','warn');
+      return;
+    }
+    if(text.length < AVIA_CONFIG.MIN_INPUT_LENGTH){
+      AviaToast.show(`Mensaje muy corto (mín. ${AVIA_CONFIG.MIN_INPUT_LENGTH} caracteres)`,'warn');
+      return;
+    }
+    if(text.length > AVIA_CONFIG.MAX_INPUT_LENGTH){
+      AviaToast.show(`Mensaje muy largo (máx. ${AVIA_CONFIG.MAX_INPUT_LENGTH} caracteres)`,'warn');
+      return;
+    }
+    
+    this._addMsg('assistant-msg user',text);
+    inp.value='';
+    this.setStreaming(true);
+    this.setStatus('Pensando...',true);
+    this.currentBotMsgEl=this._addMsg('assistant-msg bot typing','<span style="color:var(--stellar-gray)">Pensando...</span>');
+    this.setResponseTimeout();
+    
+    const bot=this.currentBot;
+    const ctx=`Eres asistente de "${bot.name}" (${bot.role}) en AVIA Senior. Capacidades: ${bot.capabilities.join(', ')}. ${bot.description}. Responde en español, conciso, Markdown.`;
+    
+    if(typeof window.Poe!=='undefined'&&window.Poe.sendUserMessage){
+      try{
+        await window.Poe.sendUserMessage('@Claude-Sonnet-4.5 '+ctx+'\n\nUsuario: '+text,{handler:'avia-assistant',stream:true,openChat:false});
+      }catch(err){
+        this.updateBotMessage('Error: '+(err.errorType||err),true);
+        this.setStreaming(false);
+        this.clearResponseTimeout();
+      }
+    }else{
+      this.updateBotMessage('**Modo offline** — Poe API no disponible.\n\nConsulta: "'+text+'"',false);
+      this.setStreaming(false);
+      this.clearResponseTimeout();
+    }
+  }
+};
+
+function openAssistant(bot){
+  AssistantController.open(bot);
+}
+
+function generateOntologyCards(){
+  const g=document.getElementById('ontologyGrid');
+  const L=LayerFilter.labels;
+  g.innerHTML=botsData.map(b=>`<div class="ontology-card" onclick="showBotInfo(botsData.find(x=>x.id==='${b.id}'))"><div class="card-header"><div class="card-icon" style="background:linear-gradient(135deg,${b.color},${darkenColor(b.color,1)})"><i class="fas ${b.icon}" style="color:white"></i></div><div><h3 class="card-title">${b.name}</h3><p class="card-subtitle">${b.role}</p></div></div><p class="card-description">${b.description}</p><div class="card-footer"><span class="layer-tag layer-${b.layer}">${L[b.layer]||b.layer}</span></div></div>`).join('');
+}
+
+function generateDependencyMatrix(){
+  const table=document.getElementById('dependencyMatrix');
+  const names=botsData.map(b=>b.shortName);
+  let html='<thead><tr><th>Bot</th>'+names.map(n=>`<th>${n}</th>`).join('')+'</tr></thead><tbody>';
+  botsData.forEach(bot=>{
+    html+=`<tr><td>${bot.shortName}</td>`;
+    botsData.forEach(other=>{
+      let cls='',txt='';
+      if(bot.id===other.id){cls='dep-primary';txt='●';}
+      else if(bot.dependencies.includes(other.name)||bot.dependencies.includes(other.shortName)){cls='dep-secondary';txt='◆';}
+      html+=`<td><div class="dep-cell ${cls}">${txt}</div></td>`;
+    });
+    html+='</tr>';
+  });
+  table.innerHTML=html+'</tbody>';
+}
+
+const PipelineController={
+  currentBot:null,
+  currentSection:0,
+  currentPage:0,
+  sectionsPerPage:4,
+  totalSections:12,
+  init(){
+    document.getElementById('pipelineClose').addEventListener('click',()=>this.close());
+    document.getElementById('pipelinePrevPage').addEventListener('click',()=>this.prevPage());
+    document.getElementById('pipelineNextPage').addEventListener('click',()=>this.nextPage());
+    document.querySelectorAll('#pipelineNavRow .btn-tv').forEach((btn,i)=>{
+      btn.addEventListener('click',()=>this.showSection(this.currentPage*this.sectionsPerPage+i));
+    });
+    document.addEventListener('keydown',e=>{
+      if(!document.getElementById('pipelineOverlay').classList.contains('active'))return;
+      if(e.key==='Escape')this.close();
+      if(e.key==='ArrowLeft')this.prevPage();
+      if(e.key==='ArrowRight')this.nextPage();
+    });
+  },
+  open(bot){
+    this.currentBot=bot;
+    this.currentSection=0;
+    this.currentPage=0;
+    document.getElementById('pipelineTitle').textContent=`Pipeline: ${bot.shortName}`;
+    document.getElementById('pipelineBotBadge').textContent=bot.role;
+    this.generateMinimap();
+    this.updateButtons();
+    this.showSection(0);
+    document.getElementById('pipelineOverlay').classList.add('active');
+  },
+  close(){
+    document.getElementById('pipelineOverlay').classList.remove('active');
+  },
+  generateMinimap(){
+    const mm=document.getElementById('pipelineMinimap');
+    mm.innerHTML='';
+    for(let i=0;i<this.totalSections;i++){
+      const dot=document.createElement('div');
+      dot.className='minimap-dot'+(i===0?' active':'');
+      dot.onclick=()=>this.showSection(i);
+      mm.appendChild(dot);
+    }
+  },
+  showSection(idx){
+    if(!this.currentBot||idx<0||idx>=this.totalSections)return;
+    this.currentSection=idx;
+    this.currentPage=Math.floor(idx/this.sectionsPerPage);
+    const sections=this.getSections();
+    document.getElementById('pipelineContent').innerHTML=sections[idx].content;
+    document.querySelectorAll('.minimap-dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+    this.updateButtons();
+  },
+  _sec(n,t,c){return `<h3><span class="section-number">${n}</span> ${t}</h3>${c}`;},
+  getSections(){
+    const b=this.currentBot;
+    const S=this._sec;
+    return[
+      {title:'Visión General',content:S(1,'Visión General',`<p><strong>${b.name}</strong> — ${b.role}</p><p>${b.description}</p>`)},
+      {title:'Capacidades',content:S(2,'Capacidades',`<ul>${b.capabilities.map(c=>`<li><strong>${c}</strong></li>`).join('')}</ul>`)},
+      {title:'Flujo',content:S(3,'Flujo','<ul><li>Recepción</li><li>Validación</li><li>Proceso</li><li>Resultado</li></ul>')},
+      {title:'Integraciones',content:S(4,'Integraciones',`<ul>${b.dependencies.length?b.dependencies.map(d=>`<li>${d}</li>`).join(''):'<li>Raíz</li>'}</ul>`)},
+      {title:'I/O',content:S(5,'I/O','<p>Recibe solicitudes, retorna resultados.</p>')},
+      {title:'Config',content:S(6,'Config','<ul><li>mode:prod</li><li>timeout:30s</li><li>cache:on</li></ul>')},
+      {title:'Uso',content:S(7,'Uso','<p>Producción y batch.</p>')},
+      {title:'Prácticas',content:S(8,'Prácticas','<ul><li>Validar</li><li>Gates</li><li>Doc edges</li></ul>')},
+      {title:'Debug',content:S(9,'Debug','<p>Timeout, deps, formato.</p>')},
+      {title:'Check',content:S(10,'Check','<ul><li>☐ Auth</li><li>☐ Deps</li><li>☐ Data</li></ul>')},
+      {title:'Resumen',content:S('R','Resumen',`<p>${b.name} — ${b.layer}, ${b.role}.</p>`)},
+      {title:'Final',content:S('✓','OK',`<p style="color:var(--cosmic-cyan);">¡${b.shortName} listo!</p>`)}
+    ];
+  },
+  updateButtons(){
+    const sections=this.getSections();
+    const start=this.currentPage*this.sectionsPerPage;
+    document.querySelectorAll('#pipelineNavRow .btn-tv').forEach((btn,i)=>{
+      const sec=sections[start+i];
+      btn.querySelector('.btn-tv-label').textContent=sec?sec.title:'—';
+      btn.disabled=!sec;
+    });
+    document.getElementById('pipelinePageIndicator').textContent=`Página ${this.currentPage+1} / ${Math.ceil(this.totalSections/this.sectionsPerPage)}`;
+    document.getElementById('pipelinePrevPage').disabled=this.currentPage===0;
+    document.getElementById('pipelineNextPage').disabled=this.currentPage>=2;
+  },
+  prevPage(){
+    if(this.currentPage>0){
+      this.currentPage--;
+      this.showSection(this.currentPage*this.sectionsPerPage);
+    }
+  },
+  nextPage(){
+    if(this.currentPage<2){
+      this.currentPage++;
+      this.showSection(this.currentPage*this.sectionsPerPage);
+    }
+  }
+};
+
+document.getElementById('closePanel').addEventListener('click',()=>document.getElementById('infoPanel').classList.remove('active'));
+
+document.getElementById('toggleLegend').addEventListener('click',()=>{
+  const l=document.getElementById('legend');
+  l.style.display=l.style.display==='none'?'flex':'none';
+});
+
+document.getElementById('toggleRoadmap').addEventListener('click',()=>{
+  const r=document.getElementById('roadmapPanel');
+  r.style.display=r.style.display==='none'?'block':'none';
+});
+
+document.getElementById('resetView').addEventListener('click',()=>{
+  if(window._aviaZoom){
+    window._aviaZoom.focused=null;
+    window._aviaZoom.svg.transition().duration(AVIA_CONFIG.ANIMATION_DURATION).call(window._aviaZoom.zoomB.transform,d3.zoomIdentity);
+  }else{
+    initConstellation();
+  }
+});
+
+let _rt;
+window.addEventListener('resize',()=>{
+  const z=window._aviaZoom,t=z?d3.zoomTransform(z.svg.node()):null;
+  clearTimeout(_rt);
+  _rt=setTimeout(()=>{
+    initConstellation();
+    if(t&&window._aviaZoom)window._aviaZoom.svg.call(window._aviaZoom.zoomB.transform,t);
+  },250);
+});
+
+// ═══════════════════════════════════════════════════════════
+// ERROR BOUNDARY GLOBAL v3.2.1
+// ═══════════════════════════════════════════════════════════
+window.AVIA_ERROR_BOUNDARY = {
+  errors: [],
+  maxErrors: AVIA_CONFIG.MAX_ERROR_LOG,
+  
+  init() {
+    window.addEventListener('error', (e) => {
+      this.capture(e.error || e.message, 'runtime', e);
+    });
+    
+    window.addEventListener('unhandledrejection', (e) => {
+      this.capture(e.reason, 'promise', e);
+    });
+    
+    console.log('%c✅ AVIA Error Boundary activo', 'color:#10b981;font-size:12px;font-weight:bold');
+  },
+  
+  capture(error, type, event) {
+    const errorInfo = {
+      type,
+      message: error?.message || String(error),
+      stack: error?.stack || 'No stack trace',
+      timestamp: new Date().toISOString(),
+      url: window.location.href
+    };
+    
+    this.errors.push(errorInfo);
+    if (this.errors.length > this.maxErrors) this.errors.shift();
+    
+    console.error(`%c[AVIA ${type.toUpperCase()} ERROR]`, 'color:#ff3864;font-weight:bold', errorInfo);
+    
+    AviaToast.show(`Error ${type}: ${errorInfo.message.slice(0, 60)}...`, 'err');
+    
+    if (event?.preventDefault) event.preventDefault();
+  },
+  
+  getErrors() {
+    return [...this.errors];
+  },
+  
+  clear() {
+    this.errors = [];
+    console.log('%c🗑️ Error log cleared', 'color:#8b98b8');
+  }
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  generateStars();
+  PipelineController.init();
+  AssistantController.init();
+  CommandBar.init();
+  LayerFilter.init();
+  AVIA_ERROR_BOUNDARY.init(); // CAMBIO 1: Activar Error Boundary
+  
+  setTimeout(()=>{
+    initConstellation();
+    generateStats();
+    generateRoadmap();
+    generateOntologyCards();
+    generateDependencyMatrix();
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    
+    console.log(`%c✅ AVIA Senior v${AVIA_CONFIG.VERSION} iniciado correctamente`, 'color:#00f5d4;font-size:14px;font-weight:bold');
+  },1500);
+});
+
+window.botsData=botsData;
+window.showBotInfo=showBotInfo;
+window.PipelineController=PipelineController;
+window.openAssistant=openAssistant;
+window.executeWithBot=executeWithBot;
+window.AssistantController=AssistantController;
+window.CommandBar=CommandBar;
+window.LayerFilter=LayerFilter;
+
+// ═══════════════════════════════════════════════════════════
+// AVIA SENIOR v3.2.1 - PATCH DE MEJORAS
+// Fecha: 2026-03-25 | Mejoras: A11Y + Robustez + Validación
+// ═══════════════════════════════════════════════════════════
+(function() {
+  console.log('%c🚀 Aplicando AVIA v3.2.1 Patches...', 'color:#00f5d4;font-size:14px;font-weight:bold');
+  
+  // PATCH: Keyboard en cmdk items
+  document.getElementById('cmdkResults').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const active = document.querySelector('.cmdk-item.active');
+      if (active) active.click();
+    }
+  });
+  
+  console.log('%c✅ AVIA v3.2.1 Patches aplicados correctamente', 'color:#10b981;font-size:12px');
+  console.log('%cCambios: Error Boundary + A11Y + Validación + Config', 'color:#8b98b8;font-size:10px');
+})();
+</script>
+
+</body>
+</html>

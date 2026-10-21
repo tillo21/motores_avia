@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Gastro v2.3 | Mapa Gastronómico de Córdoba</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Panel Lateral Izquierdo */
+        .sidebar {
+            width: 320px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+
+        .logo-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-section h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f39c12, #e74c3c, #9b59b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 5px;
+        }
+
+        .logo-section .version {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .logo-section p {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+        }
+
+        /* Filtros */
+        .filter-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .filter-section h3 {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .filter-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-item.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .filter-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* Colores por tipo de cocina */
+        .filter-icon.alta-cocina { background: #e74c3c; }
+        .filter-icon.tradicional { background: #f39c12; }
+        .filter-icon.tapas { background: #f1c40f; }
+        .filter-icon.internacional { background: #2ecc71; }
+        .filter-icon.emblematico { background: #3498db; }
+        .filter-icon.saludable { background: #9b59b6; }
+
+        .filter-label {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .filter-count {
+            font-size: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        /* Búsqueda */
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #f39c12;
+            box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Área Principal */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Visualización del Mapa/Grafo */
+        .visualization-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Tooltip al pasar el ratón */
+        .node-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            pointer-events: none;
+            z-index: 1000;
+            min-width: 280px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .node-tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tooltip-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .tooltip-title {
+            flex: 1;
+        }
+
+        .tooltip-title h4 {
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        .tooltip-title span {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .tooltip-address {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .tooltip-address-icon {
+            color: #f39c12;
+            margin-top: 2px;
+        }
+
+        .tooltip-score {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .tooltip-stars {
+            color: #f39c12;
+        }
+
+        /* Panel de Detalle (al hacer clic) */
+        .detail-panel {
+            position: fixed;
+            right: -450px;
+            top: 0;
+            width: 450px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 2000;
+            transition: right 0.4s ease;
+            overflow-y: auto;
+        }
+
+        .detail-panel.open {
+            right: 0;
+        }
+
+        .detail-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .detail-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .detail-header {
+            padding: 30px;
+            background: linear-gradient(180deg, rgba(243, 156, 18, 0.2) 0%, transparent 100%);
+        }
+
+        .detail-badge {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .detail-name {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .detail-type {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 15px;
+        }
+
+        .detail-rating {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rating-stars {
+            color: #f39c12;
+            font-size: 1.2rem;
+        }
+
+        .rating-score {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .rating-votes {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .detail-section {
+            padding: 20px 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-section h4 {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .detail-info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+        }
+
+        .detail-info-icon {
+            width: 24px;
+            color: #f39c12;
+        }
+
+        .detail-info-content {
+            flex: 1;
+        }
+
+        .detail-info-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .detail-info-value {
+            font-size: 0.95rem;
+        }
+
+        .detail-info-value a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .detail-info-value a:hover {
+            text-decoration: underline;
+        }
+
+        .detail-actions {
+            padding: 20px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            color: #fff;
+        }
+
+        .action-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .action-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Sello AVIA */
+        .avia-seal {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .avia-seal.oro { background: linear-gradient(135deg, #f39c12, #d35400); }
+        .avia-seal.plata { background: linear-gradient(135deg, #bdc3c7, #95a5a6); }
+        .avia-seal.bronce { background: linear-gradient(135deg, #d35400, #a04000); }
+        .avia-seal.pendiente { background: rgba(255, 255, 255, 0.2); }
+
+        /* Nodos del grafo */
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.3);
+        }
+
+        .node-label {
+            font-size: 10px;
+            fill: rgba(255, 255, 255, 0.8);
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .link {
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 1;
+        }
+
+        /* Leyenda */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .legend-title {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+            
+            .detail-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Panel Lateral -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <h1>🍽️ AVIA Gastro</h1>
+                <span class="version">v2.3 Stable</span>
+                <p>Mapa Gastronómico de Córdoba</p>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar restaurante, bar, taberna...">
+                <span class="search-icon">🔍</span>
+            </div>
+
+            <div class="filter-section">
+                <h3>📍 Comarca</h3>
+                <div class="filter-group" id="comarcaFilters">
+                    <div class="filter-item active" data-filter="all">
+                        <span class="filter-label">Todas las comarcas</span>
+                        <span class="filter-count" id="countAll">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="centro">
+                        <span class="filter-label">Centro (Capital)</span>
+                        <span class="filter-count" id="countCentro">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="subbetica">
+                        <span class="filter-label">Subbética</span>
+                        <span class="filter-count" id="countSubbetica">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="pedroches">
+                        <span class="filter-label">Los Pedroches</span>
+                        <span class="filter-count" id="countPedroches">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="campina">
+                        <span class="filter-label">Campiña</span>
+                        <span class="filter-count" id="countCampina">0</span>
+                    </div>
+                    <div class="filter-item" data-filter="sierra">
+                        <span class="filter-label">Sierra</span>
+                        <span class="filter-count" id="countSierra">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>🍳 Tipo de Cocina</h3>
+                <div class="filter-group" id="tipoFilters">
+                    <div class="filter-item active" data-tipo="all">
+                        <span class="filter-icon" style="background: linear-gradient(135deg, #e74c3c, #9b59b6);">✓</span>
+                        <span class="filter-label">Todos los tipos</span>
+                    </div>
+                    <div class="filter-item" data-tipo="alta-cocina">
+                        <div class="filter-icon alta-cocina">⭐</div>
+                        <span class="filter-label">Alta Cocina</span>
+                    </div>
+                    <div class="filter-item" data-tipo="tradicional">
+                        <div class="filter-icon tradicional">🍲</div>
+                        <span class="filter-label">Tradicional</span>
+                    </div>
+                    <div class="filter-item" data-tipo="tapas">
+                        <div class="filter-icon tapas">🍺</div>
+                        <span class="filter-label">Tapas & Tabernas</span>
+                    </div>
+                    <div class="filter-item" data-tipo="internacional">
+                        <div class="filter-icon internacional">🌍</div>
+                        <span class="filter-label">Internacional</span>
+                    </div>
+                    <div class="filter-item" data-tipo="emblematico">
+                        <div class="filter-icon emblematico">🏛️</div>
+                        <span class="filter-label">Emblemático</span>
+                    </div>
+                    <div class="filter-item" data-tipo="saludable">
+                        <div class="filter-icon saludable">🥗</div>
+                        <span class="filter-label">Cocina Saludable</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>🏅 Sello AVIA</h3>
+                <div class="filter-group" id="selloFilters">
+                    <div class="filter-item active" data-sello="all">
+                        <span class="filter-label">Todos</span>
+                    </div>
+                    <div class="filter-item" data-sello="oro">
+                        <span style="color: #f39c12;">🥇</span>
+                        <span class="filter-label">Oro</span>
+                    </div>
+                    <div class="filter-item" data-sello="plata">
+                        <span style="color: #bdc3c7;">🥈</span>
+                        <span class="filter-label">Plata</span>
+                    </div>
+                    <div class="filter-item" data-sello="bronce">
+                        <span style="color: #d35400;">🥉</span>
+                        <span class="filter-label">Bronce</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            <div class="header-bar">
+                <h2>Explorar Establecimientos</h2>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalEstablecimientos">0</div>
+                        <div class="stat-label">Establecimientos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalCertificados">0</div>
+                        <div class="stat-label">Certificados</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="promedioRating">0.0</div>
+                        <div class="stat-label">Rating Promedio</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="visualization-container">
+                <svg id="graph-container"></svg>
+                
+                <div class="legend">
+                    <div class="legend-title">Tipo de Cocina</div>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #e74c3c;"></div>
+                            <span>Alta Cocina</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #f39c12;"></div>
+                            <span>Tradicional</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #f1c40f;"></div>
+                            <span>Tapas</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #2ecc71;"></div>
+                            <span>Internacional</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #3498db;"></div>
+                            <span>Emblemático</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #9b59b6;"></div>
+                            <span>Saludable</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Tooltip flotante -->
+    <div class="node-tooltip" id="nodeTooltip">
+        <div class="tooltip-header">
+            <div class="tooltip-badge" id="tooltipBadge">🍽️</div>
+            <div class="tooltip-title">
+                <h4 id="tooltipName">Nombre del Restaurante</h4>
+                <span id="tooltipType">Tipo de Cocina</span>
+            </div>
+        </div>
+        <div class="tooltip-address">
+            <span class="tooltip-address-icon">📍</span>
+            <span id="tooltipAddress">Dirección completa</span>
+        </div>
+        <div class="tooltip-score">
+            <span class="tooltip-stars" id="tooltipStars">★★★★★</span>
+            <span id="tooltipRating">4.8</span>
+            <span style="color: rgba(255,255,255,0.5);">•</span>
+            <span id="tooltipVotes">1,234 votos</span>
+        </div>
+    </div>
+
+    <!-- Panel de Detalle -->
+    <div class="detail-panel" id="detailPanel">
+        <button class="detail-close" onclick="closeDetailPanel()">✕</button>
+        
+        <div class="detail-header">
+            <div class="detail-badge" id="detailBadge">🍽️</div>
+            <h2 class="detail-name" id="detailName">Nombre del Restaurante</h2>
+            <p class="detail-type" id="detailType">Tipo de Cocina • Comarca</p>
+            <div class="detail-rating">
+                <span class="rating-stars" id="detailStars">★★★★★</span>
+                <span class="rating-score" id="detailScore">4.8</span>
+                <span class="rating-votes" id="detailVotes">(1,234 votos)</span>
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="avia-seal oro" id="detailSeal">🏅 Sello Oro AVIA</span>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Información de Contacto</h4>
+            <div class="detail-info-row">
+                <span class="detail-info-icon">📍</span>
+                <div class="detail-info-content">
+                    <span class="detail-info-label">Dirección</span>
+                    <span class="detail-info-value" id="detailAddress">Calle Ejemplo, 123</span>
+                </div>
+            </div>
+            <div class="detail-info-row">
+                <span class="detail-info-icon">📞</span>
+                <div class="detail-info-content">
+                    <span class="detail-info-label">Teléfono</span>
+                    <span class="detail-info-value" id="detailPhone">+34 957 123 456</span>
+                </div>
+            </div>
+            <div class="detail-info-row">
+                <span class="detail-info-icon">🌐</span>
+                <div class="detail-info-content">
+                    <span class="detail-info-label">Página Web</span>
+                    <span class="detail-info-value"><a href="#" id="detailWeb" target="_blank">www.restaurante.com</a></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Especialidad Destacada</h4>
+            <div class="detail-info-row">
+                <span class="detail-info-icon">👨‍🍳</span>
+                <div class="detail-info-content">
+                    <span class="detail-info-value" id="detailEspecialidad">Rabo de toro tradicional con reducción de Pedro Ximénez</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4>Puntuación AVIA</h4>
+            <div id="detailScoreBreakdown" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <div class="detail-actions">
+            <a href="#" id="detailReservaBtn" class="action-btn primary" target="_blank">
+                📅 Reservar Mesa
+            </a>
+            <button class="action-btn secondary" onclick="votarEstablecimiento()">
+                👍 Votar este establecimiento
+            </button>
+            <button class="action-btn secondary" onclick="compartirEstablecimiento()">
+                📤 Compartir
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // BASE DE DATOS DE ESTABLECIMIENTOS
+        // ============================================
+        const establecimientos = [
+            // ALTA COCINA
+            {
+                id: 1,
+                nombre: "Noor",
+                tipo: "alta-cocina",
+                comarca: "centro",
+                direccion: "Calle Pablo Ruiz Picasso, 6, 14004 Córdoba",
+                telefono: "+34 957 964 055",
+                web: "https://restaurantenoor.com",
+                reserva: "https://restaurantenoor.com/reservas",
+                especialidad: "Menú Califal Al-Nasir con especias históricas recuperadas",
+                rating: 4.9,
+                votos: 1847,
+                puntuacionAVIA: 98,
+                sello: "oro",
+                emoji: "⭐"
+            },
+            {
+                id: 2,
+                nombre: "Choco",
+                tipo: "alta-cocina",
+                comarca: "centro",
+                direccion: "Calle Compositor Serrano Lucena, 14, 14010 Córdoba",
+                telefono: "+34 957 264 863",
+                web: "https://restaurantechoco.es",
+                reserva: "https://www.eltenedor.es/restaurante/choco/28461",
+                especialidad: "Rabo de toro deconstruido con puré de patata trufado",
+                rating: 4.8,
+                votos: 2103,
+                puntuacionAVIA: 95,
+                sello: "oro",
+                emoji: "⭐"
+            },
+            {
+                id: 3,
+                nombre: "Amaltea",
+                tipo: "saludable",
+                comarca: "centro",
+                direccion: "Calle Ronda de Isasa, 10, 14003 Córdoba",
+                telefono: "+34 957 491 968",
+                web: "https://restauranteamaltea.com",
+                reserva: "https://restauranteamaltea.com/reservas",
+                especialidad: "Menú Degustación Vital - 7 tiempos, 0 procesados",
+                rating: 4.7,
+                votos: 1456,
+                puntuacionAVIA: 94,
+                sello: "oro",
+                emoji: "🥗"
+            },
+            {
+                id: 4,
+                nombre: "Bocatti di Cardinale Premium",
+                tipo: "emblematico",
+                comarca: "centro",
+                direccion: "Caballerizas Reales, Calle Caballerizas Reales, 1, 14004 Córdoba",
+                telefono: "+34 957 XXX XXX",
+                web: "https://bocattidicardinalepremium.es",
+                reserva: "https://bocattidicardinalepremium.es/reservas",
+                especialidad: "Queso de cueva madurado en versión premium con maridaje histórico",
+                rating: 4.9,
+                votos: 892,
+                puntuacionAVIA: 96,
+                sello: "oro",
+                emoji: "🏛️"
+            },
+            {
+                id: 5,
+                nombre: "Bocatti di Cardinale Social",
+                tipo: "emblematico",
+                comarca: "centro",
+                direccion: "Cortijo el Alcalde, Urbanización La Forja, 14005 Córdoba",
+                telefono: "+34 957 XXX XXX",
+                web: "https://fundacionfree.org/bocatti",
+                reserva: "https://fundacionfree.org/bocatti/reservas",
+                especialidad: "Queso de cueva artesanal - Excelencia accesible para todos",
+                rating: 4.8,
+                votos: 1234,
+                puntuacionAVIA: 96,
+                sello: "oro",
+                emoji: "🏛️"
+            },
+            // TRADICIONAL
+            {
+                id: 6,
+                nombre: "El Churrasco",
+                tipo: "tradicional",
+                comarca: "centro",
+                direccion: "Calle Romero, 16, 14003 Córdoba",
+                telefono: "+34 957 290 819",
+                web: "https://elchurrasco.com",
+                reserva: "https://www.eltenedor.es/restaurante/el-churrasco/3958",
+                especialidad: "Rabo de toro estofado 8 horas con reducción de Pedro Ximénez",
+                rating: 4.7,
+                votos: 3456,
+                puntuacionAVIA: 94,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            {
+                id: 7,
+                nombre: "Bodegas Mezquita",
+                tipo: "tradicional",
+                comarca: "centro",
+                direccion: "Calle Céspedes, 12, 14003 Córdoba",
+                telefono: "+34 957 490 004",
+                web: "https://bodegasmezquita.com",
+                reserva: "https://bodegasmezquita.com/reservas",
+                especialidad: "Flamenquín cordobés con jamón ibérico de bellota",
+                rating: 4.6,
+                votos: 4521,
+                puntuacionAVIA: 91,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            {
+                id: 8,
+                nombre: "Taberna Salinas",
+                tipo: "tradicional",
+                comarca: "centro",
+                direccion: "Calle Tundidores, 3, 14002 Córdoba",
+                telefono: "+34 957 480 135",
+                web: "https://tabernasalinas.es",
+                reserva: "https://tabernasalinas.es/reservar",
+                especialidad: "Berenjenas con miel de caña de Frigiliana",
+                rating: 4.5,
+                votos: 2876,
+                puntuacionAVIA: 92,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            {
+                id: 9,
+                nombre: "Casa Pepe de la Judería",
+                tipo: "tradicional",
+                comarca: "centro",
+                direccion: "Calle Romero, 1, 14003 Córdoba",
+                telefono: "+34 957 200 744",
+                web: "https://casapepejuderia.com",
+                reserva: "https://www.eltenedor.es/restaurante/casa-pepe-juderia/3967",
+                especialidad: "Salmorejo tradicional con AOVE DOP Priego",
+                rating: 4.4,
+                votos: 5234,
+                puntuacionAVIA: 89,
+                sello: "plata",
+                emoji: "🍲"
+            },
+            // TAPAS & TABERNAS
+            {
+                id: 10,
+                nombre: "Taberna La Viuda",
+                tipo: "tapas",
+                comarca: "centro",
+                direccion: "Calle San Basilio, 52, 14004 Córdoba",
+                telefono: "+34 957 297 614",
+                web: "https://tabernalaviuda.es",
+                reserva: "",
+                especialidad: "Salmorejo tradicional - receta familiar de 4 generaciones",
+                rating: 4.6,
+                votos: 1234,
+                puntuacionAVIA: 88,
+                sello: "plata",
+                emoji: "🍺"
+            },
+            {
+                id: 11,
+                nombre: "Bodega Guzmán",
+                tipo: "tapas",
+                comarca: "centro",
+                direccion: "Calle de los Judíos, 7, 14004 Córdoba",
+                telefono: "+34 957 290 960",
+                web: "https://bodegaguzman.es",
+                reserva: "",
+                especialidad: "Carrillada ibérica al Pedro Ximénez",
+                rating: 4.5,
+                votos: 987,
+                puntuacionAVIA: 86,
+                sello: "plata",
+                emoji: "🍺"
+            },
+            {
+                id: 12,
+                nombre: "La Boca",
+                tipo: "tapas",
+                comarca: "centro",
+                direccion: "Calle San Lorenzo, 12, 14002 Córdoba",
+                telefono: "+34 957 474 912",
+                web: "https://labocacordoba.es",
+                reserva: "https://labocacordoba.es/reservar",
+                especialidad: "Tosta de pringá con reducción de Montilla-Moriles",
+                rating: 4.5,
+                votos: 765,
+                puntuacionAVIA: 85,
+                sello: "plata",
+                emoji: "🍺"
+            },
+            // SUBBÉTICA
+            {
+                id: 13,
+                nombre: "Balcón del Adarve",
+                tipo: "tradicional",
+                comarca: "subbetica",
+                direccion: "Paseo de Colombia, 36, 14800 Priego de Córdoba",
+                telefono: "+34 957 547 075",
+                web: "https://balcondeladarve.es",
+                reserva: "https://balcondeladarve.es/reservas",
+                especialidad: "Ajoblanco de almendra marcona con uvas moscatel",
+                rating: 4.6,
+                votos: 654,
+                puntuacionAVIA: 90,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            {
+                id: 14,
+                nombre: "La Finca",
+                tipo: "tradicional",
+                comarca: "subbetica",
+                direccion: "Carretera Cabra-Priego, km 5, 14940 Cabra",
+                telefono: "+34 957 520 087",
+                web: "https://lafincacabra.es",
+                reserva: "https://lafincacabra.es/reservar",
+                especialidad: "Cordero segureño a baja temperatura 12 horas",
+                rating: 4.5,
+                votos: 432,
+                puntuacionAVIA: 88,
+                sello: "plata",
+                emoji: "🍲"
+            },
+            {
+                id: 15,
+                nombre: "Asador Los Caballos",
+                tipo: "tradicional",
+                comarca: "subbetica",
+                direccion: "Calle Santo, 48, 14870 Zuheros",
+                telefono: "+34 957 694 532",
+                web: "https://asadorloscaballos.es",
+                reserva: "https://asadorloscaballos.es/reservar",
+                especialidad: "Cabrito lechal al horno de leña de encina",
+                rating: 4.7,
+                votos: 543,
+                puntuacionAVIA: 91,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            // LOS PEDROCHES
+            {
+                id: 16,
+                nombre: "Dehesa de los Monteros",
+                tipo: "alta-cocina",
+                comarca: "pedroches",
+                direccion: "Carretera N-502, km 342, 14440 Villanueva de Córdoba",
+                telefono: "+34 957 120 098",
+                web: "https://dehesadelosmonteros.es",
+                reserva: "https://dehesadelosmonteros.es/reservas",
+                especialidad: "Jamón ibérico de bellota DOP Los Pedroches - 24 meses",
+                rating: 4.8,
+                votos: 876,
+                puntuacionAVIA: 95,
+                sello: "oro",
+                emoji: "⭐"
+            },
+            {
+                id: 17,
+                nombre: "Dama Juana",
+                tipo: "tradicional",
+                comarca: "pedroches",
+                direccion: "Calle Pozoblanco, 24, 14400 Pozoblanco",
+                telefono: "+34 957 770 234",
+                web: "https://damajuana.es",
+                reserva: "https://damajuana.es/reservar",
+                especialidad: "Lomo ibérico de bellota con setas de temporada",
+                rating: 4.6,
+                votos: 534,
+                puntuacionAVIA: 93,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            // CAMPIÑA
+            {
+                id: 18,
+                nombre: "Mesón El Castillo",
+                tipo: "tradicional",
+                comarca: "campina",
+                direccion: "Plaza del Castillo, 8, 14550 Montilla",
+                telefono: "+34 957 650 432",
+                web: "https://mesonelcastillo.es",
+                reserva: "https://mesonelcastillo.es/reservar",
+                especialidad: "Alcachofas confitadas en aceite amontillado",
+                rating: 4.5,
+                votos: 654,
+                puntuacionAVIA: 89,
+                sello: "plata",
+                emoji: "🍲"
+            },
+            {
+                id: 19,
+                nombre: "La Taberna de Almodóvar",
+                tipo: "tapas",
+                comarca: "campina",
+                direccion: "Calle Antonio Machado, 12, 14720 Almodóvar del Río",
+                telefono: "+34 957 634 521",
+                web: "https://tabernaalmodovar.es",
+                reserva: "",
+                especialidad: "Gazpacho de cerezas con virutas de jamón",
+                rating: 4.4,
+                votos: 432,
+                puntuacionAVIA: 88,
+                sello: "plata",
+                emoji: "🍺"
+            },
+            // SIERRA
+            {
+                id: 20,
+                nombre: "Venta El Rayo",
+                tipo: "tradicional",
+                comarca: "sierra",
+                direccion: "Carretera A-431, km 32, 14740 Hornachuelos",
+                telefono: "+34 957 640 765",
+                web: "https://ventaelrayo.es",
+                reserva: "https://ventaelrayo.es/reservar",
+                especialidad: "Ciervo de caza en escabeche tradicional",
+                rating: 4.6,
+                votos: 432,
+                puntuacionAVIA: 90,
+                sello: "oro",
+                emoji: "🍲"
+            },
+            {
+                id: 21,
+                nombre: "Mesón Sierra Morena",
+                tipo: "tradicional",
+                comarca: "sierra",
+                direccion: "Calle Real, 45, 14600 Montoro",
+                telefono: "+34 957 160 432",
+                web: "https://mesonsierramorena.es",
+                reserva: "https://mesonsierramorena.es/reservar",
+                especialidad: "Perdiz estofada con judías pintas",
+                rating: 4.4,
+                votos: 321,
+                puntuacionAVIA: 86,
+                sello: "plata",
+                emoji: "🍲"
+            },
+            // INTERNACIONAL
+            {
+                id: 22,
+                nombre: "Garum 2.1",
+                tipo: "internacional",
+                comarca: "centro",
+                direccion: "Calle San Fernando, 120, 14003 Córdoba",
+                telefono: "+34 957 102 103",
+                web: "https://garum21.es",
+                reserva: "https://garum21.es/reservar",
+                especialidad: "Nigiri de salmorejo con anchoa del Cantábrico",
+                rating: 4.6,
+                votos: 876,
+                puntuacionAVIA: 87,
+                sello: "plata",
+                emoji: "🌍"
+            },
+            {
+                id: 23,
+                nombre: "Sojo Ribera",
+                tipo: "internacional",
+                comarca: "centro",
+                direccion: "Paseo de la Ribera, 12, 14004 Córdoba",
+                telefono: "+34 957 476 532",
+                web: "https://sojoribera.es",
+                reserva: "https://sojoribera.es/reservar",
+                especialidad: "Tataki de atún con cremoso de aguacate",
+                rating: 4.5,
+                votos: 654,
+                puntuacionAVIA: 85,
+                sello: "plata",
+                emoji: "🌍"
+            },
+            // Más establecimientos EMBLEMÁTICOS
+            {
+                id: 24,
+                nombre: "Bodegas Campos",
+                tipo: "emblematico",
+                comarca: "centro",
+                direccion: "Calle Lineros, 32, 14002 Córdoba",
+                telefono: "+34 957 497 500",
+                web: "https://bodegascampos.com",
+                reserva: "https://bodegascampos.com/reservar",
+                especialidad: "Pastel cordobés y rabo de toro tradicional desde 1908",
+                rating: 4.4,
+                votos: 3245,
+                puntuacionAVIA: 90,
+                sello: "oro",
+                emoji: "🏛️"
+            },
+            // Más COCINA SALUDABLE
+            {
+                id: 25,
+                nombre: "Green & Go",
+                tipo: "saludable",
+                comarca: "centro",
+                direccion: "Avenida Gran Capitán, 24, 14001 Córdoba",
+                telefono: "+34 957 432 876",
+                web: "https://greenandgo.es",
+                reserva: "https://greenandgo.es/reservar",
+                especialidad: "Bowls nutritivos con productos ecológicos locales",
+                rating: 4.5,
+                votos: 567,
+                puntuacionAVIA: 84,
+                sello: "plata",
+                emoji: "🥗"
+            }
+        ];
+
+        // ============================================
+        // COLORES POR TIPO
+        // ============================================
+        const coloresTipo = {
+            "alta-cocina": "#e74c3c",
+            "tradicional": "#f39c12",
+            "tapas": "#f1c40f",
+            "internacional": "#2ecc71",
+            "emblematico": "#3498db",
+            "saludable": "#9b59b6"
+        };
+
+        const emojisTipo = {
+            "alta-cocina": "⭐",
+            "tradicional": "🍲",
+            "tapas": "🍺",
+            "internacional": "🌍",
+            "emblematico": "🏛️",
+            "saludable": "🥗"
+        };
+
+        // ============================================
+        // VARIABLES GLOBALES
+        // ============================================
+        let svg, simulation, nodes, links;
+        let filtroComarca = "all";
+        let filtroTipo = "all";
+        let filtroSello = "all";
+        let searchQuery = "";
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initGraph();
+            initFilters();
+            initSearch();
+            updateStats();
+        });
+
+        function initGraph() {
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            svg = d3.select('#graph-container')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Crear nodos desde establecimientos
+            const nodeData = getFilteredData().map(e => ({
+                ...e,
+                x: Math.random() * width,
+                y: Math.random() * height,
+                radius: Math.max(20, Math.min(40, e.puntuacionAVIA / 3))
+            }));
+
+            // Crear enlaces (conexiones por comarca y tipo)
+            const linkData = [];
+            for (let i = 0; i < nodeData.length; i++) {
+                for (let j = i + 1; j < nodeData.length; j++) {
+                    if (nodeData[i].comarca === nodeData[j].comarca || 
+                        nodeData[i].tipo === nodeData[j].tipo) {
+                        linkData.push({
+                            source: nodeData[i],
+                            target: nodeData[j]
+                        });
+                    }
+                }
+            }
+
+            // Dibujar enlaces
+            links = svg.selectAll('.link')
+                .data(linkData)
+                .join('line')
+                .attr('class', 'link');
+
+            // Dibujar nodos
+            nodes = svg.selectAll('.node')
+                .data(nodeData)
+                .join('g')
+                .attr('class', 'node')
+                .on('mouseover', showTooltip)
+                .on('mouseout', hideTooltip)
+                .on('click', showDetail);
+
+            nodes.append('circle')
+                .attr('r', d => d.radius)
+                .attr('fill', d => coloresTipo[d.tipo] || '#666')
+                .attr('stroke', d => d.sello === 'oro' ? '#f39c12' : 
+                                   d.sello === 'plata' ? '#bdc3c7' : 
+                                   d.sello === 'bronce' ? '#d35400' : 'transparent')
+                .attr('stroke-width', d => d.sello ? 3 : 0);
+
+            nodes.append('text')
+                .attr('class', 'node-label')
+                .attr('dy', d => d.radius + 15)
+                .text(d => d.nombre.length > 15 ? d.nombre.substring(0, 15) + '...' : d.nombre);
+
+            // Simulación de fuerzas
+            simulation = d3.forceSimulation(nodeData)
+                .force('charge', d3.forceManyBody().strength(-100))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.radius + 10))
+                .force('link', d3.forceLink(linkData).distance(150))
+                .on('tick', ticked);
+
+            // Drag
+            nodes.call(d3.drag()
+                .on('start', dragStarted)
+                .on('drag', dragged)
+                .on('end', dragEnded));
+        }
+
+        function ticked() {
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            nodes
+                .attr('transform', d => `translate(${d.x}, ${d.y})`);
+        }
+
+        function dragStarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragEnded(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // ============================================
+        // TOOLTIP (hover sin click)
+        // ============================================
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('nodeTooltip');
+            
+            document.getElementById('tooltipName').textContent = d.nombre;
+            document.getElementById('tooltipType').textContent = 
+                d.tipo.charAt(0).toUpperCase() + d.tipo.slice(1).replace('-', ' ');
+            document.getElementById('tooltipAddress').textContent = d.direccion;
+            document.getElementById('tooltipRating').textContent = d.rating.toFixed(1);
+            document.getElementById('tooltipVotes').textContent = d.votos.toLocaleString() + ' votos';
+            
+            const badge = document.getElementById('tooltipBadge');
+            badge.textContent = emojisTipo[d.tipo] || '🍽️';
+            badge.style.background = coloresTipo[d.tipo];
+            
+            // Generar estrellas
+            const stars = Math.round(d.rating);
+            document.getElementById('tooltipStars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+
+            // Posicionar tooltip
+            tooltip.style.left = (event.pageX + 15) + 'px';
+            tooltip.style.top = (event.pageY + 15) + 'px';
+            tooltip.classList.add('visible');
+        }
+
+        function hideTooltip() {
+            document.getElementById('nodeTooltip').classList.remove('visible');
+        }
+
+        // ============================================
+        // PANEL DE DETALLE (click)
+        // ============================================
+        function showDetail(event, d) {
+            const panel = document.getElementById('detailPanel');
+            
+            document.getElementById('detailName').textContent = d.nombre;
+            document.getElementById('detailType').textContent = 
+                `${d.tipo.charAt(0).toUpperCase() + d.tipo.slice(1).replace('-', ' ')} • ${d.comarca.charAt(0).toUpperCase() + d.comarca.slice(1)}`;
+            document.getElementById('detailScore').textContent = d.rating.toFixed(1);
+            document.getElementById('detailVotes').textContent = `(${d.votos.toLocaleString()} votos)`;
+            document.getElementById('detailAddress').textContent = d.direccion;
+            document.getElementById('detailPhone').textContent = d.telefono;
+            document.getElementById('detailWeb').href = d.web;
+            document.getElementById('detailWeb').textContent = d.web.replace('https://', '');
+            document.getElementById('detailEspecialidad').textContent = d.especialidad;
+            
+            const badge = document.getElementById('detailBadge');
+            badge.textContent = emojisTipo[d.tipo] || '🍽️';
+            badge.style.background = coloresTipo[d.tipo];
+            
+            // Estrellas
+            const stars = Math.round(d.rating);
+            document.getElementById('detailStars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+            
+            // Sello
+            const sealEl = document.getElementById('detailSeal');
+            sealEl.className = 'avia-seal ' + d.sello;
+            sealEl.textContent = d.sello === 'oro' ? '🥇 Sello Oro AVIA' :
+                                 d.sello === 'plata' ? '🥈 Sello Plata AVIA' :
+                                 d.sello === 'bronce' ? '🥉 Sello Bronce AVIA' : '⏳ En evaluación';
+            
+            // Botón de reserva
+            const reservaBtn = document.getElementById('detailReservaBtn');
+            if (d.reserva) {
+                reservaBtn.href = d.reserva;
+                reservaBtn.style.display = 'flex';
+            } else {
+                reservaBtn.style.display = 'none';
+            }
+            
+            // Puntuación desglosada
+            const breakdown = document.getElementById('detailScoreBreakdown');
+            breakdown.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Puntuación AVIA</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 100px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${d.puntuacionAVIA}%; height: 100%; background: linear-gradient(90deg, #f39c12, #e74c3c); border-radius: 4px;"></div>
+                        </div>
+                        <span style="font-weight: bold; color: #f39c12;">${d.puntuacionAVIA}/100</span>
+                    </div>
+                </div>
+            `;
+
+            panel.classList.add('open');
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detailPanel').classList.remove('open');
+        }
+
+        // ============================================
+        // FILTROS
+        // ============================================
+        function initFilters() {
+            // Filtros de comarca
+            document.querySelectorAll('#comarcaFilters .filter-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#comarcaFilters .filter-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    filtroComarca = item.dataset.filter;
+                    refreshGraph();
+                });
+            });
+
+            // Filtros de tipo
+            document.querySelectorAll('#tipoFilters .filter-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#tipoFilters .filter-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    filtroTipo = item.dataset.tipo;
+                    refreshGraph();
+                });
+            });
+
+            // Filtros de sello
+            document.querySelectorAll('#selloFilters .filter-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#selloFilters .filter-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    filtroSello = item.dataset.sello;
+                    refreshGraph();
+                });
+            });
+
+            updateFilterCounts();
+        }
+
+        function initSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase();
+                refreshGraph();
+            });
+        }
+
+        function getFilteredData() {
+            return establecimientos.filter(e => {
+                const matchComarca = filtroComarca === 'all' || e.comarca === filtroComarca;
+                const matchTipo = filtroTipo === 'all' || e.tipo === filtroTipo;
+                const matchSello = filtroSello === 'all' || e.sello === filtroSello;
+                const matchSearch = searchQuery === '' || 
+                    e.nombre.toLowerCase().includes(searchQuery) ||
+                    e.especialidad.toLowerCase().includes(searchQuery);
+                return matchComarca && matchTipo && matchSello && matchSearch;
+            });
+        }
+
+        function refreshGraph() {
+            svg.selectAll('*').remove();
+            initGraph();
+            updateStats();
+            updateFilterCounts();
+        }
+
+        function updateFilterCounts() {
+            document.getElementById('countAll').textContent = establecimientos.length;
+            document.getElementById('countCentro').textContent = establecimientos.filter(e => e.comarca === 'centro').length;
+            document.getElementById('countSubbetica').textContent = establecimientos.filter(e => e.comarca === 'subbetica').length;
+            document.getElementById('countPedroches').textContent = establecimientos.filter(e => e.comarca === 'pedroches').length;
+            document.getElementById('countCampina').textContent = establecimientos.filter(e => e.comarca === 'campina').length;
+            document.getElementById('countSierra').textContent = establecimientos.filter(e => e.comarca === 'sierra').length;
+        }
+
+        function updateStats() {
+            const filtered = getFilteredData();
+            document.getElementById('totalEstablecimientos').textContent = filtered.length;
+            document.getElementById('totalCertificados').textContent = filtered.filter(e => e.sello).length;
+            
+            const avgRating = filtered.length > 0 
+                ? (filtered.reduce((sum, e) => sum + e.rating, 0) / filtered.length).toFixed(1)
+                : '0.0';
+            document.getElementById('promedioRating').textContent = avgRating;
+        }
+
+        // ============================================
+        // ACCIONES DE USUARIO
+        // ============================================
+        function votarEstablecimiento() {
+            alert('🗳️ Sistema de votación AVIA\n\nPara votar necesitas estar registrado. Esta funcionalidad estará disponible próximamente.');
+        }
+
+        function compartirEstablecimiento() {
+            const panel = document.getElementById('detailPanel');
+            const nombre = document.getElementById('detailName').textContent;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: nombre + ' | AVIA Gastro',
+                    text: 'Descubre este increíble establecimiento en Córdoba',
+                    url: window.location.href
+                });
+            } else {
+                alert('📤 Enlace copiado al portapapeles');
+            }
+        }
+
+        // Redimensionar
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('graph-container');
+            svg.attr('width', container.clientWidth)
+               .attr('height', container.clientHeight);
+            simulation.force('center', d3.forceCenter(container.clientWidth / 2, container.clientHeight / 2));
+            simulation.alpha(0.3).restart();
+        });
+    </script>
+</body>
+</html>

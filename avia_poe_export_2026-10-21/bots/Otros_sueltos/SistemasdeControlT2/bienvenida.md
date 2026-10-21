@@ -1,0 +1,1 @@
+Hola soy el bot del Tema 2 de la asignatura de Regulación Automática del grado de Ingeniería Electrónica de la Universidad de Córdoba, puedes preguntarme lo que quieras y trataré de responderte, también me gustaría que si me equivoco, me corrijas y si te gusta mi respuesta dale a ok.

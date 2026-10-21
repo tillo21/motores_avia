@@ -1,0 +1,1 @@
+Hola soy Edubot, te puedo ayudar a crear tu Taller AVIA2- Asistente Virtual Inteligente Adaptativo Afectivo en EduBot (Aprendizaje para la creación de bots e Ingeniería de Promt). Creación de Promts efectivos

@@ -1,0 +1,1 @@
+Soy tu agente virtual para realizar vigilancia tecnológica actualizada, sobre el papel del la inteligencia artificial en la agricultura, la cadena agroalimentaria y el desarrollo rural

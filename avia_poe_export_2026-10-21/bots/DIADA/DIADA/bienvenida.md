@@ -1,0 +1,1 @@
+Soy el bot del proyecto DIADA, empieza a darme información para escribir la memoria

@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA NOMADA 4.0 - Dashboard Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .glow { 
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+        }
+        .glow-green { 
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3);
+        }
+        .glow-purple { 
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5), 0 0 40px rgba(168, 85, 247, 0.3);
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+        .agent-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        .agent-card:hover::before {
+            left: 100%;
+        }
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .status-online { 
+            width: 10px; 
+            height: 10px; 
+            background: #22c55e; 
+            border-radius: 50%; 
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        .status-idle { 
+            width: 10px; 
+            height: 10px; 
+            background: #facc15; 
+            border-radius: 50%; 
+            display: inline-block;
+        }
+        .status-offline { 
+            width: 10px; 
+            height: 10px; 
+            background: #ef4444; 
+            border-radius: 50%; 
+            display: inline-block;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .tab-button.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        .tab-button:hover {
+            color: #60a5fa;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .badge-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge-purple { background: rgba(168, 85, 247, 0.2); color: #a78bfa; }
+        .badge-orange { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+        .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s ease;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1e293b;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 300px;
+            z-index: 2000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .metric-box {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin: 8px 0;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .log-entry {
+            padding: 12px;
+            border-left: 3px solid #3b82f6;
+            background: rgba(30, 41, 59, 0.5);
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-entry.error { border-left-color: #ef4444; }
+        .log-entry.warning { border-left-color: #f59e0b; }
+        .log-entry.success { border-left-color: #22c55e; }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .nav-item {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #94a3b8;
+        }
+        .nav-item:hover {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 32px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;">A</div>
+            <div>
+                <div style="font-weight: 700; font-size: 18px;">AVIA NOMADA</div>
+                <div style="font-size: 12px; color: #64748b;">v4.0 Enterprise</div>
+            </div>
+        </div>
+        
+        <div class="nav-item active" onclick="switchTab('dashboard')">
+            <span>📊</span> Dashboard
+        </div>
+        <div class="nav-item" onclick="switchTab('agents')">
+            <span>🤖</span> Agentes
+        </div>
+        <div class="nav-item" onclick="switchTab('consensus')">
+            <span>🎯</span> Consenso
+        </div>
+        <div class="nav-item" onclick="switchTab('copywriter')">
+            <span>✍️</span> Copywriter
+        </div>
+        <div class="nav-item" onclick="switchTab('designer')">
+            <span>🎨</span> Designer
+        </div>
+        <div class="nav-item" onclick="switchTab('debugger')">
+            <span>🐛</span> Debugger
+        </div>
+        <div class="nav-item" onclick="switchTab('monitoring')">
+            <span>📈</span> Monitoreo
+        </div>
+        <div class="nav-item" onclick="switchTab('logs')">
+            <span>📋</span> Logs
+        </div>
+        <div class="nav-item" onclick="switchTab('settings')">
+            <span>⚙️</span> Configuración
+        </div>
+        
+        <div style="margin-top: 40px; padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">ESTADO DEL SISTEMA</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+                <span class="status-online"></span>
+                <span style="font-size: 13px;">Backend: Online</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+                <span class="status-online"></span>
+                <span style="font-size: 13px;">WebSocket: Connected</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+                <span class="status-online"></span>
+                <span style="font-size: 13px;">Redis: Active</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+            <div>
+                <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 8px;">
+                    <span id="pageTitle">Dashboard Principal</span>
+                </h1>
+                <p style="color: #94a3b8;">Orquestación inteligente de agentes IA con consenso distribuido</p>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="showNotification('Sincronizando datos...', 'info')" style="padding: 10px 20px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 8px; color: #3b82f6; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                    🔄 Sincronizar
+                </button>
+                <button onclick="openModal('newConstellation')" style="padding: 10px 20px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                    ➕ Nueva Constelación
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab: Dashboard -->
+        <div id="tab-dashboard" class="tab-content">
+            <!-- Métricas Principales -->
+            <div class="metrics-grid">
+                <div class="metric-box glow">
+                    <div class="metric-label">Agentes Activos</div>
+                    <div class="metric-value" id="activeAgents">8</div>
+                    <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↑ 2 desde ayer</div>
+                </div>
+                <div class="metric-box glow-green">
+                    <div class="metric-label">Consensos Hoy</div>
+                    <div class="metric-value" id="consensusCount">127</div>
+                    <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↑ 15% vs promedio</div>
+                </div>
+                <div class="metric-box glow-purple">
+                    <div class="metric-label">Precisión IA</div>
+                    <div class="metric-value">94.3<span style="font-size: 18px;">%</span></div>
+                    <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↑ 0.8% esta semana</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Tiempo Respuesta</div>
+                    <div class="metric-value">1.2<span style="font-size: 18px;">s</span></div>
+                    <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↓ 0.3s optimizado</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Tokens Usados</div>
+                    <div class="metric-value">2.4<span style="font-size: 18px;">M</span></div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Este mes</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Costo Operativo</div>
+                    <div class="metric-value">$<span>387</span></div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">USD este mes</div>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;">
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-weight: 600;">📈 Actividad de Consenso (24h)</h3>
+                    <canvas id="consensusChart" style="max-height: 300px;"></canvas>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom: 16px; font-weight: 600;">🎯 Distribución por Tipo</h3>
+                    <canvas id="pieChart" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Constelaciones Activas -->
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px; font-weight: 600;">🌟 Constelaciones Activas</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                    <div class="agent-card card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">DevOps Team</div>
+                                <span class="badge badge-blue">Producción</span>
+                            </div>
+                            <span class="status-online"></span>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">4 agentes colaborando</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 20px;" title="AVIA Analyst">👨‍💼</span>
+                            <span style="font-size: 20px;" title="AVIA Dev">👨‍💻</span>
+                            <span style="font-size: 20px;" title="AVIA Security">🛡️</span>
+                            <span style="font-size: 20px;" title="AVIA Debugger">🐛</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%;"></div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 13px; color: #64748b;">Consenso: 78%</div>
+                    </div>
+
+                    <div class="agent-card card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">Content Factory</div>
+                                <span class="badge badge-purple">Generación</span>
+                            </div>
+                            <span class="status-online"></span>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">3 agentes creativos</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 20px;" title="AVIA Copywriter">✍️</span>
+                            <span style="font-size: 20px;" title="AVIA Designer">🎨</span>
+                            <span style="font-size: 20px;" title="AVIA Analyst">📊</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 92%;"></div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 13px; color: #64748b;">Consenso: 92%</div>
+                    </div>
+
+                    <div class="agent-card card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">QA Automation</div>
+                                <span class="badge badge-green">Testing</span>
+                            </div>
+                            <span class="status-idle"></span>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">2 agentes evaluando</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 20px;" title="AVIA QA">🧪</span>
+                            <span style="font-size: 20px;" title="AVIA Debugger">🐛</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 45%;"></div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 13px; color: #64748b;">Consenso: 45%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actividad Reciente -->
+            <div class="card">
+                <h3 style="margin-bottom: 16px; font-weight: 600;">🕐 Actividad Reciente</h3>
+                <div id="recentActivity">
+                    <div class="log-entry success">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><strong>CONSENSO ALCANZADO</strong> - DevOps Team</span>
+                            <span style="color: #64748b;">Hace 2 min</span>
+                        </div>
+                        <div style="margin-top: 4px; color: #94a3b8;">Decisión: Deploy a producción aprobado (85% confianza)</div>
+                    </div>
+                    <div class="log-entry">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><strong>GENERACIÓN COMPLETADA</strong> - AVIA Copywriter</span>
+                            <span style="color: #64748b;">Hace 5 min</span>
+                        </div>
+                        <div style="margin-top: 4px; color: #94a3b8;">5 artículos de blog generados (3,500 palabras)</div>
+                    </div>
+                    <div class="log-entry warning">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><strong>ADVERTENCIA</strong> - AVIA Security</span>
+                            <span style="color: #64748b;">Hace 12 min</span>
+                        </div>
+                        <div style="margin-top: 4px; color: #94a3b8;">Vulnerabilidad detectada: SQL Injection en /api/users</div>
+                    </div>
+                    <div class="log-entry success">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span><strong>IMAGEN GENERADA</strong> - AVIA Designer</span>
+                            <span style="color: #64748b;">Hace 18 min</span>
+                        </div>
+                        <div style="margin-top: 4px; color: #94a3b8;">Logo corporativo variante #3 (1024x1024px)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Agents -->
+        <div id="tab-agents" class="tab-content" style="display: none;">
+            <div class="card" style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="font-weight: 600; font-size: 20px;">🤖 Catálogo de Agentes IA</h2>
+                    <button onclick="openModal('newAgent')" style="padding: 8px 16px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer;">
+                        + Agregar Agente
+                    </button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+                    <!-- Agente Copywriter -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">✍️</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Copywriter</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Generación de contenido escrito con GPT-4</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-purple">Generativo</span>
+                            <span class="badge badge-blue">GPT-4</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Velocidad: 850 palabras/min</div>
+                            <div>🎯 Precisión: 96.2%</div>
+                            <div>💰 Costo: $0.03/1K tokens</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Copywriter...', 'info')" style="width: 100%; padding: 8px; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; border-radius: 6px; color: #a855f7; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+
+                    <!-- Agente Designer -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">🎨</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Designer</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Generación de imágenes con DALL-E 3</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-purple">Visual</span>
+                            <span class="badge badge-blue">DALL-E 3</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Tiempo: ~15s/imagen</div>
+                            <div>🎯 Calidad: HD</div>
+                            <div>💰 Costo: $0.08/imagen</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Designer...', 'info')" style="width: 100%; padding: 8px; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; border-radius: 6px; color: #a855f7; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+
+                    <!-- Agente Debugger -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">🐛</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Debugger</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Análisis inteligente de errores y logs</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-orange">Análisis</span>
+                            <span class="badge badge-blue">Claude 3</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Análisis: <5s</div>
+                            <div>🎯 Detección: 91.8%</div>
+                            <div>💰 Costo: $0.02/análisis</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Debugger...', 'info')" style="width: 100%; padding: 8px; background: rgba(251, 146, 60, 0.2); border: 1px solid #fb923c; border-radius: 6px; color: #fb923c; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+
+                    <!-- Agente Analyst -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">👨‍💼</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Analyst</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Business intelligence y métricas</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-green">Analytics</span>
+                            <span class="badge badge-blue">GPT-4</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Procesamiento: Tiempo real</div>
+                            <div>🎯 Insights: Predictivos</div>
+                            <div>💰 Costo: $0.05/query</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Analyst...', 'info')" style="width: 100%; padding: 8px; background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; border-radius: 6px; color: #22c55e; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+
+                    <!-- Agente Security -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">🛡️</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Security</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Escaneo de vulnerabilidades y compliance</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-red">Seguridad</span>
+                            <span class="badge badge-blue">Snyk</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Escaneo: 30s/proyecto</div>
+                            <div>🎯 Detección: 99.1%</div>
+                            <div>💰 Costo: Incluido</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Security...', 'info')" style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+
+                    <!-- Agente Dev -->
+                    <div class="agent-card card">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="font-size: 36px;">👨‍💻</div>
+                            <span class="status-online"></span>
+                        </div>
+                        <h4 style="font-weight: 600; font-size: 18px; margin-bottom: 8px;">AVIA Dev</h4>
+                        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 12px;">Asistente de desarrollo y code review</p>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                            <span class="badge badge-blue">Desarrollo</span>
+                            <span class="badge badge-purple">Claude 3</span>
+                        </div>
+                        <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
+                            <div>⚡ Review: 100 líneas/s</div>
+                            <div>🎯 Sugerencias: Contextuales</div>
+                            <div>💰 Costo: $0.04/review</div>
+                        </div>
+                        <button onclick="showNotification('Configurando AVIA Dev...', 'info')" style="width: 100%; padding: 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; margin-top: 8px;">
+                            Configurar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Consensus -->
+        <div id="tab-consensus" class="tab-content" style="display: none;">
+            <div class="card" style="margin-bottom: 24px;">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">🎯 Sistema de Consenso Distribuido</h2>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">Sesión Activa: Deploy Producción</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5);">
+                            <div style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="color: #94a3b8;">Progreso del Consenso</span>
+                                    <span style="font-weight: 600; color: #3b82f6;">78%</span>
+                                </div>
+                                <div class="progress-bar" style="height: 12px;">
+                                    <div class="progress-fill" style="width: 78%;"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; gap: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-size: 24px;">👨‍💻</span>
+                                        <div>
+                                            <div style="font-weight: 600;">AVIA Dev</div>
+                                            <div style="font-size: 13px; color: #94a3b8;">Análisis de código completado</div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: #22c55e; font-weight: 600;">✓ A FAVOR</span>
+                                        <span class="badge badge-green">95%</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-size: 24px;">🧪</span>
+                                        <div>
+                                            <div style="font-weight: 600;">AVIA QA</div>
+                                            <div style="font-size: 13px; color: #94a3b8;">Tests pasados: 127/130</div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: #22c55e; font-weight: 600;">✓ A FAVOR</span>
+                                        <span class="badge badge-green">88%</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-size: 24px;">🛡️</span>
+                                        <div>
+                                            <div style="font-weight: 600;">AVIA Security</div>
+                                            <div style="font-size: 13px; color: #94a3b8;">2 vulnerabilidades menores</div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: #ef4444; font-weight: 600;">✗ EN CONTRA</span>
+                                        <span class="badge badge-red">45%</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span style="font-size: 24px;">👨‍💼</span>
+                                        <div>
+                                            <div style="font-weight: 600;">AVIA Analyst</div>
+                                            <div style="font-size: 13px; color: #94a3b8;">Métricas de negocio OK</div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: #3b82f6; font-weight: 600;">⟳ ANALIZANDO...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                                <button onclick="showNotification('Consenso forzado. Deploy iniciado.', 'success')" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                                    ✓ Forzar Aprobación
+                                </button>
+                                <button onclick="showNotification('Consenso cancelado', 'warning')" style="flex: 1; padding: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444; font-weight: 600; cursor: pointer;">
+                                    ✗ Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">Configuración</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5);">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Umbral de Consenso</label>
+                                <input type="range" min="50" max="100" value="75" style="width: 100%;" oninput="document.getElementById('thresholdValue').innerText = this.value + '%'">
+                                <div style="text-align: center; margin-top: 8px; font-weight: 600; color: #3b82f6;" id="thresholdValue">75%</div>
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Algoritmo</label>
+                                <select style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0;">
+                                    <option>Weighted Voting</option>
+                                    <option>Byzantine Fault Tolerance</option>
+                                    <option>Raft Consensus</option>
+                                    <option>PBFT</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Timeout (segundos)</label>
+                                <input type="number" value="30" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0;">
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" checked>
+                                    <span style="font-size: 14px;">Auto-resolución de empates</span>
+                                </label>
+                            </div>
+                            
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" checked>
+                                    <span style="font-size: 14px;">Notificaciones en tiempo real</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 24px;">
+                            <h3 style="margin-bottom: 16px; font-weight: 600;">Historial Reciente</h3>
+                            <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; padding: 8px; margin-bottom: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 4px;">
+                                    <span style="font-size: 13px;">Deploy v2.3.1</span>
+                                    <span style="font-size: 13px; color: #22c55e;">✓ 92%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px; margin-bottom: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 4px;">
+                                    <span style="font-size: 13px;">Hotfix crítico</span>
+                                    <span style="font-size: 13px; color: #22c55e;">✓ 88%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px;">
+                                    <span style="font-size: 13px;">Feature X</span>
+                                    <span style="font-size: 13px; color: #ef4444;">✗ 42%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Copywriter -->
+        <div id="tab-copywriter" class="tab-content" style="display: none;">
+            <div class="card">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">✍️ AVIA Copywriter - Generación de Contenido</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Tipo de Contenido</label>
+                        <select id="contentType" style="width: 100%; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; margin-bottom: 16px;">
+                            <option>📄 Artículo de Blog</option>
+                            <option>📧 Email Marketing</option>
+                            <option>📱 Post Social Media</option>
+                            <option>📋 Documentación Técnica</option>
+                            <option>📊 Reporte Ejecutivo</option>
+                            <option>🎯 Landing Page</option>
+                        </select>
+                        
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Tono</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
+                            <button onclick="selectTone(this, 'formal')" class="tone-btn" style="padding: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer;">Formal</button>
+                            <button onclick="selectTone(this, 'casual')" class="tone-btn" style="padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer;">Casual</button>
+                            <button onclick="selectTone(this, 'technical')" class="tone-btn" style="padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer;">Técnico</button>
+                        </div>
+                        
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Longitud Aproximada</label>
+                        <input type="range" min="100" max="3000" value="800" step="100" style="width: 100%; margin-bottom: 8px;" oninput="document.getElementById('wordCount').innerText = this.value + ' palabras'">
+                        <div style="text-align: center; color: #3b82f6; font-weight: 600;" id="wordCount">800 palabras</div>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Prompt / Instrucciones</label>
+                        <textarea id="copywriterPrompt" placeholder="Ejemplo: Escribe un artículo sobre las ventajas de la IA en el desarrollo de software, enfocado en aumentar la productividad..." style="width: 100%; height: 200px; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                </div>
+                
+                <button onclick="generateContent()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #8b5cf6, #6366f1); border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 24px;">
+                    🚀 Generar Contenido
+                </button>
+                
+                <div id="generatedContent" style="display: none;">
+                    <h3 style="margin-bottom: 16px; font-weight: 600;">Resultado Generado</h3>
+                    <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 20px;">
+                        <div id="contentOutput" style="line-height: 1.8; color: #cbd5e1;">
+                            <!-- Contenido generado aparecerá aquí -->
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 20px;">
+                            <button onclick="copyToClipboard()" style="flex: 1; padding: 10px; background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; border-radius: 6px; color: #22c55e; cursor: pointer; font-weight: 600;">
+                                📋 Copiar
+                            </button>
+                            <button onclick="downloadContent()" style="flex: 1; padding: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-weight: 600;">
+                                💾 Descargar
+                            </button>
+                            <button onclick="regenerateContent()" style="flex: 1; padding: 10px; background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; border-radius: 6px; color: #a855f7; cursor: pointer; font-weight: 600;">
+                                🔄 Regenerar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Designer -->
+        <div id="tab-designer" class="tab-content" style="display: none;">
+            <div class="card">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">🎨 AVIA Designer - Generación de Imágenes</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Prompt de Imagen</label>
+                        <textarea id="imagePrompt" placeholder="Ejemplo: Un logo minimalista para una startup de IA, colores azul y morado, estilo moderno y tecnológico..." style="width: 100%; height: 150px; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; resize: vertical; font-family: inherit; margin-bottom: 16px;"></textarea>
+                        
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Estilo</label>
+                        <select style="width: 100%; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; margin-bottom: 16px;">
+                            <option>🎨 Natural</option>
+                            <option>🖼️ Artístico</option>
+                            <option>📸 Fotorrealista</option>
+                            <option>✏️ Ilustración</option>
+                            <option>🎭 3D Render</option>
+                        </select>
+                        
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Resolución</label>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
+                            <button onclick="selectResolution(this, '1024x1024')" class="res-btn" style="padding: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-size: 13px;">1024×1024</button>
+                            <button onclick="selectResolution(this, '1792x1024')" class="res-btn" style="padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 13px;">1792×1024</button>
+                            <button onclick="selectResolution(this, '1024x1792')" class="res-btn" style="padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #94a3b8; cursor: pointer; font-size: 13px;">1024×1792</button>
+                        </div>
+                        
+                        <button onclick="generateImage()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #ec4899, #8b5cf6); border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 16px; cursor: pointer;">
+                            🎨 Generar Imagen
+                        </button>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">Vista Previa</h3>
+                        <div id="imagePreview" style="width: 100%; height: 400px; background: rgba(15, 23, 42, 0.8); border: 2px dashed rgba(148, 163, 184, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #64748b; flex-direction: column; gap: 12px;">
+                            <div style="font-size: 48px;">🖼️</div>
+                            <div>La imagen generada aparecerá aquí</div>
+                        </div>
+                        <div id="imageActions" style="display: none; margin-top: 16px; display: flex; gap: 12px;">
+                            <button onclick="downloadImage()" style="flex: 1; padding: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-weight: 600;">
+                                💾 Descargar
+                            </button>
+                            <button onclick="shareImage()" style="flex: 1; padding: 10px; background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; border-radius: 6px; color: #22c55e; cursor: pointer; font-weight: 600;">
+                                🔗 Compartir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="margin-bottom: 16px; font-weight: 600;">Galería Reciente</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+                        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; cursor: pointer;"></div>
+                        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; cursor: pointer;"></div>
+                        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 8px; cursor: pointer;"></div>
+                        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 8px; cursor: pointer;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Debugger -->
+        <div id="tab-debugger" class="tab-content" style="display: none;">
+            <div class="card">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">🐛 AVIA Debugger - Análisis Inteligente de Errores</h2>
+                
+                <div class="metrics-grid" style="margin-bottom: 24px;">
+                    <div class="metric-box">
+                        <div class="metric-label">Errores Hoy</div>
+                        <div class="metric-value" style="color: #ef4444;">23</div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↓ 35% vs ayer</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Tiempo Resolución</div>
+                        <div class="metric-value" style="color: #22c55e;">4.2<span style="font-size: 18px;">min</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↓ 2.1min mejor</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Auto-Resueltos</div>
+                        <div class="metric-value" style="color: #8b5cf6;">67<span style="font-size: 18px;">%</span></div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">15/23 errores</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">🔍 Análisis de Stack Trace</h3>
+                        <textarea id="stackTrace" placeholder="Pega aquí el stack trace o log de error para análisis inteligente..." style="width: 100%; height: 300px; padding: 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; resize: vertical; font-family: 'Courier New', monospace; font-size: 13px; margin-bottom: 16px;"></textarea>
+                        
+                        <button onclick="analyzeError()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #fb923c, #f97316); border: none; border-radius: 8px; color: white; font-weight: 600; font-size: 16px; cursor: pointer;">
+                            🔬 Analizar Error
+                        </button>
+                        
+                        <div id="errorAnalysis" style="display: none; margin-top: 24px;">
+                            <h3 style="margin-bottom: 16px; font-weight: 600; color: #fb923c;">📊 Resultado del Análisis</h3>
+                            <div class="card" style="background: rgba(251, 146, 60, 0.1); border: 1px solid rgba(251, 146, 60, 0.3);">
+                                <div style="margin-bottom: 16px;">
+                                    <div style="font-weight: 600; margin-bottom: 8px;">🎯 Tipo de Error</div>
+                                    <span class="badge badge-red">NullPointerException</span>
+                                </div>
+                                <div style="margin-bottom: 16px;">
+                                    <div style="font-weight: 600; margin-bottom: 8px;">📍 Root Cause</div>
+                                    <div style="color: #cbd5e1;">Variable 'user' no inicializada antes de acceder a user.email en línea 47</div>
+                                </div>
+                                <div style="margin-bottom: 16px;">
+                                    <div style="font-weight: 600; margin-bottom: 8px;">💡 Solución Sugerida</div>
+                                    <pre style="background: rgba(15, 23, 42, 0.8); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; color: #22c55e;">
+if (user !== null && user.email) {
+  sendEmail(user.email);
+} else {
+  console.error('User or email is null');
+}</pre>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; margin-bottom: 8px;">🔗 Referencias</div>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <a href="#" style="color: #3b82f6; text-decoration: none;">→ Documentación: Null Safety en JavaScript</a>
+                                        <a href="#" style="color: #3b82f6; text-decoration: none;">→ Stack Overflow: Similar Issue #12345</a>
+                                        <a href="#" style="color: #3b82f6; text-decoration: none;">→ PR #892 que resolvió problema similar</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">⚡ Errores Frecuentes</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 14px;">TypeError</span>
+                                    <span class="badge badge-red" style="font-size: 11px;">8 veces</span>
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">api/users.js:47</div>
+                                <button onclick="showNotification('Abriendo análisis detallado...', 'info')" style="width: 100%; padding: 6px; background: rgba(251, 146, 60, 0.2); border: 1px solid #fb923c; border-radius: 4px; color: #fb923c; cursor: pointer; font-size: 12px;">
+                                    Ver Detalles
+                                </button>
+                            </div>
+                            
+                            <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 14px;">CORS Error</span>
+                                    <span class="badge badge-orange" style="font-size: 11px;">5 veces</span>
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">middleware/cors.js:12</div>
+                                <button onclick="showNotification('Abriendo análisis detallado...', 'info')" style="width: 100%; padding: 6px; background: rgba(251, 146, 60, 0.2); border: 1px solid #fb923c; border-radius: 4px; color: #fb923c; cursor: pointer; font-size: 12px;">
+                                    Ver Detalles
+                                </button>
+                            </div>
+                            
+                            <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 12px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-weight: 600; font-size: 14px;">DB Timeout</span>
+                                    <span class="badge badge-orange" style="font-size: 11px;">3 veces</span>
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">db/connection.js:89</div>
+                                <button onclick="showNotification('Abriendo análisis detallado...', 'info')" style="width: 100%; padding: 6px; background: rgba(251, 146, 60, 0.2); border: 1px solid #fb923c; border-radius: 4px; color: #fb923c; cursor: pointer; font-size: 12px;">
+                                    Ver Detalles
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 24px;">
+                            <h3 style="margin-bottom: 16px; font-weight: 600;">🎯 Recomendaciones</h3>
+                            <div class="card" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); padding: 12px;">
+                                <div style="font-size: 13px; line-height: 1.6; color: #cbd5e1;">
+                                    • Implementar validación de null antes de accesos<br>
+                                    • Configurar retry logic en conexiones DB<br>
+                                    • Agregar tests unitarios para casos edge
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Monitoring -->
+        <div id="tab-monitoring" class="tab-content" style="display: none;">
+            <div class="card" style="margin-bottom: 24px;">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">📈 Observabilidad y Monitoreo Avanzado</h2>
+                
+                <div class="metrics-grid" style="margin-bottom: 24px;">
+                    <div class="metric-box glow">
+                        <div class="metric-label">CPU Usage</div>
+                        <div class="metric-value">42<span style="font-size: 18px;">%</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">Normal</div>
+                    </div>
+                    <div class="metric-box glow-green">
+                        <div class="metric-label">Memory</div>
+                        <div class="metric-value">3.2<span style="font-size: 18px;">GB</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">de 8GB</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Requests/min</div>
+                        <div class="metric-value">1.2<span style="font-size: 18px;">K</span></div>
+                        <div style="font-size: 12px; color: #3b82f6; margin-top: 4px;">↑ Pico</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Error Rate</div>
+                        <div class="metric-value">0.3<span style="font-size: 18px;">%</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">Excelente</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Latencia p95</div>
+                        <div class="metric-value">234<span style="font-size: 18px;">ms</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">↓ Mejorando</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">Uptime</div>
+                        <div class="metric-value">99.97<span style="font-size: 18px;">%</span></div>
+                        <div style="font-size: 12px; color: #22c55e; margin-top: 4px;">30 días</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+                    <div class="card" style="background: rgba(15, 23, 42, 0.5);">
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">📊 Métricas en Tiempo Real</h3>
+                        <canvas id="metricsChart" style="max-height: 300px;"></canvas>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">🚨 Alertas Activas</h3>
+                        <div class="card" style="background: rgba(251, 146, 60, 0.1); border: 1px solid rgba(251, 146, 60, 0.3); padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-weight: 600; font-size: 14px;">⚠️ High Memory</span>
+                                <span class="badge badge-orange" style="font-size: 11px;">WARNING</span>
+                            </div>
+                            <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 8px;">
+                                Service: avia-api<br>
+                                Memory: 6.8GB / 8GB
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button style="flex: 1; padding: 6px; background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; border-radius: 4px; color: #22c55e; cursor: pointer; font-size: 11px;">
+                                    Acknowledge
+                                </button>
+                                <button style="flex: 1; padding: 6px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 4px; color: #3b82f6; cursor: pointer; font-size: 11px;">
+                                    Runbook
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="card" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-weight: 600; font-size: 14px;">🔥 High Error Rate</span>
+                                <span class="badge badge-red" style="font-size: 11px;">CRITICAL</span>
+                            </div>
+                            <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 8px;">
+                                Endpoint: /api/payments<br>
+                                Error Rate: 12.3%
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <button style="flex: 1; padding: 6px; background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; border-radius: 4px; color: #22c55e; cursor: pointer; font-size: 11px;">
+                                    Acknowledge
+                                </button>
+                                <button style="flex: 1; padding: 6px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 4px; color: #ef4444; cursor: pointer; font-size: 11px;">
+                                    Escalate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="margin-bottom: 16px; font-weight: 600;">🔍 Distributed Tracing</h3>
+                    <div class="card" style="background: rgba(15, 23, 42, 0.5); padding: 16px;">
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 8px;">Trace ID: 7a8f3e2b-9d1c-4f5e-a6b7-3c8d9e0f1a2b</div>
+                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">POST /api/consensus/run</div>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                <span class="badge badge-green">200 OK</span>
+                                <span style="font-size: 14px; color: #cbd5e1;">Total: 1,247ms</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">
+                                <div style="width: 120px; color: #94a3b8;">api-gateway</div>
+                                <div style="flex: 1; background: rgba(148, 163, 184, 0.2); height: 8px; border-radius: 4px; position: relative;">
+                                    <div style="width: 10%; height: 100%; background: #3b82f6; border-radius: 4px;"></div>
+                                </div>
+                                <div style="width: 60px; text-align: right; color: #cbd5e1;">15ms</div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(168, 85, 247, 0.1); border-left: 3px solid #a855f7; border-radius: 4px;">
+                                <div style="width: 120px; color: #94a3b8;">orquestador</div>
+                                <div style="flex: 1; background: rgba(148, 163, 184, 0.2); height: 8px; border-radius: 4px; position: relative;">
+                                    <div style="width: 5%; height: 100%; background: #a855f7; border-radius: 4px;"></div>
+                                </div>
+                                <div style="width: 60px; text-align: right; color: #cbd5e1;">8ms</div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+                                <div style="width: 120px; color: #94a3b8;">agent-pool</div>
+                                <div style="flex: 1; background: rgba(148, 163, 184, 0.2); height: 8px; border-radius: 4px; position: relative;">
+                                    <div style="width: 75%; height: 100%; background: #22c55e; border-radius: 4px;"></div>
+                                </div>
+                                <div style="width: 60px; text-align: right; color: #cbd5e1;">982ms</div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(251, 146, 60, 0.1); border-left: 3px solid #fb923c; border-radius: 4px;">
+                                <div style="width: 120px; color: #94a3b8;">redis-cache</div>
+                                <div style="flex: 1; background: rgba(148, 163, 184, 0.2); height: 8px; border-radius: 4px; position: relative;">
+                                    <div style="width: 3%; height: 100%; background: #fb923c; border-radius: 4px;"></div>
+                                </div>
+                                <div style="width: 60px; text-align: right; color: #cbd5e1;">4ms</div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px;">
+                                <div style="width: 120px; color: #94a3b8;">postgresql</div>
+                                <div style="flex: 1; background: rgba(148, 163, 184, 0.2); height: 8px; border-radius: 4px; position: relative;">
+                                    <div style="width: 18%; height: 100%; background: #3b82f6; border-radius: 4px;"></div>
+                                </div>
+                                <div style="width: 60px; text-align: right; color: #cbd5e1;">238ms</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Logs -->
+        <div id="tab-logs" class="tab-content" style="display: none;">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="font-weight: 600; font-size: 20px;">📋 Sistema de Logs Centralizado</h2>
+                    <div style="display: flex; gap: 12px;">
+                        <select style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+                            <option>Todos los Niveles</option>
+                            <option>ERROR</option>
+                            <option>WARNING</option>
+                            <option>INFO</option>
+                            <option>DEBUG</option>
+                        </select>
+                        <select style="padding: 8px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 14px;">
+                            <option>Todos los Servicios</option>
+                            <option>avia-api</option>
+                            <option>orquestador</option>
+                            <option>agent-pool</option>
+                            <option>websocket-server</option>
+                        </select>
+                        <button onclick="refreshLogs()" style="padding: 8px 16px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-weight: 600;">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="logsContainer" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; padding: 16px; max-height: 600px; overflow-y: auto;">
+                    <div class="log-entry success">
+                        <div>[2026-09-05 14:32:18] <span class="badge badge-green" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">avia-api</span></div>
+                        <div style="margin-top: 4px;">Consenso alcanzado para constelación "DevOps Team" - Decision: APPROVE (confidence: 0.85)</div>
+                    </div>
+                    
+                    <div class="log-entry">
+                        <div>[2026-09-05 14:31:52] <span class="badge badge-blue" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">copywriter</span></div>
+                        <div style="margin-top: 4px;">Content generation completed - 3,500 words in 42s (tokens: 4,700)</div>
+                    </div>
+                    
+                    <div class="log-entry warning">
+                        <div>[2026-09-05 14:31:37] <span class="badge badge-orange" style="font-size: 10px;">WARNING</span> <span style="color: #64748b;">security-agent</span></div>
+                        <div style="margin-top: 4px;">Vulnerability detected: Outdated dependency 'lodash@4.17.20' (CVE-2021-23337)</div>
+                    </div>
+                    
+                    <div class="log-entry">
+                        <div>[2026-09-05 14:31:15] <span class="badge badge-blue" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">designer</span></div>
+                        <div style="margin-top: 4px;">Image generated successfully - 1024x1024px, style: photorealistic (cost: $0.08)</div>
+                    </div>
+                    
+                    <div class="log-entry error">
+                        <div>[2026-09-05 14:30:48] <span class="badge badge-red" style="font-size: 10px;">ERROR</span> <span style="color: #64748b;">avia-api</span></div>
+                        <div style="margin-top: 4px;">Database connection timeout after 30s - Retrying... (attempt 2/3)</div>
+                    </div>
+                    
+                    <div class="log-entry success">
+                        <div>[2026-09-05 14:30:22] <span class="badge badge-green" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">websocket-server</span></div>
+                        <div style="margin-top: 4px;">Client connected - socketId: a7f3e2b9, userId: user_12345</div>
+                    </div>
+                    
+                    <div class="log-entry">
+                        <div>[2026-09-05 14:29:55] <span class="badge badge-blue" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">debugger</span></div>
+                        <div style="margin-top: 4px;">Error analysis completed - Root cause identified: NullPointerException (confidence: 0.92)</div>
+                    </div>
+                    
+                    <div class="log-entry">
+                        <div>[2026-09-05 14:29:33] <span class="badge badge-blue" style="font-size: 10px;">INFO</span> <span style="color: #64748b;">orquestador</span></div>
+                        <div style="margin-top: 4px;">New constellation created: "QA Automation" with 2 agents</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div id="tab-settings" class="tab-content" style="display: none;">
+            <div class="card">
+                <h2 style="font-weight: 600; font-size: 20px; margin-bottom: 24px;">⚙️ Configuración del Sistema</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">🔑 API Keys</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5); margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">OpenAI API Key</label>
+                            <input type="password" value="sk-proj-*********************" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 12px;">
+                            
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Anthropic API Key</label>
+                            <input type="password" value="sk-ant-*********************" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 12px;">
+                            
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">GitHub Token</label>
+                            <input type="password" value="ghp_*********************" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0;">
+                        </div>
+                        
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">🗄️ Base de Datos</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5);">
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">PostgreSQL URL</label>
+                            <input type="text" value="postgresql://user:***@localhost:5432/avia" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 12px;">
+                            
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Redis URL</label>
+                            <input type="text" value="redis://localhost:6379" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0;">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">🔔 Notificaciones</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5); margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Slack Webhook URL</label>
+                            <input type="text" value="https://hooks.slack.com/services/***" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 12px;">
+                            
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">PagerDuty API Key</label>
+                            <input type="password" value="*********************" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 16px;">
+                            
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" checked>
+                                    <span style="font-size: 14px;">Notificar consensos alcanzados</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" checked>
+                                    <span style="font-size: 14px;">Alertas críticas vía Slack</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox">
+                                    <span style="font-size: 14px;">Reportes diarios por email</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <h3 style="margin-bottom: 16px; font-weight: 600;">💰 Límites de Costo</h3>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.5);">
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Presupuesto Mensual (USD)</label>
+                            <input type="number" value="500" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0; margin-bottom: 12px;">
+                            
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8;">Límite por Request (USD)</label>
+                            <input type="number" value="0.50" step="0.01" style="width: 100%; padding: 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; color: #e2e8f0;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+                    <button onclick="showNotification('Configuración guardada exitosamente', 'success')" style="padding: 12px 24px; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        💾 Guardar Cambios
+                    </button>
+                    <button style="padding: 12px 24px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 8px; color: #ef4444; font-weight: 600; cursor: pointer;">
+                        ↺ Restaurar Defaults
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-newConstellation" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 24px; font-weight: 600;">➕ Nueva Constelación</h2>
+            
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nombre</label>
+            <input type="text" placeholder="Ej: Marketing Team" style="width: 100%; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; margin-bottom: 16px;">
+            
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Descripción</label>
+            <textarea placeholder="Describe el propósito de esta constelación..." style="width: 100%; height: 100px; padding: 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #e2e8f0; resize: vertical; font-family: inherit; margin-bottom: 16px;"></textarea>
+            
+            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Seleccionar Agentes</label>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px;">
+                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox">
+                    <span>👨‍💻 AVIA Dev</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox">
+                    <span>✍️ AVIA Copywriter</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox">
+                    <span>🎨 AVIA Designer</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; cursor: pointer;">
+                    <input type="checkbox">
+                    <span>👨‍💼 AVIA Analyst</span>
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closeModal('newConstellation'); showNotification('Constelación creada exitosamente', 'success')" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                    Crear Constelación
+                </button>
+                <button onclick="closeModal('newConstellation')" style="flex: 1; padding: 12px; background: rgba(148, 163, 184, 0.2); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; color: #94a3b8; font-weight: 600; cursor: pointer;">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="notificationIcon" style="font-size: 24px;">ℹ️</div>
+            <div>
+                <div id="notificationText" style="font-weight: 600; margin-bottom: 4px;">Notificación</div>
+                <div id="notificationSubtext" style="font-size: 13px; color: #94a3b8;">Mensaje de notificación</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket Connection Simulation
+        let ws = null;
+        function initWebSocket() {
+            console.log('WebSocket: Attempting connection...');
+            // Simulación - en producción: ws = new WebSocket('ws://localhost:3001');
+            setTimeout(() => {
+                console.log('WebSocket: Connected');
+                showNotification('WebSocket conectado', 'success');
+            }, 1000);
+        }
+        initWebSocket();
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            event.target.closest('.nav-item').classList.add('active');
+            
+            const titles = {
+                'dashboard': 'Dashboard Principal',
+                'agents': 'Catálogo de Agentes',
+                'consensus': 'Sistema de Consenso',
+                'copywriter': 'AVIA Copywriter',
+                'designer': 'AVIA Designer',
+                'debugger': 'AVIA Debugger',
+                'monitoring': 'Observabilidad',
+                'logs': 'Sistema de Logs',
+                'settings': 'Configuración'
+            };
+            document.getElementById('pageTitle').innerText = titles[tabName] || 'AVIA NOMADA 4.0';
+        }
+
+        // Notifications
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const icon = document.getElementById('notificationIcon');
+            const text = document.getElementById('notificationText');
+            const subtext = document.getElementById('notificationSubtext');
+            
+            const icons = {
+                'info': 'ℹ️',
+                'success': '✅',
+                'warning': '⚠️',
+                'error': '❌'
+            };
+            
+            icon.innerText = icons[type] || icons['info'];
+            text.innerText = message;
+            subtext.innerText = new Date().toLocaleTimeString();
+            
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        // Modal Management
+        function openModal(modalId) {
+            document.getElementById('modal-' + modalId).classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById('modal-' + modalId).classList.remove('show');
+        }
+
+        // Copywriter Functions
+        function selectTone(btn, tone) {
+            document.querySelectorAll('.tone-btn').forEach(b => {
+                b.style.background = 'rgba(30, 41, 59, 0.5)';
+                b.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                b.style.color = '#94a3b8';
+            });
+            btn.style.background = 'rgba(59, 130, 246, 0.2)';
+            btn.style.borderColor = '#3b82f6';
+            btn.style.color = '#3b82f6';
+        }
+
+        function generateContent() {
+            const prompt = document.getElementById('copywriterPrompt').value;
+            if (!prompt) {
+                showNotification('Por favor ingresa un prompt', 'warning');
+                return;
+            }
+            
+            showNotification('Generando contenido con GPT-4...', 'info');
+            
+            setTimeout(() => {
+                document.getElementById('generatedContent').style.display = 'block';
+                document.getElementById('contentOutput').innerHTML = `
+                    <h3 style="margin-bottom: 16px;">Las Ventajas de la IA en el Desarrollo de Software</h3>
+                    <p style="margin-bottom: 12px;">
+                        La inteligencia artificial está revolucionando la forma en que desarrollamos software. 
+                        En los últimos años, hemos visto cómo herramientas de IA generativa como GitHub Copilot, 
+                        ChatGPT y Claude han transformado la productividad de los equipos de desarrollo.
+                    </p>
+                    <p style="margin-bottom: 12px;">
+                        <strong>Aumento de Productividad:</strong> Los desarrolladores que utilizan asistentes de IA 
+                        reportan un incremento del 30-40% en su velocidad de desarrollo. Tareas repetitivas como 
+                        escribir boilerplate code, tests unitarios y documentación ahora pueden automatizarse.
+                    </p>
+                    <p style="margin-bottom: 12px;">
+                        <strong>Reducción de Errores:</strong> Los sistemas de IA pueden detectar bugs, vulnerabilidades 
+                        de seguridad y code smells en tiempo real, antes de que lleguen a producción.
+                    </p>
+                    <p>
+                        El futuro del desarrollo de software no es reemplazar a los programadores, sino augmentar 
+                        sus capacidades con herramientas inteligentes que les permitan enfocarse en resolver 
+                        problemas complejos y creativos.
+                    </p>
+                `;
+                showNotification('Contenido generado (850 palabras)', 'success');
+            }, 2000);
+        }
+
+        function copyToClipboard() {
+            const content = document.getElementById('contentOutput').innerText;
+            navigator.clipboard.writeText(content);
+            showNotification('Contenido copiado al portapapeles', 'success');
+        }
+
+        function downloadContent() {
+            const content = document.getElementById('contentOutput').innerText;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'avia-content-' + Date.now() + '.txt';
+            a.click();
+            showNotification('Descarga iniciada', 'success');
+        }
+
+        function regenerateContent() {
+            showNotification('Regenerando contenido...', 'info');
+            setTimeout(() => generateContent(), 1000);
+        }
+
+        // Designer Functions
+        function selectResolution(btn, resolution) {
+            document.querySelectorAll('.res-btn').forEach(b => {
+                b.style.background = 'rgba(30, 41, 59, 0.5)';
+                b.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                b.style.color = '#94a3b8';
+            });
+            btn.style.background = 'rgba(59, 130, 246, 0.2)';
+            btn.style.borderColor = '#3b82f6';
+            btn.style.color = '#3b82f6';
+        }
+
+        function generateImage() {
+            const prompt = document.getElementById('imagePrompt').value;
+            if (!prompt) {
+                showNotification('Por favor ing

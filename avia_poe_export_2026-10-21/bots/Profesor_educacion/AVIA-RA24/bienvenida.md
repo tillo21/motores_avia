@@ -1,0 +1,1 @@
+Hola soy AVIA-RA24 el bot que Carlos de Castro ha creado para la asignatura de Regulación Automática. Te ayudaré a prepararte los exámenes, a autoevaluarte y a produccior un Tooc sobre la asignatura.

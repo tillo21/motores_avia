@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Sistema de Persistencia Inteligente</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+            color: #fff;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* ── Toast Notifications (reemplaza alert) ── */
+        #toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .toast {
+            padding: 0.75rem 1.2rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 220px;
+            max-width: 320px;
+            animation: slideIn 0.3s ease, fadeOut 0.4s ease 2.6s forwards;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+        .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        @keyframes slideIn {
+            from { opacity:0; transform:translateX(40px); }
+            to   { opacity:1; transform:translateX(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity:1; } to { opacity:0; transform:translateX(40px); }
+        }
+
+        /* ── Cards ── */
+        .header {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 2px solid rgba(139,92,246,0.3);
+        }
+        .header h1 { font-size: 2rem; display:flex; align-items:center; gap:.8rem; }
+        .badge {
+            font-size:.75rem; padding:.3rem .8rem; border-radius:50px;
+            background: linear-gradient(90deg,#8b5cf6,#7c3aed);
+        }
+        .stats-panel, .storage-grid, .timeline-panel {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+            gap: 1.2rem;
+            margin-top: 1.2rem;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            padding: 1.2rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(139,92,246,0.3);
+            transition: transform .2s;
+        }
+        .stat-box:hover { transform: translateY(-3px); }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #a78bfa; }
+        .stat-label { opacity:.75; font-size:.85rem; margin-top:.3rem; }
+        .storage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px,1fr)); gap:1.5rem; }
+        .storage-card {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .storage-card h2 { margin-bottom:1.2rem; font-size:1.1rem; }
+        .data-item {
+            background: rgba(255,255,255,0.05);
+            padding: .9rem;
+            border-radius: 10px;
+            margin-bottom: .8rem;
+            border-left: 4px solid #8b5cf6;
+            animation: appear .3s ease;
+        }
+        @keyframes appear { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+        .data-header { display:flex; justify-content:space-between; margin-bottom:.4rem; }
+        .data-key { font-weight:bold; color:#c4b5fd; }
+        .data-value { font-family:monospace; font-size:.85rem; opacity:.8; word-break:break-all; }
+        .action-buttons { display:flex; gap:.8rem; flex-wrap:wrap; margin-top:1rem; }
+        .btn {
+            padding:.7rem 1.2rem; border-radius:8px; border:none; cursor:pointer;
+            font-weight:600; transition:all .2s; display:flex; align-items:center; gap:.4rem;
+            font-size:.85rem;
+        }
+        .btn-primary { background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:#fff; }
+        .btn-danger  { background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; }
+        .btn-success { background:linear-gradient(135deg,#10b981,#059669); color:#fff; }
+        .btn:hover { opacity:.85; transform:translateY(-2px); box-shadow:0 4px 15px rgba(0,0,0,.3); }
+        .timeline-item {
+            display:flex; gap:1rem; margin-bottom:.7rem; padding:.8rem;
+            background:rgba(255,255,255,0.04); border-radius:8px;
+            border-left:3px solid #8b5cf6; font-size:.88rem;
+            animation: appear .3s ease;
+        }
+        .timeline-time { color:#6b7280; flex-shrink:0; min-width:80px; }
+        /* status pill */
+        .pill {
+            display:inline-block; padding:.15rem .5rem; border-radius:20px;
+            font-size:.75rem; font-weight:700;
+        }
+        .pill-ok  { background:rgba(16,185,129,.25); color:#6ee7b7; }
+        .pill-off { background:rgba(239,68,68,.25);  color:#fca5a5; }
+        /* memory indicator */
+        .mem-bar { height:6px; background:rgba(255,255,255,.15); border-radius:10px; margin-top:.6rem; overflow:hidden; }
+        .mem-fill { height:100%; border-radius:10px; background:linear-gradient(90deg,#8b5cf6,#6366f1); transition:width .8s ease; }
+        @media(max-width:700px){
+            .storage-grid{ grid-template-columns:1fr; }
+            body{ padding:1rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="container">
+
+    <div class="header">
+        <h1>💾 Persistencia Inteligente AVIA <span class="badge">✅ SIN ERRORES</span></h1>
+        <p style="opacity:.8;margin-top:.5rem;font-size:.9rem;">
+            Estado en memoria · Sin localStorage · Sin alert() · Auto-guardado cada 30s
+        </p>
+        <div class="mem-bar" style="margin-top:1rem;max-width:400px">
+            <div class="mem-fill" id="memBar" style="width:0%"></div>
+        </div>
+        <div style="font-size:.75rem;opacity:.6;margin-top:.3rem" id="memLabel">Memoria: 0 KB usados</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-panel">
+        <h2>📊 Estadísticas en Tiempo Real</h2>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-value" id="statItems">0</div><div class="stat-label">Ítems guardados</div></div>
+            <div class="stat-box"><div class="stat-value" id="statSize">0 KB</div><div class="stat-label">Tamaño en memoria</div></div>
+            <div class="stat-box"><div class="stat-value" id="statLastSave">--</div><div class="stat-label">Último guardado</div></div>
+            <div class="stat-box"><div class="stat-value" id="statAutoSaves">0</div><div class="stat-label">Auto-guardados</div></div>
+            <div class="stat-box"><div class="stat-value" id="statSnapshots">0</div><div class="stat-label">Snapshots</div></div>
+            <div class="stat-box"><div class="stat-value" id="statUptime">0s</div><div class="stat-label">Tiempo activo</div></div>
+        </div>
+    </div>
+
+    <!-- Storage cards -->
+    <div class="storage-grid">
+        <div class="storage-card">
+            <h2>📦 Estado Actual de Agentes</h2>
+            <div id="currentStateContainer"></div>
+            <div class="action-buttons">
+                <button class="btn btn-success" onclick="P.saveState()">💾 Guardar</button>
+                <button class="btn btn-primary" onclick="P.loadState()">📂 Recargar</button>
+                <button class="btn btn-danger"  onclick="P.resetState()">♻️ Reset</button>
+            </div>
+        </div>
+        <div class="storage-card">
+            <h2>📸 Snapshots</h2>
+            <div id="snapshotsContainer"></div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="P.createSnapshot()">📸 Nuevo snapshot</button>
+                <button class="btn btn-danger"  onclick="P.clearSnapshots()">🗑️ Limpiar todos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-panel">
+        <h2 style="margin-bottom:1rem">⏱️ Historial de Eventos (memoria)</h2>
+        <div id="timelineContainer"></div>
+    </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   AVIA Persistence — SIN localStorage · SIN alert()
+   Estado completamente en memoria (Map + arrays)
+═══════════════════════════════════════════════════ */
+
+// ── Notificaciones toast (reemplaza alert) ──────────
+function toast(msg, type = 'info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3100);
+}
+
+// ── Clase principal ────────────────────────────────
+class AVIAPersistence {
+    constructor() {
+        // ⚡ Todo en memoria, cero localStorage
+        this._saved  = null;          // última copia guardada
+        this._snaps  = new Map();     // snapshots: id → {name, state, ts}
+        this._timeline = [];          // historial de eventos
+        this._autoCount = 0;
+        this._startTime = Date.now();
+
+        this.state = this._defaultState();
+        this._init();
+    }
+
+    _defaultState() {
+        return {
+            agents: {
+                Orquestador: { active: true,  tasks: 0,       role: 'coordination' },
+                Validador:   { active: true,  validations: 0, role: 'quality' },
+                Corrector:   { active: true,  corrections: 0, role: 'repair' },
+                Monitor:     { active: true,  checks: 0,      role: 'health' },
+                Analítico:   { active: false, analyses: 0,    role: 'analytics' },
+                Creativo:    { active: false, creations: 0,   role: 'content' },
+            },
+            metrics: { uptime: 0, ops: 0, errors: 0, autoSaves: 0 }
+        };
+    }
+
+    _init() {
+        this._log('Sistema de persistencia AVIA iniciado');
+        this._render();
+        this._startAutoSave();
+        this._startUptimeTick();
+    }
+
+    // ── GUARDAR ──────────────────────────────────────
+    saveState() {
+        this._saved = JSON.parse(JSON.stringify(this.state));
+        this._saved._savedAt = new Date().toLocaleTimeString();
+        this._log('Estado guardado manualmente');
+        this._render();
+        toast('✅ Estado guardado en memoria', 'success');
+    }
+
+    // ── CARGAR ───────────────────────────────────────
+    loadState() {
+        if (!this._saved) { toast('⚠️ No hay estado guardado aún', 'info'); return; }
+        this.state = JSON.parse(JSON.stringify(this._saved));
+        this._log('Estado restaurado desde copia guardada');
+        this._render();
+        toast('📂 Estado restaurado', 'success');
+    }
+
+    // ── RESET ────────────────────────────────────────
+    resetState() {
+        this.state = this._defaultState();
+        this._log('Estado reseteado a valores por defecto');
+        this._render();
+        toast('♻️ Estado reseteado', 'info');
+    }
+
+    // ── SNAPSHOT ─────────────────────────────────────
+    createSnapshot() {
+        const id   = Date.now();
+        const name = `Snap · ${new Date().toLocaleTimeString()}`;
+        this._snaps.set(id, {
+            name,
+            state: JSON.parse(JSON.stringify(this.state)),
+            ts: id
+        });
+        this._log(`Snapshot creado: ${name}`);
+        this._render();
+        toast(`📸 ${name}`, 'success');
+    }
+
+    restoreSnapshot(id) {
+        const snap = this._snaps.get(id);
+        if (!snap) return;
+        this.state = JSON.parse(JSON.stringify(snap.state));
+        this._log(`Snapshot restaurado: ${snap.name}`);
+        this._render();
+        toast(`✅ Restaurado: ${snap.name}`, 'success');
+    }
+
+    deleteSnapshot(id) {
+        const snap = this._snaps.get(id);
+        if (!snap) return;
+        this._snaps.delete(id);
+        this._log(`Snapshot eliminado: ${snap.name}`);
+        this._render();
+        toast('🗑️ Snapshot eliminado', 'info');
+    }
+
+    clearSnapshots() {
+        this._snaps.clear();
+        this._log('Todos los snapshots eliminados');
+        this._render();
+        toast('🗑️ Snapshots limpiados', 'info');
+    }
+
+    // ── AUTO-GUARDADO ────────────────────────────────
+    _startAutoSave() {
+        setInterval(() => {
+            this.state.metrics.ops++;
+            this.state.metrics.uptime++;
+            this.state.metrics.autoSaves++;
+            this._autoCount++;
+            // Simula actividad de agentes
+            const agents = Object.values(this.state.agents);
+            const active = agents.filter(a => a.active);
+            active.forEach(a => {
+                const key = Object.keys(a).find(k => typeof a[k]==='number' && k!=='uptime');
+                if (key) a[key]++;
+            });
+            this._saved = JSON.parse(JSON.stringify(this.state));
+            this._saved._savedAt = new Date().toLocaleTimeString();
+            this._log(`Auto-guardado #${this._autoCount}`);
+            this._render();
+        }, 30_000);
+
+        // También cada 5s actualizamos la UI sin guardar
+        setInterval(() => this._render(), 5_000);
+    }
+
+    _startUptimeTick() {
+        setInterval(() => {
+            const s = Math.floor((Date.now() - this._startTime) / 1000);
+            document.getElementById('statUptime').textContent =
+                s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s` : `${Math.floor(s/3600)}h`;
+        }, 1000);
+    }
+
+    // ── LOG ──────────────────────────────────────────
+    _log(msg) {
+        this._timeline.unshift({ msg, ts: new Date().toLocaleTimeString() });
+        if (this._timeline.length > 30) this._timeline.pop();
+    }
+
+    // ── RENDER ───────────────────────────────────────
+    _render() {
+        this._renderAgents();
+        this._renderSnapshots();
+        this._renderTimeline();
+        this._renderStats();
+    }
+
+    _renderAgents() {
+        const el = document.getElementById('currentStateContainer');
+        el.innerHTML = Object.entries(this.state.agents).map(([name, a]) => `
+            <div class="data-item">
+                <div class="data-header">
+                    <span class="data-key">${name}</span>
+                    <span class="pill ${a.active?'pill-ok':'pill-off'}">${a.active?'ACTIVO':'INACTIVO'}</span>
+                </div>
+                <div class="data-value">${JSON.stringify(
+                    Object.fromEntries(Object.entries(a).filter(([k])=>k!=='active'&&k!=='role'))
+                )}</div>
+            </div>`).join('');
+    }
+
+    _renderSnapshots() {
+        const el = document.getElementById('snapshotsContainer');
+        if (this._snaps.size === 0) {
+            el.innerHTML = '<p style="opacity:.6;font-size:.9rem">No hay snapshots guardados</p>';
+            return;
+        }
+        el.innerHTML = [...this._snaps.entries()].reverse().map(([id, s]) => `
+            <div class="data-item">
+                <div class="data-header">
+                    <span class="data-key">${s.name}</span>
+                    <span style="opacity:.6;font-size:.8rem">${new Date(s.ts).toLocaleTimeString()}</span>
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
+                    <button class="btn btn-primary" style="padding:.35rem .8rem;font-size:.8rem"
+                        onclick="P.restoreSnapshot(${id})">📂 Restaurar</button>
+                    <button class="btn btn-danger" style="padding:.35rem .8rem;font-size:.8rem"
+                        onclick="P.deleteSnapshot(${id})">🗑️ Borrar</button>
+                </div>
+            </div>`).join('');
+    }
+
+    _renderTimeline() {
+        const el = document.getElementById('timelineContainer');
+        if (this._timeline.length === 0) {
+            el.innerHTML = '<p style="opacity:.6;font-size:.9rem">Sin eventos aún</p>';
+            return;
+        }
+        el.innerHTML = this._timeline.map(e => `
+            <div class="timeline-item">
+                <span class="timeline-time">${e.ts}</span>
+                <span>${e.msg}</span>
+            </div>`).join('');
+    }
+
+    _renderStats() {
+        const sizeKB = (JSON.stringify(this.state).length / 1024).toFixed(2);
+        const snapKB = ([...this._snaps.values()]
+            .reduce((acc,s)=>acc+JSON.stringify(s).length,0)/1024).toFixed(2);
+        const totalKB = (parseFloat(sizeKB)+parseFloat(snapKB)).toFixed(2);
+
+        document.getElementById('statItems').textContent =
+            Object.keys(this.state.agents).length;
+        document.getElementById('statSize').textContent   = `${sizeKB} KB`;
+        document.getElementById('statLastSave').textContent =
+            this._saved?._savedAt ?? '--';
+        document.getElementById('statAutoSaves').textContent = this._autoCount;
+        document.getElementById('statSnapshots').textContent = this._snaps.size;
+
+        // Barra de memoria (máx referencia 10 KB)
+        const pct = Math.min(100, (parseFloat(totalKB)/10)*100).toFixed(1);
+        document.getElementById('memBar').style.width = `${pct}%`;
+        document.getElementById('memLabel').textContent =
+            `Memoria: ${totalKB} KB usados (${pct}% de ref. 10 KB)`;
+    }
+}
+
+// ── Instancia global ──────────────────────────────
+const P = new AVIAPersistence();
+</script>
+</body>
+</html>

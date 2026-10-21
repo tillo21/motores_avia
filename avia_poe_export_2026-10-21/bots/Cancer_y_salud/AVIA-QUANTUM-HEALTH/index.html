@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Quantum Health Dashboard - Personalizable</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --accent-color: #06b6d4;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        
+        .metric-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .status-excellent { background: var(--success-color); }
+        .status-good { background: var(--primary-color); }
+        .status-warning { background: var(--warning-color); }
+        .status-critical { background: var(--error-color); }
+        
+        .quantum-glow { 
+            box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+            animation: pulse-glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(147, 51, 234, 0.3); }
+            to { box-shadow: 0 0 30px rgba(147, 51, 234, 0.5); }
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body { background: #0f172a; color: #e2e8f0; }
+            .bg-white { background: #1e293b !important; }
+            .bg-gray-50 { background: #0f172a !important; }
+            .text-gray-800 { color: #e2e8f0 !important; }
+            .text-gray-600 { color: #94a3b8 !important; }
+            .text-gray-500 { color: #64748b !important; }
+            .border { border-color: #334155 !important; }
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .container { padding: 8px; }
+            .grid { gap: 12px; }
+            .text-5xl { font-size: 2.5rem; }
+            .text-3xl { font-size: 1.8rem; }
+        }
+        
+        /* Print styles */
+        @media print {
+            .no-print { display: none; }
+            body { background: white; color: black; }
+            .quantum-glow { box-shadow: none; }
+        }
+        
+        /* Storage warning banner */
+        .storage-warning {
+            background: #fef3cd;
+            border: 1px solid #fecaca;
+            color: #92400e;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Storage Warning -->
+    <div id="storage-warning" class="storage-warning">
+        ⚠️ <strong>Modo Sandbox:</strong> La configuración no se puede guardar permanentemente. Los cambios se perderán al recargar la página.
+    </div>
+
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-purple-900 to-blue-900 text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 py-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h1 id="main-title" class="text-3xl md:text-4xl font-bold flex items-center">
+                            <span class="mr-3">⚛️</span>
+                            AVIA Quantum Health Dashboard
+                        </h1>
+                        <p class="text-purple-200 mt-1">Sistema de Monitoreo Cuántico Personalizable</p>
+                        <div class="flex items-center mt-2 text-sm">
+                            <span class="status-indicator status-excellent"></span>
+                            <span>Sistema Operacional</span>
+                            <span class="mx-2">•</span>
+                            <span id="active-sites">4 Sitios Activos</span>
+                        </div>
+                    </div>
+                    <div class="text-right mt-4 md:mt-0">
+                        <div class="text-sm text-purple-200">Última Actualización</div>
+                        <div id="last-updated" class="text-lg font-mono">--:--:--</div>
+                        <div class="flex space-x-2 mt-2">
+                            <button id="refresh-btn" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm no-print">
+                                🔄 Actualizar
+                            </button>
+                            <button onclick="openConfigPanel()" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm no-print">
+                                ⚙️ Configurar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Configuration Panel (hidden by default) -->
+        <div id="config-panel" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 max-w-2xl w-full max-h-screen overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Configuración del Dashboard</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Título del Dashboard</label>
+                        <input id="dashboard-title" type="text" class="w-full border rounded px-3 py-2" value="AVIA Quantum Health Dashboard">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Intervalo de Actualización (segundos)</label>
+                        <select id="update-interval" class="w-full border rounded px-3 py-2">
+                            <option value="10">10 segundos</option>
+                            <option value="30" selected>30 segundos</option>
+                            <option value="60">1 minuto</option>
+                            <option value="300">5 minutos</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Tema de Color</label>
+                        <select id="color-theme" class="w-full border rounded px-3 py-2">
+                            <option value="default">Por Defecto (Púrpura)</option>
+                            <option value="ocean">Océano (Azul)</option>
+                            <option value="sunset">Atardecer (Naranja)</option>
+                            <option value="forest">Bosque (Verde)</option>
+                            <option value="quantum">Cuántico (Violeta)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Nivel de Simulación</label>
+                        <select id="simulation-level" class="w-full border rounded px-3 py-2">
+                            <option value="stable">Estable (poca variación)</option>
+                            <option value="normal" selected>Normal (variación realista)</option>
+                            <option value="dynamic">Dinámico (alta variación)</option>
+                            <option value="chaos">Caótico (para testing)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Métricas a Mostrar</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-t2" checked class="mr-2">
+                                <span>T2 Coherencia (μs)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-fidelity" checked class="mr-2">
+                                <span>Fidelidad de Puertas (%)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-conflicts" checked class="mr-2">
+                                <span>Conflictos Activos</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-entanglement" checked class="mr-2">
+                                <span>Fidelidad de Entrelazamiento (%)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-volume" class="mr-2">
+                                <span>Volumen Cuántico</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="metric-temperature" class="mr-2">
+                                <span>Temperatura (mK)</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="enable-anomalies" checked class="mr-2">
+                            <span>Habilitar simulación de anomalías</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button onclick="closeConfigPanel()" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Cancelar
+                    </button>
+                    <button onclick="applyConfiguration()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Aplicar Configuración
+                    </button>
+                    <button onclick="exportConfiguration()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                        Exportar Config
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Overall Health Status -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 quantum-glow">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between">
+                    <div class="mb-4 md:mb-0">
+                        <h2 class="text-2xl font-bold text-gray-800">Salud Cuántica Global</h2>
+                        <p class="text-gray-600">Estado de la red cuántica mundial</p>
+                        <div class="flex items-center mt-2">
+                            <span id="health-status-indicator" class="status-indicator status-excellent"></span>
+                            <span id="health-status-text" class="font-medium">Excelente</span>
+                            <span class="mx-2 text-gray-400">•</span>
+                            <span id="health-trend" class="text-green-600 text-sm">↗ Mejorando</span>
+                        </div>
+                    </div>
+                    <div class="text-center md:text-right">
+                        <div id="overall-health-score" class="text-5xl font-bold text-green-600">98.7</div>
+                        <div class="text-gray-500">Puntuación de Salud</div>
+                        <div class="text-xs text-gray-400 mt-1">Escala: 0-100</div>
+                    </div>
+                </div>
+                
+                <!-- Health Progress Bar -->
+                <div class="mt-6">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Crítico</span>
+                        <span>Advertencia</span>
+                        <span>Bueno</span>
+                        <span>Excelente</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div id="health-bar" class="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-1000" style="width: 98.7%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0</span>
+                        <span>25</span>
+                        <span>50</span>
+                        <span>75</span>
+                        <span>100</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Metrics Grid -->
+            <div id="metrics-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Métricas se generan dinámicamente -->
+            </div>
+
+            <!-- Site Status Grid -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">Estado de Sitios Globales</h3>
+                    <div class="flex items-center space-x-4 text-sm">
+                        <span class="flex items-center">
+                            <span class="status-indicator status-excellent mr-1"></span>
+                            Óptimo
+                        </span>
+                        <span class="flex items-center">
+                            <span class="status-indicator status-good mr-1"></span>
+                            Bueno
+                        </span>
+                        <span class="flex items-center">
+                            <span class="status-indicator status-warning mr-1"></span>
+                            Degradado
+                        </span>
+                        <span class="flex items-center">
+                            <span class="status-indicator status-critical mr-1"></span>
+                            Crítico
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Tokyo -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showSiteDetails('tokyo')">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">🗾</span>
+                                Tokio
+                            </h4>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">ÓPTIMO</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T1:</span>
+                                <span class="font-mono font-medium" id="tokyo-t1">156.3 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T2:</span>
+                                <span class="font-mono font-medium" id="tokyo-t2">78.1 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fidelidad:</span>
+                                <span class="font-mono font-medium" id="tokyo-fidelity">99.84%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Conflictos:</span>
+                                <span class="font-mono font-medium text-green-600" id="tokyo-conflicts">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- London -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showSiteDetails('london')">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">🇬🇧</span>
+                                Londres
+                            </h4>
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">DEGRADADO</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T1:</span>
+                                <span class="font-mono font-medium" id="london-t1">134.7 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T2:</span>
+                                <span class="font-mono font-medium" id="london-t2">67.4 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fidelidad:</span>
+                                <span class="font-mono font-medium" id="london-fidelity">99.41%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Conflictos:</span>
+                                <span class="font-mono font-medium text-yellow-600" id="london-conflicts">2</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New York -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showSiteDetails('newyork')">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">🗽</span>
+                                Nueva York
+                            </h4>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">BUENO</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T1:</span>
+                                <span class="font-mono font-medium" id="newyork-t1">142.1 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T2:</span>
+                                <span class="font-mono font-medium" id="newyork-t2">71.0 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fidelidad:</span>
+                                <span class="font-mono font-medium" id="newyork-fidelity">99.67%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Conflictos:</span>
+                                <span class="font-mono font-medium text-blue-600" id="newyork-conflicts">1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Singapore -->
+                    <div class="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showSiteDetails('singapore')">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold text-gray-800 flex items-center">
+                                <span class="text-2xl mr-2">🇸🇬</span>
+                                Singapur
+                            </h4>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">ÓPTIMO</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T1:</span>
+                                <span class="font-mono font-medium" id="singapore-t1">149.8 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">T2:</span>
+                                <span class="font-mono font-medium" id="singapore-t2">74.9 μs</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fidelidad:</span>
+                                <span class="font-mono font-medium" id="singapore-fidelity">99.79%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Conflictos:</span>
+                                <span class="font-mono font-medium text-green-600" id="singapore-conflicts">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Visualizations -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Coherence Timeline -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Timeline de Coherencia</h3>
+                        <select id="timeline-period" class="text-sm border rounded px-2 py-1">
+                            <option value="24h" selected>Últimas 24 Horas</option>
+                            <option value="7d">Últimos 7 Días</option>
+                            <option value="30d">Últimos 30 Días</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <div id="coherence-timeline"></div>
+                    </div>
+                </div>
+
+                <!-- Entanglement Network -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Red de Entrelazamiento</h3>
+                        <div class="text-sm text-gray-500">Topología de Red en Vivo</div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="entanglement-network"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Actividad Reciente del Sistema</h3>
+                <div id="activity-feed" class="space-y-3 max-h-60 overflow-y-auto">
+                    <!-- Activity items will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for detailed views -->
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4" onclick="closeModal(event)">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="modal-title" class="text-2xl font-bold text-gray-800"></h2>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                </div>
+                <div id="modal-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Storage abstraction para manejar sandbox
+        class SafeStorage {
+            constructor() {
+                this.available = this.testStorage();
+                this.memoryStorage = new Map();
+                
+                if (!this.available) {
+                    this.showStorageWarning();
+                }
+            }
+            
+            testStorage() {
+                try {
+                    const test = 'test';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+            
+            showStorageWarning() {
+                const warning = document.getElementById('storage-warning');
+                if (warning) {
+                    warning.style.display = 'block';
+                }
+            }
+            
+            setItem(key, value) {
+                try {
+                    if (this.available) {
+                        localStorage.setItem(key, value);
+                    } else {
+                        this.memoryStorage.set(key, value);
+                    }
+                } catch (e) {
+                    this.memoryStorage.set(key, value);
+                }
+            }
+            
+            getItem(key) {
+                try {
+                    if (this.available) {
+                        return localStorage.getItem(key);
+                    } else {
+                        return this.memoryStorage.get(key) || null;
+                    }
+                } catch (e) {
+                    return this.memoryStorage.get(key) || null;
+                }
+            }
+            
+            removeItem(key) {
+                try {
+                    if (this.available) {
+                        localStorage.removeItem(key);
+                    } else {
+                        this.memoryStorage.delete(key);
+                    }
+                } catch (e) {
+                    this.memoryStorage.delete(key);
+                }
+            }
+        }
+
+        // Simulador de datos cuánticos mejorado
+        class QuantumDataSimulator {
+            constructor(config = {}) {
+                this.config = {
+                    baseValues: {
+                        t2_coherence: 75,
+                        gate_fidelity: 99.7,
+                        entanglement_fidelity: 97.8,
+                        conflicts: 2,
+                        quantum_volume: 128,
+                        temperature: 15
+                    },
+                    simulationLevel: 'normal', // stable, normal, dynamic, chaos
+                    enableAnomalies: true,
+                    ...config
+                };
+                
+                this.state = { ...this.config.baseValues };
+                this.eventLog = [];
+                this.anomalyState = null;
+            }
+
+            updateConfig(newConfig) {
+                this.config = { ...this.config, ...newConfig };
+            }
+
+            generateRealisticData() {
+                const timestamp = Date.now();
+                const timeOfDay = new Date().getHours() + new Date().getMinutes() / 60;
+                
+                // Factores de variación según nivel de simulación
+                const variationLevels = {
+                    stable: 0.02,
+                    normal: 0.05,
+                    dynamic: 0.15,
+                    chaos: 0.3
+                };
+                
+                const variation = variationLevels[this.config.simulationLevel] || 0.05;
+                
+                // Patrón diario (sistemas funcionan mejor de noche)
+                const dailyFactor = 1 + 0.03 * Math.sin(2 * Math.PI * (timeOfDay + 6) / 24);
+                
+                // Actualizar cada métrica
+                const data = {};
+                
+                // T2 Coherence
+                this.state.t2_coherence += (Math.random() - 0.5) * variation * 10;
+                this.state.t2_coherence = Math.max(50, Math.min(120, this.state.t2_coherence));
+                data.t2_coherence = this.state.t2_coherence * dailyFactor;
+                
+                // Gate Fidelity
+                this.state.gate_fidelity += (Math.random() - 0.5) * variation * 0.5;
+                this.state.gate_fidelity = Math.max(99.0, Math.min(99.99, this.state.gate_fidelity));
+                data.gate_fidelity = this.state.gate_fidelity;
+                
+                // Entanglement Fidelity
+                this.state.entanglement_fidelity += (Math.random() - 0.5) * variation * 2;
+                this.state.entanglement_fidelity = Math.max(95, Math.min(99.5, this.state.entanglement_fidelity));
+                data.entanglement_fidelity = this.state.entanglement_fidelity;
+                
+                // Conflicts (entero)
+                if (Math.random() < 0.1) { // 10% probabilidad de cambio
+                    this.state.conflicts = Math.max(0, this.state.conflicts + (Math.random() > 0.7 ? 1 : -1));
+                }
+                data.conflicts = this.state.conflicts;
+                
+                // Quantum Volume
+                data.quantum_volume = this.state.quantum_volume + Math.floor((Math.random() - 0.5) * 8);
+                
+                // Temperature
+                this.state.temperature += (Math.random() - 0.5) * variation * 2;
+                this.state.temperature = Math.max(10, Math.min(25, this.state.temperature));
+                data.temperature = this.state.temperature;
+                
+                // Aplicar anomalías si están habilitadas
+                if (this.config.enableAnomalies) {
+                    this.applyAnomalies(data);
+                }
+                
+                // Calcular health score
+                data.healthScore = this.calculateHealthScore(data);
+                
+                // Generar eventos si hay cambios significativos
+                this.generateEvents(data);
+                
+                return data;
+            }
+            
+            applyAnomalies(data) {
+                // Iniciar nueva anomalía ocasionalmente
+                if (!this.anomalyState && Math.random() < 0.005) { // 0.5% probabilidad
+                    this.anomalyState = {
+                        type: ['degradation', 'spike', 'oscillation'][Math.floor(Math.random() * 3)],
+                        startTime: Date.now(),
+                        duration: 60000 + Math.random() * 300000, // 1-5 minutos
+                        intensity: 0.1 + Math.random() * 0.3
+                    };
+                    
+                    this.eventLog.push({
+                        timestamp: Date.now(),
+                        type: 'anomaly_started',
+                        message: `Anomalía detectada: ${this.anomalyState.type}`
+                    });
+                }
+                
+                // Aplicar anomalía activa
+                if (this.anomalyState) {
+                    const elapsed = Date.now() - this.anomalyState.startTime;
+                    
+                    if (elapsed < this.anomalyState.duration) {
+                        switch (this.anomalyState.type) {
+                            case 'degradation':
+                                data.t2_coherence *= (1 - this.anomalyState.intensity);
+                                data.gate_fidelity *= (1 - this.anomalyState.intensity * 0.1);
+                                break;
+                            case 'spike':
+                                const spike = Math.sin(elapsed / 10000) * this.anomalyState.intensity;
+                                data.conflicts += Math.floor(spike * 3);
+                                break;
+                            case 'oscillation':
+                                const osc = Math.sin(elapsed / 5000) * this.anomalyState.intensity;
+                                data.entanglement_fidelity += osc * 5;
+                                break;
+                        }
+                    } else {
+                        // Anomalía terminada
+                        this.eventLog.push({
+                            timestamp: Date.now(),
+                            type: 'anomaly_resolved',
+                            message: `Anomalía resuelta: ${this.anomalyState.type}`
+                        });
+                        this.anomalyState = null;
+                    }
+                }
+            }
+            
+            calculateHealthScore(data) {
+                // Puntuación ponderada de salud (0-100)
+                const weights = {
+                    t2_coherence: 0.25,
+                    gate_fidelity: 0.25,
+                    entanglement_fidelity: 0.20,
+                    conflicts: 0.15,
+                    temperature: 0.15
+                };
+                
+                const normalized = {
+                    t2_coherence: Math.min(100, (data.t2_coherence / 100) * 100),
+                    gate_fidelity: data.gate_fidelity,
+                    entanglement_fidelity: data.entanglement_fidelity,
+                    conflicts: Math.max(0, 100 - (data.conflicts * 15)),
+                    temperature: Math.max(0, 100 - Math.abs(data.temperature - 15) * 5)
+                };
+                
+                return Object.entries(weights).reduce((score, [key, weight]) => {
+                    return score + (normalized[key] * weight);
+                }, 0);
+            }
+            
+            generateEvents(data) {
+                // Generar eventos basados en cambios en las métricas
+                const now = Date.now();
+                
+                if (data.conflicts > this.state.conflicts) {
+                    this.eventLog.push({
+                        timestamp: now,
+                        type: 'conflict_detected',
+                        message: `Nuevo conflicto detectado en el sistema`
+                    });
+                }
+                
+                if (data.healthScore < 80 && this.lastHealthScore >= 80) {
+                    this.eventLog.push({
+                        timestamp: now,
+                        type: 'health_degraded',
+                        message: `Salud del sistema degradada: ${data.healthScore.toFixed(1)}`
+                    });
+                }
+                
+                // Mantener solo los últimos 10 eventos
+                if (this.eventLog.length > 10) {
+                    this.eventLog = this.eventLog.slice(-10);
+                }
+                
+                this.lastHealthScore = data.healthScore;
+            }
+            
+            getEvents() {
+                return [...this.eventLog];
+            }
+        }
+
+        class CustomizableDashboard {
+            constructor() {
+                this.storage = new SafeStorage();
+                this.config = this.loadConfiguration();
+                this.simulator = new QuantumDataSimulator(this.config.simulation);
+                this.updateInterval = null;
+                this.enabled_metrics = {
+                    t2_coherence: true,
+                    gate_fidelity: true,
+                    conflicts: true,
+                    entanglement_fidelity: true,
+                    quantum_volume: false,
+                    temperature: false
+                };
+                
+                this.initializeDashboard();
+                this.startDataUpdates();
+            }
+
+            loadConfiguration() {
+                const saved = this.storage.getItem('avia_dashboard_config');
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch (e) {
+                        console.warn('Error parsing saved configuration, using defaults');
+                    }
+                }
+                
+                return {
+                    title: "AVIA Quantum Health Dashboard",
+                    theme: "default",
+                    update_interval: 30,
+                    simulation: {
+                        simulationLevel: 'normal',
+                        enableAnomalies: true
+                    }
+                };
+            }
+
+            saveConfiguration() {
+                try {
+                    this.storage.setItem('avia_dashboard_config', JSON.stringify(this.config));
+                } catch (e) {
+                    console.warn('Could not save configuration:', e.message);
+                }
+            }
+
+            initializeDashboard() {
+                this.applyTheme();
+                this.updateTitle();
+                this.createMetricsGrid();
+                this.createTimeline();
+                this.createEntanglementNetwork();
+                this.populateActivityFeed();
+                this.updateTimestamp();
+            }
+
+            applyTheme() {
+                const themes = {
+                    default: { primary: '#6366f1', secondary: '#8b5cf6' },
+                    ocean: { primary: '#0ea5e9', secondary: '#0284c7' },
+                    sunset: { primary: '#f97316', secondary: '#ea580c' },
+                    forest: { primary: '#16a34a', secondary: '#15803d' },
+                    quantum: { primary: '#7c3aed', secondary: '#6d28d9' }
+                };
+                
+                const theme = themes[this.config.theme] || themes.default;
+                document.documentElement.style.setProperty('--primary-color', theme.primary);
+                document.documentElement.style.setProperty('--secondary-color', theme.secondary);
+            }
+
+            updateTitle() {
+                const titleElement = document.getElementById('main-title');
+                if (titleElement) {
+                    titleElement.innerHTML = `<span class="mr-3">⚛️</span>${this.config.title}`;
+                }
+            }
+
+            createMetricsGrid() {
+                const grid = document.getElementById('metrics-grid');
+                grid.innerHTML = '';
+
+                const metrics = [
+                    {
+                        id: 't2_coherence',
+                        label: 'T2 Coherencia',
+                        unit: 'μs',
+                        icon: '🔄',
+                        color: '#3b82f6'
+                    },
+                    {
+                        id: 'gate_fidelity',
+                        label: 'Fidelidad de Puertas',
+                        unit: '%',
+                        icon: '🎯',
+                        color: '#10b981'
+                    },
+                    {
+                        id: 'conflicts',
+                        label: 'Conflictos Activos',
+                        unit: '',
+                        icon: '⚠️',
+                        color: '#f59e0b'
+                    },
+                    {
+                        id: 'entanglement_fidelity',
+                        label: 'Fidelidad Entrelazamiento',
+                        unit: '%',
+                        icon: '🔗',
+                        color: '#8b5cf6'
+                    },
+                    {
+                        id: 'quantum_volume',
+                        label: 'Volumen Cuántico',
+                        unit: '',
+                        icon: '📊',
+                        color: '#06b6d4'
+                    },
+                    {
+                        id: 'temperature',
+                        label: 'Temperatura',
+                        unit: 'mK',
+                        icon: '🌡️',
+                        color: '#ef4444'
+                    }
+                ];
+
+                metrics.forEach(metric => {
+                    if (this.enabled_metrics[metric.id]) {
+                        const card = document.createElement('div');
+                        card.className = 'metric-card bg-white rounded-lg shadow-md p-6';
+                        card.style.borderLeftColor = metric.color;
+                        
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-600">${metric.label}</p>
+                                    <p id="${metric.id}-value" class="text-3xl font-bold" style="color: ${metric.color}">--</p>
+                                    <p id="${metric.id}-trend" class="text-sm">Cargando...</p>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Unidad: ${metric.unit || 'N/A'}
+                                    </div>
+                                </div>
+                                <div class="text-4xl opacity-70">
+                                    ${metric.icon}
+                                </div>
+                            </div>
+                        `;
+                        
+                        grid.appendChild(card);
+                    }
+                });
+            }
+
+            createTimeline() {
+                const timeRange = [];
+                const t2Data = [];
+                const fidelityData = [];
+                const now = new Date();
+                
+                for (let i = 23; i >= 0; i--) {
+                    const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+                    timeRange.push(time);
+                    t2Data.push(75 + Math.random() * 20 - 10 + Math.sin(i * 0.3) * 3);
+                    fidelityData.push(99.7 + Math.random() * 0.3 - 0.15);
+                }
+
+                const trace1 = {
+                    x: timeRange,
+                    y: t2Data,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'T2 Coherencia (μs)',
+                    line: { color: '#3b82f6', width: 3 },
+                    marker: { size: 6 }
+                };
+
+                const trace2 = {
+                    x: timeRange,
+                    y: fidelityData,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Fidelidad (%)',
+                    line: { color: '#10b981', width: 3 },
+                    marker: { size: 6 },
+                    yaxis: 'y2'
+                };
+
+                const layout = {
+                    title: {
+                        text: 'Métricas Cuánticas - Últimas 24 Horas',
+                        font: { size: 16 }
+                    },
+                    xaxis: { 
+                        title: 'Tiempo',
+                        gridcolor: '#f1f5f9'
+                    },
+                    yaxis: { 
+                        title: 'T2 Coherencia (μs)',
+                        side: 'left',
+                        gridcolor: '#f1f5f9'
+                    },
+                    yaxis2: {
+                        title: 'Fidelidad (%)',
+                        side: 'right',
+                        overlaying: 'y'
+                    },
+                    hovermode: 'x unified',
+                    template: 'plotly_white',
+                    margin: { t: 40, r: 60, b: 40, l: 60 },
+                    showlegend: true,
+                    legend: { x: 0, y: 1.1, orientation: 'h' }
+                };
+
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+
+                Plotly.newPlot('coherence-timeline', [trace1, trace2], layout, config);
+            }
+
+            createEntanglementNetwork() {
+                const container = d3.select('#entanglement-network');
+                container.selectAll('*').remove();
+                
+                const svg = container.append('svg')
+                    .attr('width', '100%')
+                    .attr('height', 400)
+                    .style('background', '#f8fafc');
+
+                const width = parseInt(svg.style('width'));
+                const height = 400;
+
+                const sites = [
+                    { id: 'tokyo', name: 'Tokio', x: width * 0.8, y: height * 0.4, status: 'excellent' },
+                    { id: 'london', name: 'Londres', x: width * 0.3, y: height * 0.3, status: 'warning' },
+                    { id: 'newyork', name: 'N. York', x: width * 0.2, y: height * 0.5, status: 'good' },
+                    { id: 'singapore', name: 'Singapur', x: width * 0.7, y: height * 0.7, status: 'excellent' }
+                ];
+
+                const links = [
+                    { source: 'tokyo', target: 'london', fidelity: 0.978 },
+                    { source: 'tokyo', target: 'singapore', fidelity: 0.984 },
+                    { source: 'london', target: 'newyork', fidelity: 0.967 },
+                    { source: 'newyork', target: 'singapore', fidelity: 0.972 }
+                ];
+
+                // Create links
+                const linkGroup = svg.append('g').attr('class', 'links');
+                
+                links.forEach(link => {
+                    const sourceNode = sites.find(s => s.id === link.source);
+                    const targetNode = sites.find(s => s.id === link.target);
+                    
+                    if (sourceNode && targetNode) {
+                        linkGroup.append('line')
+                            .attr('x1', sourceNode.x)
+                            .attr('y1', sourceNode.y)
+                            .attr('x2', targetNode.x)
+                            .attr('y2', targetNode.y)
+                            .style('stroke', d3.interpolateRdYlGn(link.fidelity))
+                            .style('stroke-width', 2 + link.fidelity * 6)
+                            .style('opacity', 0.8)
+                            .append('title')
+                            .text(`${sourceNode.name} ↔ ${targetNode.name}: ${(link.fidelity * 100).toFixed(1)}% fidelidad`);
+                    }
+                });
+
+                // Create nodes
+                const nodeGroup = svg.append('g').attr('class', 'nodes');
+                
+                const statusColors = {
+                    excellent: '#10b981',
+                    good: '#3b82f6',
+                    warning: '#f59e0b',
+                    critical: '#ef4444'
+                };
+                
+                sites.forEach(site => {
+                    nodeGroup.append('circle')
+                        .attr('cx', site.x)
+                        .attr('cy', site.y)
+                        .attr('r', 25)
+                        .style('fill', statusColors[site.status])
+                        .style('stroke', '#ffffff')
+                        .style('stroke-width', 3)
+                        .style('cursor', 'pointer')
+                        .on('click', () => showSiteDetails(site.id))
+                        .append('title')
+                        .text(`${site.name}: ${site.status.toUpperCase()}`);
+                    
+                    nodeGroup.append('text')
+                        .attr('x', site.x)
+                        .attr('y', site.y + 45)
+                        .style('text-anchor', 'middle')
+                        .style('font-size', '12px')
+                        .style('font-weight', 'bold')
+                        .style('fill', '#374151')
+                        .text(site.name);
+                });
+            }
+
+            updateData() {
+                const data = this.simulator.generateRealisticData();
+                
+                // Actualizar métricas principales
+                Object.keys(this.enabled_metrics).forEach(metricId => {
+                    if (this.enabled_metrics[metricId] && data[metricId] !== undefined) {
+                        const valueElement = document.getElementById(`${metricId}-value`);
+                        const trendElement = document.getElementById(`${metricId}-trend`);
+                        
+                        if (valueElement) {
+                            let formattedValue;
+                            if (metricId.includes('fidelity')) {
+                                formattedValue = `${data[metricId].toFixed(2)}%`;
+                            } else if (metricId === 'conflicts') {
+                                formattedValue = Math.round(data[metricId]).toString();
+                            } else if (metricId === 'temperature') {
+                                formattedValue = `${data[metricId].toFixed(1)} mK`;
+                            } else {
+                                formattedValue = `${data[metricId].toFixed(1)} μs`;
+                            }
+                            
+                            valueElement.textContent = formattedValue;
+                        }
+                        
+                        if (trendElement) {
+                            const trend = (Math.random() - 0.4) * 5; // Simular tendencia
+                            const arrow = trend > 0 ? '↗' : trend < 0 ? '↘' : '→';
+                            const color = trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-600';
+                            trendElement.innerHTML = `<span class="${color}">${arrow} ${Math.abs(trend).toFixed(1)}%</span>`;
+                        }
+                    }
+                });
+
+                // Actualizar puntuación de salud
+                const healthScore = data.healthScore;
+                const healthElement = document.getElementById('overall-health-score');
+                const healthBar = document.getElementById('health-bar');
+                const statusIndicator = document.getElementById('health-status-indicator');
+                const statusText = document.getElementById('health-status-text');
+                
+                if (healthElement) {
+                    healthElement.textContent = healthScore.toFixed(1);
+                }
+                
+                if (healthBar) {
+                    healthBar.style.width = `${healthScore}%`;
+                }
+                
+                // Actualizar estado de salud
+                if (statusIndicator && statusText) {
+                    statusIndicator.className = 'status-indicator';
+                    
+                    if (healthScore >= 95) {
+                        statusIndicator.classList.add('status-excellent');
+                        statusText.textContent = 'Excelente';
+                    } else if (healthScore >= 80) {
+                        statusIndicator.classList.add('status-good');
+                        statusText.textContent = 'Bueno';
+                    } else if (healthScore >= 60) {
+                        statusIndicator.classList.add('status-warning');
+                        statusText.textContent = 'Advertencia';
+                    } else {
+                        statusIndicator.classList.add('status-critical');
+                        statusText.textContent = 'Crítico';
+                    }
+                }
+
+                // Actualizar datos de sitios
+                this.updateSiteData(data);
+                
+                // Actualizar feed de actividad
+                this.updateActivityFeed();
+                
+                // Enviar datos a página padre si estamos en iframe
+                this.sendToParent(data);
+            }
+
+            updateSiteData(globalData) {
+                const sites = ['tokyo', 'london', 'newyork', 'singapore'];
+                
+                sites.forEach(site => {
+                    const variation = (Math.random() - 0.5) * 0.1;
+                    
+                    // T1
+                    const t1Element = document.getElementById(`${site}-t1`);
+                    if (t1Element) {
+                        const t1Value = 150 + variation * 30;
+                        t1Element.textContent = `${t1Value.toFixed(1)} μs`;
+                    }
+                    
+                    // T2
+                    const t2Element = document.getElementById(`${site}-t2`);
+                    if (t2Element) {
+                        const t2Value = globalData.t2_coherence + variation * 10;
+                        t2Element.textContent = `${t2Value.toFixed(1)} μs`;
+                    }
+                    
+                    // Fidelity
+                    const fidelityElement = document.getElementById(`${site}-fidelity`);
+                    if (fidelityElement) {
+                        const fidelityValue = globalData.gate_fidelity + variation * 0.2;
+                        fidelityElement.textContent = `${fidelityValue.toFixed(2)}%`;
+                    }
+                    
+                    // Conflicts
+                    const conflictsElement = document.getElementById(`${site}-conflicts`);
+                    if (conflictsElement) {
+                        const conflictsValue = Math.floor(Math.random() * 3);
+                        conflictsElement.textContent = conflictsValue;
+                        
+                        // Update color based on conflicts
+                        conflictsElement.className = conflictsValue === 0 ? 'font-mono font-medium text-green-600' :
+                                                   conflictsValue === 1 ? 'font-mono font-medium text-blue-600' :
+                                                   'font-mono font-medium text-yellow-600';
+                    }
+                });
+            }
+
+            populateActivityFeed() {
+                const events = this.simulator.getEvents();
+                const container = document.getElementById('activity-feed');
+                
+                if (container) {
+                    container.innerHTML = '';
+                    
+                    if (events.length === 0) {
+                        container.innerHTML = '<div class="text-gray-500 text-center py-4">No hay eventos recientes</div>';
+                        return;
+                    }
+                    
+                    events.reverse().forEach(event => {
+                        const eventElement = document.createElement('div');
+                        eventElement.className = 'flex items-start space-x-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors';
+                        
+                        const icons = {
+                            anomaly_started: '⚠️',
+                            anomaly_resolved: '✅',
+                            conflict_detected: '🔍',
+                            health_degraded: '📉',
+                            maintenance: '🔧',
+                            improvement: '✨'
+                        };
+                        
+                        const icon = icons[event.type] || 'ℹ️';
+                        const timeString = new Date(event.timestamp).toLocaleTimeString();
+                        
+                        eventElement.innerHTML = `
+                            <div class="text-xl">${icon}</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900">${event.message}</div>
+                                <div class="text-xs text-gray-500 mt-1">${timeString}</div>
+                            </div>
+                        `;
+                        
+                        container.appendChild(eventElement);
+                    });
+                }
+            }
+
+            updateActivityFeed() {
+                this.populateActivityFeed();
+            }
+
+            updateTimestamp() {
+                const timestampElement = document.getElementById('last-updated');
+                if (timestampElement) {
+                    timestampElement.textContent = new Date().toLocaleTimeString();
+                }
+            }
+
+            sendToParent(data) {
+                if (window.parent && window.parent !== window) {
+                    try {
+                        window.parent.postMessage({
+                            type: 'dashboard_data_update',
+                            data: data,
+                            timestamp: Date.now()
+                        }, '*');
+                    } catch (e) {
+                        // Silently fail if parent communication is not available
+                    }
+                }
+            }
+
+            startDataUpdates() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+
+                const intervalMs = this.config.update_interval * 1000;
+                this.updateInterval = setInterval(() => {
+                    this.updateData();
+                    this.updateTimestamp();
+                }, intervalMs);
+
+                // Primera actualización inmediata
+                this.updateData();
+            }
+
+            applyConfiguration() {
+                // Aplicar nueva configuración
+                this.simulator.updateConfig(this.config.simulation);
+                this.applyTheme();
+                this.updateTitle();
+                this.createMetricsGrid();
+                this.startDataUpdates();
+                this.saveConfiguration();
+            }
+        }
+
+        // Funciones globales
+        function openConfigPanel() {
+            document.getElementById('config-panel').classList.remove('hidden');
+            
+            // Llenar valores actuales en el panel
+            document.getElementById('dashboard-title').value = dashboard.config.title;
+            document.getElementById('update-interval').value = dashboard.config.update_interval;
+            document.getElementById('color-theme').value = dashboard.config.theme;
+            document.getElementById('simulation-level').value = dashboard.config.simulation.simulationLevel;
+            document.getElementById('enable-anomalies').checked = dashboard.config.simulation.enableAnomalies;
+            
+            // Métricas habilitadas
+            Object.keys(dashboard.enabled_metrics).forEach(metricId => {
+                const checkbox = document.getElementById(`metric-${metricId.replace('_', '-')}`);
+                if (checkbox) {
+                    checkbox.checked = dashboard.enabled_metrics[metricId];
+                }
+            });
+        }
+
+        function closeConfigPanel() {
+            document.getElementById('config-panel').classList.add('hidden');
+        }
+
+        function applyConfiguration() {
+            // Recopilar configuración del panel
+            dashboard.config.title = document.getElementById('dashboard-title').value;
+            dashboard.config.update_interval = parseInt(document.getElementById('update-interval').value);
+            dashboard.config.theme = document.getElementById('color-theme').value;
+            dashboard.config.simulation.simulationLevel = document.getElementById('simulation-level').value;
+            dashboard.config.simulation.enableAnomalies = document.getElementById('enable-anomalies').checked;
+            
+            // Métricas habilitadas
+            Object.keys(dashboard.enabled_metrics).forEach(metricId => {
+                const checkbox = document.getElementById(`metric-${metricId.replace('_', '-')}`);
+                if (checkbox) {
+                    dashboard.enabled_metrics[metricId] = checkbox.checked;
+                }
+            });
+            
+            // Aplicar configuración
+            dashboard.applyConfiguration();
+            
+            closeConfigPanel();
+        }
+
+        function exportConfiguration() {
+            const config = {
+                dashboard_config: dashboard.config,
+                enabled_metrics: dashboard.enabled_metrics,
+                export_timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `avia-dashboard-config-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showSiteDetails(siteId) {
+            const modal = document.getElementById('detail-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+            
+            const siteNames = {
+                tokyo: 'Laboratorio Cuántico de Tokio',
+                london: 'Centro de Investigación de Londres',
+                newyork: 'Instituto de Nueva York',
+                singapore: 'Hub de Singapur'
+            };
+            
+            title.textContent = siteNames[siteId] || 'Detalles del Sitio';
+            
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-semibold mb-3">Métricas del Sistema</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Número de Qubits:</span>
+                                    <span class="font-mono">64</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Temperatura Operacional:</span>
+                                    <span class="font-mono">15.2 mK</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Nivel de Vacío:</span>
+                                    <span class="font-mono">10⁻¹² Torr</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Tiempo de Operación:</span>
+                                    <span class="font-mono">24/7</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded">
+                            <h4 class="font-semibold mb-3">Estado de Red</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Latencia:</span>
+                                    <span class="font-mono">12.3 ms</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Ancho de Banda:</span>
+                                    <span class="font-mono">10 Gbps</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Pérdida de Paquetes:</span>
+                                    <span class="font-mono">0.001%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Uptime:</span>
+                                    <span class="font-mono">99.97%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded">
+                        <h4 class="font-semibold mb-2">Actividad Reciente</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• Calibración del procesador cuántico completada (hace 2 horas)</li>
+                            <li>• Optimización de red aplicada (hace 4 horas)</li>
+                            <li>• Monitoreo ambiental actualizado (hace 6 horas)</li>
+                            <li>• Mantenimiento preventivo programado (mañana 02:00)</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(event) {
+            if (!event || event.target === document.getElementById('detail-modal')) {
+                const modal = document.getElementById('detail-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Inicializar dashboard
+        let dashboard;
+        document.addEventListener('DOMContentLoaded', () => {
+            dashboard = new CustomizableDashboard();
+            
+            // Configurar botón de refresh
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                dashboard.updateData();
+                dashboard.updateTimestamp();
+            });
+        });
+
+        // Soporte para dark mode
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+</body>
+</html>

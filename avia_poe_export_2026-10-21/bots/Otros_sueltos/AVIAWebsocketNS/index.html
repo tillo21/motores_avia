@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA WebSocket Notification Server - Prototipo v1.3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: #10b981;
+            box-shadow: 0 0 20px #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .meta-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f3f4f6;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Server Monitor */
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .monitor-stat {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .monitor-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .monitor-label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        /* Client Simulator */
+        .client-list {
+            display: grid;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .client-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-left: 4px solid #10b981;
+        }
+
+        .client-card.disconnected {
+            border-left-color: #ef4444;
+            opacity: 0.6;
+        }
+
+        .client-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .client-info {
+            flex: 1;
+        }
+
+        .client-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .client-status {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .client-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Event Log */
+        .event-log {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            color: #d1d5db;
+            padding: 8px 0;
+            border-bottom: 1px solid #374151;
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time {
+            color: #9ca3af;
+            min-width: 80px;
+        }
+
+        .log-type {
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .log-type.connect {
+            color: #10b981;
+        }
+
+        .log-type.disconnect {
+            color: #ef4444;
+        }
+
+        .log-type.message {
+            color: #3b82f6;
+        }
+
+        .log-type.error {
+            color: #f59e0b;
+        }
+
+        /* Notification Preview */
+        .notification-preview {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .notification-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .notification-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #1f2937;
+            flex: 1;
+        }
+
+        .notification-time {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .notification-body {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            color: #d1d5db;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #374151;
+        }
+
+        .code-title {
+            color: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #374151;
+            color: #d1d5db;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #4b5563;
+        }
+
+        /* Controls Panel */
+        .controls-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select.input-field {
+            cursor: pointer;
+        }
+
+        textarea.input-field {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <div class="status-indicator status-online"></div>
+                🚀 AVIA WebSocket Notification Server
+            </h1>
+            <div class="header-meta">
+                <div class="meta-badge">
+                    <span>📦</span>
+                    <span>v1.3 - Prototipo Backend</span>
+                </div>
+                <div class="meta-badge">
+                    <span>⚡</span>
+                    <span>Socket.IO 4.7</span>
+                </div>
+                <div class="meta-badge">
+                    <span>🟢</span>
+                    <span>Node.js 20 LTS</span>
+                </div>
+                <div class="meta-badge">
+                    <span>🔐</span>
+                    <span>JWT Authentication</span>
+                </div>
+                <div class="meta-badge">
+                    <span id="serverStatus">🟢 Server Online</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Monitor -->
+        <div class="card full-width">
+            <div class="card-title">📊 Monitor del Servidor en Tiempo Real</div>
+            <div class="monitor-grid">
+                <div class="monitor-stat">
+                    <div class="monitor-value" id="connectedClients">0</div>
+                    <div class="monitor-label">Clientes Conectados</div>
+                </div>
+                <div class="monitor-stat">
+                    <div class="monitor-value" id="totalMessages">0</div>
+                    <div class="monitor-label">Mensajes Enviados</div>
+                </div>
+                <div class="monitor-stat">
+                    <div class="monitor-value" id="avgLatency">0ms</div>
+                    <div class="monitor-label">Latencia Media</div>
+                </div>
+                <div class="monitor-stat">
+                    <div class="monitor-value" id="uptime">00:00:00</div>
+                    <div class="monitor-label">Tiempo Activo</div>
+                </div>
+                <div class="monitor-stat">
+                    <div class="monitor-value" id="messagesPerSec">0/s</div>
+                    <div class="monitor-label">Throughput</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-layout">
+            <!-- Client Simulator -->
+            <div class="card">
+                <div class="card-title">👥 Simulador de Clientes</div>
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-success" onclick="addClient()">
+                        ➕ Agregar Cliente
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="disconnectAll()" style="float: right;">
+                        🔌 Desconectar Todos
+                    </button>
+                </div>
+                <div class="client-list" id="clientList">
+                    <!-- Clientes dinámicos aquí -->
+                </div>
+            </div>
+
+            <!-- Notification Controls -->
+            <div class="card">
+                <div class="card-title">🎛️ Panel de Control de Notificaciones</div>
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label class="control-label">Tipo de Notificación</label>
+                        <select class="input-field" id="notificationType">
+                            <option value="info">ℹ️ Información</option>
+                            <option value="success">✅ Éxito</option>
+                            <option value="warning">⚠️ Advertencia</option>
+                            <option value="error">❌ Error</option>
+                            <option value="message">💬 Mensaje</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Título</label>
+                        <input type="text" class="input-field" id="notificationTitle" placeholder="Título de la notificación">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Mensaje</label>
+                        <textarea class="input-field" id="notificationMessage" placeholder="Contenido del mensaje..."></textarea>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Destinatario</label>
+                        <div class="control-row">
+                            <select class="input-field" id="targetClient">
+                                <option value="all">📢 Todos los clientes</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="sendNotification()">
+                                🚀 Enviar Notificación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Event Log -->
+            <div class="card">
+                <div class="card-title">📝 Log de Eventos del Servidor</div>
+                <div class="event-log" id="eventLog">
+                    <!-- Log entries aquí -->
+                </div>
+            </div>
+
+            <!-- Notification Preview -->
+            <div class="card">
+                <div class="card-title">📬 Vista Previa de Notificaciones</div>
+                <div class="notification-preview" id="notificationPreview">
+                    <p style="text-align: center; color: #9ca3af; font-size: 14px;">
+                        Las notificaciones aparecerán aquí en tiempo real...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backend Code -->
+        <div class="card full-width">
+            <div class="card-title">💻 Código Backend - WebSocket Server (Node.js)</div>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-title">server.js</span>
+                    <button class="copy-btn" onclick="copyCode('serverCode')">📋 Copiar</button>
+                </div>
+                <pre id="serverCode">// AVIA WebSocket Notification Server
+// Node.js + Socket.IO + JWT Authentication
+
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+const JWT_SECRET = 'avia-secret-key-2026';
+const PORT = 3000;
+
+// Middleware
+app.use(express.json());
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minuto
+    max: 100 // 100 requests por minuto
+});
+app.use(limiter);
+
+// Storage
+const connectedClients = new Map();
+const notificationHistory = [];
+
+// Autenticación JWT Middleware para WebSocket
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+        return next(new Error('Authentication error: No token provided'));
+    }
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        socket.userId = decoded.userId;
+        socket.userName = decoded.userName;
+        next();
+    } catch (err) {
+        next(new Error('Authentication error: Invalid token'));
+    }
+});
+
+// WebSocket Event Handlers
+io.on('connection', (socket) => {
+    console.log(`✅ Cliente conectado: ${socket.userName} (${socket.userId})`);
+    
+    // Registrar cliente
+    connectedClients.set(socket.id, {
+        userId: socket.userId,
+        userName: socket.userName,
+        connectedAt: new Date()
+    });
+    
+    // Emitir estado de conexión
+    io.emit('client:count', connectedClients.size);
+    
+    // Enviar historial de notificaciones recientes
+    socket.emit('notification:history', notificationHistory.slice(-20));
+    
+    // Handler: Cliente solicita notificaciones
+    socket.on('notification:request', () => {
+        socket.emit('notification:history', notificationHistory);
+    });
+    
+    // Handler: Marcar notificación como leída
+    socket.on('notification:read', (notificationId) => {
+        const notification = notificationHistory.find(n => n.id === notificationId);
+        if (notification) {
+            notification.read = true;
+            socket.emit('notification:updated', notification);
+        }
+    });
+    
+    // Handler: Desconexión
+    socket.on('disconnect', () => {
+        console.log(`❌ Cliente desconectado: ${socket.userName}`);
+        connectedClients.delete(socket.id);
+        io.emit('client:count', connectedClients.size);
+    });
+    
+    // Handler: Ping para medir latencia
+    socket.on('ping', (callback) => {
+        callback();
+    });
+});
+
+// REST API Endpoints
+
+// POST /api/auth/login - Generar JWT
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // Validación simple (en producción usar bcrypt + DB)
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username y password requeridos' });
+    }
+    
+    const token = jwt.sign(
+        { 
+            userId: `user_${Date.now()}`,
+            userName: username 
+        },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+    
+    res.json({ 
+        token,
+        expiresIn: 86400 
+    });
+});
+
+// POST /api/notifications - Enviar notificación
+app.post('/api/notifications', (req, res) => {
+    const { type, title, message, targetUserId } = req.body;
+    
+    const notification = {
+        id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: type || 'info',
+        title: title || 'Nueva Notificación',
+        message: message || '',
+        timestamp: new Date().toISOString(),
+        read: false
+    };
+    
+    // Guardar en historial
+    notificationHistory.push(notification);
+    if (notificationHistory.length > 100) {
+        notificationHistory.shift();
+    }
+    
+    // Emitir notificación
+    if (targetUserId && targetUserId !== 'all') {
+        // Enviar a usuario específico
+        const targetSocket = Array.from(connectedClients.entries())
+            .find(([_, client]) => client.userId === targetUserId);
+        
+        if (targetSocket) {
+            io.to(targetSocket[0]).emit('notification:new', notification);
+        }
+    } else {
+        // Broadcast a todos
+        io.emit('notification:new', notification);
+    }
+    
+    res.json({ 
+        success: true, 
+        notification 
+    });
+});
+
+// GET /api/notifications - Obtener historial
+app.get('/api/notifications', (req, res) => {
+    res.json({ 
+        notifications: notificationHistory,
+        total: notificationHistory.length 
+    });
+});
+
+// GET /api/stats - Estadísticas del servidor
+app.get('/api/stats', (req, res) => {
+    res.json({
+        connectedClients: connectedClients.size,
+        totalNotifications: notificationHistory.length,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage()
+    });
+});
+
+// Iniciar servidor
+server.listen(PORT, () => {
+    console.log(`🚀 AVIA WebSocket Server corriendo en http://localhost:${PORT}`);
+    console.log(`🔌 WebSocket endpoint: ws://localhost:${PORT}`);
+    console.log(`📡 API REST: http://localhost:${PORT}/api`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM recibido, cerrando servidor...');
+    server.close(() => {
+        console.log('✅ Servidor cerrado correctamente');
+        process.exit(0);
+    });
+});</pre>
+            </div>
+        </div>
+
+        <!-- Client Code -->
+        <div class="card full-width">
+            <div class="card-title">💻 Código Cliente - WebSocket Client (JavaScript)</div>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-title">client.js</span>
+                    <button class="copy-btn" onclick="copyCode('clientCode')">📋 Copiar</button>
+                </div>
+                <pre id="clientCode">// AVIA WebSocket Client
+// Socket.IO Client + JWT Authentication
+
+import io from 'socket.io-client';
+
+class NotificationClient {
+    constructor() {
+        this.socket = null;
+        this.token = null;
+        this.callbacks = {
+            onConnect: () => {},
+            onDisconnect: () => {},
+            onNotification: () => {},
+            onError: () => {}
+        };
+    }
+
+    // Autenticación y conexión
+    async connect(username, password) {
+        try {
+            // 1. Obtener JWT token
+            const response = await fetch('http://localhost:3000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const { token } = await response.json();
+            this.token = token;
+            
+            // 2. Conectar WebSocket con token
+            this.socket = io('http://localhost:3000', {
+                auth: { token }
+            });
+            
+            // 3. Event listeners
+            this.socket.on('connect', () => {
+                console.log('✅ Conectado al servidor WebSocket');
+                this.callbacks.onConnect();
+            });
+            
+            this.socket.on('disconnect', () => {
+                console.log('❌ Desconectado del servidor');
+                this.callbacks.onDisconnect();
+            });
+            
+            this.socket.on('notification:new', (notification) => {
+                console.log('📬 Nueva notificación:', notification);
+                this.callbacks.onNotification(notification);
+                this.displayNotification(notification);
+            });
+            
+            this.socket.on('notification:history', (notifications) => {
+                console.log('📚 Historial recibido:', notifications.length);
+            });
+            
+            this.socket.on('error', (error) => {
+                console.error('❌ Error:', error);
+                this.callbacks.onError(error);
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Error al conectar:', error);
+            return false;
+        }
+    }
+
+    // Mostrar notificación en UI
+    displayNotification(notification) {
+        const icons = {
+            info: 'ℹ️',
+            success: '✅',
+            warning: '⚠️',
+            error: '❌',
+            message: '💬'
+        };
+        
+        const notifElement = document.createElement('div');
+        notifElement.className = 'toast-notification';
+        notifElement.innerHTML = \`
+            <div class="toast-icon">\${icons[notification.type] || '📢'}</div>
+            <div class="toast-content">
+                <div class="toast-title">\${notification.title}</div>
+                <div class="toast-message">\${notification.message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+        \`;
+        
+        document.body.appendChild(notifElement);
+        
+        // Auto-remove después de 5 segundos
+        setTimeout(() => notifElement.remove(), 5000);
+    }
+
+    // Marcar como leída
+    markAsRead(notificationId) {
+        this.socket.emit('notification:read', notificationId);
+    }
+
+    // Desconectar
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+    }
+
+    // Medir latencia
+    async ping() {
+        return new Promise((resolve) => {
+            const start = Date.now();
+            this.socket.emit('ping', () => {
+                const latency = Date.now() - start;
+                resolve(latency);
+            });
+        });
+    }
+}
+
+// Uso
+const client = new NotificationClient();
+
+client.callbacks.onNotification = (notification) => {
+    console.log('Notificación recibida:', notification);
+};
+
+// Conectar
+await client.connect('usuario@avia.com', 'password123');
+
+// Medir latencia
+const latency = await client.ping();
+console.log(\`Latencia: \${latency}ms\`);</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulación del servidor WebSocket
+        let clients = [];
+        let clientIdCounter = 1;
+        let messageCounter = 0;
+        let startTime = Date.now();
+        let latencies = [];
+
+        // Inicializar
+        function init() {
+            addClient();
+            addClient();
+            updateMonitor();
+            setInterval(updateMonitor, 1000);
+            logEvent('Server iniciado correctamente', 'connect');
+        }
+
+        // Agregar cliente
+        function addClient() {
+            const clientId = clientIdCounter++;
+            const client = {
+                id: `client_${clientId}`,
+                name: `Usuario ${clientId}`,
+                connected: true,
+                connectedAt: new Date(),
+                messageCount: 0
+            };
+            clients.push(client);
+            renderClients();
+            updateTargetSelect();
+            logEvent(`Cliente ${client.name} conectado`, 'connect');
+            updateMonitor();
+        }
+
+        // Desconectar cliente
+        function disconnectClient(clientId) {
+            const client = clients.find(c => c.id === clientId);
+            if (client) {
+                client.connected = false;
+                renderClients();
+                logEvent(`Cliente ${client.name} desconectado`, 'disconnect');
+                updateMonitor();
+            }
+        }
+
+        // Reconectar cliente
+        function reconnectClient(clientId) {
+            const client = clients.find(c => c.id === clientId);
+            if (client) {
+                client.connected = true;
+                client.connectedAt = new Date();
+                renderClients();
+                logEvent(`Cliente ${client.name} reconectado`, 'connect');
+                updateMonitor();
+            }
+        }
+
+        // Desconectar todos
+        function disconnectAll() {
+            clients.forEach(c => c.connected = false);
+            renderClients();
+            logEvent('Todos los clientes desconectados', 'disconnect');
+            updateMonitor();
+        }
+
+        // Eliminar cliente
+        function removeClient(clientId) {
+            clients = clients.filter(c => c.id !== clientId);
+            renderClients();
+            updateTargetSelect();
+            logEvent(`Cliente eliminado del sistema`, 'disconnect');
+            updateMonitor();
+        }
+
+        // Enviar notificación
+        function sendNotification() {
+            const type = document.getElementById('notificationType').value;
+            const title = document.getElementById('notificationTitle').value || 'Nueva Notificación';
+            const message = document.getElementById('notificationMessage').value || 'Mensaje de prueba';
+            const targetId = document.getElementById('targetClient').value;
+
+            const notification = {
+                id: `notif_${Date.now()}`,
+                type,
+                title,
+                message,
+                timestamp: new Date().toISOString()
+            };
+
+            const icons = {
+                info: 'ℹ️',
+                success: '✅',
+                warning: '⚠️',
+                error: '❌',
+                message: '💬'
+            };
+
+            if (targetId === 'all') {
+                clients.filter(c => c.connected).forEach(client => {
+                    client.messageCount++;
+                    messageCounter++;
+                });
+                displayNotificationPreview(notification, icons[type]);
+                logEvent(`Notificación broadcast: ${title}`, 'message');
+            } else {
+                const client = clients.find(c => c.id === targetId);
+                if (client && client.connected) {
+                    client.messageCount++;
+                    messageCounter++;
+                    displayNotificationPreview(notification, icons[type]);
+                    logEvent(`Notificación a ${client.name}: ${title}`, 'message');
+                } else {
+                    logEvent(`Error: Cliente ${targetId} no conectado`, 'error');
+                }
+            }
+
+            // Simular latencia
+            const latency = Math.floor(Math.random() * 40) + 10;
+            latencies.push(latency);
+            if (latencies.length > 20) latencies.shift();
+
+            renderClients();
+            updateMonitor();
+        }
+
+        // Display notification preview
+        function displayNotificationPreview(notification, icon) {
+            const preview = document.getElementById('notificationPreview');
+            const notifEl = document.createElement('div');
+            notifEl.className = 'notification-item';
+            notifEl.innerHTML = `
+                <div class="notification-header">
+                    <div class="notification-icon">${icon}</div>
+                    <div class="notification-title">${notification.title}</div>
+                    <div class="notification-time">Ahora</div>
+                </div>
+                <div class="notification-body">${notification.message}</div>
+            `;
+            preview.insertBefore(notifEl, preview.firstChild);
+
+            // Mantener solo las últimas 5
+            while (preview.children.length > 5) {
+                preview.removeChild(preview.lastChild);
+            }
+        }
+
+        // Render clients
+        function renderClients() {
+            const list = document.getElementById('clientList');
+            list.innerHTML = clients.map(client => `
+                <div class="client-card ${client.connected ? '' : 'disconnected'}">
+                    <div class="client-avatar">${client.name.charAt(0)}</div>
+                    <div class="client-info">
+                        <div class="client-name">${client.name}</div>
+                        <div class="client-status">
+                            ${client.connected ? '🟢 Conectado' : '🔴 Desconectado'} • 
+                            ${client.messageCount} mensajes recibidos
+                        </div>
+                    </div>
+                    <div class="client-actions">
+                        ${client.connected 
+                            ? `<button class="btn btn-warning btn-small" onclick="disconnectClient('${client.id}')">⏸️</button>`
+                            : `<button class="btn btn-success btn-small" onclick="reconnectClient('${client.id}')">▶️</button>`
+                        }
+                        <button class="btn btn-danger btn-small" onclick="removeClient('${client.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update target select
+        function updateTargetSelect() {
+            const select = document.getElementById('targetClient');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="all">📢 Todos los clientes</option>' +
+                clients.filter(c => c.connected).map(c => 
+                    `<option value="${c.id}">${c.name}</option>`
+                ).join('');
+            if (currentValue) select.value = currentValue;
+        }
+
+        // Log event
+        function logEvent(message, type) {
+            const log = document.getElementById('eventLog');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-type ${type}">${type.toUpperCase()}</span>
+                <span>${message}</span>
+            `;
+            log.insertBefore(entry, log.firstChild);
+            if (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Update monitor
+        function updateMonitor() {
+            document.getElementById('connectedClients').textContent = clients.filter(c => c.connected).length;
+            document.getElementById('totalMessages').textContent = messageCounter;
+            
+            const avgLat = latencies.length > 0 
+                ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+                : 0;
+            document.getElementById('avgLatency').textContent = avgLat + 'ms';
+
+            const uptime = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = uptime % 60;
+            document.getElementById('uptime').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            const throughput = messageCounter > 0 ? Math.round(messageCounter / (uptime || 1)) : 0;
+            document.getElementById('messagesPerSec').textContent = throughput + '/s';
+        }
+
+        // Copy code
+        function copyCode(elementId) {
+            const code = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✅ Código copiado al portapapeles');
+            });
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

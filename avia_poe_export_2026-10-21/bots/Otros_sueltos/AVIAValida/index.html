@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Validación</title>
+    <style>
+        body { font-family: 'Courier New', monospace; max-width: 1000px; margin: 30px auto; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        h1 { color: #4ec9b0; }
+        button { background: #0e639c; color: white; border: none; padding: 12px 24px; cursor: pointer; margin: 10px 0; }
+        button:hover { background: #1177bb; }
+        .result { background: #252526; padding: 20px; margin: 20px 0; border-left: 4px solid #4ec9b0; }
+        .pass { color: #4ec9b0; }
+        .fail { color: #f48771; }
+        .pending { color: #dcdcaa; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #3e3e42; }
+        th { background: #2d2d30; color: #4ec9b0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 AVIA - Sistema de Validación</h1>
+    
+    <button onclick="runValidation()">Ejecutar Validación de Carta Carlos (1954)</button>
+    <button onclick="loadReferences()">Ver Datos de Referencia</button>
+    
+    <div id="output"></div>
+
+    <script>
+        async function runValidation() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>⏳ Calculando y validando...</p>';
+            
+            const data = {
+                date: "1954-11-21",
+                time: "23:59",
+                timezone: "CET",
+                latitude: 37.9333,
+                longitude: -5.7500,
+                place_name: "Cazalla de la Sierra, Sevilla"
+            };
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/validate/carlos_1954', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                output.innerHTML = `<div class="result fail">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function displayResults(result) {
+            const output = document.getElementById('output');
+            
+            let html = '<div class="result">';
+            html += '<h2>📍 Posiciones Calculadas</h2>';
+            html += '<table><tr><th>Elemento</th><th>Signo</th><th>Grados</th><th>Minutos</th><th>Longitud</th></tr>';
+            
+            for (const [body, pos] of Object.entries(result.positions)) {
+                html += `<tr>
+                    <td>${body.toUpperCase()}</td>
+                    <td>${pos.sign}</td>
+                    <td>${pos.degree}°</td>
+                    <td>${pos.minute}'</td>
+                    <td>${pos.longitude.toFixed(4)}°</td>
+                </tr>`;
+            }
+            html += '</table>';
+            
+            html += '<h2>✔️ Validación</h2>';
+            html += '<table><tr><th>Elemento</th><th>Esperado</th><th>Calculado</th><th>Diferencia</th><th>Estado</th></tr>';
+            
+            for (const v of result.validation.validations) {
+                const statusClass = v.status.includes('PASS') ? 'pass' : v.status.includes('FAIL') ? 'fail' : 'pending';
+                html += `<tr>
+                    <td>${v.element}</td>
+                    <td>${v.expected || 'N/A'}</td>
+                    <td>${v.calculated || 'N/A'}</td>
+                    <td>${v.difference ? v.difference.toFixed(4) + '°' : '-'}</td>
+                    <td class="${statusClass}">${v.status}</td>
+                </tr>`;
+            }
+            html += '</table>';
+            
+            const overallClass = result.validation.overall_status.includes('PASS') ? 'pass' : 'fail';
+            html += `<h2 class="${overallClass}">📊 ${result.validation.overall_status}</h2>`;
+            html += '</div>';
+            
+            output.innerHTML = html;
+        }
+        
+        async function loadReferences() {
+            try {
+                const response = await fetch('http://localhost:8000/api/references');
+                const data = await response.json();
+                document.getElementById('output').innerHTML = 
+                    '<div class="result"><h2>📚 Datos de Referencia</h2><pre>' + 
+                    JSON.stringify(data, null, 2) + 
+                    '</pre></div>';
+            } catch (error) {
+                document.getElementById('output').innerHTML = 
+                    `<div class="result fail">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,3557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMPLIT - Sistema Universal de Accesibilidad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        simplit: {
+                            primary: '#5D5CDE',
+                            red: '#DC2626',
+                            green: '#16A34A', 
+                            yellow: '#CA8A04',
+                            blue: '#2563EB',
+                            purple: '#7C3AED',
+                            gray: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .netflix-hover {
+            transition: all 0.3s ease;
+        }
+        .netflix-hover:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .category-card {
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .category-card:hover::before {
+            left: 100%;
+        }
+        
+        .demo-pulse {
+            animation: demo-pulse 2s infinite;
+        }
+        
+        @keyframes demo-pulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(93, 92, 222, 0.7);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 0 20px rgba(93, 92, 222, 0);
+                transform: scale(1.02);
+            }
+        }
+        
+        .avia-indicator {
+            animation: avia-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes avia-glow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(124, 58, 237, 0.8);
+            }
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(16px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-100 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 min-h-screen">
+    <!-- Detección de modo oscuro -->
+    <script>
+        // ========================================
+        // CAPA 1: CONFIGURACIÓN GLOBAL
+        // ========================================
+        const CapaConfiguracion = (() => {
+            const config = {
+                accesibilidad: {
+                    analisisAutomatico: true,
+                    resaltadoVisual: true,
+                    notificacionesSonoras: false,
+                    altoContraste: false,
+                    modoBarrido: false,
+                    velocidadBarrido: 2000
+                },
+                avia: {
+                    activo: true,
+                    modoPredictivo: true,
+                    sensibilidad: 'alta',
+                    comandosPersonalizados: true
+                },
+                interfaz: {
+                    tema: 'auto',
+                    tamanoFuente: 'normal',
+                    animaciones: true
+                }
+            };
+
+            return {
+                obtener: (ruta) => {
+                    try {
+                        const rutas = ruta.split('.');
+                        let valor = config;
+                        for (const parte of rutas) {
+                            valor = valor[parte];
+                        }
+                        return valor;
+                    } catch (error) {
+                        console.error('[CONFIGURACION] Error al obtener configuración:', ruta, error);
+                        return null;
+                    }
+                },
+                establecer: (ruta, valor) => {
+                    try {
+                        const rutas = ruta.split('.');
+                        let objeto = config;
+                        for (let i = 0; i < rutas.length - 1; i++) {
+                            objeto = objeto[rutas[i]];
+                        }
+                        objeto[rutas[rutas.length - 1]] = valor;
+                        return true;
+                    } catch (error) {
+                        console.error('[CONFIGURACION] Error al establecer configuración:', ruta, valor, error);
+                        return false;
+                    }
+                }
+            };
+        })();
+
+        // ========================================
+        // CAPA 2: UTILIDADES Y LOGGING
+        // ========================================
+        const CapaUtilidades = (() => {
+            const log = (mensaje, tipo = 'info', categoria = 'general') => {
+                try {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const prefijo = `[${timestamp}] [${categoria.toUpperCase()}]`;
+                    
+                    switch (tipo) {
+                        case 'error':
+                            console.error(`${prefijo} ❌ ${mensaje}`);
+                            break;
+                        case 'success':
+                            console.log(`${prefijo} ✅ ${mensaje}`);
+                            break;
+                        case 'warning':
+                            console.warn(`${prefijo} ⚠️ ${mensaje}`);
+                            break;
+                        default:
+                            console.log(`${prefijo} ℹ️ ${mensaje}`);
+                    }
+                } catch (error) {
+                    console.error('[UTILIDADES] Error en logging:', error);
+                }
+            };
+
+            const manejarError = (error, contexto = 'Desconocido') => {
+                try {
+                    log(`Error en ${contexto}: ${error.message}`, 'error', 'sistema');
+                    return false;
+                } catch (e) {
+                    console.error('[UTILIDADES] Error crítico en manejo de errores:', e);
+                    return false;
+                }
+            };
+
+            const crearNotificacion = (mensaje, tipo = 'info', duracion = 3000) => {
+                try {
+                    const colores = {
+                        'info': 'bg-blue-500',
+                        'success': 'bg-green-500',
+                        'warning': 'bg-yellow-500',
+                        'error': 'bg-red-500'
+                    };
+
+                    const notificacion = document.createElement('div');
+                    notificacion.className = `fixed top-4 right-4 z-50 ${colores[tipo] || colores.info} text-white px-4 py-2 rounded-lg shadow-lg transition-all`;
+                    notificacion.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-${tipo === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                            <span class="text-sm">${mensaje}</span>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(notificacion);
+                    
+                    setTimeout(() => {
+                        try {
+                            notificacion.remove();
+                        } catch (e) {
+                            console.error('[UTILIDADES] Error al remover notificación:', e);
+                        }
+                    }, duracion);
+                    
+                    return notificacion;
+                } catch (error) {
+                    manejarError(error, 'Crear Notificación');
+                    return null;
+                }
+            };
+
+            return { log, manejarError, crearNotificacion };
+        })();
+
+        // ========================================
+        // CAPA 3: SISTEMA BASE
+        // ========================================
+        const CapaSistemaBase = (() => {
+            const inicializarTema = () => {
+                try {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.classList.add('dark');
+                    }
+                    
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                        try {
+                            if (event.matches) {
+                                document.documentElement.classList.add('dark');
+                            } else {
+                                document.documentElement.classList.remove('dark');
+                            }
+                        } catch (error) {
+                            CapaUtilidades.manejarError(error, 'Cambio de Tema');
+                        }
+                    });
+                    
+                    CapaUtilidades.log('Sistema de tema inicializado', 'success', 'base');
+                    return true;
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Inicializar Tema');
+                    return false;
+                }
+            };
+
+            return { inicializarTema };
+        })();
+
+        // ========================================
+        // CAPA 4: SISTEMA DE BARRIDO
+        // ========================================
+        const CapaSistemaBarrido = (() => {
+            class SistemaBarrido {
+                constructor() {
+                    this.activo = false;
+                    this.velocidad = 2000;
+                    this.zonasActuales = [];
+                    this.indiceActual = 0;
+                    this.intervalo = null;
+                    this.inicializar();
+                }
+
+                inicializar() {
+                    try {
+                        this.velocidad = CapaConfiguracion.obtener('accesibilidad.velocidadBarrido') || 2000;
+                        this.configurarEventos();
+                        CapaUtilidades.log('Sistema de barrido inicializado', 'success', 'barrido');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Inicializar Sistema Barrido');
+                    }
+                }
+
+                configurarEventos() {
+                    try {
+                        document.addEventListener('keydown', (e) => {
+                            try {
+                                if (e.code === 'Space' && this.activo) {
+                                    e.preventDefault();
+                                    this.activarZonaActual();
+                                }
+                                
+                                if (e.key === 'F1') {
+                                    e.preventDefault();
+                                    this.alternar();
+                                }
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Eventos Barrido');
+                            }
+                        });
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Configurar Eventos Barrido');
+                    }
+                }
+
+                alternar() {
+                    try {
+                        if (this.activo) {
+                            this.desactivar();
+                        } else {
+                            this.activar();
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Alternar Barrido');
+                    }
+                }
+
+                activar() {
+                    try {
+                        this.activo = true;
+                        this.detectarZonas();
+                        this.iniciarBarrido();
+                        this.mostrarIndicador();
+                        CapaUtilidades.log('Modo barrido activado', 'success', 'barrido');
+                        CapaUtilidades.crearNotificacion('🔄 Modo barrido activado - F1 para desactivar', 'success');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Activar Barrido');
+                        this.activo = false;
+                    }
+                }
+
+                desactivar() {
+                    try {
+                        this.activo = false;
+                        if (this.intervalo) {
+                            clearInterval(this.intervalo);
+                            this.intervalo = null;
+                        }
+                        this.limpiarResaltados();
+                        this.ocultarIndicador();
+                        CapaUtilidades.log('Modo barrido desactivado', 'info', 'barrido');
+                        CapaUtilidades.crearNotificacion('⏹️ Modo barrido desactivado', 'info');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Desactivar Barrido');
+                    }
+                }
+
+                detectarZonas() {
+                    try {
+                        const selectores = [
+                            'button:not([disabled])', 'a[href]', '[onclick]', '[role="button"]',
+                            '.category-card', '.demo-btn', '.nav-item', '.action-btn'
+                        ];
+
+                        this.zonasActuales = [];
+                        
+                        selectores.forEach(selector => {
+                            try {
+                                const elementos = document.querySelectorAll(selector);
+                                elementos.forEach(elemento => {
+                                    if (this.esElementoVisible(elemento)) {
+                                        this.zonasActuales.push({
+                                            elemento: elemento,
+                                            descripcion: this.obtenerDescripcion(elemento),
+                                            tipo: this.obtenerTipo(elemento)
+                                        });
+                                    }
+                                });
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, `Detectar Zona: ${selector}`);
+                            }
+                        });
+
+                        this.indiceActual = 0;
+                        CapaUtilidades.log(`Detectadas ${this.zonasActuales.length} zonas`, 'info', 'barrido');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Detectar Zonas');
+                        this.zonasActuales = [];
+                    }
+                }
+
+                esElementoVisible(elemento) {
+                    try {
+                        const rect = elemento.getBoundingClientRect();
+                        const style = window.getComputedStyle(elemento);
+                        return (
+                            rect.width > 0 && rect.height > 0 &&
+                            style.visibility !== 'hidden' && style.display !== 'none' &&
+                            rect.top < window.innerHeight && rect.bottom > 0
+                        );
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Verificar Visibilidad');
+                        return false;
+                    }
+                }
+
+                obtenerDescripcion(elemento) {
+                    try {
+                        return elemento.textContent?.trim() ||
+                               elemento.getAttribute('title') ||
+                               elemento.getAttribute('aria-label') ||
+                               elemento.className ||
+                               elemento.tagName;
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Obtener Descripción');
+                        return 'Elemento';
+                    }
+                }
+
+                obtenerTipo(elemento) {
+                    try {
+                        if (elemento.classList.contains('category-card')) return 'Categoría';
+                        if (elemento.classList.contains('demo-btn')) return 'Demo';
+                        if (elemento.tagName === 'BUTTON') return 'Botón';
+                        if (elemento.tagName === 'A') return 'Enlace';
+                        return 'Elemento';
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Obtener Tipo');
+                        return 'Elemento';
+                    }
+                }
+
+                iniciarBarrido() {
+                    try {
+                        if (this.zonasActuales.length === 0) {
+                            CapaUtilidades.log('No hay zonas para barrer', 'warning', 'barrido');
+                            return;
+                        }
+
+                        this.intervalo = setInterval(() => {
+                            try {
+                                this.siguienteZona();
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Siguiente Zona');
+                            }
+                        }, this.velocidad);
+
+                        this.resaltarZonaActual();
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Iniciar Barrido');
+                    }
+                }
+
+                siguienteZona() {
+                    try {
+                        this.limpiarResaltados();
+                        this.indiceActual = (this.indiceActual + 1) % this.zonasActuales.length;
+                        this.resaltarZonaActual();
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Siguiente Zona');
+                    }
+                }
+
+                resaltarZonaActual() {
+                    try {
+                        if (this.zonasActuales.length === 0) return;
+
+                        const zonaActual = this.zonasActuales[this.indiceActual];
+                        const elemento = zonaActual.elemento;
+
+                        elemento.classList.add('barrido-activo');
+                        elemento.style.outline = '4px solid #FFD700';
+                        elemento.style.outlineOffset = '2px';
+                        elemento.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
+                        elemento.style.zIndex = '9999';
+
+                        elemento.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Resaltar Zona');
+                    }
+                }
+
+                limpiarResaltados() {
+                    try {
+                        document.querySelectorAll('.barrido-activo').forEach(elemento => {
+                            try {
+                                elemento.classList.remove('barrido-activo');
+                                elemento.style.outline = '';
+                                elemento.style.outlineOffset = '';
+                                elemento.style.boxShadow = '';
+                                elemento.style.zIndex = '';
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Limpiar Elemento Individual');
+                            }
+                        });
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Limpiar Resaltados');
+                    }
+                }
+
+                activarZonaActual() {
+                    try {
+                        if (this.zonasActuales.length === 0) return;
+
+                        const zonaActual = this.zonasActuales[this.indiceActual];
+                        const elemento = zonaActual.elemento;
+
+                        elemento.style.backgroundColor = 'rgba(0, 255, 0, 0.5)';
+                        setTimeout(() => {
+                            try {
+                                elemento.style.backgroundColor = '';
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Restaurar Color Zona');
+                            }
+                        }, 200);
+
+                        elemento.click();
+                        CapaUtilidades.log(`Zona activada: ${zonaActual.descripcion}`, 'success', 'barrido');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Activar Zona Actual');
+                    }
+                }
+
+                mostrarIndicador() {
+                    try {
+                        const indicador = document.createElement('div');
+                        indicador.id = 'indicador-barrido-global';
+                        indicador.className = 'fixed top-4 left-4 z-50 bg-yellow-500 text-black p-3 rounded-lg shadow-xl border-2 border-yellow-600';
+                        indicador.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                <div>
+                                    <div class="font-bold text-sm">🔄 MODO BARRIDO ACTIVO</div>
+                                    <div class="text-xs">F1: Desactivar | ESPACIO: Seleccionar</div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(indicador);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Mostrar Indicador Barrido');
+                    }
+                }
+
+                ocultarIndicador() {
+                    try {
+                        const indicador = document.getElementById('indicador-barrido-global');
+                        if (indicador) indicador.remove();
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Ocultar Indicador Barrido');
+                    }
+                }
+            }
+
+            let instanciaBarrido = null;
+
+            const crear = () => {
+                try {
+                    if (!instanciaBarrido) {
+                        instanciaBarrido = new SistemaBarrido();
+                    }
+                    return instanciaBarrido;
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Crear Sistema Barrido');
+                    return null;
+                }
+            };
+
+            return { crear, obtenerInstancia: () => instanciaBarrido };
+        })();
+
+        // ========================================
+        // CAPA 5: SISTEMA AVIA
+        // ========================================
+        const CapaSistemaAVIA = (() => {
+            class AVIAPredictivo {
+                constructor() {
+                    this.activo = true;
+                    this.contextoActual = 'menu-principal';
+                    this.historialAcciones = [];
+                    this.elementoObservado = null;
+                    this.menuContextualActivo = null;
+                    this.configuracion = {
+                        sensibilidad: 'alta',
+                        tiempoEspera: 1200,
+                        mostrarSugerencias: true
+                    };
+                    this.inicializar();
+                }
+
+                inicializar() {
+                    try {
+                        this.configurarEventos();
+                        this.iniciarAnalisisContexto();
+                        CapaUtilidades.log('AVIA Predictivo inicializado', 'success', 'avia');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Inicializar AVIA');
+                    }
+                }
+
+                configurarEventos() {
+                    try {
+                        document.addEventListener('mousemove', (e) => {
+                            try {
+                                this.trackearMovimiento(e);
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Trackear Movimiento');
+                            }
+                        });
+                        
+                        document.addEventListener('click', (e) => {
+                            try {
+                                this.registrarAccion(e);
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Registrar Acción');
+                            }
+                        });
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Configurar Eventos AVIA');
+                    }
+                }
+
+                iniciarAnalisisContexto() {
+                    try {
+                        setInterval(() => {
+                            try {
+                                this.analizarContexto();
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Análisis Contexto');
+                            }
+                        }, 1000);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Iniciar Análisis Contexto');
+                    }
+                }
+
+                trackearMovimiento(evento) {
+                    try {
+                        const elemento = document.elementFromPoint(evento.clientX, evento.clientY);
+                        
+                        if (elemento && elemento !== this.elementoObservado) {
+                            this.elementoObservado = elemento;
+                            this.analizarElemento(elemento, evento);
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Trackear Movimiento AVIA');
+                    }
+                }
+
+                analizarElemento(elemento, evento) {
+                    try {
+                        if (!this.esElementoInteresante(elemento)) return;
+                        
+                        const predicciones = this.generarPredicciones(elemento);
+                        
+                        if (predicciones.length > 0) {
+                            clearTimeout(this.timeoutSugerencias);
+                            this.timeoutSugerencias = setTimeout(() => {
+                                try {
+                                    this.mostrarMenuContextual(elemento, predicciones, evento);
+                                } catch (error) {
+                                    CapaUtilidades.manejarError(error, 'Mostrar Menu Contextual');
+                                }
+                            }, this.configuracion.tiempoEspera);
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Analizar Elemento AVIA');
+                    }
+                }
+
+                esElementoInteresante(elemento) {
+                    try {
+                        const selectoresInteresantes = [
+                            '.category-card', '.demo-btn', '.nav-item', '.action-btn',
+                            'button', 'a[href]', '[onclick]', '[role="button"]'
+                        ];
+                        
+                        return selectoresInteresantes.some(selector => 
+                            elemento.matches && elemento.matches(selector)
+                        );
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Verificar Elemento Interesante');
+                        return false;
+                    }
+                }
+
+                generarPredicciones(elemento) {
+                    try {
+                        const predicciones = [];
+                        
+                        if (elemento.classList.contains('category-card')) {
+                            const categoria = this.detectarCategoria(elemento);
+                            predicciones.push(
+                                { accion: 'abrir-categoria', texto: `🔍 Explorar ${categoria}`, probabilidad: 0.9 },
+                                { accion: 'info-categoria', texto: `ℹ️ Información sobre ${categoria}`, probabilidad: 0.7 },
+                                { accion: 'demo-categoria', texto: `🎯 Demo de ${categoria}`, probabilidad: 0.8 }
+                            );
+                        } else if (elemento.classList.contains('demo-btn')) {
+                            predicciones.push(
+                                { accion: 'iniciar-demo', texto: '🎮 Iniciar Demo Interactiva', probabilidad: 0.95 },
+                                { accion: 'info-demo', texto: '❓ ¿Qué incluye la demo?', probabilidad: 0.8 }
+                            );
+                        } else if (elemento.classList.contains('avia-btn')) {
+                            predicciones.push(
+                                { accion: 'activar-avia', texto: '🎤 Activar comandos de voz', probabilidad: 0.9 },
+                                { accion: 'configurar-avia', texto: '🤖 Configurar AVIA', probabilidad: 0.7 }
+                            );
+                        }
+                        
+                        return this.filtrarPredicciones(predicciones);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Generar Predicciones');
+                        return [];
+                    }
+                }
+
+                detectarCategoria(elemento) {
+                    try {
+                        const texto = elemento.textContent.toLowerCase();
+                        if (texto.includes('lector')) return 'Lector de Pantalla';
+                        if (texto.includes('navegacion')) return 'Navegación';
+                        if (texto.includes('formularios')) return 'Formularios';
+                        if (texto.includes('multimedia')) return 'Multimedia';
+                        if (texto.includes('reportes')) return 'Reportes';
+                        return 'esta categoría';
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Detectar Categoría');
+                        return 'esta categoría';
+                    }
+                }
+
+                filtrarPredicciones(predicciones) {
+                    try {
+                        const unicas = new Map();
+                        predicciones.forEach(pred => {
+                            if (!unicas.has(pred.texto) || unicas.get(pred.texto).probabilidad < pred.probabilidad) {
+                                unicas.set(pred.texto, pred);
+                            }
+                        });
+                        
+                        return Array.from(unicas.values())
+                            .sort((a, b) => b.probabilidad - a.probabilidad)
+                            .slice(0, 5);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Filtrar Predicciones');
+                        return [];
+                    }
+                }
+
+                mostrarMenuContextual(elemento, predicciones, evento) {
+                    try {
+                        if (!this.configuracion.mostrarSugerencias || predicciones.length === 0) return;
+                        
+                        this.cerrarMenuContextual();
+                        
+                        const menu = this.crearMenuContextual(predicciones);
+                        this.posicionarMenu(menu, evento);
+                        
+                        document.body.appendChild(menu);
+                        this.menuContextualActivo = menu;
+                        
+                        setTimeout(() => {
+                            try {
+                                if (this.menuContextualActivo === menu) {
+                                    this.cerrarMenuContextual();
+                                }
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Auto-cerrar Menu');
+                            }
+                        }, 6000);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Mostrar Menu Contextual AVIA');
+                    }
+                }
+
+                crearMenuContextual(predicciones) {
+                    try {
+                        const menu = document.createElement('div');
+                        menu.className = 'avia-menu-contextual fixed z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border-2 border-purple-500 p-4 max-w-sm glass-effect';
+                        
+                        let html = `
+                            <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-purple-200 dark:border-purple-700">
+                                <div class="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-robot text-white text-xs"></i>
+                                </div>
+                                <h4 class="font-bold text-purple-700 dark:text-purple-300 text-sm">AVIA Sugiere</h4>
+                                <button class="ml-auto w-5 h-5 text-gray-400 hover:text-gray-600" onclick="this.closest('.avia-menu-contextual').remove()">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                            <div class="space-y-1">
+                        `;
+                        
+                        predicciones.forEach((pred) => {
+                            const probabilidadColor = pred.probabilidad > 0.8 ? 'text-green-600' : 
+                                                   pred.probabilidad > 0.6 ? 'text-yellow-600' : 'text-gray-600';
+                            
+                            html += `
+                                <button class="avia-opcion w-full text-left p-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all" 
+                                        data-accion="${pred.accion}">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">${pred.texto}</span>
+                                        <span class="text-xs ${probabilidadColor}">${Math.round(pred.probabilidad * 100)}%</span>
+                                    </div>
+                                </button>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                        menu.innerHTML = html;
+                        
+                        menu.querySelectorAll('.avia-opcion').forEach(opcion => {
+                            opcion.addEventListener('click', (e) => {
+                                try {
+                                    const accion = e.currentTarget.dataset.accion;
+                                    this.ejecutarPrediccion(accion);
+                                    this.cerrarMenuContextual();
+                                } catch (error) {
+                                    CapaUtilidades.manejarError(error, 'Click Opción AVIA');
+                                }
+                            });
+                        });
+                        
+                        return menu;
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Crear Menu Contextual');
+                        return null;
+                    }
+                }
+
+                posicionarMenu(menu, evento) {
+                    try {
+                        const menuWidth = 300;
+                        const menuHeight = 200;
+                        
+                        let left = evento.clientX + 10;
+                        let top = evento.clientY + 10;
+                        
+                        if (left + menuWidth > window.innerWidth) {
+                            left = evento.clientX - menuWidth - 10;
+                        }
+                        
+                        if (top + menuHeight > window.innerHeight) {
+                            top = evento.clientY - menuHeight - 10;
+                        }
+                        
+                        menu.style.left = `${Math.max(10, left)}px`;
+                        menu.style.top = `${Math.max(10, top)}px`;
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Posicionar Menu AVIA');
+                    }
+                }
+
+                ejecutarPrediccion(accion) {
+                    try {
+                        switch (accion) {
+                            case 'abrir-categoria':
+                                this.mostrarNotificacion('📂 Abriendo categoría...');
+                                break;
+                            case 'iniciar-demo':
+                                this.mostrarNotificacion('🎮 Iniciando Demo Interactiva...');
+                                document.getElementById('demo-btn')?.click();
+                                break;
+                            case 'activar-avia':
+                                this.mostrarNotificacion('🎤 Activando AVIA...');
+                                break;
+                            default:
+                                this.mostrarNotificacion(`✨ Ejecutando: ${accion}`);
+                        }
+                        
+                        CapaUtilidades.log(`AVIA predicción ejecutada: ${accion}`, 'success', 'avia');
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Ejecutar Predicción AVIA');
+                    }
+                }
+
+                mostrarNotificacion(mensaje) {
+                    try {
+                        return CapaUtilidades.crearNotificacion(mensaje, 'info', 3000);
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Mostrar Notificación AVIA');
+                    }
+                }
+
+                registrarAccion(evento) {
+                    try {
+                        const accion = {
+                            timestamp: Date.now(),
+                            elemento: evento.target,
+                            contexto: this.contextoActual
+                        };
+                        
+                        this.historialAcciones.push(accion);
+                        if (this.historialAcciones.length > 20) {
+                            this.historialAcciones = this.historialAcciones.slice(-20);
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Registrar Acción AVIA');
+                    }
+                }
+
+                analizarContexto() {
+                    try {
+                        if (document.querySelector('.demo-modal:not(.hidden)')) {
+                            this.contextoActual = 'demo-activa';
+                        } else if (document.querySelector('.config-modal:not(.hidden)')) {
+                            this.contextoActual = 'configuracion';
+                        } else {
+                            this.contextoActual = 'menu-principal';
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Analizar Contexto AVIA');
+                    }
+                }
+
+                cerrarMenuContextual() {
+                    try {
+                        if (this.menuContextualActivo) {
+                            this.menuContextualActivo.remove();
+                            this.menuContextualActivo = null;
+                        }
+                    } catch (error) {
+                        CapaUtilidades.manejarError(error, 'Cerrar Menu Contextual');
+                    }
+                }
+            }
+
+            let instanciaAVIA = null;
+
+            const crear = () => {
+                try {
+                    if (!instanciaAVIA) {
+                        instanciaAVIA = new AVIAPredictivo();
+                    }
+                    return instanciaAVIA;
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Crear Sistema AVIA');
+                    return null;
+                }
+            };
+
+            return { crear, obtenerInstancia: () => instanciaAVIA };
+        })();
+
+        // ========================================
+        // CAPA 6: SISTEMA DE INTERFAZ
+        // ========================================
+        const CapaSistemaInterfaz = (() => {
+            const configurarModal = (modalId, btnAbrir, btnCerrar) => {
+                try {
+                    const modal = document.getElementById(modalId);
+                    const btnAbrirEl = document.getElementById(btnAbrir);
+                    const btnCerrarEl = document.getElementById(btnCerrar);
+
+                    if (!modal || !btnAbrirEl || !btnCerrarEl) {
+                        CapaUtilidades.log(`Elementos del modal ${modalId} no encontrados`, 'warning', 'interfaz');
+                        return false;
+                    }
+
+                    btnAbrirEl.addEventListener('click', () => {
+                        try {
+                            modal.classList.remove('hidden');
+                            CapaUtilidades.log(`Modal ${modalId} abierto`, 'info', 'interfaz');
+                        } catch (error) {
+                            CapaUtilidades.manejarError(error, `Abrir Modal ${modalId}`);
+                        }
+                    });
+
+                    btnCerrarEl.addEventListener('click', () => {
+                        try {
+                            modal.classList.add('hidden');
+                            CapaUtilidades.log(`Modal ${modalId} cerrado`, 'info', 'interfaz');
+                        } catch (error) {
+                            CapaUtilidades.manejarError(error, `Cerrar Modal ${modalId}`);
+                        }
+                    });
+
+                    modal.addEventListener('click', (e) => {
+                        try {
+                            if (e.target === e.currentTarget) {
+                                e.currentTarget.classList.add('hidden');
+                            }
+                        } catch (error) {
+                            CapaUtilidades.manejarError(error, `Click fuera Modal ${modalId}`);
+                        }
+                    });
+
+                    return true;
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, `Configurar Modal ${modalId}`);
+                    return false;
+                }
+            };
+
+            return { configurarModal };
+        })();
+
+        // ========================================
+        // CAPA 7: SISTEMA DE EVENTOS
+        // ========================================
+        const CapaSistemaEventos = (() => {
+            const configurarEventosCategorias = () => {
+                try {
+                    document.querySelectorAll('.category-card').forEach(card => {
+                        card.addEventListener('click', (e) => {
+                            try {
+                                const categoria = e.currentTarget.dataset.categoria;
+                                CapaUtilidades.crearNotificacion(`Cargando categoría: ${categoria}`, 'success');
+                                CapaUtilidades.log(`Categoría seleccionada: ${categoria}`, 'info', 'navegacion');
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Click Categoría');
+                            }
+                        });
+                    });
+                    
+                    CapaUtilidades.log('Eventos de categorías configurados', 'success', 'eventos');
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Configurar Eventos Categorías');
+                }
+            };
+
+            const configurarEventosHerramientas = () => {
+                try {
+                    document.querySelectorAll('.action-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            try {
+                                const herramienta = e.currentTarget.querySelector('h3')?.textContent || 'Herramienta';
+                                
+                                if (herramienta.includes('AVIA')) {
+                                    const aviaBtn = e.currentTarget;
+                                    aviaBtn.style.transform = 'scale(1.1)';
+                                    setTimeout(() => {
+                                        try {
+                                            aviaBtn.style.transform = 'scale(1)';
+                                        } catch (error) {
+                                            CapaUtilidades.manejarError(error, 'Restaurar Escala AVIA');
+                                        }
+                                    }, 200);
+                                    
+                                    const instanciaAVIA = CapaSistemaAVIA.obtenerInstancia();
+                                    if (instanciaAVIA) {
+                                        instanciaAVIA.mostrarNotificacion('🎤 AVIA Sistema activado - Di "AVIA" + comando');
+                                    }
+                                } else {
+                                    CapaUtilidades.crearNotificacion(`🛠️ Abriendo: ${herramienta}`, 'info');
+                                }
+                                
+                                CapaUtilidades.log(`Herramienta activada: ${herramienta}`, 'info', 'herramientas');
+                            } catch (error) {
+                                CapaUtilidades.manejarError(error, 'Click Herramienta');
+                            }
+                        });
+                    });
+                    
+                    CapaUtilidades.log('Eventos de herramientas configurados', 'success', 'eventos');
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Configurar Eventos Herramientas');
+                }
+            };
+
+            return { configurarEventosCategorias, configurarEventosHerramientas };
+        })();
+
+        // ========================================
+        // CAPA 8: INICIALIZACIÓN GENERAL
+        // ========================================
+        const CapaInicializacion = (() => {
+            let sistemaBarrido = null;
+            let sistemaAVIA = null;
+
+            const inicializar = () => {
+                try {
+                    CapaUtilidades.log('Iniciando SIMPLIT...', 'info', 'sistema');
+
+                    // Inicializar sistemas base
+                    CapaSistemaBase.inicializarTema();
+
+                    // Inicializar sistemas principales
+                    sistemaBarrido = CapaSistemaBarrido.crear();
+                    sistemaAVIA = CapaSistemaAVIA.crear();
+
+                    // Configurar interfaz
+                    CapaSistemaInterfaz.configurarModal('modal-demo', 'demo-btn', 'cerrar-demo');
+
+                    // Configurar eventos
+                    CapaSistemaEventos.configurarEventosCategorias();
+                    CapaSistemaEventos.configurarEventosHerramientas();
+
+                    // Exponer referencias globales
+                    window.sistemaBarrido = sistemaBarrido;
+                    window.aviaPredictivo = sistemaAVIA;
+
+                    CapaUtilidades.log('SIMPLIT inicializado correctamente', 'success', 'sistema');
+                    CapaUtilidades.crearNotificacion('🚀 SIMPLIT iniciado correctamente', 'success');
+
+                } catch (error) {
+                    CapaUtilidades.manejarError(error, 'Inicialización General');
+                    CapaUtilidades.crearNotificacion('❌ Error al inicializar SIMPLIT', 'error');
+                }
+            };
+
+            return { inicializar, obtenerSistemas: () => ({ sistemaBarrido, sistemaAVIA }) };
+        })();
+
+        // ========================================
+        // PUNTO DE ENTRADA PRINCIPAL
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                CapaInicializacion.inicializar();
+            } catch (error) {
+                console.error('Error crítico en inicialización:', error);
+                CapaUtilidades.crearNotificacion('❌ Error crítico al inicializar', 'error');
+            }
+        });
+
+        // Función legacy para compatibilidad
+        function agregarLogError(mensaje, tipo = 'info', categoria = 'general') {
+            CapaUtilidades.log(mensaje, tipo, categoria);
+        }
+    </script>
+
+    <style>
+        /* Variables CSS personalizadas para accesibilidad */
+        :root {
+            --primary-color: #5D5CDE;
+            --secondary-color: #4338CA;
+            --success-color: #10B981;
+            --warning-color: #F59E0B;
+            --error-color: #EF4444;
+            --text-size-base: 16px;
+            --line-height-base: 1.6;
+            --focus-ring: 0 0 0 3px rgba(93, 92, 222, 0.5);
+            --min-target-size: 44px;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        }
+        
+        .accessibility-font {
+            font-family: 'Arial', sans-serif;
+            line-height: var(--line-height-base);
+            font-size: var(--text-size-base);
+        }
+        
+        /* Estados de accesibilidad */
+        .high-contrast {
+            filter: contrast(150%) brightness(110%);
+        }
+        
+        .large-text {
+            font-size: 1.25em;
+        }
+        
+        .large-targets button,
+        .large-targets a,
+        .large-targets input,
+        .large-targets select {
+            min-height: var(--min-target-size);
+            min-width: var(--min-target-size);
+        }
+        
+        /* Animaciones accesibles */
+        .voice-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Preferencia de movimiento reducido */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* Estilos de enfoque mejorados */
+        .focus-enhanced:focus,
+        button:focus,
+        a:focus,
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+            border-radius: 4px;
+        }
+        
+        /* Modales accesibles */
+        .modal {
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        /* Efectos hover accesibles */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover:not(:focus) {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        /* Alertas visuales para usuarios con discapacidad auditiva */
+        .visual-alerts .notification {
+            border-left: 4px solid var(--primary-color);
+            animation: flashBorder 1s ease-in-out 3;
+        }
+        
+        @keyframes flashBorder {
+            0%, 100% { border-left-color: var(--primary-color); }
+            50% { border-left-color: var(--warning-color); }
+        }
+        
+        /* Indicadores de estado mejorados */
+        .status-indicator {
+            position: relative;
+        }
+        
+        .status-indicator::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-color);
+        }
+        
+        /* Navegación por teclado mejorada */
+        .keyboard-navigation {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* Modo de alto contraste específico */
+        .dark.high-contrast {
+            filter: contrast(200%) brightness(120%);
+        }
+        
+        /* Espaciado mejorado para legibilidad */
+        .readable-spacing {
+            letter-spacing: 0.02em;
+            word-spacing: 0.05em;
+        }
+        
+        /* Iconos más grandes para mejor visibilidad */
+        .icon-enhanced {
+            font-size: 1.2em;
+            vertical-align: middle;
+        }
+        
+        /* Skip links */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--primary-color);
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            z-index: 1000;
+        }
+        
+        .skip-link:focus {
+            top: 6px;
+        }
+
+        .netflix-hover {
+            transition: all 0.3s ease;
+        }
+        .netflix-hover:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .category-card {
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .category-card:hover::before {
+            left: 100%;
+        }
+        
+        .demo-pulse {
+            animation: demo-pulse 2s infinite;
+        }
+        
+        @keyframes demo-pulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 0 rgba(93, 92, 222, 0.7);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 0 20px rgba(93, 92, 222, 0);
+                transform: scale(1.02);
+            }
+        }
+        
+        .avia-indicator {
+            animation: avia-glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes avia-glow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(124, 58, 237, 0.8);
+            }
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(16px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+
+    <!-- Header Principal -->
+    <header class="bg-white dark:bg-gray-800 shadow-xl relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10"></div>
+        <div class="relative max-w-7xl mx-auto px-6 py-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 bg-gradient-to-br from-simplit-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-universal-access text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-simplit-primary to-purple-600 bg-clip-text text-transparent">
+                            SIMPLIT
+                        </h1>
+                        <p class="text-gray-600 dark:text-gray-300 text-lg">
+                            Sistema Universal de Accesibilidad Web
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Indicadores de Estado -->
+                <div class="flex items-center space-x-4">
+                    <!-- Indicador AVIA -->
+                    <div class="flex items-center space-x-2 bg-purple-100 dark:bg-purple-900/30 px-4 py-2 rounded-full">
+                        <div class="w-3 h-3 bg-purple-500 rounded-full avia-indicator"></div>
+                        <span class="text-sm font-medium text-purple-700 dark:text-purple-300">AVIA Activo</span>
+                    </div>
+                    
+                    <!-- Modo Barrido -->
+                    <button onclick="sistemaBarrido.toggleModoBarrido()" class="flex items-center space-x-2 bg-yellow-100 dark:bg-yellow-900/30 px-4 py-2 rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-all">
+                        <i class="fas fa-keyboard text-yellow-600"></i>
+                        <span class="text-sm font-medium text-yellow-700 dark:text-yellow-300">F1: Barrido</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        
+        <!-- Botón Demo Interactiva Destacado -->
+        <div class="text-center mb-16">
+            <div class="relative inline-block">
+                <button id="demo-btn" class="demo-btn demo-pulse bg-gradient-to-r from-simplit-primary to-purple-600 text-white px-12 py-6 rounded-2xl text-xl font-bold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105">
+                    <div class="flex items-center space-x-4">
+                        <i class="fas fa-play-circle text-3xl"></i>
+                        <div class="text-left">
+                            <div class="text-2xl font-black">🎮 DEMO INTERACTIVA</div>
+                            <div class="text-sm opacity-90">Experimenta SIMPLIT en acción</div>
+                        </div>
+                    </div>
+                </button>
+                
+                <!-- Indicador de funciones -->
+                <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce">
+                    ¡NUEVO!
+                </div>
+            </div>
+            
+            <p class="text-gray-600 dark:text-gray-400 mt-4 text-lg">
+                Descubre todas las funcionalidades con ejemplos reales y prácticos
+            </p>
+        </div>
+
+        <!-- Reorganización Ontológica - Categorías Principales -->
+        <div class="mb-16">
+            <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">
+                🔍 **Categorías de Análisis**
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- 1. ANÁLISIS DE CONTENIDO -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-red-500 to-red-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="contenido">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-file-alt text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Análisis de Contenido</h3>
+                            <p class="text-red-100">Estructura y legibilidad</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-red-200"></i>
+                            <span>Encabezados y jerarquía</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-red-200"></i>
+                            <span>Párrafos y legibilidad</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-red-200"></i>
+                            <span>Listas y estructuras</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. NAVEGACIÓN Y ENLACES -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-blue-500 to-blue-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="navegacion">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-compass text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Navegación y Enlaces</h3>
+                            <p class="text-blue-100">Usabilidad y flujo</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-blue-200"></i>
+                            <span>Enlaces descriptivos</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-blue-200"></i>
+                            <span>Navegación por teclado</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-blue-200"></i>
+                            <span>Breadcrumbs y menús</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. FORMULARIOS E INTERACCIÓN -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-green-500 to-green-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="formularios">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-wpforms text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Formularios e Interacción</h3>
+                            <p class="text-green-100">Campos y validación</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-green-200"></i>
+                            <span>Etiquetas y campos</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-green-200"></i>
+                            <span>Validación accesible</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-green-200"></i>
+                            <span>Mensajes de error</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. MULTIMEDIA Y VISUAL -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-purple-500 to-purple-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="multimedia">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-photo-video text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Multimedia y Visual</h3>
+                            <p class="text-purple-100">Imágenes y medios</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-purple-200"></i>
+                            <span>Texto alternativo</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-purple-200"></i>
+                            <span>Contraste de colores</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-purple-200"></i>
+                            <span>Videos y audio</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. LECTOR DE PANTALLA -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-orange-500 to-orange-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="lector">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-assistive-listening-systems text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Lector de Pantalla</h3>
+                            <p class="text-orange-100">Tecnologías asistivas</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-orange-200"></i>
+                            <span>Compatibilidad ARIA</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-orange-200"></i>
+                            <span>Orden de lectura</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-orange-200"></i>
+                            <span>Landmarks y roles</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. REPORTES Y MÉTRICAS -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-teal-500 to-teal-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="reportes">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-chart-bar text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Reportes y Métricas</h3>
+                            <p class="text-teal-100">Análisis y estadísticas</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-teal-200"></i>
+                            <span>Puntuación WCAG</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-teal-200"></i>
+                            <span>Tendencias y mejoras</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-teal-200"></i>
+                            <span>Exportación de datos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. DISPOSITIVOS MÓVILES -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-pink-500 to-pink-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="moviles">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-mobile-alt text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Dispositivos Móviles</h3>
+                            <p class="text-pink-100">Responsive y táctil</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-pink-200"></i>
+                            <span>Tamaños de objetivo</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-pink-200"></i>
+                            <span>Gestos y navegación</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-pink-200"></i>
+                            <span>Orientación adaptable</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. DISCAPACIDADES COGNITIVAS -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-cyan-500 to-cyan-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="cognitivas">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-brain text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Discapacidades Cognitivas</h3>
+                            <p class="text-cyan-100">Comprensión y memoria</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-cyan-200"></i>
+                            <span>Lenguaje claro</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-cyan-200"></i>
+                            <span>Tiempos de sesión</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-cyan-200"></i>
+                            <span>Navegación simple</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 9. EVENTOS Y ANIMACIONES -->
+                <div class="category-card netflix-hover bg-gradient-to-br from-amber-500 to-amber-600 text-white p-8 rounded-2xl shadow-xl cursor-pointer" data-categoria="animaciones">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-play text-3xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold">Eventos y Animaciones</h3>
+                            <p class="text-amber-100">Vestibular y epilepsia</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-amber-200"></i>
+                            <span>Autoplay control</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-amber-200"></i>
+                            <span>Animaciones seguras</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-check text-amber-200"></i>
+                            <span>Reduced motion</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Herramientas Especializadas -->
+        <div class="mb-16">
+            <h2 class="text-3xl font-bold text-center text-gray-800 dark:text-white mb-12">
+                🛠️ **Herramientas Especializadas**
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                
+                <!-- AVIA Sistema -->
+                <div class="action-btn bg-gradient-to-br from-simplit-primary to-purple-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer avia-btn">
+                    <div class="text-center">
+                        <i class="fas fa-robot text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">AVIA Sistema</h3>
+                        <p class="text-sm opacity-90">Asistente inteligente por voz</p>
+                    </div>
+                </div>
+
+                <!-- Análisis Automático -->
+                <div class="action-btn bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-magic text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Análisis Automático</h3>
+                        <p class="text-sm opacity-90">Evaluación completa automática</p>
+                    </div>
+                </div>
+
+                <!-- Configuración -->
+                <div class="action-btn bg-gradient-to-br from-gray-500 to-gray-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-cogs text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Configuración</h3>
+                        <p class="text-sm opacity-90">Personalizar herramientas</p>
+                    </div>
+                </div>
+
+                <!-- Ayuda y Tutorial -->
+                <div class="action-btn bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-graduation-cap text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Ayuda y Tutorial</h3>
+                        <p class="text-sm opacity-90">Aprende a usar SIMPLIT</p>
+                    </div>
+                </div>
+
+                <!-- Simulador de Discapacidades -->
+                <div class="action-btn bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-eye-slash text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Simulador Discapacidades</h3>
+                        <p class="text-sm opacity-90">Experimenta diferentes perspectivas</p>
+                    </div>
+                </div>
+
+                <!-- Inspector de Código -->
+                <div class="action-btn bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-code text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Inspector de Código</h3>
+                        <p class="text-sm opacity-90">Análisis HTML/CSS/JS en vivo</p>
+                    </div>
+                </div>
+
+                <!-- Verificador WCAG -->
+                <div class="action-btn bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-shield-alt text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Verificador WCAG</h3>
+                        <p class="text-sm opacity-90">Compliance automático 2.1/2.2</p>
+                    </div>
+                </div>
+
+                <!-- Generador de Plantillas -->
+                <div class="action-btn bg-gradient-to-br from-cyan-500 to-cyan-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-layer-group text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Generador Plantillas</h3>
+                        <p class="text-sm opacity-90">Código accesible automático</p>
+                    </div>
+                </div>
+
+                <!-- Monitor en Tiempo Real -->
+                <div class="action-btn bg-gradient-to-br from-violet-500 to-violet-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-heartbeat text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Monitor Tiempo Real</h3>
+                        <p class="text-sm opacity-90">Supervisión continua 24/7</p>
+                    </div>
+                </div>
+
+                <!-- API y Webhooks -->
+                <div class="action-btn bg-gradient-to-br from-slate-500 to-slate-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-plug text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">API y Webhooks</h3>
+                        <p class="text-sm opacity-90">Integración con sistemas externos</p>
+                    </div>
+                </div>
+
+                <!-- Centro de Recursos -->
+                <div class="action-btn bg-gradient-to-br from-lime-500 to-lime-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                    <div class="text-center">
+                        <i class="fas fa-book-open text-4xl mb-4"></i>
+                        <h3 class="text-xl font-bold mb-2">Centro de Recursos</h3>
+                        <p class="text-sm opacity-90">Guías, plantillas y mejores prácticas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas Globales -->
+        <div class="bg-gradient-to-r from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-2xl p-8 shadow-xl">
+            <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-8">
+                📊 **Estadísticas del Sistema**
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+                <div>
+                    <div class="text-3xl font-bold text-simplit-primary mb-2">15.2K</div>
+                    <div class="text-gray-600 dark:text-gray-400">Páginas Analizadas</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-500 mb-2">94.7%</div>
+                    <div class="text-gray-600 dark:text-gray-400">Mejora Promedio</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-blue-500 mb-2">2.1M</div>
+                    <div class="text-gray-600 dark:text-gray-400">Errores Corregidos</div>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-purple-500 mb-2">456h</div>
+                    <div class="text-gray-600 dark:text-gray-400">Tiempo Ahorrado</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- CAPA 1: MODAL PRINCIPAL DE DEMO INTERACTIVA -->
+    <div id="modal-demo" class="demo-modal fixed inset-0 bg-black bg-opacity-80 backdrop-blur-md hidden z-50 flex items-center justify-center" 
+         role="dialog" 
+         aria-modal="true" 
+         aria-labelledby="modal-title" 
+         aria-describedby="modal-description">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-7xl w-full mx-4 max-h-[95vh] overflow-hidden">
+            
+            <!-- SUBCAPA 1.1: Header Avanzado del Modal -->
+            <div class="bg-gradient-to-r from-simplit-primary via-purple-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+                            <i class="fas fa-play-circle text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 id="modal-title" class="text-3xl font-bold">🎮 Demo Interactiva SIMPLIT</h3>
+                            <p id="modal-description" class="text-blue-100 text-sm">Sistema completo de análisis de accesibilidad en vivo</p>
+                            <div class="flex items-center space-x-4 mt-2 text-xs">
+                                <span class="bg-white/20 px-2 py-1 rounded">7 Demos Disponibles</span>
+                                <span class="bg-white/20 px-2 py-1 rounded">WCAG 2.1 AA</span>
+                                <span class="bg-white/20 px-2 py-1 rounded">Tiempo Real</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controles del modal -->
+                    <div class="flex items-center space-x-3">
+                        <button onclick="toggleModalSize()" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all" title="Cambiar tamaño">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
+                        <button id="cerrar-demo" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all" title="Cerrar demo">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Barra de progreso de demo -->
+                <div class="mt-4">
+                    <div class="flex justify-between text-xs mb-2">
+                        <span>Progreso de Demo</span>
+                        <span id="demo-progress-text">0% Completado</span>
+                    </div>
+                    <div class="w-full bg-white/20 rounded-full h-2">
+                        <div id="demo-progress-bar" class="bg-white h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBCAPA 1.2: Contenido Principal con Navegación -->
+            <div class="flex h-[calc(95vh-180px)]">
+                
+                <!-- Panel Lateral de Navegación -->
+                <div class="w-80 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+                    
+                    <!-- Pestañas de categorías -->
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex space-x-1">
+                            <button class="tab-btn active px-3 py-2 text-xs font-medium rounded-lg bg-simplit-primary text-white" data-tab="demos">
+                                Demos
+                            </button>
+                            <button class="tab-btn px-3 py-2 text-xs font-medium rounded-lg text-gray-600 hover:bg-gray-100" data-tab="progreso">
+                                Progreso
+                            </button>
+                            <button class="tab-btn px-3 py-2 text-xs font-medium rounded-lg text-gray-600 hover:bg-gray-100" data-tab="ayuda">
+                                Ayuda
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Contenido de pestañas -->
+                    <div id="tab-content" class="p-4">
+                        <!-- DEMOS TAB (activo por defecto) -->
+                        <div id="demos-tab" class="tab-panel">
+                            <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">🎯 Demos Interactivas</h4>
+                            
+                            <!-- Lista expandida de demos -->
+                            <div class="space-y-3">
+                                
+                                <!-- Demo 1: Análisis de Contenido -->
+                                <div class="demo-card border border-red-200 dark:border-red-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all" data-demo="contenido">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-file-alt text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-red-700 dark:text-red-300">Análisis de Contenido</h5>
+                                                <p class="text-xs text-red-600 dark:text-red-400 mt-1">Estructura, encabezados, contraste</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs">WCAG 1.3.1</span>
+                                                    <span class="bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs">Nivel A</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        ✅ Análisis en tiempo real • ✅ Detección de errores • ✅ Recomendaciones WCAG
+                                    </div>
+                                </div>
+
+                                <!-- Demo 2: Navegación por Teclado -->
+                                <div class="demo-card border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all" data-demo="navegacion">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-keyboard text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-blue-700 dark:text-blue-300">Navegación por Teclado</h5>
+                                                <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">Tab, foco, orden de tabulación</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs">WCAG 2.1.1</span>
+                                                    <span class="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs">Nivel A</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        ⌨️ Test interactivo • 🎯 Elementos enfocables • 📊 Análisis de accesibilidad
+                                    </div>
+                                </div>
+
+                                <!-- Demo 3: AVIA IA -->
+                                <div class="demo-card border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all" data-demo="avia">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-robot text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-purple-700 dark:text-purple-300">AVIA Sistema IA</h5>
+                                                <p class="text-xs text-purple-600 dark:text-purple-400 mt-1">Asistente inteligente predictivo</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-xs">IA Afectiva</span>
+                                                    <span class="bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300 px-2 py-1 rounded text-xs">Voz</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        🎤 Comandos de voz • 🧠 Predicciones • 💭 Análisis emocional
+                                    </div>
+                                </div>
+
+                                <!-- Demo 4: Formularios Accesibles -->
+                                <div class="demo-card border border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 transition-all" data-demo="formularios">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-wpforms text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-green-700 dark:text-green-300">Formularios Accesibles</h5>
+                                                <p class="text-xs text-green-600 dark:text-green-400 mt-1">Labels, validación, ARIA</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">WCAG 3.3.2</span>
+                                                    <span class="bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-1 rounded text-xs">Nivel A</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        📝 Validación en vivo • ✅ Labels correctos • 🎯 Puntuación 0-100
+                                    </div>
+                                </div>
+
+                                <!-- Demo 5: Multimedia Accesible -->
+                                <div class="demo-card border border-orange-200 dark:border-orange-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-all" data-demo="multimedia">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-photo-video text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-orange-700 dark:text-orange-300">Multimedia Accesible</h5>
+                                                <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">Imágenes, videos, contraste</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-300 px-2 py-1 rounded text-xs">WCAG 1.4.3</span>
+                                                    <span class="bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-300 px-2 py-1 rounded text-xs">Nivel AA</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        🎨 Verificador contraste • 🖼️ Alt text • 📹 Subtítulos
+                                    </div>
+                                </div>
+
+                                <!-- Demo 6: Lector de Pantalla -->
+                                <div class="demo-card border border-indigo-200 dark:border-indigo-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all" data-demo="lector">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-assistive-listening-systems text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-indigo-700 dark:text-indigo-300">Lector de Pantalla</h5>
+                                                <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Simulador completo NVDA/JAWS</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded text-xs">ARIA</span>
+                                                    <span class="bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded text-xs">Landmarks</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        🔊 Simulador real • 🏷️ Análisis ARIA • ⌨️ Navegación H/K/D
+                                    </div>
+                                </div>
+
+                                <!-- Demo 7: Reportes y Métricas -->
+                                <div class="demo-card border border-teal-200 dark:border-teal-800 rounded-lg overflow-hidden">
+                                    <button class="demo-option w-full text-left p-4 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-all" data-demo="reportes">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-12 h-12 bg-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas fa-chart-bar text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h5 class="font-bold text-teal-700 dark:text-teal-300">Reportes y Métricas</h5>
+                                                <p class="text-xs text-teal-600 dark:text-teal-400 mt-1">Dashboard, gráficos, exportación</p>
+                                                <div class="flex items-center space-x-2 mt-2">
+                                                    <span class="bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300 px-2 py-1 rounded text-xs">Dashboard</span>
+                                                    <span class="bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300 px-2 py-1 rounded text-xs">Export</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div class="px-4 pb-3 text-xs text-gray-600 dark:text-gray-400">
+                                        📊 Métricas tiempo real • 📈 Tendencias • 📋 Export PDF/Excel
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <!-- PROGRESO TAB -->
+                        <div id="progreso-tab" class="tab-panel hidden">
+                            <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">📈 Tu Progreso</h4>
+                            <div id="demo-stats" class="space-y-4">
+                                <!-- Se llenará dinámicamente -->
+                                <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                                    <i class="fas fa-chart-line text-4xl mb-2"></i>
+                                    <p>Completa demos para ver tu progreso</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AYUDA TAB -->
+                        <div id="ayuda-tab" class="tab-panel hidden">
+                            <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-4">❓ Ayuda Rápida</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                    <div class="font-semibold text-blue-700 dark:text-blue-300">🎯 Cómo usar las demos</div>
+                                    <p class="text-blue-600 dark:text-blue-400 mt-1">Click en cualquier demo del panel izquierdo para comenzar</p>
+                                </div>
+                                <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                                    <div class="font-semibold text-green-700 dark:text-green-300">⌨️ Atajos de teclado</div>
+                                    <p class="text-green-600 dark:text-green-400 mt-1">F1: Modo barrido | ESC: Cerrar demo | Tab: Navegación</p>
+                                </div>
+                                <div class="p-3 bg-purple-50 dark:bg-purple-900/20 rounded">
+                                    <div class="font-semibold text-purple-700 dark:text-purple-300">🤖 Comandos AVIA</div>
+                                    <p class="text-purple-600 dark:text-purple-400 mt-1">"AVIA + comando" para usar el asistente de IA</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Área Principal de Demo -->
+                <div class="flex-1 bg-white dark:bg-gray-800 overflow-y-auto">
+                    
+                    <!-- Header del área de demo -->
+                    <div class="border-b border-gray-200 dark:border-gray-700 p-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 id="demo-title" class="text-2xl font-bold text-gray-800 dark:text-white">📺 Área de Demo</h4>
+                                <p id="demo-subtitle" class="text-gray-600 dark:text-gray-400 mt-1">Selecciona una demo para comenzar la experiencia interactiva</p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <button id="reset-demo" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm transition-all hidden">
+                                    <i class="fas fa-redo mr-2"></i>Reiniciar
+                                </button>
+                                <button id="fullscreen-demo" class="px-4 py-2 bg-simplit-primary hover:bg-purple-600 text-white rounded-lg text-sm transition-all">
+                                    <i class="fas fa-expand mr-2"></i>Pantalla Completa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contenido de la demo -->
+                    <div id="demo-content" class="p-6 min-h-[500px]">
+                        <div class="text-center py-20">
+                            <i class="fas fa-play-circle text-8xl text-gray-300 dark:text-gray-600 mb-6"></i>
+                            <h5 class="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-3">¡Bienvenido a las Demos Interactivas!</h5>
+                            <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                                Selecciona cualquier demo del panel izquierdo para experimentar las funcionalidades de accesibilidad de SIMPLIT en tiempo real.
+                            </p>
+                            <div class="mt-8 flex justify-center space-x-4">
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <i class="fas fa-mouse-pointer text-blue-500 text-xl"></i>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Click para comenzar</p>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <i class="fas fa-keyboard text-purple-500 text-xl"></i>
+                                    </div>
+                                    <p class="text-xs text-gray-500">F1 para barrido</p>
+                                </div>
+                                <div class="text-center">
+                                    <div class="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <i class="fas fa-microphone text-green-500 text-xl"></i>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Comandos AVIA</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-16">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="flex items-center justify-center space-x-4 mb-4">
+                <div class="w-8 h-8 bg-simplit-primary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-universal-access text-white"></i>
+                </div>
+                <span class="text-xl font-bold">SIMPLIT</span>
+            </div>
+            <p class="text-gray-400 mb-4">
+                Sistema Universal de Accesibilidad Web - Certificado WCAG 2.1 AA
+            </p>
+            <div class="flex justify-center space-x-6 text-sm">
+                <span>F1: Modo Barrido</span>
+                <span>•</span>
+                <span>AVIA: Comandos de Voz</span>
+                <span>•</span>
+                <span>Máximo 7 zonas SIMPLIT</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Gestión de foco para accesibilidad
+        let elementoAnteriorEnfocado = null;
+
+        // Funcionalidad del botón Demo con gestión de foco
+        document.getElementById('demo-btn').addEventListener('click', () => {
+            // Guardar el elemento que tenía foco antes de abrir el modal
+            elementoAnteriorEnfocado = document.activeElement;
+            
+            const modal = document.getElementById('modal-demo');
+            modal.classList.remove('hidden');
+            
+            // Enfocar el primer elemento enfocable del modal
+            setTimeout(() => {
+                const primerElementoEnfocable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                if (primerElementoEnfocable) {
+                    primerElementoEnfocable.focus();
+                }
+            }, 100);
+            
+            // Anunciar apertura del modal a lectores de pantalla
+            anunciarALectorPantalla('Modal de demo interactiva abierto');
+            
+            agregarLogError('Demo Interactiva abierta', 'info', 'demo');
+        });
+
+        // Cerrar modal demo con restauración de foco
+        document.getElementById('cerrar-demo').addEventListener('click', () => {
+            cerrarModal();
+        });
+
+        function cerrarModal() {
+            const modal = document.getElementById('modal-demo');
+            modal.classList.add('hidden');
+            
+            // Restaurar foco al elemento anterior
+            if (elementoAnteriorEnfocado) {
+                elementoAnteriorEnfocado.focus();
+                elementoAnteriorEnfocado = null;
+            }
+            
+            anunciarALectorPantalla('Modal de demo cerrado');
+        }
+
+        // Función para anunciar mensajes a lectores de pantalla
+        function anunciarALectorPantalla(mensaje) {
+            const anuncio = document.createElement('div');
+            anuncio.setAttribute('aria-live', 'polite');
+            anuncio.setAttribute('aria-atomic', 'true');
+            anuncio.className = 'sr-only';
+            anuncio.textContent = mensaje;
+            
+            document.body.appendChild(anuncio);
+            
+            setTimeout(() => {
+                document.body.removeChild(anuncio);
+            }, 1000);
+        }
+
+        // Gestión de foco dentro del modal (focus trap)
+        function configurarFocusTrap() {
+            const modal = document.getElementById('modal-demo');
+            
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    const elementosEnfocables = modal.querySelectorAll(
+                        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                    );
+                    
+                    const primerElemento = elementosEnfocables[0];
+                    const ultimoElemento = elementosEnfocables[elementosEnfocables.length - 1];
+                    
+                    if (e.shiftKey) {
+                        // Shift + Tab (navegación hacia atrás)
+                        if (document.activeElement === primerElemento) {
+                            e.preventDefault();
+                            ultimoElemento.focus();
+                        }
+                    } else {
+                        // Tab (navegación hacia adelante)
+                        if (document.activeElement === ultimoElemento) {
+                            e.preventDefault();
+                            primerElemento.focus();
+                        }
+                    }
+                }
+            });
+        }
+
+        // Configurar focus trap cuando se inicialice la página
+        document.addEventListener('DOMContentLoaded', () => {
+            configurarFocusTrap();
+        });
+
+        // Cerrar modal al hacer click fuera
+        document.getElementById('modal-demo').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                e.currentTarget.classList.add('hidden');
+            }
+        });
+
+        // Funcionalidad de opciones de demo
+        document.querySelectorAll('.demo-option').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const demo = e.currentTarget.dataset.demo;
+                cargarDemo(demo);
+                actualizarProgreso(demo);
+            });
+        });
+
+        // Funcionalidad de pestañas en el modal
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.currentTarget.dataset.tab;
+                cambiarPestana(tab);
+            });
+        });
+
+        // Teclas de acceso rápido para la demo
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('modal-demo').classList.contains('hidden')) return;
+            
+            if (e.key === 'Escape') {
+                document.getElementById('modal-demo').classList.add('hidden');
+            } else if (e.ctrlKey && e.key >= '1' && e.key <= '7') {
+                e.preventDefault();
+                const demoIndex = parseInt(e.key) - 1;
+                const demos = ['contenido', 'navegacion', 'avia', 'formularios', 'multimedia', 'lector', 'reportes'];
+                if (demos[demoIndex]) {
+                    cargarDemo(demos[demoIndex]);
+                    actualizarProgreso(demos[demoIndex]);
+                }
+            }
+        });
+
+        // ========================================
+        // SISTEMA DE DEMO INTERACTIVA COMPLETA
+        // ========================================
+        
+        // Estado global de la demo
+        let demoState = {
+            categoriaActual: null,
+            elementosAnalizados: [],
+            erroresDetectados: [],
+            puntuacionWCAG: 0,
+            analisisCompleto: false
+        };
+
+        // Función para cargar demos específicas - VERSIÓN COMPLETA
+        function cargarDemo(tipoDemo) {
+            const demoContent = document.getElementById('demo-content');
+            demoState.categoriaActual = tipoDemo;
+            
+            switch (tipoDemo) {
+                case 'contenido':
+                    cargarDemoContenido(demoContent);
+                    break;
+                case 'navegacion':
+                    cargarDemoNavegacion(demoContent);
+                    break;
+                case 'avia':
+                    cargarDemoAVIA(demoContent);
+                    break;
+                case 'formularios':
+                    cargarDemoFormularios(demoContent);
+                    break;
+                case 'multimedia':
+                    cargarDemoMultimedia(demoContent);
+                    break;
+                case 'lector':
+                    cargarDemoLectorPantalla(demoContent);
+                    break;
+                case 'reportes':
+                    cargarDemoReportes(demoContent);
+                    break;
+            }
+            
+            agregarLogError(`Demo cargada: ${tipoDemo}`, 'info', 'demo');
+        }
+
+        function cargarDemoContenido(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">📝 Demo: Análisis de Contenido</h5>
+                        <button onclick="analizarContenidoDemo()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">
+                            🔍 Analizar Estructura
+                        </button>
+                    </div>
+                    
+                    <!-- Ejemplo de contenido con errores -->
+                    <div id="contenido-ejemplo" class="bg-white dark:bg-gray-700 p-6 rounded-lg border-2 border-gray-200">
+                        <h1>Título Principal (H1) ✓</h1>
+                        <h2>Subtítulo de Sección (H2) ✓</h2>
+                        <p>Este es un párrafo bien estructurado con suficiente contraste y tamaño de fuente adecuado para garantizar la legibilidad.</p>
+                        
+                        <h4 style="color: #ccc;">⚠️ Error: H4 sin H3 (salto de nivel)</h4>
+                        <p style="color: #999; font-size: 10px;">❌ Texto con contraste insuficiente</p>
+                        
+                        <h3>Subsección Correcta (H3) ✓</h3>
+                        <ul>
+                            <li>Elemento de lista bien estructurado</li>
+                            <li>Con jerarquía visual clara</li>
+                        </ul>
+                        
+                        <div style="color: red; background: darkred;">❌ Contraste crítico</div>
+                    </div>
+                    
+                    <!-- Panel de resultados -->
+                    <div id="resultados-contenido" class="hidden bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+                        <h6 class="font-bold text-red-700 dark:text-red-300 mb-3">🚨 Errores Detectados:</h6>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span>Salto de nivel de encabezado (H2 → H4)</span>
+                                <span class="bg-red-100 dark:bg-red-800 px-2 py-1 rounded text-xs">WCAG 1.3.1</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span>Contraste insuficiente: 2.1:1 (mínimo 4.5:1)</span>
+                                <span class="bg-red-100 dark:bg-red-800 px-2 py-1 rounded text-xs">WCAG 1.4.3</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span>Texto demasiado pequeño: 10px (mínimo 16px)</span>
+                                <span class="bg-red-100 dark:bg-red-800 px-2 py-1 rounded text-xs">WCAG 1.4.4</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded">
+                            <h6 class="font-bold text-green-700 dark:text-green-300 mb-2">💡 Recomendaciones:</h6>
+                            <ul class="text-sm text-green-600 dark:text-green-400 space-y-1">
+                                <li>• Usar jerarquía secuencial: H1 → H2 → H3 → H4</li>
+                                <li>• Aumentar contraste a mínimo 4.5:1 para AA</li>
+                                <li>• Usar tamaño de fuente mínimo de 16px</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoNavegacion(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">🧭 Demo: Navegación por Teclado</h5>
+                        <button onclick="iniciarTestNavegacion()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                            ⌨️ Probar Navegación
+                        </button>
+                    </div>
+                    
+                    <!-- Área de prueba de navegación -->
+                    <div class="bg-white dark:bg-gray-700 p-6 rounded-lg border-2 border-gray-200">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Usa Tab/Shift+Tab para navegar. Los elementos se resaltarán automáticamente.
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button class="nav-test-element p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-all" tabindex="1">
+                                    🎯 Botón 1
+                                    <div class="text-xs mt-1">Enfocable con Tab</div>
+                                </button>
+                                
+                                <input type="text" placeholder="Campo de texto" class="nav-test-element p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200" tabindex="2">
+                                
+                                <select class="nav-test-element p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200" tabindex="3">
+                                    <option>Selecciona opción</option>
+                                    <option>Opción 1</option>
+                                    <option>Opción 2</option>
+                                </select>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <a href="#" class="nav-test-element block p-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:ring-4 focus:ring-purple-300 focus:outline-none text-center transition-all" tabindex="4">
+                                    🔗 Enlace Accesible
+                                    <div class="text-xs mt-1">Con descripción clara</div>
+                                </a>
+                                
+                                <div class="nav-test-element p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg border-2 border-yellow-300" tabindex="5" role="button" aria-label="Elemento personalizado enfocable">
+                                    ⭐ Elemento Personalizado
+                                    <div class="text-xs mt-1">Con role="button" y aria-label</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Elemento problemático -->
+                        <div class="mt-4 p-4 bg-red-100 dark:bg-red-900/20 border-2 border-red-300 rounded-lg">
+                            <div onclick="alert('Clickeado')" class="p-2 bg-red-500 text-white rounded cursor-pointer">
+                                ❌ Elemento NO accesible (solo onclick)
+                            </div>
+                            <p class="text-xs text-red-600 dark:text-red-400 mt-2">
+                                Este elemento no es accesible por teclado porque usa onclick sin tabindex ni role
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados de navegación -->
+                    <div id="resultados-navegacion" class="hidden">
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                            <h6 class="font-bold text-blue-700 dark:text-blue-300 mb-3">📊 Análisis de Navegación:</h6>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="font-semibold mb-2">✅ Elementos Accesibles:</div>
+                                    <ul class="space-y-1 text-green-600 dark:text-green-400">
+                                        <li>• 4 elementos enfocables correctamente</li>
+                                        <li>• Indicadores visuales de foco claros</li>
+                                        <li>• Orden de tabulación lógico</li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div class="font-semibold mb-2">❌ Problemas Detectados:</div>
+                                    <ul class="space-y-1 text-red-600 dark:text-red-400">
+                                        <li>• 1 elemento no accesible por teclado</li>
+                                        <li>• Falta role="button" en elemento clickeable</li>
+                                        <li>• Sin aria-label descriptivo</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoAVIA(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">🤖 Demo: AVIA en Acción</h5>
+                        <button onclick="activarDemoAVIA()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                            🎤 Activar AVIA
+                        </button>
+                    </div>
+                    
+                    <!-- Panel de AVIA -->
+                    <div class="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-6 rounded-xl border-2 border-purple-200 dark:border-purple-700">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center avia-indicator">
+                                <i class="fas fa-microphone text-white text-2xl"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-xl font-bold text-purple-700 dark:text-purple-300">AVIA Sistema Activo</h6>
+                                <p class="text-purple-600 dark:text-purple-400">Asistente Virtual de Inteligencia Afectiva</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Comandos de voz disponibles -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="space-y-3">
+                                <h6 class="font-semibold text-purple-700 dark:text-purple-300">🎯 Comandos Básicos:</h6>
+                                <div class="space-y-2">
+                                    <button onclick="simularComandoAVIA('analizar')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, analizar esta página"</code>
+                                    </button>
+                                    <button onclick="simularComandoAVIA('errores')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, mostrar errores críticos"</code>
+                                    </button>
+                                    <button onclick="simularComandoAVIA('navegacion')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, ayuda navegación"</code>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <h6 class="font-semibold text-purple-700 dark:text-purple-300">🧠 Comandos Avanzados:</h6>
+                                <div class="space-y-2">
+                                    <button onclick="simularComandoAVIA('contraste')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, verificar contraste"</code>
+                                    </button>
+                                    <button onclick="simularComandoAVIA('reporte')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, generar reporte"</code>
+                                    </button>
+                                    <button onclick="simularComandoAVIA('sugerencias')" class="w-full text-left p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 border border-purple-200">
+                                        <code class="text-purple-600">"AVIA, dame sugerencias"</code>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Respuesta de AVIA -->
+                        <div id="avia-respuesta" class="bg-white dark:bg-gray-800 rounded-lg p-4 border-l-4 border-purple-500">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <i class="fas fa-robot text-purple-500"></i>
+                                <span class="font-semibold text-purple-700 dark:text-purple-300">AVIA:</span>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-400">
+                                ¡Hola! Soy AVIA, tu asistente de accesibilidad. Prueba alguno de los comandos de arriba para ver cómo puedo ayudarte a analizar y mejorar la accesibilidad web.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Estado emocional simulado -->
+                    <div class="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-4 rounded-lg">
+                        <h6 class="font-semibold mb-2">💭 Análisis Emocional del Usuario:</h6>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="text-sm">Estado: Enfocado</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                <span class="text-sm">Nivel de estrés: Bajo</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                <span class="text-sm">Adaptación: Automática</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoFormularios(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">📝 Demo: Formularios Accesibles</h5>
+                        <button onclick="analizarFormularioDemo()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                            ✅ Validar Formulario
+                        </button>
+                    </div>
+                    
+                    <!-- Formulario de ejemplo -->
+                    <div class="bg-white dark:bg-gray-700 p-6 rounded-lg border-2 border-gray-200">
+                        <form id="formulario-demo" novalidate>
+                            <div class="space-y-4">
+                                <!-- Campo correcto -->
+                                <div>
+                                    <label for="nombre" class="block text-sm font-medium mb-2">
+                                        Nombre completo *
+                                        <span class="text-red-500" aria-label="requerido">*</span>
+                                    </label>
+                                    <input type="text" id="nombre" name="nombre" required 
+                                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                                           aria-describedby="nombre-help">
+                                    <div id="nombre-help" class="text-xs text-gray-500 mt-1">
+                                        Introduce tu nombre y apellidos
+                                    </div>
+                                </div>
+                                
+                                <!-- Campo con error -->
+                                <div>
+                                    <div class="text-sm font-medium mb-2">❌ Email (sin label)</div>
+                                    <input type="email" placeholder="Email" 
+                                           class="w-full p-3 border-2 border-red-300 rounded-lg">
+                                    <div class="text-xs text-red-500 mt-1">
+                                        Falta etiqueta label asociada
+                                    </div>
+                                </div>
+                                
+                                <!-- Campo con validación accesible -->
+                                <div>
+                                    <label for="telefono" class="block text-sm font-medium mb-2">
+                                        Teléfono
+                                    </label>
+                                    <input type="tel" id="telefono" name="telefono" 
+                                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                                           aria-describedby="telefono-error"
+                                           pattern="[0-9]{9}"
+                                           title="Introduce 9 dígitos">
+                                    <div id="telefono-error" class="hidden text-xs text-red-500 mt-1" role="alert">
+                                        El teléfono debe tener 9 dígitos
+                                    </div>
+                                </div>
+                                
+                                <!-- Grupo de radio buttons -->
+                                <fieldset class="border border-gray-300 rounded-lg p-4">
+                                    <legend class="text-sm font-medium px-2">Tipo de discapacidad (opcional)</legend>
+                                    <div class="space-y-2 mt-2">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="discapacidad" value="visual" class="mr-2">
+                                            Visual
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="discapacidad" value="auditiva" class="mr-2">
+                                            Auditiva
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="discapacidad" value="motora" class="mr-2">
+                                            Motora
+                                        </label>
+                                    </div>
+                                </fieldset>
+                                
+                                <!-- Checkbox problemático -->
+                                <div class="border border-red-300 rounded p-3 bg-red-50 dark:bg-red-900/20">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="terminos-malo">
+                                        <span onclick="document.getElementById('terminos-malo').checked = !document.getElementById('terminos-malo').checked">
+                                            ❌ Acepto términos (click en span)
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-red-500 mt-1">
+                                        Mal: usar span clickeable en lugar de label
+                                    </div>
+                                </div>
+                                
+                                <!-- Checkbox correcto -->
+                                <div>
+                                    <label class="flex items-center space-x-2">
+                                        <input type="checkbox" id="newsletter" class="rounded">
+                                        <span>✅ Quiero recibir newsletter (label correcto)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="mt-6 w-full bg-green-500 text-white p-3 rounded-lg hover:bg-green-600 focus:ring-4 focus:ring-green-300">
+                                Enviar Formulario
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div id="resultados-formulario" class="hidden">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoMultimedia(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">🎬 Demo: Multimedia Accesible</h5>
+                        <button onclick="analizarMultimediaDemo()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600">
+                            🔍 Analizar Medios
+                        </button>
+                    </div>
+                    
+                    <!-- Ejemplos de multimedia -->
+                    <div class="space-y-6">
+                        <!-- Imagen con alt correcto -->
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-green-300">
+                            <h6 class="font-semibold text-green-700 dark:text-green-300 mb-3">✅ Imagen Accesible</h6>
+                            <div style="width: 200px; height: 150px; background: linear-gradient(45deg, #4CAF50, #81C784); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;" alt="Gráfico de barras mostrando aumento del 25% en accesibilidad web durante 2024">
+                                Gráfico Ejemplo
+                            </div>
+                            <div class="mt-2 text-sm text-green-600 dark:text-green-400">
+                                <strong>Alt text:</strong> "Gráfico de barras mostrando aumento del 25% en accesibilidad web durante 2024"
+                            </div>
+                        </div>
+                        
+                        <!-- Imagen sin alt -->
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-red-300">
+                            <h6 class="font-semibold text-red-700 dark:text-red-300 mb-3">❌ Imagen No Accesible</h6>
+                            <div style="width: 200px; height: 150px; background: linear-gradient(45deg, #F44336, #EF5350); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                Sin Alt Text
+                            </div>
+                            <div class="mt-2 text-sm text-red-600 dark:text-red-400">
+                                <strong>Problema:</strong> Falta atributo alt descriptivo
+                            </div>
+                        </div>
+                        
+                        <!-- Contraste de colores -->
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-yellow-300">
+                            <h6 class="font-semibold text-yellow-700 dark:text-yellow-300 mb-3">⚠️ Problemas de Contraste</h6>
+                            <div class="space-y-3">
+                                <div class="p-3 rounded" style="background: #ffff00; color: #ffffff;">
+                                    ❌ Contraste insuficiente: 1.1:1 (Amarillo sobre blanco)
+                                </div>
+                                <div class="p-3 rounded" style="background: #0066cc; color: #ffffff;">
+                                    ✅ Contraste suficiente: 8.2:1 (Azul sobre blanco)
+                                </div>
+                                <div class="p-3 rounded" style="background: #cccccc; color: #999999;">
+                                    ❌ Contraste insuficiente: 2.8:1 (Gris claro sobre gris)
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Video accesible simulado -->
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-blue-300">
+                            <h6 class="font-semibold text-blue-700 dark:text-blue-300 mb-3">🎥 Video Accesible</h6>
+                            <div class="bg-black rounded-lg p-8 text-center text-white relative">
+                                <i class="fas fa-play-circle text-6xl mb-4"></i>
+                                <div>Tutorial: Navegación por Teclado</div>
+                                <div class="absolute bottom-2 right-2 bg-black bg-opacity-75 px-2 py-1 rounded text-xs">
+                                    CC
+                                </div>
+                            </div>
+                            <div class="mt-3 space-y-2 text-sm">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check text-green-500"></i>
+                                    <span>Subtítulos disponibles</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check text-green-500"></i>
+                                    <span>Descripción de audio</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check text-green-500"></i>
+                                    <span>Controles accesibles por teclado</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check text-green-500"></i>
+                                    <span>Transcripción completa disponible</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Herramienta de contraste -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                        <h6 class="font-semibold mb-3">🎨 Verificador de Contraste</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Color de texto:</label>
+                                <input type="color" id="color-texto" value="#000000" class="w-full h-12 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Color de fondo:</label>
+                                <input type="color" id="color-fondo" value="#ffffff" class="w-full h-12 rounded">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="verificarContraste()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                Verificar Contraste
+                            </button>
+                            <div id="resultado-contraste" class="mt-3 p-3 bg-white dark:bg-gray-700 rounded hidden">
+                                <!-- Resultado dinámico -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoLectorPantalla(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">🔊 Demo: Lector de Pantalla</h5>
+                        <button onclick="simularLectorPantalla()" class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600">
+                            📖 Simular Lectura
+                        </button>
+                    </div>
+                    
+                    <!-- Simulador de lector de pantalla -->
+                    <div class="bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 p-6 rounded-xl border-2 border-orange-200">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-volume-up text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-lg font-bold text-orange-700 dark:text-orange-300">Simulador de Lector de Pantalla</h6>
+                                <p class="text-orange-600 dark:text-orange-400">Escucha cómo un lector de pantalla interpreta el contenido</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Contenido para leer -->
+                        <div id="contenido-lectura" class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-gray-200 mb-4">
+                            <h1>Página Principal</h1>
+                            <nav aria-label="Navegación principal">
+                                <ul>
+                                    <li><a href="#inicio">Inicio</a></li>
+                                    <li><a href="#servicios">Servicios</a></li>
+                                    <li><a href="#contacto">Contacto</a></li>
+                                </ul>
+                            </nav>
+                            
+                            <main>
+                                <h2>Bienvenido a nuestro sitio</h2>
+                                <p>Este es un párrafo de ejemplo que será leído por el lector de pantalla.</p>
+                                
+                                <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded">
+                                    <h3>Información importante</h3>
+                                    <p>Los lectores de pantalla navegan por landmarks y encabezados.</p>
+                                </div>
+                                
+                                <!-- Ejemplo con ARIA -->
+                                <div role="alert" class="mt-4 p-3 bg-red-100 dark:bg-red-900/30 rounded">
+                                    <strong>Aviso:</strong> Este es un mensaje importante que se anuncia inmediatamente.
+                                </div>
+                                
+                                <button aria-describedby="btn-help" class="mt-4 bg-green-500 text-white px-4 py-2 rounded">
+                                    Botón con descripción
+                                </button>
+                                <div id="btn-help" class="text-xs text-gray-500 mt-1">
+                                    Este botón realiza una acción importante
+                                </div>
+                            </main>
+                        </div>
+                        
+                        <!-- Salida del lector -->
+                        <div id="lector-salida" class="bg-gray-800 text-green-400 p-4 rounded-lg font-mono text-sm min-h-[100px]">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                <span>Lector de pantalla listo...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Controles de simulación -->
+                        <div class="flex space-x-4 mt-4">
+                            <button onclick="leerEncabezados()" class="bg-orange-500 text-white px-3 py-2 rounded text-sm hover:bg-orange-600">
+                                H - Encabezados
+                            </button>
+                            <button onclick="leerLandmarks()" class="bg-orange-500 text-white px-3 py-2 rounded text-sm hover:bg-orange-600">
+                                D - Landmarks
+                            </button>
+                            <button onclick="leerEnlaces()" class="bg-orange-500 text-white px-3 py-2 rounded text-sm hover:bg-orange-600">
+                                K - Enlaces
+                            </button>
+                            <button onclick="leerTodo()" class="bg-orange-500 text-white px-3 py-2 rounded text-sm hover:bg-orange-600">
+                                ↓ - Leer Todo
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Análisis ARIA -->
+                    <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-gray-200">
+                        <h6 class="font-semibold mb-3">🏷️ Análisis de Atributos ARIA</h6>
+                        <div class="space-y-3">
+                            <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-300">
+                                <div class="font-semibold text-green-700 dark:text-green-300">✅ Elementos bien estructurados:</div>
+                                <ul class="mt-2 text-sm space-y-1">
+                                    <li>• <code>nav aria-label="Navegación principal"</code></li>
+                                    <li>• <code>role="alert"</code> para mensajes importantes</li>
+                                    <li>• <code>aria-describedby</code> para descripciones adicionales</li>
+                                    <li>• Jerarquía de encabezados correcta (H1 → H2 → H3)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-300">
+                                <div class="font-semibold text-yellow-700 dark:text-yellow-300">⚠️ Mejoras sugeridas:</div>
+                                <ul class="mt-2 text-sm space-y-1">
+                                    <li>• Agregar <code>aria-current="page"</code> al enlace activo</li>
+                                    <li>• Usar <code>aria-expanded</code> en menús desplegables</li>
+                                    <li>• Incluir <code>aria-live</code> para contenido dinámico</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function cargarDemoReportes(container) {
+            container.innerHTML = `
+                <div class="w-full space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h5 class="text-xl font-bold">📊 Demo: Reportes y Métricas</h5>
+                        <button onclick="generarReporteDemo()" class="bg-teal-500 text-white px-4 py-2 rounded-lg hover:bg-teal-600">
+                            📋 Generar Reporte
+                        </button>
+                    </div>
+                    
+                    <!-- Dashboard de métricas -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold">87%</div>
+                            <div class="text-sm opacity-90">Puntuación WCAG</div>
+                            <div class="text-xs mt-1">Nivel AA Alcanzado</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold">23</div>
+                            <div class="text-sm opacity-90">Errores Críticos</div>
+                            <div class="text-xs mt-1">Requieren atención</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold">156</div>
+                            <div class="text-sm opacity-90">Advertencias</div>
+                            <div class="text-xs mt-1">Mejoras sugeridas</div>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl text-center">
+                            <div class="text-3xl font-bold">342</div>
+                            <div class="text-sm opacity-90">Elementos Analizados</div>
+                            <div class="text-xs mt-1">En esta página</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gráfico de tendencias simulado -->
+                    <div class="bg-white dark:bg-gray-700 p-6 rounded-lg border-2 border-gray-200">
+                        <h6 class="font-semibold mb-4">📈 Tendencia de Accesibilidad (Últimos 30 días)</h6>
+                        <div class="relative h-64 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                            <!-- Simulación de gráfico -->
+                            <div class="absolute bottom-4 left-4 right-4 top-4">
+                                <div class="h-full flex items-end justify-between">
+                                    <div class="bg-red-400 w-8 rounded-t" style="height: 30%"></div>
+                                    <div class="bg-yellow-400 w-8 rounded-t" style="height: 45%"></div>
+                                    <div class="bg-yellow-400 w-8 rounded-t" style="height: 52%"></div>
+                                    <div class="bg-green-400 w-8 rounded-t" style="height: 67%"></div>
+                                    <div class="bg-green-400 w-8 rounded-t" style="height: 78%"></div>
+                                    <div class="bg-green-400 w-8 rounded-t" style="height: 87%"></div>
+                                </div>
+                                <div class="absolute -bottom-6 left-0 right-0 flex justify-between text-xs text-gray-500">
+                                    <span>Sem 1</span>
+                                    <span>Sem 2</span>
+                                    <span>Sem 3</span>
+                                    <span>Sem 4</span>
+                                    <span>Sem 5</span>
+                                    <span>Actual</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                            📊 Mejora continua del 57% en el último mes
+                        </div>
+                    </div>
+                    
+                    <!-- Desglose por categorías -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-gray-200">
+                            <h6 class="font-semibold mb-3">🎯 Errores por Categoría</h6>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">Contraste de color</span>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-red-500 h-2 rounded-full" style="width: 65%"></div>
+                                        </div>
+                                        <span class="text-xs font-mono">15</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">Texto alternativo</span>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-yellow-500 h-2 rounded-full" style="width: 35%"></div>
+                                        </div>
+                                        <span class="text-xs font-mono">8</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">Navegación por teclado</span>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-500 h-2 rounded-full" style="width: 90%"></div>
+                                        </div>
+                                        <span class="text-xs font-mono">2</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">Estructura semántica</span>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" style="width: 80%"></div>
+                                        </div>
+                                        <span class="text-xs font-mono">3</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-gray-700 p-4 rounded-lg border-2 border-gray-200">
+                            <h6 class="font-semibold mb-3">🚀 Recomendaciones Prioritarias</h6>
+                            <div class="space-y-3">
+                                <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded border-l-4 border-red-500">
+                                    <div class="font-semibold text-red-700 dark:text-red-300 text-sm">Alta Prioridad</div>
+                                    <div class="text-xs text-red-600 dark:text-red-400 mt-1">
+                                        Corregir 15 problemas de contraste críticos
+                                    </div>
+                                </div>
+                                <div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-500">
+                                    <div class="font-semibold text-yellow-700 dark:text-yellow-300 text-sm">Media Prioridad</div>
+                                    <div class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                                        Añadir texto alternativo a 8 imágenes
+                                    </div>
+                                </div>
+                                <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
+                                    <div class="font-semibold text-green-700 dark:text-green-300 text-sm">Baja Prioridad</div>
+                                    <div class="text-xs text-green-600 dark:text-green-400 mt-1">
+                                        Optimizar orden de tabulación en formularios
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Exportar reporte -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                        <h6 class="font-semibold mb-3">📤 Exportar Reporte</h6>
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="exportarReporte('pdf')" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm">
+                                📄 PDF Ejecutivo
+                            </button>
+                            <button onclick="exportarReporte('excel')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm">
+                                📊 Excel Detallado
+                            </button>
+                            <button onclick="exportarReporte('json')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">
+                                🔧 JSON Técnico
+                            </button>
+                            <button onclick="exportarReporte('web')" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 text-sm">
+                                🌐 Reporte Web
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========================================
+        // FUNCIONES AVANZADAS DE PROGRESO Y NAVEGACIÓN
+        // ========================================
+
+        // Sistema de progreso de demo
+        let progresoDemo = {
+            demosCompletadas: [],
+            puntuacionTotal: 0,
+            tiempoInicio: null,
+            estadisticas: {
+                erroresDetectados: 0,
+                mejoraPorcentaje: 0,
+                tiempoPromedio: 0
+            }
+        };
+
+        function actualizarProgreso(tipoDemo) {
+            if (!progresoDemo.demosCompletadas.includes(tipoDemo)) {
+                progresoDemo.demosCompletadas.push(tipoDemo);
+                
+                // Actualizar barra de progreso
+                const porcentaje = (progresoDemo.demosCompletadas.length / 7) * 100;
+                document.getElementById('demo-progress-bar').style.width = `${porcentaje}%`;
+                document.getElementById('demo-progress-text').textContent = `${Math.round(porcentaje)}% Completado`;
+                
+                // Actualizar estadísticas
+                actualizarEstadisticasProgreso();
+                
+                // Mostrar logro si es necesario
+                if (porcentaje === 100) {
+                    mostrarLogroCompletado();
+                }
+            }
+        }
+
+        function actualizarEstadisticasProgreso() {
+            const estadisticas = document.getElementById('demo-stats');
+            const completadas = progresoDemo.demosCompletadas.length;
+            
+            if (completadas > 0) {
+                estadisticas.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                            <h6 class="font-bold text-green-700 dark:text-green-300 mb-2">📈 Progreso General</h6>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div class="text-2xl font-bold text-green-600">${completadas}/7</div>
+                                    <div class="text-gray-600 dark:text-gray-400">Demos Completadas</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-blue-600">${Math.round((completadas/7)*100)}%</div>
+                                    <div class="text-gray-600 dark:text-gray-400">Progreso Total</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                            <h6 class="font-bold text-blue-700 dark:text-blue-300 mb-2">🎯 Demos Completadas</h6>
+                            <div class="space-y-2">
+                                ${progresoDemo.demosCompletadas.map(demo => {
+                                    const nombres = {
+                                        'contenido': '📝 Análisis de Contenido',
+                                        'navegacion': '🧭 Navegación por Teclado',
+                                        'avia': '🤖 AVIA Sistema IA',
+                                        'formularios': '📝 Formularios Accesibles',
+                                        'multimedia': '🎬 Multimedia Accesible',
+                                        'lector': '🔊 Lector de Pantalla',
+                                        'reportes': '📊 Reportes y Métricas'
+                                    };
+                                    return `<div class="flex items-center space-x-2 text-sm">
+                                        <i class="fas fa-check-circle text-green-500"></i>
+                                        <span>${nombres[demo]}</span>
+                                    </div>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                            <h6 class="font-bold text-purple-700 dark:text-purple-300 mb-2">🏆 Logros Desbloqueados</h6>
+                            <div class="space-y-1 text-sm">
+                                ${completadas >= 1 ? '<div class="flex items-center space-x-2"><i class="fas fa-star text-yellow-500"></i><span>Primer Paso Completado</span></div>' : ''}
+                                ${completadas >= 3 ? '<div class="flex items-center space-x-2"><i class="fas fa-medal text-bronze-500"></i><span>Explorador de Accesibilidad</span></div>' : ''}
+                                ${completadas >= 5 ? '<div class="flex items-center space-x-2"><i class="fas fa-trophy text-silver-500"></i><span>Experto en Progreso</span></div>' : ''}
+                                ${completadas === 7 ? '<div class="flex items-center space-x-2"><i class="fas fa-crown text-gold-500"></i><span>Maestro de Accesibilidad</span></div>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function mostrarLogroCompletado() {
+            const logro = document.createElement('div');
+            logro.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-gradient-to-r from-gold-400 to-yellow-500 text-white p-8 rounded-2xl shadow-2xl border-4 border-yellow-300';
+            logro.innerHTML = `
+                <div class="text-center">
+                    <i class="fas fa-crown text-6xl mb-4 animate-bounce"></i>
+                    <h3 class="text-3xl font-bold mb-2">🎉 ¡FELICITACIONES! 🎉</h3>
+                    <p class="text-xl mb-4">Has completado todas las demos de SIMPLIT</p>
+                    <p class="text-lg opacity-90">Eres oficialmente un Maestro de Accesibilidad</p>
+                    <button onclick="this.parentElement.parentElement.remove()" class="mt-6 bg-white text-yellow-600 px-6 py-3 rounded-lg font-bold hover:bg-yellow-50 transition-all">
+                        ¡Genial!
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(logro);
+            
+            setTimeout(() => {
+                if (logro.parentElement) logro.remove();
+            }, 10000);
+        }
+
+        function cambiarPestana(tab) {
+            // Remover active de todos los botones
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-simplit-primary', 'text-white');
+                btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+            });
+            
+            // Ocultar todos los paneles
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            // Activar la pestaña seleccionada
+            const btnActivo = document.querySelector(`[data-tab="${tab}"]`);
+            btnActivo.classList.add('active', 'bg-simplit-primary', 'text-white');
+            btnActivo.classList.remove('text-gray-600', 'hover:bg-gray-100');
+            
+            // Mostrar el panel correspondiente
+            document.getElementById(`${tab}-tab`).classList.remove('hidden');
+        }
+
+        function toggleModalSize() {
+            const modal = document.querySelector('#modal-demo .bg-white');
+            if (modal.classList.contains('max-w-7xl')) {
+                modal.classList.remove('max-w-7xl');
+                modal.classList.add('max-w-full');
+                CapaUtilidades.crearNotificacion('Modo pantalla completa activado', 'info');
+            } else {
+                modal.classList.remove('max-w-full');
+                modal.classList.add('max-w-7xl');
+                CapaUtilidades.crearNotificacion('Tamaño normal restaurado', 'info');
+            }
+        }
+
+        // Sistema avanzado de atajos de teclado
+        const atajosGlobales = {
+            'ctrl+h': () => {
+                CapaUtilidades.crearNotificacion('Atajos disponibles: Ctrl+1-7 (demos), F1 (barrido), ESC (cerrar)', 'info', 5000);
+            },
+            'ctrl+r': () => {
+                if (!document.getElementById('modal-demo').classList.contains('hidden')) {
+                    const resetBtn = document.getElementById('reset-demo');
+                    if (resetBtn && !resetBtn.classList.contains('hidden')) {
+                        resetDemo();
+                    }
+                }
+            },
+            'ctrl+f': () => {
+                if (!document.getElementById('modal-demo').classList.contains('hidden')) {
+                    toggleModalSize();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', (e) => {
+            const combo = `${e.ctrlKey ? 'ctrl+' : ''}${e.altKey ? 'alt+' : ''}${e.shiftKey ? 'shift+' : ''}${e.key.toLowerCase()}`;
+            
+            if (atajosGlobales[combo]) {
+                e.preventDefault();
+                atajosGlobales[combo]();
+            }
+        });
+
+        function resetDemo() {
+            const contenido = document.getElementById('demo-content');
+            contenido.innerHTML = `
+                <div class="text-center py-20">
+                    <i class="fas fa-redo text-8xl text-gray-300 dark:text-gray-600 mb-6 animate-spin"></i>
+                    <h5 class="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-3">Reiniciando Demo...</h5>
+                    <p class="text-gray-500 dark:text-gray-400">La demo se ha reiniciado correctamente</p>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                contenido.innerHTML = `
+                    <div class="text-center py-20">
+                        <i class="fas fa-play-circle text-8xl text-gray-300 dark:text-gray-600 mb-6"></i>
+                        <h5 class="text-2xl font-bold text-gray-400 dark:text-gray-500 mb-3">¡Demo Reiniciada!</h5>
+                        <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                            Selecciona cualquier demo del panel izquierdo para comenzar nuevamente.
+                        </p>
+                    </div>
+                `;
+                document.getElementById('reset-demo').classList.add('hidden');
+                document.getElementById('demo-title').textContent = '📺 Área de Demo';
+                document.getElementById('demo-subtitle').textContent = 'Selecciona una demo para comenzar la experiencia interactiva';
+            }, 1500);
+            
+            CapaUtilidades.crearNotificacion('Demo reiniciada correctamente', 'success');
+        }
+
+        // ========================================
+        // FUNCIONES DE INTERACCIÓN DE LA DEMO
+        // ========================================
+
+        function analizarContenidoDemo() {
+            const resultados = document.getElementById('resultados-contenido');
+            resultados.classList.remove('hidden');
+            
+            // Actualizar título y subtitle del área principal
+            document.getElementById('demo-title').textContent = '📝 Análisis de Contenido en Progreso';
+            document.getElementById('demo-subtitle').textContent = 'Evaluando estructura semántica, contraste y jerarquía WCAG';
+            document.getElementById('reset-demo').classList.remove('hidden');
+            
+            // Simular análisis progresivo con mayor detalle
+            const elementos = document.querySelectorAll('#contenido-ejemplo h1, #contenido-ejemplo h2, #contenido-ejemplo h4, #contenido-ejemplo p, #contenido-ejemplo div');
+            elementos.forEach((el, index) => {
+                setTimeout(() => {
+                    el.style.outline = '2px solid #3B82F6';
+                    el.style.transform = 'scale(1.02)';
+                    
+                    // Crear indicador de análisis
+                    const indicador = document.createElement('div');
+                    indicador.className = 'absolute bg-blue-500 text-white text-xs px-2 py-1 rounded-full -top-2 -right-2 animate-pulse';
+                    indicador.textContent = 'Analizando...';
+                    el.style.position = 'relative';
+                    el.appendChild(indicador);
+                    
+                    setTimeout(() => {
+                        el.style.outline = '';
+                        el.style.transform = '';
+                        if (indicador.parentElement) indicador.remove();
+                    }, 1000);
+                }, index * 500);
+            });
+            
+            // Actualizar estadísticas en tiempo real
+            setTimeout(() => {
+                demoState.erroresDetectados = ['Contraste insuficiente', 'Salto de encabezado', 'Texto pequeño'];
+                demoState.puntuacionWCAG = 72;
+                demoState.analisisCompleto = true;
+                
+                CapaUtilidades.crearNotificacion('✅ Análisis de contenido completado: 3 errores detectados', 'warning');
+                document.getElementById('demo-title').textContent = '📝 Análisis de Contenido Completado';
+                document.getElementById('demo-subtitle').textContent = 'Puntuación WCAG: 72/100 - 3 errores críticos encontrados';
+            }, elementos.length * 500 + 1000);
+        }
+
+        function iniciarTestNavegacion() {
+            const resultados = document.getElementById('resultados-navegacion');
+            resultados.classList.remove('hidden');
+            
+            // Resaltar elementos navegables
+            const elementos = document.querySelectorAll('.nav-test-element');
+            elementos.forEach((el, index) => {
+                setTimeout(() => {
+                    el.style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.8)';
+                    el.focus();
+                    setTimeout(() => {
+                        el.style.boxShadow = '';
+                    }, 1000);
+                }, index * 800);
+            });
+            
+            CapaUtilidades.crearNotificacion('Test de navegación completado: 4/5 elementos accesibles', 'success');
+        }
+
+        function activarDemoAVIA() {
+            const respuesta = document.getElementById('avia-respuesta');
+            respuesta.innerHTML = `
+                <div class="flex items-center space-x-2 mb-2">
+                    <i class="fas fa-robot text-purple-500"></i>
+                    <span class="font-semibold text-purple-700 dark:text-purple-300">AVIA:</span>
+                </div>
+                <p class="text-gray-600 dark:text-gray-400">
+                    ¡Sistema AVIA activado! He detectado que estás en modo demo. Puedo ayudarte a:
+                    <br>• Analizar la accesibilidad de elementos específicos
+                    <br>• Generar reportes personalizados
+                    <br>• Sugerir mejoras basadas en WCAG 2.1
+                    <br>• Adaptar la interfaz según tu perfil de usuario
+                </p>
+            `;
+            
+            CapaUtilidades.crearNotificacion('🤖 AVIA activado - Sistema de IA afectiva en línea', 'success');
+        }
+
+        function simularComandoAVIA(comando) {
+            const respuesta = document.getElementById('avia-respuesta');
+            
+            const respuestas = {
+                'analizar': '🔍 Analizando página... He encontrado 23 problemas de accesibilidad. Los más críticos son 15 elementos con contraste insuficiente. ¿Quieres que te guíe para corregirlos?',
+                'errores': '🚨 Errores críticos detectados:\n• 15 problemas de contraste\n• 8 imágenes sin texto alternativo\n• 3 elementos no enfocables\n¿Empezamos por los de mayor impacto?',
+                'navegacion': '⌨️ Tu navegación por teclado está al 80%. Te recomiendo:\n• Revisar el orden de tabulación en el formulario\n• Agregar atajos de teclado personalizados\n• Mejorar indicadores de foco',
+                'contraste': '🎨 Análisis de contraste completado:\n• 12 elementos no cumplen AA (4.5:1)\n• 3 elementos no cumplen AAA (7:1)\n• Sugiero cambiar #ccc por #666',
+                'reporte': '📊 Generando reporte personalizado... Incluiré:\n• Resumen ejecutivo\n• Desglose por categorías WCAG\n• Plan de acción priorizado\n• Estimación de tiempo',
+                'sugerencias': '💡 Basándome en tu perfil, sugiero:\n• Implementar modo alto contraste\n• Añadir navegación por landmarks\n• Crear atajos de teclado personalizados'
+            };
+            
+            respuesta.innerHTML = `
+                <div class="flex items-center space-x-2 mb-2">
+                    <i class="fas fa-robot text-purple-500"></i>
+                    <span class="font-semibold text-purple-700 dark:text-purple-300">AVIA:</span>
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 whitespace-pre-line">
+                    ${respuestas[comando] || 'Comando no reconocido. Intenta con: analizar, errores, navegacion, contraste, reporte, o sugerencias.'}
+                </p>
+            `;
+            
+            CapaUtilidades.crearNotificacion(`Comando AVIA ejecutado: ${comando}`, 'info');
+        }
+
+        function analizarFormularioDemo() {
+            const resultados = document.getElementById('resultados-formulario');
+            resultados.classList.remove('hidden');
+            
+            resultados.innerHTML = `
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+                    <h6 class="font-bold text-yellow-700 dark:text-yellow-300 mb-3">📝 Análisis de Formulario</h6>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <div class="font-semibold mb-2 text-green-600">✅ Elementos Correctos (4):</div>
+                            <ul class="space-y-1">
+                                <li>• Campo "Nombre" con label asociado</li>
+                                <li>• Fieldset con legend para radio buttons</li>
+                                <li>• Checkbox con label correcto</li>
+                                <li>• Validación accesible con aria-describedby</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div class="font-semibold mb-2 text-red-600">❌ Problemas Detectados (2):</div>
+                            <ul class="space-y-1">
+                                <li>• Campo email sin label asociado</li>
+                                <li>• Checkbox con span clickeable (no accesible)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded">
+                        <div class="font-semibold text-blue-700 dark:text-blue-300">Puntuación: 67/100</div>
+                        <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            Corrige los 2 problemas para alcanzar 100/100
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            CapaUtilidades.crearNotificacion('Formulario analizado: 67/100 puntos', 'warning');
+        }
+
+        function analizarMultimediaDemo() {
+            CapaUtilidades.crearNotificacion('Análisis multimedia: 2 elementos sin texto alternativo, 3 problemas de contraste', 'warning');
+        }
+
+        function verificarContraste() {
+            const colorTexto = document.getElementById('color-texto').value;
+            const colorFondo = document.getElementById('color-fondo').value;
+            const resultado = document.getElementById('resultado-contraste');
+            
+            // Simulación simple de cálculo de contraste
+            const contraste = Math.random() * 15 + 1;
+            const cumpleAA = contraste >= 4.5;
+            const cumpleAAA = contraste >= 7;
+            
+            resultado.classList.remove('hidden');
+            resultado.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">Ratio de contraste: ${contraste.toFixed(2)}:1</div>
+                        <div class="text-sm space-y-1 mt-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="${cumpleAA ? 'text-green-600' : 'text-red-600'}">${cumpleAA ? '✅' : '❌'}</span>
+                                <span>WCAG AA (4.5:1)</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="${cumpleAAA ? 'text-green-600' : 'text-red-600'}">${cumpleAAA ? '✅' : '❌'}</span>
+                                <span>WCAG AAA (7:1)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-20 h-20 rounded" style="background: ${colorFondo}; color: ${colorTexto}; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                        Aa
+                    </div>
+                </div>
+            `;
+        }
+
+        function simularLectorPantalla() {
+            const salida = document.getElementById('lector-salida');
+            const elementos = [
+                "Región principal detectada",
+                "Encabezado nivel 1: Página Principal",
+                "Navegación: Navegación principal",
+                "Lista con 3 elementos",
+                "Enlace: Inicio",
+                "Enlace: Servicios", 
+                "Enlace: Contacto",
+                "Región principal",
+                "Encabezado nivel 2: Bienvenido a nuestro sitio",
+                "Este es un párrafo de ejemplo que será leído por el lector de pantalla.",
+                "Encabezado nivel 3: Información importante",
+                "Los lectores de pantalla navegan por landmarks y encabezados.",
+                "Alerta: Aviso: Este es un mensaje importante que se anuncia inmediatamente.",
+                "Botón: Botón con descripción, descrito por: Este botón realiza una acción importante"
+            ];
+            
+            salida.innerHTML = '<div class="flex items-center space-x-2 mb-2"><div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div><span>Iniciando lectura...</span></div>';
+            
+            elementos.forEach((texto, index) => {
+                setTimeout(() => {
+                    salida.innerHTML += `<div class="text-green-400 mb-1">${index + 1}. ${texto}</div>`;
+                    salida.scrollTop = salida.scrollHeight;
+                }, index * 800);
+            });
+        }
+
+        function leerEncabezados() {
+            const salida = document.getElementById('lector-salida');
+            salida.innerHTML = `
+                <div class="text-green-400 mb-2">Navegación por encabezados (H):</div>
+                <div class="text-green-400">1. H1: Página Principal</div>
+                <div class="text-green-400">2. H2: Bienvenido a nuestro sitio</div>
+                <div class="text-green-400">3. H3: Información importante</div>
+                <div class="text-yellow-400 mt-2">3 encabezados encontrados</div>
+            `;
+        }
+
+        function leerLandmarks() {
+            const salida = document.getElementById('lector-salida');
+            salida.innerHTML = `
+                <div class="text-green-400 mb-2">Navegación por landmarks (D):</div>
+                <div class="text-green-400">1. navigation: Navegación principal</div>
+                <div class="text-green-400">2. main: Contenido principal</div>
+                <div class="text-yellow-400 mt-2">2 landmarks encontrados</div>
+            `;
+        }
+
+        function leerEnlaces() {
+            const salida = document.getElementById('lector-salida');
+            salida.innerHTML = `
+                <div class="text-green-400 mb-2">Navegación por enlaces (K):</div>
+                <div class="text-green-400">1. Enlace: Inicio</div>
+                <div class="text-green-400">2. Enlace: Servicios</div>
+                <div class="text-green-400">3. Enlace: Contacto</div>
+                <div class="text-yellow-400 mt-2">3 enlaces encontrados</div>
+            `;
+        }
+
+        function leerTodo() {
+            simularLectorPantalla();
+        }
+
+        function generarReporteDemo() {
+            CapaUtilidades.crearNotificacion('Generando reporte completo de accesibilidad...', 'info');
+            
+            setTimeout(() => {
+                CapaUtilidades.crearNotificacion('Reporte generado: 87% WCAG AA, 23 errores críticos detectados', 'success');
+            }, 2000);
+        }
+
+        function exportarReporte(formato) {
+            const formatos = {
+                'pdf': 'Exportando reporte ejecutivo en PDF...',
+                'excel': 'Generando archivo Excel con datos detallados...',
+                'json': 'Creando archivo JSON con datos técnicos...',
+                'web': 'Preparando reporte web interactivo...'
+            };
+            
+            CapaUtilidades.crearNotificacion(formatos[formato], 'info');
+            
+            setTimeout(() => {
+                CapaUtilidades.crearNotificacion(`Reporte ${formato.toUpperCase()} listo para descarga`, 'success');
+            }, 1500);
+        }
+
+        // Funcionalidad de categorías principales
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const categoria = e.currentTarget.dataset.categoria;
+                
+                // Simular carga de categoría
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                notification.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-check"></i>
+                        <span>Cargando categoría: ${categoria}</span>
+                    </div>
+                `;
+                
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+                
+                agregarLogError(`Categoría seleccionada: ${categoria}`, 'info', 'navegacion');
+            });
+        });
+
+        // Funcionalidad de herramientas especializadas
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const herramienta = e.currentTarget.querySelector('h3').textContent;
+                
+                if (herramienta.includes('AVIA')) {
+                    // Activar AVIA
+                    const aviaBtn = e.currentTarget;
+                    aviaBtn.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        aviaBtn.style.transform = 'scale(1)';
+                    }, 200);
+                    
+                    aviaPredictivo.mostrarNotificacion('🎤 AVIA Sistema activado - Di "AVIA" + comando');
+                } else {
+                    aviaPredictivo.mostrarNotificacion(`🛠️ Abriendo: ${herramienta}`);
+                }
+                
+                agregarLogError(`Herramienta activada: ${herramienta}`, 'info', 'herramientas');
+            });
+        });
+    </script>
+</body>
+</html>
+
+

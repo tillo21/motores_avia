@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIAAnalytics v2.0 - Dashboard Avanzado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metric-card { transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .heatmap-cell { transition: all 0.2s; }
+        .heatmap-cell:hover { transform: scale(1.1); opacity: 0.8; }
+        #ledgerPanel { max-height: 300px; overflow-y: auto; }
+        .ledger-entry { border-left: 3px solid #3b82f6; padding-left: 10px; margin-bottom: 8px; }
+        .avia-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-white mb-2">AVIAAnalytics v2.0</h1>
+                    <p class="text-blue-100">Dashboard de métricas en tiempo real con sistema AVIA completo</p>
+                </div>
+                <div class="flex gap-3 flex-wrap">
+                    <div class="px-4 py-2 bg-yellow-500 text-white rounded-lg font-semibold">
+                        <span id="tokenDisplay">1000 tokens</span>
+                    </div>
+                    <button onclick="AVIAPersistence.export()" class="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg font-semibold transition">
+                        📤 Exportar Estado
+                    </button>
+                    <button onclick="toggleLedger()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition">
+                        📋 Ver Ledger
+                    </button>
+                    <span class="px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold avia-badge">
+                        ✓ 100% AVIA
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ledger Panel (collapsible) -->
+        <div id="ledgerPanel" class="bg-white rounded-lg shadow-md p-6 mb-8" style="display:none;">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">📋 AVIA Ledger - Registro Inmutable</h3>
+            <div id="ledgerContent" class="space-y-2"></div>
+        </div>
+
+        <!-- KPIs Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Card 1: Total de Usuarios -->
+            <div class="metric-card bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-600 font-semibold">Total Usuarios</h3>
+                    <span class="text-3xl">👥</span>
+                </div>
+                <p class="text-4xl font-bold text-blue-600 mb-2">45,234</p>
+                <p class="text-sm text-green-500 font-semibold">↑ 12% vs mes anterior</p>
+            </div>
+
+            <!-- Card 2: Ingresos -->
+            <div class="metric-card bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-600 font-semibold">Ingresos</h3>
+                    <span class="text-3xl">💰</span>
+                </div>
+                <p class="text-4xl font-bold text-green-600 mb-2">$128,450</p>
+                <p class="text-sm text-green-500 font-semibold">↑ 8.3% vs mes anterior</p>
+            </div>
+
+            <!-- Card 3: Tasa de Conversión -->
+            <div class="metric-card bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-600 font-semibold">Conversión</h3>
+                    <span class="text-3xl">📊</span>
+                </div>
+                <p class="text-4xl font-bold text-purple-600 mb-2">3.8%</p>
+                <p class="text-sm text-red-500 font-semibold">↓ 0.5% vs mes anterior</p>
+            </div>
+
+            <!-- Card 4: Uptime del Sistema -->
+            <div class="metric-card bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-600 font-semibold">Uptime</h3>
+                    <span class="text-3xl">⚡</span>
+                </div>
+                <p class="text-4xl font-bold text-teal-600 mb-2">99.97%</p>
+                <p class="text-sm text-green-500 font-semibold">✓ Excelente rendimiento</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Gráfico de Líneas: Usuarios por Mes -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">📈 Usuarios Activos por Mes</h3>
+                <canvas id="lineChart"></canvas>
+            </div>
+
+            <!-- Gráfico de Barras: Ingresos por Categoría -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">💵 Ingresos por Categoría</h3>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Second Row Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Gráfico de Dona: Distribución de Tráfico -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">🌐 Fuentes de Tráfico</h3>
+                <canvas id="doughnutChart"></canvas>
+            </div>
+
+            <!-- Gráfico de Área: Tendencia de Conversión -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">🎯 Tendencia de Conversión</h3>
+                <canvas id="areaChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">🔥 Heatmap de Actividad (Horas del Día)</h3>
+            <div id="heatmap" class="overflow-x-auto"></div>
+        </div>
+
+        <!-- Tabla de Datos -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">📊 Top 10 Productos</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="p-3 font-semibold">Producto</th>
+                            <th class="p-3 font-semibold">Ventas</th>
+                            <th class="p-3 font-semibold">Ingresos</th>
+                            <th class="p-3 font-semibold">Crecimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-600">
+            <p class="mb-2">AVIAAnalytics v2.0 - Powered by AVIA Systems</p>
+            <p class="text-sm">
+                <span class="font-semibold">Átomos activos:</span> 
+                Persistence • Ledger • Sync • Consensus • Agent • Pipeline
+            </p>
+        </div>
+    </div>
+
+    <script>
+        'use strict';
+
+        // ========================================
+        // ÁTOMO 1: AVIAPersistence
+        // ========================================
+        var AVIAPersistence = (function() {
+            var STORAGE_KEY = 'avia_analytics_v2';
+            
+            function save(data) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        version: '2.0.0',
+                        timestamp: new Date().toISOString(),
+                        data: data,
+                        hash: simpleHash(JSON.stringify(data))
+                    }));
+                    return { success: true };
+                } catch (e) {
+                    return { success: false, error: e.message };
+                }
+            }
+            
+            function load() {
+                try {
+                    var stored = localStorage.getItem(STORAGE_KEY);
+                    return stored ? JSON.parse(stored).data : null;
+                } catch (e) {
+                    return null;
+                }
+            }
+            
+            function exportState() {
+                var state = {
+                    analytics: localStorage.getItem(STORAGE_KEY),
+                    ledger: AVIALedger.getHistory(),
+                    tokens: AVIAConsensus.getTokens(),
+                    exportDate: new Date().toISOString()
+                };
+                var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'avia-analytics-' + Date.now() + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                AVIALedger.record('export_state', { size: blob.size });
+            }
+            
+            function simpleHash(str) {
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(16);
+            }
+            
+            return { save: save, load: load, export: exportState };
+        })();
+
+        // ========================================
+        // ÁTOMO 2: AVIALedger
+        // ========================================
+        var AVIALedger = (function() {
+            var ledger = [];
+            var currentHash = '0000';
+            
+            function record(action, data) {
+                var entry = {
+                    id: ledger.length + 1,
+                    timestamp: new Date().toISOString(),
+                    action: action,
+                    data: data || {},
+                    prevHash: currentHash
+                };
+                entry.hash = hash(JSON.stringify(entry) + currentHash);
+                currentHash = entry.hash;
+                ledger.push(entry);
+                
+                // Auto-save
+                AVIAPersistence.save({ ledger: ledger });
+                updateLedgerDisplay();
+                
+                return entry;
+            }
+            
+            function hash(str) {
+                var h = 0;
+                for (var i = 0; i < str.length; i++) {
+                    h = ((h << 5) - h) + str.charCodeAt(i);
+                    h = h & h;
+                }
+                return Math.abs(h).toString(16).substring(0, 8);
+            }
+            
+            function getHistory() { return ledger.slice(); }
+            
+            function verify() {
+                for (var i = 1; i < ledger.length; i++) {
+                    if (ledger[i].prevHash !== ledger[i-1].hash) {
+                        return { valid: false, error: 'Chain broken at index ' + i };
+                    }
+                }
+                return { valid: true };
+            }
+            
+            return { record: record, getHistory: getHistory, verify: verify };
+        })();
+
+        // ========================================
+        // ÁTOMO 3: AVIASync
+        // ========================================
+        var AVIASync = (function() {
+            var channel = new BroadcastChannel('avia_analytics_sync');
+            var heartbeatTimer;
+            var lastHeartbeat = Date.now();
+            
+            function init() {
+                channel.onmessage = function(e) {
+                    if (e.data.type === 'state_update') {
+                        AVIAPersistence.save(e.data.data);
+                        AVIALedger.record('sync_received', { source: 'broadcast' });
+                    } else if (e.data.type === 'heartbeat') {
+                        lastHeartbeat = Date.now();
+                    }
+                };
+                
+                heartbeatTimer = setInterval(function() {
+                    channel.postMessage({ type: 'heartbeat', timestamp: Date.now() });
+                }, 5000);
+                
+                AVIALedger.record('sync_init', { channel: 'avia_analytics_sync' });
+            }
+            
+            function broadcast(type, data) {
+                channel.postMessage({ type: type, data: data, timestamp: Date.now() });
+            }
+            
+            function getStatus() {
+                return { 
+                    active: (Date.now() - lastHeartbeat) < 10000,
+                    lastHeartbeat: lastHeartbeat
+                };
+            }
+            
+            return { init: init, broadcast: broadcast, getStatus: getStatus };
+        })();
+
+        // ========================================
+        // ÁTOMO 4: AVIAConsensus
+        // ========================================
+        var AVIAConsensus = (function() {
+            var tokens = 1000;
+            var regenRate = 1; // 1 token per minute
+            var lastRegen = Date.now();
+            
+            function propose(action, cost) {
+                if (tokens < cost) {
+                    AVIALedger.record('consensus_rejected', { action: action, cost: cost, tokens: tokens });
+                    return { approved: false, reason: 'Insufficient tokens' };
+                }
+                tokens -= cost;
+                AVIALedger.record('consensus_approved', { action: action, cost: cost, remaining: tokens });
+                return { approved: true, tokens: tokens };
+            }
+            
+            function regenerate() {
+                var now = Date.now();
+                var elapsed = Math.floor((now - lastRegen) / 60000); // minutes
+                if (elapsed > 0) {
+                    tokens = Math.min(1000, tokens + (elapsed * regenRate));
+                    lastRegen = now;
+                }
+            }
+            
+            function getTokens() { 
+                regenerate();
+                return tokens; 
+            }
+            
+            // Auto-regenerate
+            setInterval(regenerate, 60000);
+            
+            return { propose: propose, getTokens: getTokens };
+        })();
+
+        // ========================================
+        // ÁTOMO 5: AVIAAgent
+        // ========================================
+        var AVIAAgent = (function() {
+            var policies = { 
+                maxErrors: 200, 
+                minUptime: 99.5,
+                maxResponseTime: 500
+            };
+            
+            function evaluate(metrics) {
+                var violations = [];
+                
+                if (metrics.errors && metrics.errors > policies.maxErrors) {
+                    violations.push('Errors exceed limit: ' + metrics.errors);
+                }
+                
+                if (metrics.uptime && metrics.uptime < policies.minUptime) {
+                    violations.push('Uptime below threshold: ' + metrics.uptime);
+                }
+                
+                if (violations.length > 0) {
+                    AVIALedger.record('policy_violation', { violations: violations });
+                    return { veto: true, reason: violations.join('; ') };
+                }
+                
+                return { veto: false };
+            }
+            
+            function updatePolicy(key, value) {
+                if (policies.hasOwnProperty(key)) {
+                    var result = AVIAConsensus.propose('update_policy', 50);
+                    if (result.approved) {
+                        policies[key] = value;
+                        AVIALedger.record('policy_updated', { key: key, value: value });
+                        return { success: true };
+                    }
+                    return { success: false, reason: result.reason };
+                }
+                return { success: false, reason: 'Invalid policy key' };
+            }
+            
+            return { evaluate: evaluate, updatePolicy: updatePolicy };
+        })();
+
+        // ========================================
+        // ÁTOMO 6: AVIAPipeline
+        // ========================================
+        var AVIAPipeline = (function() {
+            var trace = [];
+            
+            function execute(steps, input) {
+                trace = [];
+                var result = input;
+                
+                AVIALedger.record('pipeline_start', { steps: steps.length });
+                
+                for (var i = 0; i < steps.length; i++) {
+                    try {
+                        result = steps[i](result);
+                        trace.push({ step: i, status: 'ok', timestamp: Date.now() });
+                    } catch (e) {
+                        trace.push({ step: i, status: 'error', error: e.message });
+                        AVIALedger.record('pipeline_error', { step: i, error: e.message });
+                        return { success: false, trace: trace, error: e.message };
+                    }
+                }
+                
+                AVIALedger.record('pipeline_complete', { steps: trace.length });
+                return { success: true, result: result, trace: trace };
+            }
+            
+            function getTrace() { return trace.slice(); }
+            
+            return { execute: execute, getTrace: getTrace };
+        })();
+
+        // ========================================
+        // UI FUNCTIONS
+        // ========================================
+        function toggleLedger() {
+            var panel = document.getElementById('ledgerPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            if (panel.style.display === 'block') {
+                updateLedgerDisplay();
+            }
+        }
+
+        function updateLedgerDisplay() {
+            var content = document.getElementById('ledgerContent');
+            var history = AVIALedger.getHistory();
+            
+            content.innerHTML = history.slice(-10).reverse().map(function(entry) {
+                return '<div class="ledger-entry bg-gray-50 rounded p-3">' +
+                    '<div class="flex justify-between items-start">' +
+                    '<div>' +
+                    '<span class="font-semibold text-blue-600">#' + entry.id + '</span> ' +
+                    '<span class="text-gray-700">' + entry.action + '</span>' +
+                    '</div>' +
+                    '<span class="text-xs text-gray-500">' + new Date(entry.timestamp).toLocaleTimeString() + '</span>' +
+                    '</div>' +
+                    '<div class="text-xs text-gray-600 mt-1">Hash: ' + entry.hash + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function updateTokenDisplay() {
+            document.getElementById('tokenDisplay').textContent = AVIAConsensus.getTokens() + ' tokens';
+        }
+
+        // ========================================
+        // CHART INITIALIZATION
+        // ========================================
+        function initCharts() {
+            // Line Chart
+            var ctxLine = document.getElementById('lineChart').getContext('2d');
+            new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul'],
+                    datasets: [{
+                        label: 'Usuarios Activos',
+                        data: [28000, 32000, 35000, 38000, 41000, 43000, 45234],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Bar Chart
+            var ctxBar = document.getElementById('barChart').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Electrónica', 'Ropa', 'Hogar', 'Deportes', 'Libros'],
+                    datasets: [{
+                        label: 'Ingresos ($)',
+                        data: [42500, 35800, 28900, 15200, 6050],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ]
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Doughnut Chart
+            var ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+            new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Búsqueda Orgánica', 'Redes Sociales', 'Directo', 'Email', 'Referidos'],
+                    datasets: [{
+                        data: [42, 23, 18, 10, 7],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ]
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            // Area Chart
+            var ctxArea = document.getElementById('areaChart').getContext('2d');
+            new Chart(ctxArea, {
+                type: 'line',
+                data: {
+                    labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6'],
+                    datasets: [{
+                        label: 'Tasa de Conversión (%)',
+                        data: [3.2, 3.5, 3.8, 4.1, 3.9, 3.8],
+                        borderColor: 'rgb(139, 92, 246)',
+                        backgroundColor: 'rgba(139, 92, 246, 0.3)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            AVIALedger.record('charts_initialized', { count: 4 });
+        }
+
+        // ========================================
+        // HEATMAP GENERATION
+        // ========================================
+        function generateHeatmap() {
+            var heatmapDiv = document.getElementById('heatmap');
+            var days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            var hours = Array.from({ length: 24 }, function(_, i) { return i; });
+            
+            var html = '<div class="inline-block">';
+            html += '<div class="flex"><div class="w-12"></div>';
+            hours.forEach(function(h) {
+                html += '<div class="w-8 h-8 text-xs text-center text-gray-600">' + h + '</div>';
+            });
+            html += '</div>';
+            
+            days.forEach(function(day) {
+                html += '<div class="flex">';
+                html += '<div class="w-12 h-8 text-sm font-semibold flex items-center text-gray-700">' + day + '</div>';
+                hours.forEach(function() {
+                    var intensity = Math.random();
+                    var color = intensity > 0.7 ? 'bg-red-500' : 
+                                intensity > 0.5 ? 'bg-orange-400' :
+                                intensity > 0.3 ? 'bg-yellow-300' : 'bg-green-200';
+                    html += '<div class="heatmap-cell w-8 h-8 m-px rounded ' + color + '" title="' + 
+                            (intensity * 100).toFixed(0) + '% actividad"></div>';
+                });
+                html += '</div>';
+            });
+            html += '</div>';
+            
+            heatmapDiv.innerHTML = html;
+            AVIALedger.record('heatmap_generated', { days: days.length, hours: hours.length });
+        }
+
+        // ========================================
+        // TABLE GENERATION
+        // ========================================
+        function generateTable() {
+            var products = [
+                { name: 'iPhone 14 Pro', sales: 1240, revenue: 1364000, growth: 15 },
+                { name: 'Samsung Galaxy S23', sales: 980, revenue: 882000, growth: 12 },
+                { name: 'MacBook Air M2', sales: 560, revenue: 672000, growth: 22 },
+                { name: 'Sony WH-1000XM5', sales: 890, revenue: 267000, growth: 8 },
+                { name: 'iPad Pro 12.9', sales: 450, revenue: 495000, growth: 18 },
+                { name: 'AirPods Pro 2', sales: 1120, revenue: 280000, growth: -3 },
+                { name: 'Dell XPS 15', sales: 320, revenue: 480000, growth: 25 },
+                { name: 'Nintendo Switch', sales: 780, revenue: 234000, growth: 5 },
+                { name: 'PlayStation 5', sales: 420, revenue: 210000, growth: -8 },
+                { name: 'Canon EOS R6', sales: 180, revenue: 450000, growth: 30 }
+            ];
+
+            var tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = products.map(function(p) {
+                var growthColor = p.growth > 0 ? 'text-green-600' : 'text-red-600';
+                var growthIcon = p.growth > 0 ? '↑' : '↓';
+                return '<tr class="border-b hover:bg-gray-50">' +
+                    '<td class="p-3 font-semibold">' + p.name + '</td>' +
+                    '<td class="p-3">' + p.sales.toLocaleString() + '</td>' +
+                    '<td class="p-3 font-semibold">$' + p.revenue.toLocaleString() + '</td>' +
+                    '<td class="p-3 ' + growthColor + ' font-semibold">' + growthIcon + ' ' + Math.abs(p.growth) + '%</td>' +
+                    '</tr>';
+            }).join('');
+
+            AVIALedger.record('table_generated', { products: products.length });
+        }
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        window.addEventListener('load', function() {
+            // Initialize AVIA Systems
+            AVIASync.init();
+            AVIALedger.record('system_start', { version: '2.0.0' });
+            
+            // Load persisted state
+            var saved = AVIAPersistence.load();
+            if (saved && saved.ledger) {
+                console.log('Estado restaurado:', saved);
+            }
+            
+            // Initialize UI
+            initCharts();
+            generateHeatmap();
+            generateTable();
+            
+            // Update token display
+            setInterval(updateTokenDisplay, 1000);
+            
+            // Evaluate policies
+            var policyCheck = AVIAAgent.evaluate({ 
+                errors: 45, 
+                uptime: 99.97 
+            });
+            
+            if (!policyCheck.veto) {
+                AVIALedger.record('policy_check_passed', {});
+            }
+            
+            console.log('AVIAAnalytics v2.0 initialized with all AVIA atoms active');
+        });
+    </script>
+</body>
+</html>

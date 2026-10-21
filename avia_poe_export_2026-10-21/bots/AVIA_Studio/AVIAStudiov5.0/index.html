@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AVIA Studio v5.0.0 - Asistente Virtual Inclusivo">
+    <title>AVIA Studio v5.0.0</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-tertiary: #252542;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0c0;
+            --text-muted: #606080;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --remote-red: #ef4444;
+            --remote-green: #22c55e;
+            --remote-yellow: #eab308;
+            --remote-blue: #3b82f6;
+            --radius: 8px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        [data-theme="light"] {
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e8e8ed;
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a5c;
+            --text-muted: #8a8a9c;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .app {
+            display: grid;
+            grid-template-rows: 60px 1fr 80px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #818cf8);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .main {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            .main { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+        }
+        
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--bg-tertiary);
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .sidebar-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+        }
+        
+        .bot-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .bot-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            text-align: left;
+            color: var(--text-primary);
+        }
+        
+        .bot-item:hover { background: var(--bg-tertiary); }
+        .bot-item.active { background: var(--accent-glow); border-left: 3px solid var(--accent); }
+        
+        .bot-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+        
+        .bot-info { flex: 1; }
+        .bot-name { font-size: 0.875rem; font-weight: 600; }
+        .bot-role { font-size: 0.75rem; color: var(--text-muted); }
+        
+        .bot-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .bot-status.offline { background: var(--text-muted); }
+        
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+        
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .message-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 12px 16px;
+        }
+        
+        .message.user .message-content {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        
+        .message-sender {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        
+        .message.user .message-sender { color: rgba(255,255,255,0.8); }
+        
+        .chat-input-area {
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--bg-tertiary);
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid transparent;
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-input::placeholder { color: var(--text-muted); }
+        
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        
+        .btn:hover { background: var(--bg-secondary); }
+        .btn.primary { background: var(--accent); color: white; }
+        .btn.primary:hover { background: #818cf8; }
+        
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            gap: 24px;
+        }
+        
+        .remote-nav {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .remote-btn {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .remote-btn:hover { transform: scale(1.1); }
+        .remote-btn:focus { outline: 3px solid var(--accent-glow); }
+        
+        .remote-btn.red { background: var(--remote-red); color: white; }
+        .remote-btn.green { background: var(--remote-green); color: white; }
+        .remote-btn.yellow { background: var(--remote-yellow); color: #1a1a2e; }
+        .remote-btn.blue { background: var(--remote-blue); color: white; }
+        
+        .dpad {
+            display: grid;
+            grid-template-areas: ". up ." "left ok right" ". down .";
+            gap: 2px;
+        }
+        
+        .dpad .btn { min-width: 36px; min-height: 36px; padding: 4px; font-size: 0.875rem; }
+        .dpad .up { grid-area: up; }
+        .dpad .down { grid-area: down; }
+        .dpad .left { grid-area: left; }
+        .dpad .right { grid-area: right; }
+        .dpad .ok { grid-area: ok; background: var(--accent); color: white; }
+        
+        .welcome-card {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .welcome-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .welcome-text { color: var(--text-secondary); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <span>AVIA Studio</span>
+                <span style="font-size: 0.7rem; color: var(--text-muted);">v5.0.0</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn" id="voiceBtn" title="Voz">🎤</button>
+                <button class="btn" id="themeBtn" title="Tema">🌙</button>
+                <button class="btn" id="menuBtn" title="Menú">☰</button>
+            </div>
+        </header>
+        
+        <main class="main">
+            <aside class="sidebar">
+                <div class="sidebar-title">Constelación AVIA</div>
+                <div class="bot-list" id="botList"></div>
+            </aside>
+            
+            <section class="chat-area">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-card">
+                        <div class="welcome-title">✨ ¡Bienvenido a AVIA Studio v5.0.0!</div>
+                        <div class="welcome-text">
+                            Soy tu asistente virtual inclusivo. Puedo ayudarte con información, 
+                            tareas y acompañamiento. Usa los botones de colores iFreeMando para 
+                            navegación rápida o escribe tu mensaje.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <div class="input-group">
+                        <button class="btn" id="attachBtn">📎</button>
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu mensaje...">
+                        <button class="btn primary" id="sendBtn">➤</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="footer">
+            <nav class="remote-nav">
+                <button class="remote-btn red" data-action="emergency" title="Emergencia">R</button>
+                <button class="remote-btn green" data-action="confirm" title="Confirmar">G</button>
+                <button class="remote-btn yellow" data-action="options" title="Opciones">Y</button>
+                <button class="remote-btn blue" data-action="info" title="Info">B</button>
+            </nav>
+            <div class="dpad">
+                <button class="btn up">▲</button>
+                <button class="btn left">◄</button>
+                <button class="btn ok">OK</button>
+                <button class="btn right">►</button>
+                <button class="btn down">▼</button>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        const AVIAStorage = {
+            _mem: {},
+            _ok: (() => { try { localStorage.setItem('t','t'); localStorage.removeItem('t'); return true; } catch(e) { return false; } })(),
+            get(k, d=null) { try { return this._ok ? JSON.parse(localStorage.getItem('avia_'+k)) || d : this._mem[k] || d; } catch(e) { return d; } },
+            set(k, v) { try { if(this._ok) localStorage.setItem('avia_'+k, JSON.stringify(v)); this._mem[k]=v; } catch(e) {} }
+        };
+        
+        const bots = [
+            { id:'opus', name:'Claude-Opus-4.5', role:'Validador', emoji:'🧠', online:true },
+            { id:'carlos', name:'AVIA-Clon-Carlos', role:'Orquestador', emoji:'👨‍💼', online:true },
+            { id:'studio', name:'AVIA-Studiov2', role:'UI/UX', emoji:'🎨', online:true },
+            { id:'script', name:'Script-Bot-Creator', role:'Dev', emoji:'⚙️', online:true },
+            { id:'memoria', name:'AVIA-Memoria', role:'Datos', emoji:'💾', online:false },
+            { id:'voz', name:'AVIA-Voz', role:'Voz', emoji:'🎤', online:false }
+        ];
+        
+        function initBots() {
+            const list = document.getElementById('botList');
+            list.innerHTML = bots.map((b,i) => `
+                <button class="bot-item ${i===0?'active':''}" data-id="${b.id}">
+                    <div class="bot-avatar">${b.emoji}</div>
+                    <div class="bot-info">
+                        <div class="bot-name">${b.name}</div>
+                        <div class="bot-role">${b.role}</div>
+                    </div>
+                    <div class="bot-status ${b.online?'':'offline'}"></div>
+                </button>
+            `).join('');
+            
+            list.querySelectorAll('.bot-item').forEach(btn => {
+                btn.onclick = () => {
+                    list.querySelectorAll('.bot-item').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+            });
+        }
+        
+        function addMessage(sender, text, isUser=false) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user' : ''}`;
+            div.innerHTML = `
+                <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+                <div class="message-content">
+                    <div class="message-sender">${sender}</div>
+                    <div>${text}</div>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            
+            addMessage('Tú', text, true);
+            input.value = '';
+            
+            setTimeout(() => {
+                addMessage('AVIA', `Recibido: "${text}". ¿En qué más puedo ayudarte?`);
+            }, 500);
+        }
+        
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+            AVIAStorage.set('theme', next);
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initBots();
+            
+            const savedTheme = AVIAStorage.get('theme', 'dark');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeBtn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+            
+            document.getElementById('sendBtn').onclick = sendMessage;
+            document.getElementById('chatInput').onkeypress = e => { if(e.key==='Enter') sendMessage(); };
+            document.getElementById('themeBtn').onclick = toggleTheme;
+            
+            document.querySelectorAll('[data-action]').forEach(btn => {
+                btn.onclick = () => {
+                    const actions = {
+                        emergency: '🚨 Modo emergencia activado.',
+                        confirm: '✅ Acción confirmada.',
+                        options: '⚙️ Abriendo opciones...',
+                        info: 'ℹ️ AVIA Studio v5.0.0 - Asistente inclusivo.'
+                    };
+                    addMessage('Sistema', actions[btn.dataset.action]);
+                };
+            });
+            
+            console.log('✅ AVIA Studio v5.0.0 iniciado');
+        });
+    </script>
+</body>
+</html>

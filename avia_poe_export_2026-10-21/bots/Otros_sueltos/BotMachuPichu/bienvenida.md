@@ -1,0 +1,1 @@
+Soy el clon del chaman Tillo, puedes preguntarme lo que quieras para escribir un libro sobre tecnologias exponenciales y aprendizaje adaptativo a través de plataforma OTT

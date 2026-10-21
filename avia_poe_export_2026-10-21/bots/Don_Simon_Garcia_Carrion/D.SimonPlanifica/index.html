@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estrategia IA · Planificación Demanda — García Carrión</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+:root {
+  --bg: #F0F0EC;
+  --text: #1a1a1a;
+  --text-sec: #555;
+  --accent: #1B4332;
+  --accent2: #2D6A4F;
+  --header-grad-1: #1B3A2A;
+  --header-grad-2: #2B5940;
+  --border: #d8d5d0;
+  --card-bg: #ffffff;
+  --slide-bg: #FFFFFF;
+  --green: #4CAF50;
+  --yellow: #FFC107;
+  --red: #F44336;
+  --blue-highlight: #1565C0;
+  --bar-bg: #E8E6E1;
+  --bar-border: #D0CEC9;
+}
+
+html.dark {
+  --bg: #1a1a1a;
+  --text: #eee;
+  --text-sec: #aaa;
+  --border: #333;
+  --card-bg: #242424;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ─── TOOLBAR ─── */
+.toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  z-index: 100;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toolbar-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 16px;
+  color: var(--accent);
+}
+.toolbar-sep {
+  width: 1px; height: 22px; background: var(--border);
+}
+.slide-counter {
+  font-size: 12px; color: var(--text-sec); font-weight: 500;
+}
+.toolbar-right {
+  display: flex; align-items: center; gap: 6px;
+}
+.tb {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+.tb:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tb.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tb.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.tb i { font-size: 12px; }
+.tb .lbl { display: inline; }
+@media (max-width: 550px) {
+  .tb .lbl { display: none; }
+  .tb { padding: 6px 10px; }
+}
+
+/* ─── SLIDE AREA ─── */
+.slide-area {
+  position: fixed;
+  top: 50px; left: 0; right: 0; bottom: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.slide-wrap {
+  width: 100%;
+  max-width: 1060px;
+  aspect-ratio: 16 / 9.6;
+  max-height: 100%;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 3px 20px rgba(0,0,0,0.08);
+  background: #fff;
+}
+
+/* ─── THE SLIDE ─── */
+.slide {
+  position: absolute; inset: 0;
+  background: #fff;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.slide.active { display: flex; }
+
+/* Header stripe */
+.slide-header {
+  background: linear-gradient(135deg, #173025 0%, #1B4332 30%, #2D6A4F 70%, #40916C 100%);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.slide-header::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 6px);
+}
+.header-title {
+  font-size: clamp(12px, 1.6vw, 18px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+.header-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(12px, 1.5vw, 17px);
+  color: #fff;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.03em;
+}
+.header-logo .leaf { color: #81C784; }
+
+/* Body */
+.slide-body {
+  flex: 1;
+  padding: clamp(12px, 2.5%, 28px) clamp(14px, 3%, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.5%, 16px);
+  overflow: hidden;
+}
+
+.section-title {
+  font-size: clamp(13px, 1.6vw, 19px);
+  font-weight: 800;
+  color: #1a1a1a;
+}
+.section-sub {
+  font-size: clamp(11px, 1.2vw, 15px);
+  color: #444;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* 3-column flow area */
+.flow-area {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: clamp(8px, 1.5%, 18px);
+  min-height: 0;
+}
+
+.flow-col {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 0.6%, 8px);
+}
+
+/* Stacked bars */
+.bar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.bar-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 0;
+  flex: 1;
+}
+.bar-cell {
+  flex: 1;
+  background: #E8E5E0;
+  border: 1px solid #D5D2CC;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  padding: 0 clamp(3px, 0.5vw, 8px);
+  font-size: clamp(5.5px, 0.7vw, 9px);
+  color: #555;
+  font-weight: 500;
+  line-height: 1.15;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-height: clamp(14px, 2.2%, 24px);
+}
+.bar-cell.highlight-blue {
+  background: #1565C0;
+  color: #fff;
+  border-color: #0D47A1;
+  font-weight: 600;
+}
+.bar-cell.highlight-green-bg {
+  background: #E8F5E9;
+  border-color: #C8E6C9;
+}
+
+/* Status indicators */
+.status-dot {
+  width: clamp(6px, 1vw, 12px);
+  height: clamp(6px, 1vw, 12px);
+  border-radius: 1px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.status-dot.g { background: #4CAF50; }
+.status-dot.y { background: #FFC107; }
+.status-dot.r { background: #F44336; }
+
+/* Column footer */
+.col-footer {
+  border-top: 3px solid var(--accent);
+  padding-top: clamp(4px, 0.7%, 10px);
+  margin-top: auto;
+}
+.col-footer-title {
+  font-size: clamp(8px, 1vw, 13px);
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: clamp(2px, 0.3%, 6px);
+}
+.col-footer-list {
+  list-style: disc;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.col-footer-list li {
+  font-size: clamp(6px, 0.75vw, 10px);
+  color: #444;
+  line-height: 1.3;
+}
+
+/* Page number */
+.page-num {
+  position: absolute;
+  bottom: 6px;
+  right: 12px;
+  font-size: 9px;
+  color: #bbb;
+}
+
+/* ─── NAV ─── */
+.nav-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 100;
+}
+.nav-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+.nav-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.progress-track {
+  width: 180px; height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--accent);
+  transition: width 0.4s; border-radius: 2px;
+}
+
+/* ─── MODAL ─── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-bg.on { display: flex; }
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+.modal-box h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 19px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.modal-box p {
+  font-size: 13px;
+  color: var(--text-sec);
+  margin-bottom: 14px;
+}
+.m-prog {
+  width: 100%; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.m-prog-fill {
+  height: 100%; background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s;
+  width: 0;
+}
+.m-status {
+  font-size: 12px;
+  color: var(--text-sec);
+  margin-bottom: 14px;
+}
+.m-close {
+  padding: 8px 22px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  display: none;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
+.m-close:hover { background: var(--accent2); }
+.dl-links {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  text-align: left;
+}
+.dl-links.show { display: flex; }
+.dl-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: rgba(27,67,50,0.06);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+.dl-link:hover { background: rgba(27,67,50,0.12); }
+
+/* Anim */
+.slide { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: translateX(0); } }
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-logo">García Carrión</div>
+    <div class="toolbar-sep"></div>
+    <div class="slide-counter" id="slideCounter">1 / 1</div>
+  </div>
+  <div class="toolbar-right">
+    <button class="tb" onclick="exportPNG()" title="Exportar PNG">
+      <i class="fas fa-image"></i><span class="lbl">PNG</span>
+    </button>
+    <button class="tb primary" onclick="exportPPT()" title="Descargar PPT">
+      <i class="fas fa-file-powerpoint"></i><span class="lbl">PPT</span>
+    </button>
+  </div>
+</div>
+
+<!-- SLIDE -->
+<div class="slide-area">
+  <div class="slide-wrap" id="slideWrap">
+
+    <div class="slide active" data-slide="1">
+      <!-- Header -->
+      <div class="slide-header">
+        <div class="header-title">Estrategia IA. Planificación</div>
+        <div class="header-logo"><span class="leaf">🌿</span> García <span style="font-weight:400">&</span> Carrión</div>
+      </div>
+
+      <!-- Body -->
+      <div class="slide-body">
+        <div>
+          <div class="section-title">IA – PLANIFICACIÓN DEMANDA</div>
+          <div class="section-sub">Para la mejora de planificación de demanda intervienen varios elementos</div>
+        </div>
+
+        <div class="flow-area">
+
+          <!-- COL 1: Cálculo de previsión -->
+          <div class="flow-col">
+            <div class="bar-stack">
+              <div class="bar-row">
+                <div class="bar-cell">Estrategia y catálogo de productos</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Estrategia Previsión de venta comercial cliente</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row" style="gap:2px;">
+                <div class="bar-cell" style="flex:1;">Cálculo previsión Selier</div>
+                <div class="status-dot r"></div>
+                <div class="bar-cell" style="flex:1;">Cálculo previsión convencional</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Contratos de clientes de servicio</div>
+                <div class="status-dot y"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Stock disponible (Mat Prima, auxiliar, semielaborado)</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Pedidos recibidos</div>
+                <div class="status-dot g"></div>
+              </div>
+            </div>
+            <div class="col-footer">
+              <div class="col-footer-title">Cálculo de previsión</div>
+              <ul class="col-footer-list">
+                <li>Cálculo con nuevas tecnologías</li>
+                <li>Históricos</li>
+                <li>Fuentes externas</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- COL 2: Material auxiliar & Ejecución -->
+          <div class="flow-col">
+            <div class="bar-stack">
+              <div class="bar-row">
+                <div class="bar-cell">Estrategia y catálogo de productos</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell highlight-green-bg">Estrategia Previsión de venta comercial cliente</div>
+                <div class="status-dot y"></div>
+              </div>
+              <div class="bar-row" style="gap:2px;">
+                <div class="bar-cell">Cálculo previsión</div>
+                <div class="status-dot y"></div>
+                <div class="bar-cell">Cálculo previsión convencional</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Contratos de niveles de servicio</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Stock disponible (Mat Prima, auxiliar, semielaborado)</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Pedidos recibidos</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell highlight-green-bg">Ejecución</div>
+                <div class="status-dot g"></div>
+              </div>
+            </div>
+            <div class="col-footer">
+              <div class="col-footer-title">Material auxiliar &amp; Ejecución</div>
+              <ul class="col-footer-list">
+                <li>Previsión plan de compra material auxiliar y materia prima. (Atención licencia adicional)</li>
+                <li>Semi automatización en la ejecución del plan.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- COL 3: Previsión Clientes -->
+          <div class="flow-col">
+            <div class="bar-stack">
+              <div class="bar-row">
+                <div class="bar-cell">Estrategia y catálogo de productos</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell highlight-blue">Estrategia Previsión de venta comercial cliente</div>
+              </div>
+              <div class="bar-row" style="gap:2px;">
+                <div class="bar-cell">Cálculo previsión Selier</div>
+                <div class="status-dot r"></div>
+                <div class="bar-cell">Cálculo previsión convencional</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Contratos de clientes de servicio</div>
+                <div class="status-dot y"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Stock disponible (Mat Prima, auxiliar, semielaborado)</div>
+                <div class="status-dot g"></div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-cell">Pedidos recibidos</div>
+                <div class="status-dot g"></div>
+              </div>
+            </div>
+            <div class="col-footer">
+              <div class="col-footer-title">Previsión Clientes</div>
+              <ul class="col-footer-list">
+                <li>Previsión de clientes</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="page-num">1</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav-bar">
+  <button class="nav-btn" onclick="prevSlide()" title="Anterior"><i class="fas fa-chevron-left"></i></button>
+  <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:100%"></div></div>
+  <button class="nav-btn" onclick="nextSlide()" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal-box">
+    <h3 id="mTitle">Exportando...</h3>
+    <p id="mDesc">Preparando</p>
+    <div class="m-prog"><div class="m-prog-fill" id="mFill"></div></div>
+    <div class="m-status" id="mStatus">Iniciando...</div>
+    <div class="dl-links" id="dlLinks"></div>
+    <button class="m-close" id="mClose" onclick="closeModal()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+/* ─── Dark mode ─── */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+  document.documentElement.classList[e.matches ? 'add' : 'remove']('dark');
+});
+
+/* ─── Navigation (single slide, but ready for multiple) ─── */
+var cur = 1, total = 1;
+function showSlide(n) {
+  if (n < 1 || n > total) return;
+  document.querySelectorAll('.slide').forEach(function(s) { s.classList.remove('active'); });
+  document.querySelectorAll('.slide')[n - 1].classList.add('active');
+  cur = n;
+  document.getElementById('slideCounter').textContent = n + ' / ' + total;
+  document.getElementById('progressFill').style.width = ((n / total) * 100) + '%';
+}
+function nextSlide() { showSlide(cur + 1); }
+function prevSlide() { showSlide(cur - 1); }
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+});
+var tx = 0;
+document.addEventListener('touchstart', function(e) { tx = e.changedTouches[0].screenX; });
+document.addEventListener('touchend', function(e) {
+  var d = tx - e.changedTouches[0].screenX;
+  if (Math.abs(d) > 50) { d > 0 ? nextSlide() : prevSlide(); }
+});
+
+/* ─── Modal helpers ─── */
+function openM(t, d) {
+  document.getElementById('mTitle').textContent = t;
+  document.getElementById('mDesc').textContent = d;
+  document.getElementById('mFill').style.width = '0%';
+  document.getElementById('mStatus').textContent = 'Iniciando...';
+  document.getElementById('dlLinks').innerHTML = '';
+  document.getElementById('dlLinks').classList.remove('show');
+  document.getElementById('mClose').style.display = 'none';
+  document.getElementById('exportModal').classList.add('on');
+}
+function updM(p, s) {
+  document.getElementById('mFill').style.width = p + '%';
+  document.getElementById('mStatus').textContent = s;
+}
+function doneM(t) {
+  document.getElementById('mTitle').textContent = t;
+  document.getElementById('mClose').style.display = 'inline-block';
+}
+function closeModal() { document.getElementById('exportModal').classList.remove('on'); }
+
+/* ─── Export PNG ─── */
+async function exportPNG() {
+  openM('Exportando PNG', 'Generando imagen de la diapositiva...');
+  var wrap = document.getElementById('slideWrap');
+
+  updM(30, 'Capturando diapositiva...');
+  await new Promise(function(r) { setTimeout(r, 200); });
+
+  try {
+    var canvas = await html2canvas(wrap, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#FFFFFF',
+      logging: false
+    });
+
+    updM(90, 'Preparando descarga...');
+    var dataUrl = canvas.toDataURL('image/png');
+
+    var links = document.getElementById('dlLinks');
+    links.innerHTML = '';
+    var a = document.createElement('a');
+    a.className = 'dl-link';
+    a.href = dataUrl;
+    a.download = 'GC_Estrategia_IA_Planificacion_Demanda.png';
+    a.innerHTML = '<i class="fas fa-download"></i> Descargar — Estrategia IA Planificación Demanda.png';
+    links.appendChild(a);
+    links.classList.add('show');
+
+    updM(100, 'Listo');
+    doneM('PNG lista para descargar');
+  } catch (err) {
+    updM(100, 'Error: ' + String(err));
+    doneM('Error');
+  }
+}
+
+/* ─── Export PPT ─── */
+async function exportPPT() {
+  openM('Generando PPT', 'Construyendo presentación PowerPoint...');
+  await new Promise(function(r) { setTimeout(r, 100); });
+
+  try {
+    var pptx = new PptxGenJS();
+    pptx.author = 'García Carrión';
+    pptx.company = 'J. García Carrión';
+    pptx.subject = 'Estrategia IA - Planificación Demanda';
+    pptx.title = 'Estrategia IA Planificación';
+
+    var BG = 'FFFFFF';
+    var DARK = '1a1a1a';
+    var GRAY = '555555';
+    var GREEN_HDR = '1B4332';
+    var GREEN = '2D6A4F';
+    var STATUS_G = '4CAF50';
+    var STATUS_Y = 'FFC107';
+    var STATUS_R = 'F44336';
+    var BLUE_HL = '1565C0';
+    var BAR_BG = 'E8E5E0';
+    var BAR_BORDER = 'D0CEC9';
+    var LIGHT_GREEN = 'E8F5E9';
+
+    updM(10, 'Creando slide principal...');
+
+    var s = pptx.addSlide();
+    s.background = { color: BG };
+
+    /* Header band */
+    s.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: '100%', h: 0.6,
+      fill: { type: 'solid', color: GREEN_HDR }
+    });
+    s.addText('ESTRATEGIA IA. PLANIFICACIÓN', {
+      x: 0.3, y: 0.1, w: 5, h: 0.4,
+      fontFace: 'Calibri', fontSize: 14, bold: true,
+      color: 'FFFFFF', charSpacing: 2
+    });
+    s.addText('GARCÍA & CARRIÓN', {
+      x: 6, y: 0.1, w: 3.5, h: 0.4,
+      fontFace: 'Calibri', fontSize: 13, bold: true,
+      color: 'FFFFFF', align: 'right'
+    });
+
+    updM(20, 'Añadiendo título...');
+
+    /* Title area */
+    s.addText('IA – PLANIFICACIÓN DEMANDA', {
+      x: 0.4, y: 0.8, w: 8, h: 0.35,
+      fontFace: 'Calibri', fontSize: 16, bold: true, color: DARK
+    });
+    s.addText('Para la mejora de planificación de demanda intervienen varios elementos', {
+      x: 0.4, y: 1.15, w: 8, h: 0.3,
+      fontFace: 'Calibri', fontSize: 12, color: '444444'
+    });
+
+    updM(35, 'Construyendo columna 1...');
+
+    /* Helper: draw bar row */
+    function drawBar(slide, x, y, w, h, text, statusColor, bgColor) {
+      var bg = bgColor || BAR_BG;
+      var txtColor = bg === BLUE_HL ? 'FFFFFF' : GRAY;
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: x, y: y, w: w, h: h,
+        fill: { color: bg },
+        line: { color: BAR_BORDER, width: 0.5 },
+        rectRadius: 0.02
+      });
+      slide.addText(text, {
+        x: x + 0.05, y: y, w: w - 0.25, h: h,
+        fontFace: 'Calibri', fontSize: 7.5, color: txtColor,
+        valign: 'middle'
+      });
+      if (statusColor) {
+        slide.addShape(pptx.ShapeType.rect, {
+          x: x + w - 0.18, y: y + h * 0.28, w: 0.12, h: h * 0.44,
+          fill: { color: statusColor },
+          rectRadius: 0.01
+        });
+      }
+    }
+
+    /* ── COLUMN 1: Cálculo de previsión ── */
+    var c1x = 0.3, cy = 1.6, bw = 2.8, bh = 0.28, gap = 0.04;
+
+    drawBar(s, c1x, cy, bw, bh, 'Estrategia y catálogo de productos', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c1x, cy, bw, bh, 'Estrategia Previsión de venta comercial cliente', STATUS_G);
+    cy += bh + gap;
+    /* Split row */
+    drawBar(s, c1x, cy, bw * 0.48, bh, 'Cálculo prev. Selier', STATUS_R);
+    drawBar(s, c1x + bw * 0.52, cy, bw * 0.48, bh, 'Cálculo prev. convencional', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c1x, cy, bw, bh, 'Contratos de clientes de servicio', STATUS_Y);
+    cy += bh + gap;
+    drawBar(s, c1x, cy, bw, bh, 'Stock disponible (Mat Prima, aux., semielab.)', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c1x, cy, bw, bh, 'Pedidos recibidos', STATUS_G);
+    cy += bh + gap + 0.08;
+
+    /* Footer col 1 */
+    s.addShape(pptx.ShapeType.rect, { x: c1x, y: cy, w: bw, h: 0.04, fill: { color: GREEN_HDR } });
+    cy += 0.08;
+    s.addText('Cálculo de previsión', {
+      x: c1x, y: cy, w: bw, h: 0.22,
+      fontFace: 'Calibri', fontSize: 10, bold: true, color: GREEN_HDR
+    });
+    cy += 0.24;
+    s.addText('• Cálculo con nuevas tecnologías\n• Históricos\n• Fuentes externas', {
+      x: c1x + 0.1, y: cy, w: bw - 0.1, h: 0.55,
+      fontFace: 'Calibri', fontSize: 8, color: '444444', lineSpacing: 13, valign: 'top'
+    });
+
+    updM(55, 'Construyendo columna 2...');
+
+    /* ── COLUMN 2: Material auxiliar & Ejecución ── */
+    var c2x = 3.5;
+    cy = 1.6;
+
+    drawBar(s, c2x, cy, bw, bh, 'Estrategia y catálogo de productos', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw, bh, 'Estrategia Previsión de venta comercial cliente', STATUS_Y, LIGHT_GREEN);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw * 0.48, bh, 'Cálculo previsión', STATUS_Y);
+    drawBar(s, c2x + bw * 0.52, cy, bw * 0.48, bh, 'Cálculo prev. convencional', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw, bh, 'Contratos de niveles de servicio', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw, bh, 'Stock disponible (Mat Prima, aux., semielab.)', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw, bh, 'Pedidos recibidos', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c2x, cy, bw, bh, 'Ejecución', STATUS_G, LIGHT_GREEN);
+    cy += bh + gap + 0.08;
+
+    s.addShape(pptx.ShapeType.rect, { x: c2x, y: cy, w: bw, h: 0.04, fill: { color: GREEN_HDR } });
+    cy += 0.08;
+    s.addText('Material auxiliar & Ejecución', {
+      x: c2x, y: cy, w: bw, h: 0.22,
+      fontFace: 'Calibri', fontSize: 10, bold: true, color: GREEN_HDR
+    });
+    cy += 0.24;
+    s.addText('• Previsión plan de compra material auxiliar y materia prima. (Atención licencia adicional)\n• Semi automatización en la ejecución del plan.', {
+      x: c2x + 0.1, y: cy, w: bw - 0.1, h: 0.55,
+      fontFace: 'Calibri', fontSize: 8, color: '444444', lineSpacing: 13, valign: 'top'
+    });
+
+    updM(75, 'Construyendo columna 3...');
+
+    /* ── COLUMN 3: Previsión Clientes ── */
+    var c3x = 6.7;
+    cy = 1.6;
+
+    drawBar(s, c3x, cy, bw, bh, 'Estrategia y catálogo de productos', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c3x, cy, bw, bh, 'Estrategia Previsión de venta comercial cliente', null, BLUE_HL);
+    cy += bh + gap;
+    drawBar(s, c3x, cy, bw * 0.48, bh, 'Cálculo prev. Selier', STATUS_R);
+    drawBar(s, c3x + bw * 0.52, cy, bw * 0.48, bh, 'Cálculo prev. convencional', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c3x, cy, bw, bh, 'Contratos de clientes de servicio', STATUS_Y);
+    cy += bh + gap;
+    drawBar(s, c3x, cy, bw, bh, 'Stock disponible (Mat Prima, aux., semielab.)', STATUS_G);
+    cy += bh + gap;
+    drawBar(s, c3x, cy, bw, bh, 'Pedidos recibidos', STATUS_G);
+    cy += bh + gap + 0.08;
+
+    s.addShape(pptx.ShapeType.rect, { x: c3x, y: cy, w: bw, h: 0.04, fill: { color: GREEN_HDR } });
+    cy += 0.08;
+    s.addText('Previsión Clientes', {
+      x: c3x, y: cy, w: bw, h: 0.22,
+      fontFace: 'Calibri', fontSize: 10, bold: true, color: GREEN_HDR
+    });
+    cy += 0.24;
+    s.addText('• Previsión de clientes', {
+      x: c3x + 0.1, y: cy, w: bw - 0.1, h: 0.35,
+      fontFace: 'Calibri', fontSize: 8, color: '444444', lineSpacing: 13, valign: 'top'
+    });
+
+    /* Page number */
+    s.addText('1', {
+      x: 9, y: 5.1, w: 0.5, h: 0.25,
+      fontFace: 'Calibri', fontSize: 8, color: 'BBBBBB', align: 'right'
+    });
+
+    updM(95, 'Generando archivo...');
+
+    var blob = await pptx.write({ outputType: 'blob' });
+    var url = URL.createObjectURL(blob);
+
+    updM(100, 'Listo');
+
+    var links = document.getElementById('dlLinks');
+    links.innerHTML = '';
+    var a = document.createElement('a');
+    a.className = 'dl-link';
+    a.href = url;
+    a.download = 'GC_Estrategia_IA_Planificacion_Demanda.pptx';
+    a.innerHTML = '<i class="fas fa-file-powerpoint"></i> Descargar GC_Estrategia_IA_Planificacion_Demanda.pptx';
+    links.appendChild(a);
+    links.classList.add('show');
+
+    doneM('PPT lista para descargar');
+
+  } catch (err) {
+    updM(100, 'Error: ' + String(err));
+    doneM('Error en la generación');
+  }
+}
+
+showSlide(1);
+</script>
+</body>
+</html>

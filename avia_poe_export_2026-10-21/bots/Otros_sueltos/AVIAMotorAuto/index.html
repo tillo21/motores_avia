@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA - Motor de Ejecución Autónoma</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: #fff;
+            padding: 1.5rem;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+
+        /* Toast system */
+        #toast-container {
+            position: fixed; top: 1rem; right: 1rem; z-index: 9999;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .toast {
+            padding: 0.8rem 1.2rem; border-radius: 8px; font-size: 0.9rem;
+            min-width: 250px; animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .toast.success { background: linear-gradient(135deg,#10b981,#059669); }
+        .toast.error   { background: linear-gradient(135deg,#ef4444,#dc2626); }
+        .toast.info    { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+        .toast.warning { background: linear-gradient(135deg,#f59e0b,#d97706); }
+        @keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+        @keyframes fadeOut { to{opacity:0;transform:translateX(30px)} }
+
+        /* Layout */
+        .header {
+            background: rgba(15,23,42,0.8); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+            border: 1px solid rgba(59,130,246,0.3);
+        }
+        .header h1 { font-size: 1.8rem; display: flex; align-items: center; gap: 0.6rem; }
+        .badge {
+            font-size: 0.7rem; padding: 0.25rem 0.7rem; border-radius: 20px;
+            background: linear-gradient(90deg,#3b82f6,#2563eb); font-weight: 700;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .card {
+            background: rgba(15,23,42,0.8); backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card h2 { font-size: 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        /* Agent cards */
+        .agent-card {
+            background: rgba(30,41,59,0.6); border-radius: 8px; padding: 1rem;
+            margin-bottom: 0.8rem; border-left: 4px solid #3b82f6;
+            transition: transform 0.2s;
+        }
+        .agent-card:hover { transform: translateX(4px); }
+        .agent-card.active { border-left-color: #10b981; background: rgba(16,185,129,0.1); }
+        .agent-card.busy { border-left-color: #f59e0b; background: rgba(245,158,11,0.1); }
+        .agent-card.idle { border-left-color: #6b7280; }
+        .agent-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .agent-name { font-weight: 700; font-size: 1rem; }
+        .agent-status {
+            font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 600;
+        }
+        .status-active { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+        .status-busy   { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .status-idle   { background: rgba(107,114,128,0.2); color: #9ca3af; }
+        .agent-task { font-size: 0.85rem; opacity: 0.8; margin: 0.3rem 0; }
+        .agent-progress {
+            height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px;
+            margin-top: 0.5rem; overflow: hidden;
+        }
+        .agent-progress-bar {
+            height: 100%; background: linear-gradient(90deg,#3b82f6,#2563eb);
+            transition: width 0.5s ease; border-radius: 2px;
+        }
+
+        /* Task queue */
+        .task-item {
+            background: rgba(30,41,59,0.6); border-radius: 6px; padding: 0.8rem;
+            margin-bottom: 0.6rem; font-size: 0.9rem;
+            border-left: 3px solid #6366f1;
+        }
+        .task-item.priority-high { border-left-color: #ef4444; }
+        .task-item.priority-medium { border-left-color: #f59e0b; }
+        .task-item.priority-low { border-left-color: #10b981; }
+        .task-header { display: flex; justify-content: space-between; margin-bottom: 0.3rem; }
+        .task-priority {
+            font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 600;
+        }
+        .priority-high   { background: rgba(239,68,68,0.2); color: #fca5a5; }
+        .priority-medium { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .priority-low    { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+
+        /* Stats */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem; margin-top: 1rem;
+        }
+        .stat-box {
+            background: rgba(30,41,59,0.6); padding: 1rem; border-radius: 8px;
+            text-align: center; border: 1px solid rgba(59,130,246,0.2);
+        }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: #60a5fa; }
+        .stat-label { font-size: 0.8rem; opacity: 0.7; margin-top: 0.3rem; }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1rem; }
+        .btn {
+            padding: 0.6rem 1rem; border-radius: 6px; border: none;
+            cursor: pointer; font-weight: 600; transition: all 0.2s;
+            font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-primary { background: linear-gradient(135deg,#3b82f6,#2563eb); color: #fff; }
+        .btn-success { background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        .btn-danger  { background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* Log terminal */
+        .log-terminal {
+            background: #0f172a; border-radius: 6px; padding: 1rem;
+            font-family: 'Courier New', monospace; font-size: 0.8rem;
+            max-height: 300px; overflow-y: auto; line-height: 1.6;
+        }
+        .log-entry { margin-bottom: 0.3rem; display: flex; gap: 0.5rem; }
+        .log-time { color: #6b7280; flex-shrink: 0; }
+        .log-level { flex-shrink: 0; font-weight: 700; }
+        .log-level.info  { color: #60a5fa; }
+        .log-level.success { color: #34d399; }
+        .log-level.warning { color: #fbbf24; }
+        .log-level.error { color: #f87171; }
+        .log-msg { color: #e5e7eb; }
+
+        @media(max-width:800px) {
+            .grid { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="container">
+
+    <div class="header">
+        <h1>🤖 AVIA - Motor de Ejecución Autónoma <span class="badge" id="systemStatus">INICIANDO</span></h1>
+        <p style="opacity:0.8;margin-top:0.5rem;font-size:0.9rem">
+            Sistema de agentes autónomos con planificación dinámica y ejecución paralela
+        </p>
+    </div>
+
+    <div class="grid">
+        <!-- Agents status -->
+        <div class="card">
+            <h2>👥 Agentes Activos</h2>
+            <div id="agentsContainer"></div>
+        </div>
+
+        <!-- Task queue -->
+        <div class="card">
+            <h2>📋 Cola de Tareas (<span id="queueCount">0</span>)</h2>
+            <div id="queueContainer"></div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="Engine.addRandomTask()">➕ Añadir tarea</button>
+                <button class="btn btn-danger" onclick="Engine.clearQueue()">🗑️ Limpiar cola</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card" style="margin-top:1.5rem">
+        <h2>📊 Estadísticas del Sistema</h2>
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-value" id="statCompleted">0</div><div class="stat-label">Completadas</div></div>
+            <div class="stat-box"><div class="stat-value" id="statActive">0</div><div class="stat-label">En ejecución</div></div>
+            <div class="stat-box"><div class="stat-value" id="statQueued">0</div><div class="stat-label">En cola</div></div>
+            <div class="stat-box"><div class="stat-value" id="statErrors">0</div><div class="stat-label">Errores</div></div>
+            <div class="stat-box"><div class="stat-value" id="statAvgTime">0s</div><div class="stat-label">Tiempo promedio</div></div>
+            <div class="stat-box"><div class="stat-value" id="statUptime">0s</div><div class="stat-label">Tiempo activo</div></div>
+        </div>
+    </div>
+
+    <!-- System controls -->
+    <div class="card" style="margin-top:1.5rem">
+        <h2>⚙️ Control del Sistema</h2>
+        <div class="controls">
+            <button class="btn btn-success" id="btnStart" onclick="Engine.start()">▶️ Iniciar</button>
+            <button class="btn btn-danger" id="btnStop" onclick="Engine.stop()" disabled>⏸️ Pausar</button>
+            <button class="btn btn-primary" onclick="Engine.addBatch()">📦 Añadir lote (5 tareas)</button>
+            <button class="btn btn-primary" onclick="Engine.stressTest()">🔥 Test de estrés (20 tareas)</button>
+        </div>
+    </div>
+
+    <!-- Log terminal -->
+    <div class="card" style="margin-top:1.5rem">
+        <h2>📜 Log del Sistema</h2>
+        <div class="log-terminal" id="logTerminal"></div>
+    </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   AVIA Autonomous Execution Engine
+   - Planificación dinámica de tareas
+   - Ejecución paralela con pool de agentes
+   - Priorización inteligente
+   - Monitoreo en tiempo real
+══════════════════════════════════════════════════════════ */
+
+function toast(msg, type='info') {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+class AVIAEngine {
+    constructor() {
+        this.agents = new Map([
+            ['Orquestador', { role:'coordination', status:'idle', task:null, progress:0, completed:0 }],
+            ['Validador',   { role:'validation',   status:'idle', task:null, progress:0, completed:0 }],
+            ['Corrector',   { role:'repair',       status:'idle', task:null, progress:0, completed:0 }],
+            ['Monitor',     { role:'health',       status:'idle', task:null, progress:0, completed:0 }],
+            ['Analítico',   { role:'analytics',    status:'idle', task:null, progress:0, completed:0 }],
+            ['Creativo',    { role:'content',      status:'idle', task:null, progress:0, completed:0 }],
+        ]);
+
+        this.taskQueue = [];
+        this.taskIdCounter = 1;
+        this.stats = {
+            completed: 0,
+            errors: 0,
+            totalTime: 0,
+            startTime: Date.now()
+        };
+        this.running = false;
+        this.logs = [];
+
+        this._init();
+    }
+
+    _init() {
+        this.log('Sistema AVIA inicializado', 'success');
+        this._render();
+        this._startUptimeTicker();
+        
+        // Auto-añadir tareas iniciales
+        setTimeout(() => {
+            this.addBatch();
+            toast('📦 Tareas iniciales añadidas', 'info');
+        }, 1000);
+    }
+
+    // ═══ CONTROL ═══
+    start() {
+        if (this.running) return;
+        this.running = true;
+        document.getElementById('btnStart').disabled = true;
+        document.getElementById('btnStop').disabled = false;
+        document.getElementById('systemStatus').textContent = 'EJECUTANDO';
+        document.getElementById('systemStatus').style.background = 'linear-gradient(90deg,#10b981,#059669)';
+        this.log('Motor de ejecución iniciado', 'success');
+        toast('▶️ Sistema iniciado', 'success');
+        this._executionLoop();
+    }
+
+    stop() {
+        if (!this.running) return;
+        this.running = false;
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+        document.getElementById('systemStatus').textContent = 'PAUSADO';
+        document.getElementById('systemStatus').style.background = 'linear-gradient(90deg,#f59e0b,#d97706)';
+        this.log('Motor de ejecución pausado', 'warning');
+        toast('⏸️ Sistema pausado', 'warning');
+    }
+
+    // ═══ TASK MANAGEMENT ═══
+    addTask(name, priority='medium', duration=null) {
+        const task = {
+            id: this.taskIdCounter++,
+            name,
+            priority,
+            duration: duration || Math.floor(Math.random() * 4000) + 2000,
+            createdAt: Date.now()
+        };
+        this.taskQueue.push(task);
+        this.taskQueue.sort((a,b) => {
+            const p = {high:3, medium:2, low:1};
+            return (p[b.priority]||0) - (p[a.priority]||0);
+        });
+        this.log(`Tarea añadida: ${name} [${priority}]`, 'info');
+        this._render();
+        return task;
+    }
+
+    addRandomTask() {
+        const tasks = [
+            {name:'Análisis de datos', priority:'high'},
+            {name:'Validación de código', priority:'medium'},
+            {name:'Generación de reporte', priority:'low'},
+            {name:'Corrección de errores', priority:'high'},
+            {name:'Monitoreo de sistema', priority:'medium'},
+            {name:'Optimización de performance', priority:'low'},
+            {name:'Creación de contenido', priority:'medium'},
+            {name:'Backup de estado', priority:'low'},
+        ];
+        const t = tasks[Math.floor(Math.random()*tasks.length)];
+        this.addTask(t.name, t.priority);
+        toast(`➕ ${t.name}`, 'info');
+    }
+
+    addBatch() {
+        for(let i=0; i<5; i++) this.addRandomTask();
+        toast('📦 5 tareas añadidas', 'success');
+    }
+
+    stressTest() {
+        for(let i=0; i<20; i++) this.addRandomTask();
+        toast('🔥 20 tareas añadidas', 'warning');
+        if (!this.running) this.start();
+    }
+
+    clearQueue() {
+        this.taskQueue = [];
+        this.log('Cola de tareas limpiada', 'warning');
+        this._render();
+        toast('🗑️ Cola limpiada', 'info');
+    }
+
+    // ═══ EXECUTION LOOP ═══
+    async _executionLoop() {
+        while (this.running) {
+            // Asignar tareas a agentes libres
+            const idleAgents = [...this.agents.entries()]
+                .filter(([_,a]) => a.status === 'idle');
+            
+            for (const [name, agent] of idleAgents) {
+                if (this.taskQueue.length === 0) break;
+                const task = this.taskQueue.shift();
+                this._assignTask(name, agent, task);
+            }
+
+            this._render();
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+
+    _assignTask(agentName, agent, task) {
+        agent.status = 'busy';
+        agent.task = task;
+        agent.progress = 0;
+        this.log(`${agentName} → ${task.name}`, 'info');
+
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            if (!this.running || agent.status !== 'busy') {
+                clearInterval(interval);
+                return;
+            }
+            agent.progress += 100 / (task.duration / 100);
+            if (agent.progress >= 100) {
+                clearInterval(interval);
+                this._completeTask(agentName, agent, task, startTime);
+            }
+            this._render();
+        }, 100);
+    }
+
+    _completeTask(agentName, agent, task, startTime) {
+        const elapsed = Date.now() - startTime;
+        agent.status = 'active';
+        agent.task = null;
+        agent.progress = 0;
+        agent.completed++;
+
+        this.stats.completed++;
+        this.stats.totalTime += elapsed;
+
+        this.log(`✓ ${agentName} completó: ${task.name} (${(elapsed/1000).toFixed(1)}s)`, 'success');
+        
+        // Volver a idle después de breve pausa
+        setTimeout(() => {
+            if (agent.status === 'active') {
+                agent.status = 'idle';
+                this._render();
+            }
+        }, 500);
+
+        this._render();
+    }
+
+    // ═══ LOGGING ═══
+    log(msg, level='info') {
+        this.logs.unshift({
+            msg,
+            level,
+            time: new Date().toLocaleTimeString()
+        });
+        if (this.logs.length > 50) this.logs.pop();
+        this._renderLogs();
+    }
+
+    // ═══ RENDERING ═══
+    _render() {
+        this._renderAgents();
+        this._renderQueue();
+        this._renderStats();
+    }
+
+    _renderAgents() {
+        const el = document.getElementById('agentsContainer');
+        el.innerHTML = [...this.agents.entries()].map(([name, a]) => `
+            <div class="agent-card ${a.status}">
+                <div class="agent-header">
+                    <span class="agent-name">${name}</span>
+                    <span class="agent-status status-${a.status}">
+                        ${a.status.toUpperCase()}
+                    </span>
+                </div>
+                <div class="agent-task">
+                    ${a.task ? `🔹 ${a.task.name}` : `💤 Esperando tareas (${a.completed} completadas)`}
+                </div>
+                ${a.status==='busy' ? `
+                    <div class="agent-progress">
+                        <div class="agent-progress-bar" style="width:${Math.min(100,a.progress)}%"></div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    _renderQueue() {
+        const el = document.getElementById('queueContainer');
+        document.getElementById('queueCount').textContent = this.taskQueue.length;
+        if (this.taskQueue.length === 0) {
+            el.innerHTML = '<p style="opacity:0.6;font-size:0.9rem">No hay tareas en cola</p>';
+            return;
+        }
+        el.innerHTML = this.taskQueue.slice(0, 10).map(t => `
+            <div class="task-item priority-${t.priority}">
+                <div class="task-header">
+                    <span>${t.name}</span>
+                    <span class="task-priority priority-${t.priority}">
+                        ${t.priority.toUpperCase()}
+                    </span>
+                </div>
+                <div style="font-size:0.75rem;opacity:0.6">
+                    ID: ${t.id} · Duración: ${(t.duration/1000).toFixed(1)}s
+                </div>
+            </div>
+        `).join('');
+        if (this.taskQueue.length > 10) {
+            el.innerHTML += `<p style="opacity:0.6;font-size:0.85rem;margin-top:0.5rem">
+                +${this.taskQueue.length - 10} tareas más...
+            </p>`;
+        }
+    }
+
+    _renderStats() {
+        const active = [...this.agents.values()].filter(a => a.status==='busy').length;
+        const avgTime = this.stats.completed > 0 
+            ? (this.stats.totalTime / this.stats.completed / 1000).toFixed(1)
+            : 0;
+
+        document.getElementById('statCompleted').textContent = this.stats.completed;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statQueued').textContent = this.taskQueue.length;
+        document.getElementById('statErrors').textContent = this.stats.errors;
+        document.getElementById('statAvgTime').textContent = `${avgTime}s`;
+    }
+
+    _renderLogs() {
+        const el = document.getElementById('logTerminal');
+        el.innerHTML = this.logs.map(l => `
+            <div class="log-entry">
+                <span class="log-time">${l.time}</span>
+                <span class="log-level ${l.level}">[${l.level.toUpperCase()}]</span>
+                <span class="log-msg">${l.msg}</span>
+            </div>
+        `).join('');
+    }
+
+    _startUptimeTicker() {
+        setInterval(() => {
+            const s = Math.floor((Date.now() - this.stats.startTime) / 1000);
+            const display = s < 60 ? `${s}s` 
+                : s < 3600 ? `${Math.floor(s/60)}m ${s%60}s`
+                : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+            document.getElementById('statUptime').textContent = display;
+        }, 1000);
+    }
+}
+
+// ═══ INICIALIZACIÓN ═══
+const Engine = new AVIAEngine();
+</script>
+</body>
+</html>

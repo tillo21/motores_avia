@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Protocol v6.0 - Universal Auth + WebSocket + Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --bg-dark: #0f172a;
+            --bg-darker: #020617;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 2rem;
+            font-size: 0.875rem;
+        }
+        
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 5rem 1.5rem 2rem;
+            overflow-y: auto;
+            z-index: 90;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.2);
+            border-left: 3px solid var(--primary);
+        }
+        
+        main {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-error { background: var(--error); color: white; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-small { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        
+        .btn-success:hover { background: #059669; transform: translateY(-2px); }
+        .btn-warning:hover { background: #d97706; transform: translateY(-2px); }
+        .btn-error:hover { background: #dc2626; transform: translateY(-2px); }
+        .btn-info:hover { background: #2563eb; transform: translateY(-2px); }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .alert.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--warning);
+        }
+        
+        .alert.info {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--primary);
+        }
+        
+        .alert.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+        
+        .alert.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge.success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge.error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .badge.info { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+        }
+        
+        tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .code-block {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin: 1rem 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-container {
+            position: fixed;
+            top: 5rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 400px;
+        }
+        
+        .notification {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            animation: slideInRight 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid var(--error); }
+        .notification.warning { border-left: 4px solid var(--warning); }
+        .notification.info { border-left: 4px solid var(--primary); }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-darker);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+        
+        .log-entry {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+        
+        .log-entry.error { border-left: 4px solid var(--error); }
+        .log-entry.warning { border-left: 4px solid var(--warning); }
+        .log-entry.success { border-left: 4px solid var(--success); }
+        .log-entry.info { border-left: 4px solid var(--primary); }
+        
+        /* Dashboard específico */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .agent-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .agent-name {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .agent-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .agent-status.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+        
+        .agent-status.inactive {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--text-secondary);
+        }
+        
+        .agent-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .agent-stat {
+            text-align: center;
+        }
+        
+        .agent-stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .agent-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.4rem;
+            top: 0.25rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 2px solid var(--bg-card);
+        }
+        
+        .timeline-item.success::before { background: var(--success); }
+        .timeline-item.error::before { background: var(--error); }
+        .timeline-item.warning::before { background: var(--warning); }
+        
+        .chart-container {
+            height: 300px;
+            background: var(--bg-darker);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            main { margin-left: 0; }
+            .grid, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // ====================================================================
+        // 🔐 UNIVERSAL AUTH MODULE v1.0
+        // Sistema de autenticación multi-estrategia para entornos restringidos
+        // ====================================================================
+        
+        var UniversalAuth = {
+            version: '1.0.0',
+            strategy: null,
+            currentUser: null,
+            sessionToken: null,
+            authLog: [],
+            
+            /**
+             * 🚀 Inicialización
+             */
+            init: function() {
+                console.log('[UniversalAuth] 🔐 Initializing...');
+                
+                // Determinar estrategia de auth según entorno
+                this.determineStrategy();
+                
+                // Intentar recuperar sesión existente
+                this.restoreSession();
+                
+                console.log('[UniversalAuth] ✅ Initialized with strategy: ' + this.strategy);
+            },
+            
+            /**
+             * 📊 Determinar estrategia de autenticación
+             */
+            determineStrategy: function() {
+                var env = window.AVIASandboxGuardian ? AVIASandboxGuardian.environment : null;
+                
+                if (!env) {
+                    console.warn('[UniversalAuth] ⚠️ No environment detected, using memory strategy');
+                    this.strategy = 'memory';
+                    return;
+                }
+                
+                // Priority: localStorage > sessionStorage > memory
+                if (env.hasLocalStorage) {
+                    this.strategy = 'localStorage';
+                } else if (env.hasSessionStorage) {
+                    this.strategy = 'sessionStorage';
+                } else {
+                    this.strategy = 'memory';
+                }
+                
+                console.log('[UniversalAuth] 📊 Auth strategy: ' + this.strategy);
+                
+                if (this.strategy === 'memory') {
+                    console.warn('[UniversalAuth] ⚠️ Memory mode: Session will not persist on reload');
+                }
+            },
+            
+            /**
+             * 🔑 Login
+             */
+            login: function(username, password, options) {
+                options = options || {};
+                
+                console.log('[UniversalAuth] 🔑 Login attempt:', username);
+                
+                var authEntry = {
+                    action: 'login',
+                    username: username,
+                    timestamp: new Date().toISOString(),
+                    success: false,
+                    strategy: this.strategy
+                };
+                
+                // Simulación de autenticación (en producción, esto sería una API call)
+                return new Promise(function(resolve, reject) {
+                    setTimeout(function() {
+                        // Validación simple (en producción: API call)
+                        if (password.length >= 6) {
+                            // Generar token de sesión
+                            this.sessionToken = this.generateToken();
+                            
+                            // Crear objeto de usuario
+                            this.currentUser = {
+                                username: username,
+                                loginTime: new Date().toISOString(),
+                                token: this.sessionToken,
+                                permissions: options.permissions || ['read'],
+                                metadata: options.metadata || {}
+                            };
+                            
+                            // Guardar sesión
+                            this.saveSession();
+                            
+                            authEntry.success = true;
+                            authEntry.userId = this.currentUser.username;
+                            this.authLog.push(authEntry);
+                            
+                            console.log('[UniversalAuth] ✅ Login successful:', username);
+                            
+                            resolve({
+                                success: true,
+                                user: this.currentUser,
+                                token: this.sessionToken
+                            });
+                        } else {
+                            authEntry.success = false;
+                            authEntry.error = 'Password too short';
+                            this.authLog.push(authEntry);
+                            
+                            console.error('[UniversalAuth] ❌ Login failed:', username);
+                            
+                            reject({
+                                success: false,
+                                error: 'Invalid credentials',
+                                message: 'Password must be at least 6 characters'
+                            });
+                        }
+                    }.bind(this), 500); // Simular latencia de red
+                }.bind(this));
+            },
+            
+            /**
+             * 🚪 Logout
+             */
+            logout: function() {
+                console.log('[UniversalAuth] 🚪 Logout:', this.currentUser ? this.currentUser.username : 'unknown');
+                
+                var authEntry = {
+                    action: 'logout',
+                    username: this.currentUser ? this.currentUser.username : null,
+                    timestamp: new Date().toISOString(),
+                    strategy: this.strategy
+                };
+                
+                this.authLog.push(authEntry);
+                
+                // Limpiar sesión
+                this.currentUser = null;
+                this.sessionToken = null;
+                this.clearSession();
+                
+                console.log('[UniversalAuth] ✅ Logout successful');
+                
+                return { success: true };
+            },
+            
+            /**
+             * 🎫 Generar token de sesión
+             */
+            generateToken: function() {
+                return 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            },
+            
+            /**
+             * 💾 Guardar sesión
+             */
+            saveSession: function() {
+                if (!this.currentUser) return;
+                
+                var sessionData = {
+                    user: this.currentUser,
+                    token: this.sessionToken,
+                    savedAt: new Date().toISOString()
+                };
+                
+                try {
+                    if (this.strategy === 'localStorage') {
+                        localStorage.setItem('AVIA_AUTH_SESSION', JSON.stringify(sessionData));
+                        console.log('[UniversalAuth] 💾 Session saved to localStorage');
+                    } else if (this.strategy === 'sessionStorage') {
+                        sessionStorage.setItem('AVIA_AUTH_SESSION', JSON.stringify(sessionData));
+                        console.log('[UniversalAuth] 💾 Session saved to sessionStorage');
+                    } else {
+                        // Memory: no persist
+                        console.log('[UniversalAuth] 💾 Session stored in memory (will not persist)');
+                    }
+                } catch (e) {
+                    console.error('[UniversalAuth] ❌ Failed to save session:', e);
+                }
+            },
+            
+            /**
+             * 📥 Restaurar sesión
+             */
+            restoreSession: function() {
+                try {
+                    var sessionData = null;
+                    
+                    if (this.strategy === 'localStorage') {
+                        var data = localStorage.getItem('AVIA_AUTH_SESSION');
+                        if (data) sessionData = JSON.parse(data);
+                    } else if (this.strategy === 'sessionStorage') {
+                        var data = sessionStorage.getItem('AVIA_AUTH_SESSION');
+                        if (data) sessionData = JSON.parse(data);
+                    }
+                    
+                    if (sessionData) {
+                        this.currentUser = sessionData.user;
+                        this.sessionToken = sessionData.token;
+                        
+                        console.log('[UniversalAuth] ✅ Session restored:', this.currentUser.username);
+                        
+                        var authEntry = {
+                            action: 'session_restored',
+                            username: this.currentUser.username,
+                            timestamp: new Date().toISOString(),
+                            strategy: this.strategy
+                        };
+                        this.authLog.push(authEntry);
+                        
+                        return true;
+                    }
+                } catch (e) {
+                    console.error('[UniversalAuth] ❌ Failed to restore session:', e);
+                }
+                
+                return false;
+            },
+            
+            /**
+             * 🗑️ Limpiar sesión
+             */
+            clearSession: function() {
+                try {
+                    if (this.strategy === 'localStorage') {
+                        localStorage.removeItem('AVIA_AUTH_SESSION');
+                    } else if (this.strategy === 'sessionStorage') {
+                        sessionStorage.removeItem('AVIA_AUTH_SESSION');
+                    }
+                    console.log('[UniversalAuth] 🗑️ Session cleared');
+                } catch (e) {
+                    console.error('[UniversalAuth] ❌ Failed to clear session:', e);
+                }
+            },
+            
+            /**
+             * ✅ Verificar autenticación
+             */
+            isAuthenticated: function() {
+                return this.currentUser !== null && this.sessionToken !== null;
+            },
+            
+            /**
+             * 👤 Obtener usuario actual
+             */
+            getCurrentUser: function() {
+                return this.currentUser;
+            },
+            
+            /**
+             * 🔒 Verificar permiso
+             */
+            hasPermission: function(permission) {
+                if (!this.isAuthenticated()) return false;
+                return this.currentUser.permissions.indexOf(permission) !== -1;
+            },
+            
+            /**
+             * 📊 Obtener log de autenticación
+             */
+            getAuthLog: function() {
+                return this.authLog;
+            },
+            
+            /**
+             * 📈 Obtener estadísticas
+             */
+            getStats: function() {
+                var stats = {
+                    totalActions: this.authLog.length,
+                    logins: 0,
+                    logouts: 0,
+                    failures: 0,
+                    currentUser: this.currentUser ? this.currentUser.username : null,
+                    isAuthenticated: this.isAuthenticated(),
+                    strategy: this.strategy
+                };
+                
+                this.authLog.forEach(function(entry) {
+                    if (entry.action === 'login') {
+                        if (entry.success) stats.logins++;
+                        else stats.failures++;
+                    } else if (entry.action === 'logout') {
+                        stats.logouts++;
+                    }
+                });
+                
+                return stats;
+            }
+        };
+        
+        // ====================================================================
+        // 🔌 UNIVERSAL WEBSOCKET MODULE v1.0
+        // WebSocket con fallback automático a polling
+        // ====================================================================
+        
+        var UniversalWebSocket = {
+            version: '1.0.0',
+            strategy: null,
+            connection: null,
+            isConnected: false,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            reconnectDelay: 2000,
+            pollingInterval: null,
+            pollingDelay: 3000,
+            messageQueue: [],
+            eventHandlers: {},
+            connectionLog: [],
+            
+            /**
+             * 🚀 Inicialización
+             */
+            init: function() {
+                console.log('[UniversalWebSocket] 🔌 Initializing...');
+                this.determineStrategy();
+                console.log('[UniversalWebSocket] ✅ Initialized with strategy: ' + this.strategy);
+            },
+            
+            /**
+             * 📊 Determinar estrategia
+             */
+            determineStrategy: function() {
+                // Verificar soporte de WebSocket
+                if (typeof WebSocket !== 'undefined') {
+                    this.strategy = 'websocket';
+                } else {
+                    this.strategy = 'polling';
+                    console.warn('[UniversalWebSocket] ⚠️ WebSocket not supported, using polling');
+                }
+            },
+            
+            /**
+             * 🔗 Conectar
+             */
+            connect: function(url, options) {
+                options = options || {};
+                
+                console.log('[UniversalWebSocket] 🔗 Connecting to:', url);
+                
+                var logEntry = {
+                    action: 'connect',
+                    url: url,
+                    strategy: this.strategy,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (this.strategy === 'websocket') {
+                    return this.connectWebSocket(url, options, logEntry);
+                } else {
+                    return this.connectPolling(url, options, logEntry);
+                }
+            },
+            
+            /**
+             * 🌐 Conectar WebSocket
+             */
+            connectWebSocket: function(url, options, logEntry) {
+                return new Promise(function(resolve, reject) {
+                    try {
+                        // Para demo, simulamos conexión exitosa
+                        console.log('[UniversalWebSocket] 🌐 Attempting WebSocket connection...');
+                        
+                        // Simular conexión
+                        setTimeout(function() {
+                            // En entorno sandbox, WebSocket puede fallar
+                            // Simulamos fallo aleatorio para demostrar fallback
+                            var shouldFail = Math.random() < 0.5; // 50% fallo para demo
+                            
+                            if (shouldFail) {
+                                console.warn('[UniversalWebSocket] ⚠️ WebSocket connection failed, falling back to polling');
+                                logEntry.status = 'failed';
+                                logEntry.fallback = 'polling';
+                                this.connectionLog.push(logEntry);
+                                
+                                this.strategy = 'polling';
+                                this.connectPolling(url, options, logEntry).then(resolve).catch(reject);
+                            } else {
+                                this.connection = { type: 'websocket', url: url, mock: true };
+                                this.isConnected = true;
+                                this.reconnectAttempts = 0;
+                                
+                                logEntry.status = 'success';
+                                this.connectionLog.push(logEntry);
+                                
+                                console.log('[UniversalWebSocket] ✅ WebSocket connected (mock)');
+                                
+                                this.emit('connected', { strategy: 'websocket' });
+                                
+                                resolve({ success: true, strategy: 'websocket', mock: true });
+                            }
+                        }.bind(this), 500);
+                        
+                    } catch (e) {
+                        console.error('[UniversalWebSocket] ❌ WebSocket error:', e);
+                        
+                        logEntry.status = 'error';
+                        logEntry.error = e.message;
+                        logEntry.fallback = 'polling';
+                        this.connectionLog.push(logEntry);
+                        
+                        // Fallback a polling
+                        console.log('[UniversalWebSocket] 🔄 Falling back to polling...');
+                        this.strategy = 'polling';
+                        this.connectPolling(url, options, logEntry).then(resolve).catch(reject);
+                    }
+                }.bind(this));
+            },
+            
+            /**
+             * 🔄 Conectar Polling
+             */
+            connectPolling: function(url, options, logEntry) {
+                return new Promise(function(resolve) {
+                    console.log('[UniversalWebSocket] 🔄 Starting polling connection...');
+                    
+                    this.connection = { type: 'polling', url: url };
+                    this.isConnected = true;
+                    
+                    logEntry.status = 'success';
+                    logEntry.strategy = 'polling';
+                    this.connectionLog.push(logEntry);
+                    
+                    // Iniciar polling
+                    this.startPolling(url);
+                    
+                    console.log('[UniversalWebSocket] ✅ Polling started (interval: ' + this.pollingDelay + 'ms)');
+                    
+                    this.emit('connected', { strategy: 'polling' });
+                    
+                    resolve({ success: true, strategy: 'polling' });
+                }.bind(this));
+            },
+            
+            /**
+             * 🔄 Iniciar polling
+             */
+            startPolling: function(url) {
+                if (this.pollingInterval) {
+                    clearInterval(this.pollingInterval);
+                }
+                
+                this.pollingInterval = setInterval(function() {
+                    if (!this.isConnected) {
+                        this.stopPolling();
+                        return;
+                    }
+                    
+                    // Simular recepción de mensajes
+                    // En producción, esto sería una petición HTTP
+                    this.simulatePollingMessage();
+                    
+                }.bind(this), this.pollingDelay);
+            },
+            
+            /**
+             * ⏹️ Detener polling
+             */
+            stopPolling: function() {
+                if (this.pollingInterval) {
+                    clearInterval(this.pollingInterval);
+                    this.pollingInterval = null;
+                    console.log('[UniversalWebSocket] ⏹️ Polling stopped');
+                }
+            },
+            
+            /**
+             * 🎭 Simular mensaje de polling (para demo)
+             */
+            simulatePollingMessage: function() {
+                // Simular mensaje aleatorio ocasional
+                if (Math.random() < 0.3) { // 30% probabilidad
+                    var message = {
+                        type: 'update',
+                        data: {
+                            timestamp: new Date().toISOString(),
+                            value: Math.floor(Math.random() * 100)
+                        }
+                    };
+                    
+                    this.emit('message', message);
+                }
+            },
+            
+            /**
+             * 📤 Enviar mensaje
+             */
+            send: function(message) {
+                if (!this.isConnected) {
+                    console.warn('[UniversalWebSocket] ⚠️ Not connected, queueing message');
+                    this.messageQueue.push(message);
+                    return false;
+                }
+                
+                console.log('[UniversalWebSocket] 📤 Sending message:', message);
+                
+                if (this.strategy === 'websocket') {
+                    // En producción: this.connection.send(JSON.stringify(message));
+                    console.log('[UniversalWebSocket] 📤 Sent via WebSocket (mock)');
+                } else {
+                    // En polling, enviar vía HTTP POST
+                    console.log('[UniversalWebSocket] 📤 Sent via HTTP POST (polling mode)');
+                }
+                
+                this.emit('sent', message);
+                return true;
+            },
+            
+            /**
+             * 🔌 Desconectar
+             */
+            disconnect: function() {
+                console.log('[UniversalWebSocket] 🔌 Disconnecting...');
+                
+                this.isConnected = false;
+                
+                if (this.strategy === 'websocket' && this.connection) {
+                    // En producción: this.connection.close();
+                    console.log('[UniversalWebSocket] 🔌 WebSocket closed');
+                } else if (this.strategy === 'polling') {
+                    this.stopPolling();
+                }
+                
+                this.connection = null;
+                
+                var logEntry = {
+                    action: 'disconnect',
+                    strategy: this.strategy,
+                    timestamp: new Date().toISOString()
+                };
+                this.connectionLog.push(logEntry);
+                
+                this.emit('disconnected', {});
+                
+                console.log('[UniversalWebSocket] ✅ Disconnected');
+            },
+            
+            /**
+             * 📡 Registrar handler de evento
+             */
+            on: function(event, handler) {
+                if (!this.eventHandlers[event]) {
+                    this.eventHandlers[event] = [];
+                }
+                this.eventHandlers[event].push(handler);
+            },
+            
+            /**
+             * 🔊 Emitir evento
+             */
+            emit: function(event, data) {
+                var handlers = this.eventHandlers[event];
+                if (handlers) {
+                    handlers.forEach(function(handler) {
+                        try {
+                            handler(data);
+                        } catch (e) {
+                            console.error('[UniversalWebSocket] ❌ Handler error:', e);
+                        }
+                    });
+                }
+            },
+            
+            /**
+             * 📊 Obtener estadísticas
+             */
+            getStats: function() {
+                return {
+                    strategy: this.strategy,
+                    isConnected: this.isConnected,
+                    reconnectAttempts: this.reconnectAttempts,
+                    queuedMessages: this.messageQueue.length,
+                    connectionLog: this.connectionLog.length
+                };
+            },
+            
+            /**
+             * 📋 Obtener log de conexiones
+             */
+            getConnectionLog: function() {
+                return this.connectionLog;
+            }
+        };
+        
+        // ====================================================================
+        // 🤖 EJEMPLO: REAL-TIME AGENT
+        // Agente que utiliza UniversalWebSocket
+        // ====================================================================
+        
+        var RealTimeAgent = {
+            name: 'RealTimeAgent',
+            version: '1.0.0',
+            environmentDetected: false,
+            isActive: false,
+            messagesReceived: 0,
+            messagesSent: 0,
+            lastMessageTime: null,
+            connectionStatus: 'disconnected',
+            
+            /**
+             * 🔍 Detectar entorno
+             */
+            detectEnvironment: function() {
+                this.environment = window.AVIAAgenOS ? AVIAAgenOS.environment : null;
+                this.environmentDetected = true;
+                console.log('[RealTimeAgent] 🔍 Environment detected');
+            },
+            
+            /**
+             * 🚀 Inicializar
+             */
+            init: function() {
+                console.log('[RealTimeAgent] 🚀 Initializing...');
+                
+                // STEP 1: Detectar entorno (CRITICAL)
+                this.detectEnvironment();
+                
+                // STEP 2: Configurar agente
+                this.setupAgent();
+                
+                // STEP 3: Registrar con sistema
+                if (window.AVIAAgenOS) {
+                    AVIAAgenOS.registerAgent(this);
+                }
+                
+                console.log('[RealTimeAgent] ✅ Ready');
+            },
+            
+            /**
+             * ⚙️ Configurar agente
+             */
+            setupAgent: function() {
+                // Configurar handlers de WebSocket
+                UniversalWebSocket.on('connected', function(data) {
+                    this.connectionStatus = 'connected';
+                    this.isActive = true;
+                    console.log('[RealTimeAgent] ✅ Connected via ' + data.strategy);
+                    
+                    if (typeof notify === 'function') {
+                        notify('🔌 Real-time connection established (' + data.strategy + ')', 'success');
+                    }
+                }.bind(this));
+                
+                UniversalWebSocket.on('disconnected', function() {
+                    this.connectionStatus = 'disconnected';
+                    this.isActive = false;
+                    console.log('[RealTimeAgent] 🔌 Disconnected');
+                    
+                    if (typeof notify === 'function') {
+                        notify('🔌 Real-time connection closed', 'warning');
+                    }
+                }.bind(this));
+                
+                UniversalWebSocket.on('message', function(message) {
+                    this.messagesReceived++;
+                    this.lastMessageTime = new Date().toISOString();
+                    console.log('[RealTimeAgent] 📥 Message received:', message);
+                    this.handleMessage(message);
+                }.bind(this));
+                
+                UniversalWebSocket.on('sent', function(message) {
+                    this.messagesSent++;
+                    console.log('[RealTimeAgent] 📤 Message sent:', message);
+                }.bind(this));
+            },
+            
+            /**
+             * 🔗 Conectar
+             */
+            connect: function() {
+                console.log('[RealTimeAgent] 🔗 Connecting...');
+                
+                return UniversalWebSocket.connect('wss://api.example.com/ws', {
+                    reconnect: true
+                });
+            },
+            
+            /**
+             * 🔌 Desconectar
+             */
+            disconnect: function() {
+                console.log('[RealTimeAgent] 🔌 Disconnecting...');
+                UniversalWebSocket.disconnect();
+            },
+            
+            /**
+             * 📤 Enviar mensaje
+             */
+            sendMessage: function(type, data) {
+                var message = {
+                    type: type,
+                    data: data,
+                    timestamp: new Date().toISOString(),
+                    agent: this.name
+                };
+                
+                return UniversalWebSocket.send(message);
+            },
+            
+            /**
+             * 📥 Manejar mensaje recibido
+             */
+            handleMessage: function(message) {
+                console.log('[RealTimeAgent] 📥 Handling message:', message.type);
+                
+                // Actualizar UI si está disponible
+                if (typeof updateRealTimeStats === 'function') {
+                    updateRealTimeStats(this.getStats());
+                }
+                
+                if (typeof addRealTimeMessage === 'function') {
+                    addRealTimeMessage(message);
+                }
+            },
+            
+            /**
+             * 📊 Obtener estadísticas
+             */
+            getStats: function() {
+                return {
+                    name: this.name,
+                    isActive: this.isActive,
+                    connectionStatus: this.connectionStatus,
+                    messagesReceived: this.messagesReceived,
+                    messagesSent: this.messagesSent,
+                    lastMessageTime: this.lastMessageTime,
+                    wsStrategy: UniversalWebSocket.strategy
+                };
+            }
+        };
+        
+        // ====================================================================
+        // 🎨 UI FUNCTIONS
+        // ====================================================================
+        
+        function notify(message, type) {
+            type = type || 'info';
+            
+            var container = document.getElementById('notificationContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notificationContainer';
+                container.className = 'notification-container';
+                document.body.appendChild(container);
+            }
+            
+            var notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            
+            var icon = '📢';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '❌';
+            if (type === 'warning') icon = '⚠️';
+            if (type === 'info') icon = 'ℹ️';
+            
+            notification.innerHTML = '<span style="font-size: 1.5rem;">' + icon + '</span><span>' + message + '</span>';
+            container.appendChild(notification);
+            
+            setTimeout(function() {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100px)';
+                setTimeout(function() {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+        
+        function navigateTo(page) {
+            var sections = document.querySelectorAll('.page-section');
+            sections.forEach(function(section) {
+                if (section.id === 'page-' + page) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+            
+            var navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(function(item) {
+                if (item.getAttribute('data-page') === page) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // Refresh page-specific content
+            if (page === 'dashboard') {
+                refreshDashboard();
+            } else if (page === 'auth') {
+                refreshAuthPage();
+            } else if (page === 'websocket') {
+                refreshWebSocketPage();
+            }
+        }
+        
+        function refreshDashboard() {
+            var container = document.getElementById('dashboardContent');
+            if (!container) return;
+            
+            var agents = window.AVIAAgenOS ? AVIAAgenOS.agents : [];
+            
+            var html = '<div class="grid-3">';
+            
+            // System stats
+            html += '<div class="stat-card">';
+            html += '<div class="stat-value">' + agents.length + '</div>';
+            html += '<div class="stat-label">Active Agents</div>';
+            html += '</div>';
+            
+            html += '<div class="stat-card">';
+            html += '<div class="stat-value">' + (UniversalAuth.isAuthenticated() ? '🔓' : '🔒') + '</div>';
+            html += '<div class="stat-label">Auth Status</div>';
+            html += '</div>';
+            
+            html += '<div class="stat-card">';
+            html += '<div class="stat-value">' + (UniversalWebSocket.isConnected ? '🟢' : '🔴') + '</div>';
+            html += '<div class="stat-label">WS Connection</div>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            // Agents grid
+            html += '<div class="grid" style="margin-top: 2rem;">';
+            
+            agents.forEach(function(agent) {
+                var stats = agent.getStats ? agent.getStats() : {};
+                
+                html += '<div class="agent-card">';
+                html += '<div class="agent-header">';
+                html += '<div class="agent-name">' + agent.name + '</div>';
+                html += '<div class="agent-status ' + (stats.isActive ? 'active' : 'inactive') + '">';
+                html += '<div class="pulse"></div>';
+                html += '<span>' + (stats.isActive ? 'Active' : 'Inactive') + '</span>';
+                html += '</div>';
+                html += '</div>';
+                
+                html += '<div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">';
+                html += 'v' + (agent.version || '1.0.0') + ' • ' + (stats.connectionStatus || 'ready');
+                html += '</div>';
+                
+                if (agent.name === 'RealTimeAgent') {
+                    html += '<div class="agent-stats">';
+                    html += '<div class="agent-stat">';
+                    html += '<div class="agent-stat-value">' + (stats.messagesReceived || 0) + '</div>';
+                    html += '<div class="agent-stat-label">Received</div>';
+                    html += '</div>';
+                    html += '<div class="agent-stat">';
+                    html += '<div class="agent-stat-value">' + (stats.messagesSent || 0) + '</div>';
+                    html += '<div class="agent-stat-label">Sent</div>';
+                    html += '</div>';
+                    html += '<div class="agent-stat">';
+                    html += '<div class="agent-stat-value">' + (stats.wsStrategy || 'none').substr(0,3) + '</div>';
+                    html += '<div class="agent-stat-label">Strategy</div>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function refreshAuthPage() {
+            var stats = UniversalAuth.getStats();
+            var user = UniversalAuth.getCurrentUser();
+            
+            document.getElementById('authStrategy').textContent = stats.strategy;
+            document.getElementById('authStatus').textContent = stats.isAuthenticated ? 'Authenticated' : 'Not authenticated';
+            document.getElementById('authStatusBadge').className = 'badge ' + (stats.isAuthenticated ? 'success' : 'error');
+            document.getElementById('authTotalActions').textContent = stats.totalActions;
+            document.getElementById('authLogins').textContent = stats.logins;
+            document.getElementById('authLogouts').textContent = stats.logouts;
+            document.getElementById('authFailures').textContent = stats.failures;
+            
+            // Login form
+            var loginForm = document.getElementById('loginSection');
+            var userInfo = document.getElementById('userInfoSection');
+            
+            if (stats.isAuthenticated) {
+                loginForm.style.display = 'none';
+                userInfo.style.display = 'block';
+                
+                document.getElementById('currentUsername').textContent = user.username;
+                document.getElementById('currentLoginTime').textContent = new Date(user.loginTime).toLocaleString();
+                document.getElementById('currentPermissions').textContent = user.permissions.join(', ');
+            } else {
+                loginForm.style.display = 'block';
+                userInfo.style.display = 'none';
+            }
+            
+            // Auth log
+            refreshAuthLog();
+        }
+        
+        function refreshAuthLog() {
+            var log = UniversalAuth.getAuthLog();
+            var container = document.getElementById('authLogContent');
+            
+            var html = '';
+            
+            log.slice().reverse().forEach(function(entry) {
+                var logClass = entry.success ? 'success' : 
+                              entry.action === 'logout' ? 'info' : 
+                              entry.error ? 'error' : 'warning';
+                
+                html += '<div class="log-entry ' + logClass + '">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
+                html += '<strong>' + entry.action.toUpperCase() + '</strong>';
+                html += '<span class="badge ' + logClass + '">' + (entry.success !== undefined ? (entry.success ? 'success' : 'failed') : 'info') + '</span>';
+                html += '</div>';
+                html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                html += 'User: ' + (entry.username || 'N/A') + ' | ';
+                html += 'Strategy: ' + entry.strategy + ' | ';
+                html += 'Time: ' + new Date(entry.timestamp).toLocaleTimeString();
+                if (entry.error) html += ' | Error: ' + entry.error;
+                html += '</div></div>';
+            });
+            
+            container.innerHTML = html || '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No authentication actions yet</p>';
+        }
+        
+        function refreshWebSocketPage() {
+            var stats = UniversalWebSocket.getStats();
+            
+            document.getElementById('wsStrategy').textContent = stats.strategy;
+            document.getElementById('wsStatus').textContent = stats.isConnected ? 'Connected' : 'Disconnected';
+            document.getElementById('wsStatusBadge').className = 'badge ' + (stats.isConnected ? 'success' : 'error');
+            document.getElementById('wsReconnects').textContent = stats.reconnectAttempts;
+            document.getElementById('wsQueuedMessages').textContent = stats.queuedMessages;
+            
+            // Buttons
+            document.getElementById('wsConnectBtn').disabled = stats.isConnected;
+            document.getElementById('wsDisconnectBtn').disabled = !stats.isConnected;
+            document.getElementById('wsSendBtn').disabled = !stats.isConnected;
+            
+            // Agent stats
+            var agentStats = RealTimeAgent.getStats();
+            document.getElementById('agentMessagesReceived').textContent = agentStats.messagesReceived;
+            document.getElementById('agentMessagesSent').textContent = agentStats.messagesSent;
+            document.getElementById('agentLastMessage').textContent = agentStats.lastMessageTime ? 
+                new Date(agentStats.lastMessageTime).toLocaleTimeString() : 'Never';
+            
+            // Connection log
+            refreshWSLog();
+        }
+        
+        function refreshWSLog() {
+            var log = UniversalWebSocket.getConnectionLog();
+            var container = document.getElementById('wsLogContent');
+            
+            var html = '';
+            
+            log.slice().reverse().forEach(function(entry) {
+                var logClass = entry.status === 'success' ? 'success' : 
+                              entry.status === 'failed' ? 'warning' : 'error';
+                
+                html += '<div class="log-entry ' + logClass + '">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
+                html += '<strong>' + entry.action.toUpperCase() + '</strong>';
+                html += '<span class="badge ' + logClass + '">' + entry.status + '</span>';
+                html += '</div>';
+                html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                html += 'URL: ' + (entry.url || 'N/A') + ' | ';
+                html += 'Strategy: ' + entry.strategy + ' | ';
+                html += 'Time: ' + new Date(entry.timestamp).toLocaleTimeString();
+                if (entry.fallback) html += ' | Fallback: ' + entry.fallback;
+                if (entry.error) html += ' | Error: ' + entry.error;
+                html += '</div></div>';
+            });
+            
+            container.innerHTML = html || '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No connection attempts yet</p>';
+        }
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            
+            if (!username || !password) {
+                notify('❌ Please fill in all fields', 'error');
+                return;
+            }
+            
+            notify('🔑 Logging in...', 'info');
+            
+            UniversalAuth.login(username, password, {
+                permissions: ['read', 'write', 'admin']
+            })
+            .then(function(result) {
+                notify('✅ Login successful! Welcome ' + username, 'success');
+                document.getElementById('loginForm').reset();
+                refreshAuthPage();
+            })
+            .catch(function(error) {
+                notify('❌ Login failed: ' + error.message, 'error');
+            });
+        }
+        
+        function handleLogout() {
+            UniversalAuth.logout();
+            notify('✅ Logged out successfully', 'success');
+            refreshAuthPage();
+        }
+        
+        function connectWebSocket() {
+            notify('🔌 Connecting...', 'info');
+            
+            RealTimeAgent.connect()
+                .then(function(result) {
+                    notify('✅ Connected via ' + result.strategy, 'success');
+                    refreshWebSocketPage();
+                })
+                .catch(function(error) {
+                    notify('❌ Connection failed', 'error');
+                });
+        }
+        
+        function disconnectWebSocket() {
+            RealTimeAgent.disconnect();
+            notify('🔌 Disconnected', 'warning');
+            refreshWebSocketPage();
+        }
+        
+        function sendTestMessage() {
+            var success = RealTimeAgent.sendMessage('test', {
+                message: 'Hello from RealTimeAgent!',
+                timestamp: new Date().toISOString()
+            });
+            
+            if (success) {
+                notify('📤 Message sent', 'success');
+            } else {
+                notify('⚠️ Message queued (not connected)', 'warning');
+            }
+            
+            refreshWebSocketPage();
+        }
+        
+        function updateRealTimeStats(stats) {
+            refreshWebSocketPage();
+        }
+        
+        var realtimeMessages = [];
+        function addRealTimeMessage(message) {
+            realtimeMessages.push(message);
+            
+            var container = document.getElementById('wsMessagesContent');
+            if (container) {
+                var html = '<div class="log-entry success">';
+                html += '<div style="margin-bottom: 0.5rem;"><strong>Type: ' + message.type + '</strong></div>';
+                html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                html += 'Data: ' + JSON.stringify(message.data) + '<br>';
+                html += 'Time: ' + new Date().toLocaleTimeString();
+                html += '</div></div>';
+                
+                container.insertAdjacentHTML('afterbegin', html);
+            }
+            
+            notify('📥 New message: ' + message.type, 'info');
+        }
+        
+        // ====================================================================
+        // 🚀 SYSTEM INITIALIZATION
+        // ====================================================================
+        
+        (function() {
+            console.log('[INIT] 🚀 AVIAAgenOS v6.0 - Initializing new modules...');
+            
+            // Mock AVIAAgenOS if not loaded (standalone mode)
+            if (typeof AVIAAgenOS === 'undefined') {
+                window.AVIAAgenOS = {
+                    version: '6.0.0',
+                    agents: [],
+                    environment: {
+                        hasLocalStorage: true,
+                        hasSessionStorage: true,
+                        hasIndexedDB: true,
+                        hasCookies: true,
+                        isSandboxed: false
+                    },
+                    registerAgent: function(agent) {
+                        console.log('[AVIAAgenOS] Registering agent:', agent.name);
+                        this.agents.push(agent);
+                    }
+                };
+            }
+            
+            // Mock Sandbox Guardian if not loaded
+            if (typeof AVIASandboxGuardian === 'undefined') {
+                window.AVIASandboxGuardian = {
+                    environment: AVIAAgenOS.environment,
+                    storageStrategy: 'localStorage',
+                    fetchStrategy: 'fetch'
+                };
+            }
+            
+            // Initialize new modules
+            UniversalAuth.init();
+            UniversalWebSocket.init();
+            RealTimeAgent.init();
+            
+            // DOM Ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('[INIT] 🎨 DOM ready, initializing UI...');
+                    navigateTo('dashboard');
+                });
+            } else {
+                console.log('[INIT] 🎨 DOM already ready, initializing UI...');
+                navigateTo('dashboard');
+            }
+            
+            console.log('[INIT] ✅ v6.0 initialization complete');
+        })();
+    </script>
+
+    <nav class="sidebar">
+        <h2>Navigation</h2>
+        <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+            <span>📊</span><span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="auth" onclick="navigateTo('auth')">
+            <span>🔐</span><span>Universal Auth</span>
+        </div>
+        <div class="nav-item" data-page="websocket" onclick="navigateTo('websocket')">
+            <span>🔌</span><span>Universal WebSocket</span>
+        </div>
+        <div class="nav-item" data-page="docs" onclick="navigateTo('docs')">
+            <span>📚</span><span>Documentation</span>
+        </div>
+    </nav>
+    
+    <header>
+        <div class="logo"><span>🤖</span><span>AVIAAgenOS v6.0</span></div>
+        <div class="header-actions">
+            <div class="status-indicator">
+                <div class="pulse"></div>
+                <span>System Ready</span>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            <!-- Dashboard -->
+            <div id="page-dashboard" class="page-section active">
+                <div class="dashboard-header">
+                    <div>
+                        <h1>🚀 Visual Dashboard</h1>
+                        <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                            Real-time monitoring of agents and system status
+                        </p>
+                    </div>
+                    <button class="btn btn-primary" onclick="refreshDashboard()">🔄 Refresh</button>
+                </div>
+                
+                <div class="alert info">
+                    <span style="font-size: 1.5rem;">✨</span>
+                    <div>
+                        <strong>Welcome to AVIAAgenOS v6.0!</strong> This dashboard provides real-time monitoring of all agents, authentication status, and WebSocket connections.
+                    </div>
+                </div>
+                
+                <div id="dashboardContent"></div>
+            </div>
+            
+            <!-- Universal Auth -->
+            <div id="page-auth" class="page-section">
+                <h1 style="margin-bottom: 2rem;">🔐 Universal Auth System</h1>
+                
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>📊 Authentication Stats</h3>
+                        <table>
+                            <tr>
+                                <td><strong>Strategy:</strong></td>
+                                <td><span class="badge info" id="authStrategy">memory</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td><span class="badge error" id="authStatusBadge">not authenticated</span> <span id="authStatus">Not authenticated</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Actions:</strong></td>
+                                <td id="authTotalActions">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Successful Logins:</strong></td>
+                                <td id="authLogins">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Logouts:</strong></td>
+                                <td id="authLogouts">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Failed Attempts:</strong></td>
+                                <td id="authFailures">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div>
+                        <div class="card" id="loginSection">
+                            <h3>🔑 Login</h3>
+                            <form id="loginForm" onsubmit="handleLogin(event)">
+                                <div class="form-group">
+                                    <label>Username</label>
+                                    <input type="text" id="username" placeholder="Enter username" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" id="password" placeholder="Enter password (min 6 chars)" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">🔑 Login</button>
+                            </form>
+                        </div>
+                        
+                        <div class="card" id="userInfoSection" style="display: none;">
+                            <h3>👤 Current User</h3>
+                            <table>
+                                <tr>
+                                    <td><strong>Username:</strong></td>
+                                    <td id="currentUsername">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Login Time:</strong></td>
+                                    <td id="currentLoginTime">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Permissions:</strong></td>
+                                    <td id="currentPermissions">-</td>
+                                </tr>
+                            </table>
+                            <button class="btn btn-error" onclick="handleLogout()" style="margin-top: 1rem;">🚪 Logout</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📋 Authentication Log</h3>
+                    <div id="authLogContent"></div>
+                </div>
+            </div>
+            
+            <!-- Universal WebSocket -->
+            <div id="page-websocket" class="page-section">
+                <h1 style="margin-bottom: 2rem;">🔌 Universal WebSocket System</h1>
+                
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>📊 Connection Stats</h3>
+                        <table>
+                            <tr>
+                                <td><strong>Strategy:</strong></td>
+                                <td><span class="badge info" id="wsStrategy">-</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td><span class="badge error" id="wsStatusBadge">disconnected</span> <span id="wsStatus">Disconnected</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reconnect Attempts:</strong></td>
+                                <td id="wsReconnects">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Queued Messages:</strong></td>
+                                <td id="wsQueuedMessages">0</td>
+                            </tr>
+                        </table>
+                        
+                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                            <button class="btn btn-success btn-small" id="wsConnectBtn" onclick="connectWebSocket()">🔗 Connect</button>
+                            <button class="btn btn-error btn-small" id="wsDisconnectBtn" onclick="disconnectWebSocket()" disabled>🔌 Disconnect</button>
+                            <button class="btn btn-primary btn-small" id="wsSendBtn" onclick="sendTestMessage()" disabled>📤 Send Test</button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🤖 RealTimeAgent Stats</h3>
+                        <table>
+                            <tr>
+                                <td><strong>Messages Received:</strong></td>
+                                <td id="agentMessagesReceived">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Messages Sent:</strong></td>
+                                <td id="agentMessagesSent">0</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Message:</strong></td>
+                                <td id="agentLastMessage">Never</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>📋 Connection Log</h3>
+                        <div id="wsLogContent"></div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>📥 Received Messages</h3>
+                        <div id="wsMessagesContent">
+                            <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                                No messages received yet. Connect to start receiving.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Documentation -->
+            <div id="page-docs" class="page-section">
+                <h1 style="margin-bottom: 2rem;">📚 Documentation v6.0</h1>
+                
+                <div class="card">
+                    <h3>🔐 Universal Auth Module</h3>
+                    <p><strong>Purpose:</strong> Gestionar autenticación en entornos con almacenamiento restringido</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Estrategias de Almacenamiento (Prioridad):</h4>
+                    <table style="margin-top: 1rem;">
+                        <thead>
+                            <tr><th>Strategy</th><th>Persistence</th><th>Limitations</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge success">localStorage</span></td>
+                                <td>Permanente (hasta borrar datos)</td>
+                                <td>Puede estar bloqueado en sandbox</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge warning">sessionStorage</span></td>
+                                <td>Mientras la pestaña esté abierta</td>
+                                <td>Se pierde al cerrar pestaña</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge error">memory</span></td>
+                                <td>Mientras la página esté cargada</td>
+                                <td>Se pierde al recargar página</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Uso:</h4>
+                    <div class="code-block">// Login
+UniversalAuth.login('username', 'password', {
+    permissions: ['read', 'write', 'admin'],
+    metadata: { role: 'developer' }
+})
+.then(result => {
+    console.log('Logged in:', result.user);
+    console.log('Token:', result.token);
+})
+.catch(error => {
+    console.error('Login failed:', error.message);
+});
+
+// Logout
+UniversalAuth.logout();
+
+// Check authentication
+if (UniversalAuth.isAuthenticated()) {
+    var user = UniversalAuth.getCurrentUser();
+    console.log('Current user:', user.username);
+}
+
+// Check permission
+if (UniversalAuth.hasPermission('admin')) {
+    console.log('User has admin permission');
+}
+
+// Get stats
+var stats = UniversalAuth.getStats();
+console.log('Auth strategy:', stats.strategy);
+console.log('Total logins:', stats.logins);</div>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Características:</h4>
+                    <ul style="line-height: 1.8; padding-left: 1.5rem;">
+                        <li>✅ <strong>Multi-estrategia automática:</strong> Selecciona localStorage → sessionStorage → memory</li>
+                        <li>✅ <strong>Persistencia de sesión:</strong> Restaura sesión automáticamente si está disponible</li>
+                        <li>✅ <strong>Sistema de permisos:</strong> Gestión granular de permisos por usuario</li>
+                        <li>✅ <strong>Log completo:</strong> Registro de todas las acciones de autenticación</li>
+                        <li>✅ <strong>Tokens seguros:</strong> Generación de tokens únicos por sesión</li>
+                        <li>⚠️ <strong>Advertencias contextuales:</strong> Notifica cuando la sesión no persistirá</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🔌 Universal WebSocket Module</h3>
+                    <p><strong>Purpose:</strong> Comunicación en tiempo real con fallback automático a polling</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Estrategias (con Fallback Automático):</h4>
+                    <table style="margin-top: 1rem;">
+                        <thead>
+                            <tr><th>Strategy</th><th>Latency</th><th>Compatibility</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge success">websocket</span></td>
+                                <td>~10ms (bidireccional)</td>
+                                <td>Puede fallar en sandbox estricto</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge warning">polling</span></td>
+                                <td>~3000ms (configurable)</td>
+                                <td>Funciona en cualquier entorno</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="alert warning" style="margin-top: 1rem;">
+                        <span style="font-size: 1.5rem;">⚡</span>
+                        <div>
+                            <strong>Fallback Automático:</strong> Si WebSocket falla al conectar (común en sandbox), el sistema automáticamente cambia a polling sin intervención del desarrollador.
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Uso:</h4>
+                    <div class="code-block">// Inicializar
+UniversalWebSocket.init();
+
+// Conectar
+UniversalWebSocket.connect('wss://api.example.com/ws')
+    .then(result => {
+        console.log('Connected via:', result.strategy);
+        // result.strategy puede ser 'websocket' o 'polling'
+    });
+
+// Registrar handlers
+UniversalWebSocket.on('connected', data => {
+    console.log('Connected!', data.strategy);
+});
+
+UniversalWebSocket.on('message', message => {
+    console.log('Message received:', message);
+});
+
+UniversalWebSocket.on('disconnected', () => {
+    console.log('Disconnected');
+});
+
+// Enviar mensaje
+UniversalWebSocket.send({
+    type: 'chat',
+    data: { message: 'Hello!' }
+});
+
+// Desconectar
+UniversalWebSocket.disconnect();</div>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Ejemplo: RealTimeAgent</h4>
+                    <div class="code-block">var RealTimeAgent = {
+    name: 'RealTimeAgent',
+    environmentDetected: false,
+    
+    detectEnvironment: function() {
+        this.environment = AVIAAgenOS.environment;
+        this.environmentDetected = true;
+    },
+    
+    init: function() {
+        this.detectEnvironment();
+        
+        // Configurar handlers
+        UniversalWebSocket.on('connected', data => {
+            console.log('Agent connected via', data.strategy);
+        });
+        
+        UniversalWebSocket.on('message', message => {
+            this.handleMessage(message);
+        });
+        
+        AVIAAgenOS.registerAgent(this);
+    },
+    
+    connect: function() {
+        return UniversalWebSocket.connect('wss://api.example.com/ws');
+    },
+    
+    handleMessage: function(message) {
+        console.log('Processing:', message);
+        // Lógica del agente...
+    }
+};
+
+RealTimeAgent.init();</div>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 Visual Dashboard Structure</h3>
+                    <p><strong>Purpose:</strong> Monitoreo visual en tiempo real del estado del sistema</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Componentes del Dashboard:</h4>
+                    
+                    <div style="margin-top: 1rem;">
+                        <h5 style="color: var(--primary); margin-bottom: 0.5rem;">1. System Stats (Grid Superior)</h5>
+                        <ul style="line-height: 1.8; padding-left: 1.5rem; color: var(--text-secondary);">
+                            <li>Número de agentes activos</li>
+                            <li>Estado de autenticación (🔓 / 🔒)</li>
+                            <li>Estado de conexión WebSocket (🟢 / 🔴)</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <h5 style="color: var(--primary); margin-bottom: 0.5rem;">2. Agent Cards</h5>
+                        <p style="color: var(--text-secondary); line-height: 1.6;">
+                            Cada agente registrado tiene su propia card con:
+                        </p>
+                        <ul style="line-height: 1.8; padding-left: 1.5rem; color: var(--text-secondary);">
+                            <li><strong>Header:</strong> Nombre del agente + badge de estado (Active/Inactive)</li>
+                            <li><strong>Metadata:</strong> Versión + estado de conexión</li>
+                            <li><strong>Stats:</strong> Métricas específicas del agente (mensajes, eventos, etc.)</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <h5 style="color: var(--primary); margin-bottom: 0.5rem;">3. Páginas Especializadas</h5>
+                        <table style="margin-top: 0.5rem;">
+                            <tr>
+                                <td><strong>🔐 Auth Page</strong></td>
+                                <td>Login form, user info, auth log, statistics</td>
+                            </tr>
+                            <tr>
+                                <td><strong>🔌 WebSocket Page</strong></td>
+                                <td>Connection controls, message log, agent stats</td>
+                            </tr>
+                            <tr>
+                                <td><strong>📚 Docs Page</strong></td>
+                                <td>Comprehensive API documentation with examples</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Actualización en Tiempo Real:</h4>
+                    <div class="code-block">// El dashboard se actualiza automáticamente cuando:
+
+// 1. Un agente cambia de estado
+function updateDashboard() {
+    refreshDashboard(); // Reconstruye toda la vista
+}
+
+// 2. Se recibe un mensaje WebSocket
+UniversalWebSocket.on('message', message => {
+    updateRealTimeStats(stats);  // Actualiza métricas
+    addRealTimeMessage(message); // Añade a log de mensajes
+});
+
+// 3. Se completa una acción de auth
+UniversalAuth.login(...).then(() => {
+    refreshAuthPage(); // Actualiza vista de auth
+});</div>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Características Visuales:</h4>
+                    <ul style="line-height: 1.8; padding-left: 1.5rem;">
+                        <li>🎨 <strong>Diseño moderno:</strong> Cards con hover effects y gradientes</li>
+                        <li>🔄 <strong>Animaciones suaves:</strong> Transiciones y fadeIn effects</li>
+                        <li>🎯 <strong>Badges de estado:</strong> Indicadores visuales (success/warning/error/info)</li>
+                        <li>📊 <strong>Stat cards:</strong> Métricas destacadas con valores grandes</li>
+                        <li>📱 <strong>Responsive:</strong> Adapta layout en mobile</li>
+                        <li>🌙 <strong>Dark theme:</strong> Optimizado para visibilidad</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>✨ Nuevas Características v6.0</h3>
+                    <table>
+                        <tr>
+                            <td><strong>🔐 UniversalAuth</strong></td>
+                            <td>Sistema de autenticación multi-estrategia con persistencia automática</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🔌 UniversalWebSocket</strong></td>
+                            <td>WebSocket con fallback a polling para comunicación en tiempo real</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🤖 RealTimeAgent</strong></td>
+                            <td>Agente de ejemplo que implementa comunicación WebSocket</td>
+                        </tr>
+                        <tr>
+                            <td><strong>📊 Visual Dashboard</strong></td>
+                            <td>Interfaz visual completa para monitoreo de agentes y sistema</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🎨 UI Components</strong></td>
+                            <td>Agent cards, timeline, badges, notifications en tiempo real</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div id="notificationContainer" class="notification-container"></div>
+</body>
+</html>

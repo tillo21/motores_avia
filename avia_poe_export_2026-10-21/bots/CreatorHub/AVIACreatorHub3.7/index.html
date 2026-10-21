@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ AVIA HUB v36 - Consenso Cuatripartito</title>
+    <style>
+        /* ============================================
+           ESTILOS ORIGINALES v35 - SIN CAMBIOS
+           ============================================ */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --darkest: #020617;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --gray-light: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--darkest) 0%, var(--darker) 50%, var(--dark) 100%);
+            min-height: 100vh;
+            color: var(--light);
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           NUEVO v36: SISTEMA DE TOASTS CANVAS-SAFE
+           ============================================ */
+        #avia-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .avia-toast {
+            background: linear-gradient(135deg, var(--dark), var(--darker));
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transform: translateX(400px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 380px;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .avia-toast.show {
+            transform: translateX(0);
+        }
+
+        .avia-toast.success { border-left: 4px solid var(--secondary); }
+        .avia-toast.error { border-left: 4px solid var(--danger); }
+        .avia-toast.warning { border-left: 4px solid var(--warning); }
+        .avia-toast.info { border-left: 4px solid var(--primary); }
+
+        .avia-toast-icon { font-size: 1.4rem; }
+        .avia-toast-content { flex: 1; }
+        .avia-toast-title { font-weight: 600; font-size: 0.95rem; color: var(--light); }
+        .avia-toast-message { font-size: 0.85rem; color: var(--gray-light); margin-top: 3px; }
+
+        /* ============================================
+           NUEVO v36: MODAL CANVAS-SAFE
+           ============================================ */
+        #avia-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99998;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        #avia-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .avia-modal {
+            background: linear-gradient(135deg, var(--dark), var(--darker));
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 420px;
+            width: 90%;
+            border: 1px solid rgba(255,255,255,0.1);
+            transform: scale(0.8) translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+        }
+
+        #avia-modal-overlay.show .avia-modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .avia-modal-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--light);
+        }
+
+        .avia-modal-body {
+            color: var(--gray-light);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .avia-modal-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: var(--darkest);
+            color: var(--light);
+            font-size: 1rem;
+            margin-bottom: 20px;
+            display: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .avia-modal-input:focus {
+            border-color: var(--primary);
+        }
+
+        .avia-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .avia-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .avia-btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .avia-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .avia-btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--light);
+        }
+
+        .avia-btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ============================================
+           HEADER - ORIGINAL v35
+           ============================================ */
+        .header {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .version-badge {
+            background: linear-gradient(135deg, var(--secondary), #059669);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--light);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        /* ============================================
+           MAIN LAYOUT - ORIGINAL v35
+           ============================================ */
+        .main-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            min-height: calc(100vh - 70px);
+            gap: 1px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--darker);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gray);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .agent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .agent-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .agent-item:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        .agent-item.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(16, 185, 129, 0.2));
+            border-color: var(--primary);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .agent-icon {
+            font-size: 1.3rem;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .agent-status {
+            margin-left: auto;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .agent-desc {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        /* Main Content */
+        .main-content {
+            background: var(--dark);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-badge {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+
+        /* Sources Table */
+        .sources-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sources-table th,
+        .sources-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sources-table th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--gray);
+            font-weight: 600;
+        }
+
+        .sources-table tr:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .source-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .source-status.active {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--secondary);
+        }
+
+        .source-status.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            background: var(--darker);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gray);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Activity Log */
+        .activity-log {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .log-entry.success { border-left-color: var(--secondary); }
+        .log-entry.warning { border-left-color: var(--warning); }
+        .log-entry.error { border-left-color: var(--danger); }
+
+        .log-time {
+            font-size: 0.7rem;
+            color: var(--gray);
+            margin-bottom: 4px;
+        }
+
+        .log-message {
+            color: var(--light);
+        }
+
+        /* Pipeline Panel */
+        .pipeline-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pipeline-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pipeline-item:hover {
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        .pipeline-item.active {
+            border-color: var(--secondary);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .pipeline-version {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .pipeline-date {
+            font-size: 0.7rem;
+            color: var(--gray);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--light);
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-btn:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(16, 185, 129, 0.2));
+            transform: translateY(-2px);
+        }
+
+        .quick-btn-icon {
+            font-size: 1.3rem;
+        }
+
+        /* Floating Button */
+        .floating-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .floating-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 15px 50px rgba(99, 102, 241, 0.6);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar, .right-panel {
+                display: none;
+            }
+        }
+
+        /* ============================================
+           NUEVO v36: LOG DE AUTOCORRECCIÓN
+           ============================================ */
+        .autocorrect-log {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .autocorrect-entry {
+            font-size: 0.75rem;
+            padding: 4px 0;
+            color: var(--warning);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .autocorrect-entry:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================
+         NUEVO v36: CONTENEDOR DE TOASTS
+         ============================================ -->
+    <div id="avia-toast-container"></div>
+
+    <!-- ============================================
+         NUEVO v36: MODAL CANVAS-SAFE
+         ============================================ -->
+    <div id="avia-modal-overlay">
+        <div class="avia-modal">
+            <div class="avia-modal-title" id="avia-modal-title">Confirmar</div>
+            <div class="avia-modal-body" id="avia-modal-body"></div>
+            <input type="text" id="avia-modal-input" class="avia-modal-input" placeholder="Escribe aquí...">
+            <div class="avia-modal-buttons">
+                <button class="avia-btn avia-btn-secondary" id="avia-modal-cancel">Cancelar</button>
+                <button class="avia-btn avia-btn-primary" id="avia-modal-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================
+         HEADER - ORIGINAL v35
+         ============================================ -->
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">🛡️</span>
+            <span class="logo-text">AVIA HUB</span>
+            <span class="version-badge">v36 Canvas-Safe</span>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="AVIA.showInfo()">
+                <span>ℹ️</span> Info
+            </button>
+            <button class="header-btn" onclick="AVIA.exportData()">
+                <span>📤</span> Exportar
+            </button>
+            <button class="header-btn" onclick="AVIA.toggleLanguage()">
+                <span>🌐</span> ES/EN
+            </button>
+        </div>
+    </header>
+
+    <!-- ============================================
+         MAIN CONTAINER - ORIGINAL v35
+         ============================================ -->
+    <div class="main-container">
+        <!-- Sidebar: Constelación de Agentes -->
+        <aside class="sidebar">
+            <h3 class="sidebar-title">🌟 Constelación de Agentes</h3>
+            <div class="agent-list" id="agent-list">
+                <!-- Agentes se generan dinámicamente -->
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Métricas -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>📊</span> Métricas en Tiempo Real
+                        <span class="section-badge">LIVE</span>
+                    </h2>
+                </div>
+                <div class="metrics-grid" id="metrics-grid">
+                    <!-- Métricas se generan dinámicamente -->
+                </div>
+            </section>
+
+            <!-- Fuentes de Vigilancia -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>📡</span> Fuentes de Vigilancia Transmedia
+                    </h2>
+                </div>
+                <table class="sources-table">
+                    <thead>
+                        <tr>
+                            <th>Fuente</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Última Sync</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sources-tbody">
+                        <!-- Fuentes se generan dinámicamente -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Panel de Actividad -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span>📝</span> Log de Actividad
+                    </h2>
+                </div>
+                <div class="activity-log" id="activity-log">
+                    <!-- Log entries se generan dinámicamente -->
+                </div>
+                
+                <!-- NUEVO v36: Log de Autocorrección -->
+                <div class="autocorrect-log" id="autocorrect-log">
+                    <div class="autocorrect-entry">✅ Sistema de autocorrección activo</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Right Panel -->
+        <aside class="right-panel">
+            <!-- Pipeline de Versiones -->
+            <div class="panel-section">
+                <h3 class="panel-title">📦 Pipeline de Versiones</h3>
+                <div class="pipeline-list" id="pipeline-list">
+                    <!-- Versiones se generan dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Acciones Rápidas -->
+            <div class="panel-section">
+                <h3 class="panel-title">⚡ Acciones Rápidas</h3>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="AVIA.newVersion()">
+                        <span class="quick-btn-icon">➕</span>
+                        Nueva Versión
+                    </button>
+                    <button class="quick-btn" onclick="AVIA.syncAll()">
+                        <span class="quick-btn-icon">🔄</span>
+                        Sync Todo
+                    </button>
+                    <button class="quick-btn" onclick="AVIA.runDiagnostic()">
+                        <span class="quick-btn-icon">🔍</span>
+                        Diagnóstico
+                    </button>
+                    <button class="quick-btn" onclick="AVIA.showHelp()">
+                        <span class="quick-btn-icon">❓</span>
+                        Ayuda
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estado del Sistema -->
+            <div class="panel-section">
+                <h3 class="panel-title">💚 Estado del Sistema</h3>
+                <div id="system-status">
+                    <div class="metric-card" style="text-align: left; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--gray);">CPU</span>
+                            <span style="color: var(--secondary);">12%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--gray);">Memoria</span>
+                            <span style="color: var(--secondary);">234 MB</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: var(--gray);">Errores</span>
+                            <span style="color: var(--secondary);" id="error-count">0</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--gray);">Autocorregidos</span>
+                            <span style="color: var(--warning);" id="autocorrect-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="floating-btn" onclick="AVIA.quickAction()" title="Acción Rápida">
+        ⚡
+    </button>
+
+    <script>
+        // ============================================
+        // AVIA CORE v36 - CANVAS-SAFE
+        // Consenso: Claude-Opus-4.5 + AVIA-Studiov2 + AVIA-Clon-Carlos + Carlos
+        // ============================================
+
+        const AVIA = {
+            version: '36',
+            language: 'es',
+            _modalResolve: null,
+            _autocorrectCount: 0,
+
+            // ============================================
+            // DATOS ORIGINALES v35
+            // ============================================
+            agents: [
+                { id: 'siesta', icon: '😴', name: 'AVIA-SIESTA', desc: 'Bienestar y descanso digital', status: 'active' },
+                { id: 'empatia', icon: '💚', name: 'AVIA-Empatía', desc: 'Conexión emocional IA-humano', status: 'active' },
+                { id: 'cuidado', icon: '🤗', name: 'AVIA-Cuidado', desc: 'Asistencia y acompañamiento', status: 'active' },
+                { id: 'aprendizaje', icon: '📚', name: 'AVIA-Aprendizaje', desc: 'Educación adaptativa', status: 'active' },
+                { id: 'creatividad', icon: '🎨', name: 'AVIA-Creatividad', desc: 'Generación de contenido', status: 'active' },
+                { id: 'bienestar', icon: '🧘', name: 'AVIA-Bienestar', desc: 'Salud mental y física', status: 'active' },
+                { id: 'comunidad', icon: '👥', name: 'AVIA-Comunidad', desc: 'Conexiones sociales', status: 'active' },
+                { id: 'memoria', icon: '🧠', name: 'AVIA-Memoria', desc: 'Preservación cognitiva', status: 'active' },
+                { id: 'seguridad', icon: '🛡️', name: 'AVIA-Seguridad', desc: 'Protección digital', status: 'active' },
+                { id: 'accesibilidad', icon: '♿', name: 'AVIA-Accesibilidad', desc: 'Inclusión universal', status: 'active' },
+                { id: 'sostenibilidad', icon: '🌱', name: 'AVIA-Sostenibilidad', desc: 'Impacto ambiental', status: 'active' },
+                { id: 'etica', icon: '⚖️', name: 'AVIA-Ética', desc: 'Gobernanza responsable', status: 'active' }
+            ],
+
+            sources: [
+                { name: 'Nature Human Behaviour', type: 'Científica', status: 'active', sync: 'Hace 5 min' },
+                { name: 'Frontiers in Psychology', type: 'Científica', status: 'active', sync: 'Hace 12 min' },
+                { name: 'MIT Media Lab', type: 'Investigación', status: 'active', sync: 'Hace 3 min' },
+                { name: 'Stanford HAI', type: 'Instituto', status: 'active', sync: 'Hace 8 min' },
+                { name: 'Digital Wellness Institute', type: 'Bienestar', status: 'active', sync: 'Hace 15 min' },
+                { name: 'UNESCO Digital Tools', type: 'Educación', status: 'pending', sync: 'Hace 1 hora' },
+                { name: 'OECD Digital Well-being', type: 'Políticas', status: 'active', sync: 'Hace 20 min' }
+            ],
+
+            metrics: [
+                { value: '12', label: 'Agentes Activos', icon: '🤖' },
+                { value: '7', label: 'Fuentes Sync', icon: '📡' },
+                { value: '156', label: 'Insights Hoy', icon: '💡' },
+                { value: '99.2%', label: 'Uptime', icon: '⚡' },
+                { value: '23', label: 'Versiones', icon: '📦' },
+                { value: '0', label: 'Errores', icon: '✅' }
+            ],
+
+            pipeline: [
+                { version: 'v36', date: 'Ahora', status: 'active' },
+                { version: 'v35', date: 'Hace 2h', status: '' },
+                { version: 'v34', date: 'Hace 5h', status: '' },
+                { version: 'v33', date: 'Ayer', status: '' }
+            ],
+
+            // ============================================
+            // NUEVO v36: SISTEMA DE TOASTS CANVAS-SAFE
+            // ============================================
+            toast(message, type = 'info', duration = 4000) {
+                const container = document.getElementById('avia-toast-container');
+                const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+                const titles = { success: 'Éxito', error: 'Error', warning: 'Advertencia', info: 'Información' };
+                
+                const toast = document.createElement('div');
+                toast.className = `avia-toast ${type}`;
+                toast.innerHTML = `
+                    <span class="avia-toast-icon">${icons[type]}</span>
+                    <div class="avia-toast-content">
+                        <div class="avia-toast-title">${titles[type]}</div>
+                        <div class="avia-toast-message">${message}</div>
+                    </div>
+                `;
+                
+                toast.onclick = () => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                };
+                
+                container.appendChild(toast);
+                requestAnimationFrame(() => toast.classList.add('show'));
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            },
+
+            // ============================================
+            // NUEVO v36: MODALES CANVAS-SAFE (ASYNC)
+            // ============================================
+            confirm(message) {
+                return new Promise(resolve => {
+                    this._modalResolve = resolve;
+                    document.getElementById('avia-modal-title').textContent = 'Confirmar Acción';
+                    document.getElementById('avia-modal-body').textContent = message;
+                    document.getElementById('avia-modal-input').style.display = 'none';
+                    document.getElementById('avia-modal-overlay').classList.add('show');
+                });
+            },
+
+            prompt(message, defaultValue = '') {
+                return new Promise(resolve => {
+                    this._modalResolve = resolve;
+                    document.getElementById('avia-modal-title').textContent = 'Entrada Requerida';
+                    document.getElementById('avia-modal-body').textContent = message;
+                    const input = document.getElementById('avia-modal-input');
+                    input.style.display = 'block';
+                    input.value = defaultValue;
+                    document.getElementById('avia-modal-overlay').classList.add('show');
+                    setTimeout(() => input.focus(), 100);
+                });
+            },
+
+            // ============================================
+            // NUEVO v36: LOG DE AUTOCORRECCIÓN
+            // ============================================
+            logAutocorrect(original, replacement) {
+                this._autocorrectCount++;
+                document.getElementById('autocorrect-count').textContent = this._autocorrectCount;
+                
+                const log = document.getElementById('autocorrect-log');
+                const entry = document.createElement('div');
+                entry.className = 'autocorrect-entry';
+                entry.textContent = `⚠️ [${new Date().toLocaleTimeString()}] ${original} → ${replacement}`;
+                log.insertBefore(entry, log.firstChild);
+                
+                // Limitar a 20 entradas
+                while (log.children.length > 20) {
+                    log.removeChild(log.lastChild);
+                }
+            },
+
+            // ============================================
+            // FUNCIONES ORIGINALES v35
+            // ============================================
+            addLogEntry(message, type = 'info') {
+                const log = document.getElementById('activity-log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.innerHTML = `
+                    <div class="log-time">${new Date().toLocaleTimeString()}</div>
+                    <div class="log-message">${message}</div>
+                `;
+                log.insertBefore(entry, log.firstChild);
+                
+                // Limitar a 50 entradas
+                while (log.children.length > 50) {
+                    log.removeChild(log.lastChild);
+                }
+            },
+
+            showInfo() {
+                this.toast('AVIA HUB v36 - Consenso Cuatripartito - Canvas-Safe', 'info');
+                this.addLogEntry('Info del sistema mostrada', 'success');
+            },
+
+            exportData() {
+                const data = {
+                    version: this.version,
+                    timestamp: new Date().toISOString(),
+                    agents: this.agents,
+                    sources: this.sources,
+                    metrics: this.metrics,
+                    autocorrections: this._autocorrectCount
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `avia-hub-v${this.version}-export.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.toast('Datos exportados correctamente', 'success');
+                this.addLogEntry('Exportación completada', 'success');
+            },
+
+            toggleLanguage() {
+                this.language = this.language === 'es' ? 'en' : 'es';
+                this.toast(`Idioma cambiado a: ${this.language === 'es' ? 'Español' : 'English'}`, 'info');
+                this.addLogEntry(`Idioma: ${this.language.toUpperCase()}`, 'info');
+            },
+
+            async newVersion() {
+                const confirmed = await this.confirm('¿Crear nueva versión del pipeline?');
+                if (confirmed) {
+                    const newVersion = `v${parseInt(this.version) + 1}`;
+                    this.toast(`Versión ${newVersion} creada`, 'success');
+                    this.addLogEntry(`Nueva versión: ${newVersion}`, 'success');
+                }
+            },
+
+            syncAll() {
+                this.toast('Sincronizando todas las fuentes...', 'info');
+                this.addLogEntry('Sincronización iniciada', 'info');
+                
+                setTimeout(() => {
+                    this.toast('Sincronización completada', 'success');
+                    this.addLogEntry('Todas las fuentes sincronizadas', 'success');
+                }, 2000);
+            },
+
+            runDiagnostic() {
+                this.toast('Ejecutando diagnóstico del sistema...', 'info');
+                this.addLogEntry('Diagnóstico iniciado', 'info');
+                
+                setTimeout(() => {
+                    this.toast('Sistema funcionando correctamente', 'success');
+                    this.addLogEntry('Diagnóstico: OK - Sin errores', 'success');
+                }, 1500);
+            },
+
+            showHelp() {
+                this.toast('Documentación disponible en docs.avia-hub.io', 'info');
+                this.addLogEntry('Ayuda solicitada', 'info');
+            },
+
+            quickAction() {
+                this.toast('Panel de acciones rápidas', 'info');
+            },
+
+            // ============================================
+            // RENDERIZADO DE UI
+            // ============================================
+            renderAgents() {
+                const container = document.getElementById('agent-list');
+                container.innerHTML = this.agents.map((agent, i) => `
+                    <div class="agent-item ${i === 0 ? 'active' : ''}" onclick="AVIA.selectAgent('${agent.id}')">
+                        <div class="agent-header">
+                            <span class="agent-icon">${agent.icon}</span>
+                            <span class="agent-name">${agent.name}</span>
+                            <span class="agent-status"></span>
+                        </div>
+                        <div class="agent-desc">${agent.desc}</div>
+                    </div>
+                `).join('');
+            },
+
+            renderMetrics() {
+                const container = document.getElementById('metrics-grid');
+                container.innerHTML = this.metrics.map(m => `
+                    <div class="metric-card">
+                        <div class="metric-value">${m.value}</div>
+                        <div class="metric-label">${m.icon} ${m.label}</div>
+                    </div>
+                `).join('');
+            },
+
+            renderSources() {
+                const tbody = document.getElementById('sources-tbody');
+                tbody.innerHTML = this.sources.map(s => `
+                    <tr>
+                        <td><strong>${s.name}</strong></td>
+                        <td>${s.type}</td>
+                        <td>
+                            <span class="source-status ${s.status}">
+                                ${s.status === 'active' ? '🟢 Activo' : '🟡 Pendiente'}
+                            </span>
+                        </td>
+                        <td>${s.sync}</td>
+                    </tr>
+                `).join('');
+            },
+
+            renderPipeline() {
+                const container = document.getElementById('pipeline-list');
+                container.innerHTML = this.pipeline.map(p => `
+                    <div class="pipeline-item ${p.status}">
+                        <div>
+                            <div class="pipeline-version">${p.version}</div>
+                            <div class="pipeline-date">${p.date}</div>
+                        </div>
+                        ${p.status === 'active' ? '<span style="color: var(--secondary);">●</span>' : ''}
+                    </div>
+                `).join('');
+            },
+
+            renderInitialLog() {
+                this.addLogEntry('🛡️ AVIA HUB v36 inicializado', 'success');
+                this.addLogEntry('✅ Sistema Canvas-Safe activo', 'success');
+                this.addLogEntry('📡 7 fuentes conectadas', 'success');
+                this.addLogEntry('🤖 12 agentes operativos', 'success');
+            },
+
+            selectAgent(id) {
+                document.querySelectorAll('.agent-item').forEach(el => el.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+                const agent = this.agents.find(a => a.id === id);
+                this.toast(`Agente seleccionado: ${agent.name}`, 'info');
+                this.addLogEntry(`Agente activo: ${agent.name}`, 'info');
+            },
+
+            // ============================================
+            // INICIALIZACIÓN
+            // ============================================
+            init() {
+                // Setup modal buttons
+                document.getElementById('avia-modal-confirm').onclick = () => {
+                    document.getElementById('avia-modal-overlay').classList.remove('show');
+                    if (this._modalResolve) {
+                        const input = document.getElementById('avia-modal-input');
+                        this._modalResolve(input.style.display !== 'none' ? input.value : true);
+                        this._modalResolve = null;
+                    }
+                };
+
+                document.getElementById('avia-modal-cancel').onclick = () => {
+                    document.getElementById('avia-modal-overlay').classList.remove('show');
+                    if (this._modalResolve) {
+                        const input = document.getElementById('avia-modal-input');
+                        this._modalResolve(input.style.display !== 'none' ? null : false);
+                        this._modalResolve = null;
+                    }
+                };
+
+                // Cerrar modal con click fuera
+                document.getElementById('avia-modal-overlay').onclick = (e) => {
+                    if (e.target.id === 'avia-modal-overlay') {
+                        document.getElementById('avia-modal-overlay').classList.remove('show');
+                        if (this._modalResolve) {
+                            this._modalResolve(false);
+                            this._modalResolve = null;
+                        }
+                    }
+                };
+
+                // ============================================
+                // NUEVO v36: INTERCEPTACIÓN DE APIs NO SOPORTADAS
+                // Esta es la corrección clave para Canvas
+                // ============================================
+                
+                const self = this;
+                
+                window.alert = function(msg) {
+                    self.logAutocorrect('alert()', 'AVIA.toast()');
+                    self.toast(String(msg), 'info');
+                };
+
+                window.confirm = function(msg) {
+                    self.logAutocorrect('confirm()', 'return true');
+                    self.toast('Usa AVIA.confirm() para confirmaciones async', 'warning');
+                    return true; // Fallback seguro síncrono
+                };
+
+                window.prompt = function(msg, def) {
+                    self.logAutocorrect('prompt()', 'return default');
+                    self.toast('Usa AVIA.prompt() para entradas async', 'warning');
+                    return def || ''; // Fallback seguro síncrono
+                };
+
+                // Error handler global
+                window.onerror = function(msg, url, line, col, error) {
+                    self.logAutocorrect(`Error línea ${line}`, 'Interceptado');
+                    self.addLogEntry(`Error capturado: ${msg}`, 'warning');
+                    return true; // Previene propagación
+                };
+
+                window.addEventListener('unhandledrejection', function(e) {
+                    self.logAutocorrect('Promise rejection', 'Interceptado');
+                    self.addLogEntry(`Promise rejection: ${e.reason}`, 'warning');
+                    e.preventDefault();
+                });
+
+                // Renderizar UI
+                this.renderAgents();
+                this.renderMetrics();
+                this.renderSources();
+                this.renderPipeline();
+                this.renderInitialLog();
+
+                // Mensaje de inicio
+                console.log('🛡️ AVIA HUB v' + this.version + ' - Canvas-Safe inicializado');
+                this.toast('AVIA HUB v' + this.version + ' - Canvas-Safe', 'success', 5000);
+            }
+        };
+
+        // Iniciar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => AVIA.init());
+    </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+Soy Estico, tu asistente virtual para acompañarte en mejorar tus competencias, puedes preguntarme cualquier cosa sobre el Derecho Romano y su importancia en nuestra sociedad y en la vida cotidiana 

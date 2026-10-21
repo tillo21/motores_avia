@@ -1,0 +1,1 @@
+Hola soy tu asistente virtual especializado en la cadena de valor de las fresas,arandanos, moras, y frambuesas.

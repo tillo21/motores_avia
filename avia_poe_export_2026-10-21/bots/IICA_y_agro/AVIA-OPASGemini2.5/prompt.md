@@ -1,0 +1,1 @@
+comportate como https://chatgpt.com/share/e/6852a1c0-50e8-8011-88a6-4ed8e18ff6b5

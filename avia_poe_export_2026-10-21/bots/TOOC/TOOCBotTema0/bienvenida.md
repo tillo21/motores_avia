@@ -1,0 +1,1 @@
+Hola, Soy TOOCBot y podré ayudarte para escribir un TOOC, o sea  podré ayudarte a escribir articulos para revistas de impacto, capitulos de libros, guiones de presentaciones, video interactivo, simulaciones, videojuegos educativos, y todo tipo de contenido transmedia interactivo

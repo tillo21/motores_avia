@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Portal - Sistema de Gestión Clínica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card-hover { transition: all 0.3s; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .nav-active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(400px); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 fade-in">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-4">
+                    <i class="fas fa-heartbeat text-white text-4xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800">Clinical Portal</h1>
+                <p class="text-gray-600 mt-2">Sistema de Gestión Clínica</p>
+            </div>
+
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <div class="relative">
+                        <i class="fas fa-envelope absolute left-3 top-3.5 text-gray-400"></i>
+                        <input type="email" id="login-email" value="admin@clinical.com" required
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-3.5 text-gray-400"></i>
+                        <input type="password" id="login-password" value="admin123" required
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-3.5 text-gray-400">
+                            <i class="fas fa-eye" id="password-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                        <span class="ml-2 text-sm text-gray-600">Recordarme</span>
+                    </label>
+                    <a href="#" class="text-sm text-purple-600 hover:text-purple-700">¿Olvidaste tu contraseña?</a>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition duration-300">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="mt-6 text-center text-sm text-gray-600">
+                <p>Credenciales de prueba:</p>
+                <p class="font-mono bg-gray-100 p-2 rounded mt-2">admin@clinical.com / admin123</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-app" class="hidden">
+        <!-- Top Navigation -->
+        <nav class="bg-white shadow-md fixed w-full top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 flex items-center">
+                            <i class="fas fa-heartbeat text-purple-600 text-2xl mr-3"></i>
+                            <span class="text-xl font-bold text-gray-800">Clinical Portal</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="showNotifications()" class="relative p-2 text-gray-600 hover:text-purple-600">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </button>
+                        <div class="flex items-center space-x-3">
+                            <img src="https://i.pravatar.cc/150?img=12" alt="Avatar" class="w-10 h-10 rounded-full">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-800">Dr. Admin</p>
+                                <p class="text-xs text-gray-500">Administrador</p>
+                            </div>
+                            <button onclick="logout()" class="ml-4 text-red-500 hover:text-red-700">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="pt-16 flex">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-white h-screen fixed shadow-lg overflow-y-auto">
+                <div class="p-6 space-y-2">
+                    <button onclick="showSection('dashboard')" class="nav-btn nav-active w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition" data-section="dashboard">
+                        <i class="fas fa-home text-lg"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="showSection('patients')" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-section="patients">
+                        <i class="fas fa-user-injured text-lg"></i>
+                        <span>Pacientes</span>
+                    </button>
+                    <button onclick="showSection('appointments')" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-section="appointments">
+                        <i class="fas fa-calendar-check text-lg"></i>
+                        <span>Citas</span>
+                    </button>
+                    <button onclick="showSection('doctors')" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-section="doctors">
+                        <i class="fas fa-user-md text-lg"></i>
+                        <span>Médicos</span>
+                    </button>
+                    <button onclick="showSection('reports')" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-section="reports">
+                        <i class="fas fa-chart-line text-lg"></i>
+                        <span>Reportes</span>
+                    </button>
+                    <button onclick="showSection('settings')" class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition" data-section="settings">
+                        <i class="fas fa-cog text-lg"></i>
+                        <span>Configuración</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="ml-64 flex-1 p-8">
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="content-section">
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
+                        <p class="text-gray-600 mt-2">Bienvenido al sistema de gestión clínica</p>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="stat-card text-white rounded-xl p-6 card-hover">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm opacity-80">Total Pacientes</p>
+                                    <h3 class="text-3xl font-bold mt-2">1,234</h3>
+                                    <p class="text-sm mt-2 opacity-80"><i class="fas fa-arrow-up"></i> +12% este mes</p>
+                                </div>
+                                <i class="fas fa-users text-3xl opacity-80"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-green-400 to-green-600 text-white rounded-xl p-6 card-hover">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm opacity-80">Citas Hoy</p>
+                                    <h3 class="text-3xl font-bold mt-2">42</h3>
+                                    <p class="text-sm mt-2 opacity-80"><i class="fas fa-check"></i> 28 completadas</p>
+                                </div>
+                                <i class="fas fa-calendar-day text-3xl opacity-80"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-xl p-6 card-hover">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm opacity-80">Médicos Activos</p>
+                                    <h3 class="text-3xl font-bold mt-2">18</h3>
+                                    <p class="text-sm mt-2 opacity-80"><i class="fas fa-user-md"></i> En servicio</p>
+                                </div>
+                                <i class="fas fa-stethoscope text-3xl opacity-80"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-red-400 to-red-600 text-white rounded-xl p-6 card-hover">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm opacity-80">Urgencias</p>
+                                    <h3 class="text-3xl font-bold mt-2">3</h3>
+                                    <p class="text-sm mt-2 opacity-80"><i class="fas fa-exclamation-triangle"></i> Atención prioritaria</p>
+                                </div>
+                                <i class="fas fa-ambulance text-3xl opacity-80"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Citas por Mes</h3>
+                            <canvas id="appointmentsChart" height="200"></canvas>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Pacientes por Especialidad</h3>
+                            <canvas id="specialtyChart" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Actividad Reciente</h3>
+                        <div class="space-y-4" id="recent-activity">
+                            <!-- Activity items will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patients Section -->
+                <div id="patients-section" class="content-section hidden">
+                    <div class="mb-8 flex justify-between items-center">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">Gestión de Pacientes</h1>
+                            <p class="text-gray-600 mt-2">Administra la información de los pacientes</p>
+                        </div>
+                        <button onclick="openModal('patient-modal')" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Paciente
+                        </button>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-2">
+                                <div class="relative">
+                                    <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                                    <input type="text" id="patient-search" placeholder="Buscar paciente..." 
+                                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                </div>
+                            </div>
+                            <select class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                <option>Todos los estados</option>
+                                <option>Activo</option>
+                                <option>Inactivo</option>
+                            </select>
+                            <select class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                <option>Todas las edades</option>
+                                <option>0-18</option>
+                                <option>19-40</option>
+                                <option>41-60</option>
+                                <option>60+</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Patients Table -->
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                        <table class="w-full" id="patients-table">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Paciente</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">DNI</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Edad</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Teléfono</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Última Visita</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Estado</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patients-tbody" class="divide-y divide-gray-200">
+                                <!-- Patients data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Appointments Section -->
+                <div id="appointments-section" class="content-section hidden">
+                    <div class="mb-8 flex justify-between items-center">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">Gestión de Citas</h1>
+                            <p class="text-gray-600 mt-2">Programa y administra las citas médicas</p>
+                        </div>
+                        <button onclick="openModal('appointment-modal')" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition">
+                            <i class="fas fa-plus mr-2"></i> Nueva Cita
+                        </button>
+                    </div>
+
+                    <!-- Calendar View -->
+                    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-semibold">Calendario de Citas</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="px-4 py-2 border rounded-lg font-semibold">Hoy</button>
+                                <button class="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="appointments-calendar" class="grid grid-cols-7 gap-2">
+                            <!-- Calendar will be generated here -->
+                        </div>
+                    </div>
+
+                    <!-- Appointments List -->
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <h3 class="text-xl font-semibold mb-4">Próximas Citas</h3>
+                        <div id="appointments-list" class="space-y-4">
+                            <!-- Appointments will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Doctors Section -->
+                <div id="doctors-section" class="content-section hidden">
+                    <div class="mb-8 flex justify-between items-center">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">Gestión de Médicos</h1>
+                            <p class="text-gray-600 mt-2">Administra el personal médico</p>
+                        </div>
+                        <button onclick="openModal('doctor-modal')" class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Médico
+                        </button>
+                    </div>
+
+                    <!-- Doctors Grid -->
+                    <div id="doctors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Doctors cards will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div id="reports-section" class="content-section hidden">
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-bold text-gray-800">Reportes y Análisis</h1>
+                        <p class="text-gray-600 mt-2">Visualiza métricas y genera reportes</p>
+                    </div>
+
+                    <!-- Report Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-white rounded-xl shadow-md p-6 card-hover cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <div class="p-4 bg-blue-100 rounded-lg">
+                                    <i class="fas fa-file-medical text-blue-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">Reporte de Pacientes</h3>
+                                    <p class="text-sm text-gray-600">Estadísticas generales</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md p-6 card-hover cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <div class="p-4 bg-green-100 rounded-lg">
+                                    <i class="fas fa-chart-pie text-green-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">Análisis Financiero</h3>
+                                    <p class="text-sm text-gray-600">Ingresos y gastos</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md p-6 card-hover cursor-pointer">
+                            <div class="flex items-center space-x-4">
+                                <div class="p-4 bg-purple-100 rounded-lg">
+                                    <i class="fas fa-clock text-purple-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">Reporte de Citas</h3>
+                                    <p class="text-sm text-gray-600">Asistencia y cancelaciones</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings-section" class="content-section hidden">
+                    <div class="mb-8">
+                        <h1 class="text-3xl font-bold text-gray-800">Configuración</h1>
+                        <p class="text-gray-600 mt-2">Personaliza el sistema según tus necesidades</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-semibold mb-4">Configuración General</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre de la Clínica</label>
+                                    <input type="text" value="Clinical Portal" class="w-full px-4 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                                    <input type="text" value="Av. Principal 123" class="w-full px-4 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                                    <input type="tel" value="+51 123 456 789" class="w-full px-4 py-2 border rounded-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <h3 class="text-lg font-semibold mb-4">Notificaciones</h3>
+                            <div class="space-y-4">
+                                <label class="flex items-center justify-between">
+                                    <span class="text-gray-700">Notificaciones por email</span>
+                                    <input type="checkbox" checked class="toggle">
+                                </label>
+                                <label class="flex items-center justify-between">
+                                    <span class="text-gray-700">Recordatorios de citas</span>
+                                    <input type="checkbox" checked class="toggle">
+                                </label>
+                                <label class="flex items-center justify-between">
+                                    <span class="text-gray-700">Alertas de urgencia</span>
+                                    <input type="checkbox" checked class="toggle">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Patient Modal -->
+    <div id="patient-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Nuevo Paciente</h2>
+                <button onclick="closeModal('patient-modal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="savePatient(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                        <input type="text" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Apellido</label>
+                        <input type="text" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">DNI</label>
+                        <input type="text" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Nacimiento</label>
+                        <input type="date" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                        <input type="tel" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                    <textarea rows="3" class="w-full px-4 py-2 border rounded-lg"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="closeModal('patient-modal')" class="px-6 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Appointment Modal -->
+    <div id="appointment-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Nueva Cita</h2>
+                <button onclick="closeModal('appointment-modal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="saveAppointment(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Paciente</label>
+                        <select required class="w-full px-4 py-2 border rounded-lg">
+                            <option value="">Seleccionar paciente...</option>
+                            <option>Juan Pérez</option>
+                            <option>María García</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Médico</label>
+                        <select required class="w-full px-4 py-2 border rounded-lg">
+                            <option value="">Seleccionar médico...</option>
+                            <option>Dr. Carlos Ruiz</option>
+                            <option>Dra. Ana López</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+                        <input type="date" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hora</label>
+                        <input type="time" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Motivo de la Consulta</label>
+                    <textarea rows="4" required class="w-full px-4 py-2 border rounded-lg"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="closeModal('appointment-modal')" class="px-6 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Doctor Modal -->
+    <div id="doctor-modal" class="modal hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Nuevo Médico</h2>
+                <button onclick="closeModal('doctor-modal')" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form onsubmit="saveDoctor(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                        <input type="text" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Especialidad</label>
+                        <select required class="w-full px-4 py-2 border rounded-lg">
+                            <option value="">Seleccionar...</option>
+                            <option>Cardiología</option>
+                            <option>Pediatría</option>
+                            <option>Traumatología</option>
+                            <option>Neurología</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Colegiatura</label>
+                        <input type="text" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                        <input type="tel" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" required class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="closeModal('doctor-modal')" class="px-6 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:shadow-lg">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Mock Data
+        const mockPatients = [
+            { id: 1, name: 'Juan Pérez', dni: '12345678', age: 45, phone: '987654321', lastVisit: '2024-06-15', status: 'Activo' },
+            { id: 2, name: 'María García', dni: '87654321', age: 32, phone: '912345678', lastVisit: '2024-06-18', status: 'Activo' },
+            { id: 3, name: 'Carlos López', dni: '45678912', age: 58, phone: '923456789', lastVisit: '2024-06-10', status: 'Activo' },
+            { id: 4, name: 'Ana Martínez', dni: '78945612', age: 28, phone: '934567890', lastVisit: '2024-06-20', status: 'Activo' },
+            { id: 5, name: 'Pedro Sánchez', dni: '15975348', age: 62, phone: '945678901', lastVisit: '2024-06-12', status: 'Inactivo' }
+        ];
+
+        const mockDoctors = [
+            { id: 1, name: 'Dr. Carlos Ruiz', specialty: 'Cardiología', license: 'CMP-12345', phone: '987654321', patients: 45 },
+            { id: 2, name: 'Dra. Ana López', specialty: 'Pediatría', license: 'CMP-67890', phone: '912345678', patients: 52 },
+            { id: 3, name: 'Dr. Miguel Torres', specialty: 'Traumatología', license: 'CMP-54321', phone: '923456789', patients: 38 },
+            { id: 4, name: 'Dra. Laura Díaz', specialty: 'Neurología', license: 'CMP-98765', phone: '934567890', patients: 41 }
+        ];
+
+        const mockAppointments = [
+            { id: 1, patient: 'Juan Pérez', doctor: 'Dr. Carlos Ruiz', date: '2024-06-21', time: '09:00', reason: 'Control cardiológico', status: 'Programada' },
+            { id: 2, patient: 'María García', doctor: 'Dra. Ana López', date: '2024-06-21', time: '10:30', reason: 'Control pediátrico', status: 'Programada' },
+            { id: 3, patient: 'Carlos López', doctor: 'Dr. Miguel Torres', date: '2024-06-21', time: '14:00', reason: 'Revisión de fractura', status: 'Completada' }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            // Login form
+            document.getElementById('login-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                
+                if (email && password) {
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('main-app').classList.remove('hidden');
+                    showToast('Inicio de sesión exitoso', 'success');
+                    loadDashboard();
+                }
+            });
+
+            // Patient search
+            const searchInput = document.getElementById('patient-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    filterPatients(searchTerm);
+                });
+            }
+        }
+
+        function loadDashboard() {
+            loadRecentActivity();
+            loadCharts();
+        }
+
+        function loadRecentActivity() {
+            const activities = [
+                { icon: 'fa-user-plus', color: 'text-green-600', text: 'Nuevo paciente registrado: Juan Pérez', time: 'Hace 5 minutos' },
+                { icon: 'fa-calendar-check', color: 'text-blue-600', text: 'Cita completada con María García', time: 'Hace 15 minutos' },
+                { icon: 'fa-file-medical', color: 'text-purple-600', text: 'Informe médico generado para Carlos López', time: 'Hace 1 hora' },
+                { icon: 'fa-user-md', color: 'text-orange-600', text: 'Dr. Carlos Ruiz inició sesión', time: 'Hace 2 horas' }
+            ];
+
+            const container = document.getElementById('recent-activity');
+            container.innerHTML = activities.map(activity => `
+                <div class="flex items-start space-x-4 p-4 rounded-lg hover:bg-gray-50 transition">
+                    <div class="flex-shrink-0">
+                        <i class="fas ${activity.icon} ${activity.color} text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-800">${activity.text}</p>
+                        <p class="text-sm text-gray-500 mt-1">${activity.time}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadCharts() {
+            // Appointments Chart
+            const appointmentsCtx = document.getElementById('appointmentsChart');
+            if (appointmentsCtx) {
+                new Chart(appointmentsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                        datasets: [{
+                            label: 'Citas',
+                            data: [120, 150, 180, 165, 190, 210],
+                            borderColor: 'rgb(102, 126, 234)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // Specialty Chart
+            const specialtyCtx = document.getElementById('specialtyChart');
+            if (specialtyCtx) {
+                new Chart(specialtyCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Cardiología', 'Pediatría', 'Traumatología', 'Neurología'],
+                        datasets: [{
+                            data: [35, 25, 20, 20],
+                            backgroundColor: [
+                                'rgb(102, 126, 234)',
+                                'rgb(34, 197, 94)',
+                                'rgb(251, 146, 60)',
+                                'rgb(239, 68, 68)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
+            
+            // Show selected section
+            document.getElementById(section + '-section').classList.remove('hidden');
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('nav-active');
+                btn.classList.add('hover:bg-gray-100');
+            });
+            
+            const activeBtn = document.querySelector(`[data-section="${section}"]`);
+            activeBtn.classList.add('nav-active');
+            activeBtn.classList.remove('hover:bg-gray-100');
+
+            // Load section data
+            if (section === 'patients') loadPatients();
+            if (section === 'appointments') loadAppointments();
+            if (section === 'doctors') loadDoctors();
+        }
+
+        function loadPatients() {
+            const tbody = document.getElementById('patients-tbody');
+            tbody.innerHTML = mockPatients.map(patient => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <img src="https://i.pravatar.cc/150?img=${patient.id}" class="w-10 h-10 rounded-full mr-3">
+                            <span class="font-medium">${patient.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">${patient.dni}</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.age} años</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.phone}</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.lastVisit}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${patient.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                            ${patient.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="viewPatient(${patient.id})" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="editPatient(${patient.id})" class="text-green-600 hover:text-green-800">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deletePatient(${patient.id})" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function loadAppointments() {
+            const container = document.getElementById('appointments-list');
+            container.innerHTML = mockAppointments.map(apt => `
+                <div class="border rounded-lg p-4 hover:shadow-md transition card-hover">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <i class="fas fa-user-injured text-blue-600"></i>
+                                <span class="font-semibold">${apt.patient}</span>
+                            </div>
+                            <div class="flex items-center space-x-3 mb-2 text-gray-600">
+                                <i class="fas fa-user-md text-green-600"></i>
+                                <span>${apt.doctor}</span>
+                            </div>
+                            <div class="flex items-center space-x-3 text-gray-600">
+                                <i class="fas fa-calendar"></i>
+                                <span>${apt.date} - ${apt.time}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-2">${apt.reason}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${apt.status === 'Programada' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                            ${apt.status}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadDoctors() {
+            const container = document.getElementById('doctors-grid');
+            container.innerHTML = mockDoctors.map(doctor => `
+                <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <img src="https://i.pravatar.cc/150?img=${doctor.id + 10}" class="w-16 h-16 rounded-full">
+                        <div>
+                            <h3 class="font-semibold text-lg">${doctor.name}</h3>
+                            <p class="text-sm text-purple-600">${doctor.specialty}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm text-gray-600">
+                        <div class="flex items-center">
+                            <i class="fas fa-id-card w-6 text-gray-400"></i>
+                            <span>${doctor.license}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-phone w-6 text-gray-400"></i>
+                            <span>${doctor.phone}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-users w-6 text-gray-400"></i>
+                            <span>${doctor.patients} pacientes activos</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex justify-between">
+                        <button class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-calendar mr-2"></i>Citas
+                        </button>
+                        <button class="text-green-600 hover:text-green-800">
+                            <i class="fas fa-edit mr-2"></i>Editar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterPatients(searchTerm) {
+            const filtered = mockPatients.filter(p => 
+                p.name.toLowerCase().includes(searchTerm) ||
+                p.dni.includes(searchTerm)
+            );
+            
+            const tbody = document.getElementById('patients-tbody');
+            tbody.innerHTML = filtered.map(patient => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <img src="https://i.pravatar.cc/150?img=${patient.id}" class="w-10 h-10 rounded-full mr-3">
+                            <span class="font-medium">${patient.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">${patient.dni}</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.age} años</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.phone}</td>
+                    <td class="px-6 py-4 text-gray-600">${patient.lastVisit}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${patient.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                            ${patient.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="viewPatient(${patient.id})" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="editPatient(${patient.id})" class="text-green-600 hover:text-green-800">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deletePatient(${patient.id})" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Form Submissions
+        function savePatient(e) {
+            e.preventDefault();
+            showToast('Paciente guardado exitosamente', 'success');
+            closeModal('patient-modal');
+            loadPatients();
+        }
+
+        function saveAppointment(e) {
+            e.preventDefault();
+            showToast('Cita programada exitosamente', 'success');
+            closeModal('appointment-modal');
+            loadAppointments();
+        }
+
+        function saveDoctor(e) {
+            e.preventDefault();
+            showToast('Médico registrado exitosamente', 'success');
+            closeModal('doctor-modal');
+            loadDoctors();
+        }
+
+        // Utility Functions
+        function togglePassword() {
+            const input = document.getElementById('login-password');
+            const icon = document.getElementById('password-eye');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white px-6 py-4 rounded-lg shadow-lg`;
+            toast.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} text-xl"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.getElementById('toast-container').appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        function showNotifications() {
+            showToast('3 notificaciones nuevas', 'success');
+        }
+
+        function logout() {
+            if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                document.getElementById('main-app').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
+                showToast('Sesión cerrada exitosamente', 'success');
+            }
+        }
+
+        function viewPatient(id) {
+            showToast(`Ver detalles del paciente #${id}`, 'success');
+        }
+
+        function editPatient(id) {
+            showToast(`Editar paciente #${id}`, 'success');
+            openModal('patient-modal');
+        }
+
+        function deletePatient(id) {
+            if (confirm('¿Estás seguro de eliminar este paciente?')) {
+                showToast('Paciente eliminado exitosamente', 'success');
+                loadPatients();
+            }
+        }
+    </script>
+</body>
+</html>

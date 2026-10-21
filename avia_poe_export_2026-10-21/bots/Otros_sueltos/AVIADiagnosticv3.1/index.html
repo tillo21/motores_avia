@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVIA Senior — Verificación Webhook v6</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px}
+h1{font-size:1.35rem;text-align:center;margin-bottom:4px;color:#38bdf8}
+.subtitle{font-size:0.75rem;color:#64748b;margin-bottom:16px;text-align:center}
+.container{width:100%;max-width:640px}
+.card{background:#1e293b;border-radius:12px;padding:18px;margin-bottom:14px;border:1px solid #334155}
+.card h2{font-size:0.95rem;margin-bottom:10px;color:#f59e0b}
+.status-bar{text-align:center;padding:14px;border-radius:12px;font-size:1.1rem;font-weight:bold;margin-bottom:14px;transition:all 0.4s}
+.unknown{background:#334155;color:#94a3b8}
+.online{background:#064e3b;color:#34d399;box-shadow:0 0 20px #10b98140}
+.offline{background:#450a0a;color:#f87171}
+.needs-workflow{background:#422006;color:#fbbf24}
+.server-down{background:#1e1b4b;color:#a78bfa}
+button{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.95rem;transition:0.2s}
+.btn-test{background:#22c55e;color:white;width:100%;font-size:1rem;padding:14px}
+.btn-test:hover{background:#16a34a}
+.btn-test:disabled{background:#475569;cursor:wait}
+.btn-diag{background:#6366f1;color:white;padding:10px 16px;font-size:0.85rem}
+.btn-diag:hover{background:#818cf8}
+.result{margin-top:12px;padding:12px;border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:0.8rem;white-space:pre-wrap;word-break:break-all;line-height:1.6}
+.result.ok{background:#064e3b;border:1px solid #10b981}
+.result.fail{background:#450a0a;border:1px solid #ef4444}
+.result.warn{background:#422006;border:1px solid #f59e0b}
+.result.waiting{background:#1e293b;border:1px solid #475569}
+.result.info{background:#1e1b4b;border:1px solid #818cf8}
+.log-area{max-height:140px;overflow-y:auto;font-family:monospace;font-size:0.72rem;color:#94a3b8;line-height:1.7}
+.check-row{margin-top:12px;display:flex;align-items:center;gap:10px}
+.check-row label{cursor:pointer;font-size:0.82rem;color:#94a3b8}
+.url-input{width:100%;padding:10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:0.82rem;margin-bottom:10px}
+.hint{font-size:0.72rem;color:#64748b;margin-top:8px;line-height:1.5}
+.method-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.method-btn{padding:5px 12px;border-radius:6px;font-size:0.78rem;border:2px solid #475569;background:transparent;color:#94a3b8;cursor:pointer;transition:0.2s}
+.method-btn.active{border-color:#22c55e;color:#22c55e;background:#22c55e15}
+.fix-box{background:#1c1917;border:2px dashed #f59e0b;border-radius:10px;padding:16px;margin-top:12px;font-size:0.82rem;line-height:1.7;color:#fde68a}
+.fix-box code{background:#292524;padding:2px 6px;border-radius:4px;font-size:0.78rem;color:#fb923c}
+.fix-box ol{margin:8px 0 0 18px}
+.fix-box li{margin-bottom:6px}
+.auto-status{font-size:0.78rem;margin-left:4px}
+.server-info{font-size:0.75rem;color:#64748b;text-align:center;margin-top:8px}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+</style>
+</head>
+<body>
+
+<h1>🚀 AVIA Senior — Webhook Monitor v6</h1>
+<p class="subtitle">Constelación Económica · Auto-corrección · CORS bypass</p>
+
+<div class="container">
+  <div class="status-bar unknown" id="statusBar">⏳ Pendiente de verificación</div>
+
+  <div class="card">
+    <h2>🔍 Verificar Webhook</h2>
+    <label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px">URL:</label>
+    <input type="text" class="url-input" id="webhookUrl" value="https://studio.avia-global.com/webhook/health">
+
+    <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:4px">Conexión:</div>
+    <div class="method-row">
+      <button class="method-btn active" data-m="auto" onclick="setMethod('auto',this)">🤖 Auto</button>
+      <button class="method-btn" data-m="direct" onclick="setMethod('direct',this)">Directo</button>
+      <button class="method-btn" data-m="proxy1" onclick="setMethod('proxy1',this)">Proxy 1</button>
+      <button class="method-btn" data-m="proxy2" onclick="setMethod('proxy2',this)">Proxy 2</button>
+    </div>
+
+    <button class="btn-test" id="btnTest" onclick="testWebhook()">🔍 Verificar Webhook Ahora</button>
+    <div class="result waiting" id="result">Esperando verificación...</div>
+    <div id="fixGuide"></div>
+
+    <div class="check-row">
+      <input type="checkbox" id="autoCheck" onchange="toggleAutoCheck()">
+      <label for="autoCheck">Auto-verificar cada 15s</label>
+      <span class="auto-status" id="autoStatus"></span>
+    </div>
+    <p class="hint">Modo "Auto": prueba directo → proxy1 → proxy2 hasta encontrar respuesta.</p>
+  </div>
+
+  <div class="card">
+    <h2>📊 Log</h2>
+    <div class="log-area" id="logArea">Sin intentos.</div>
+  </div>
+
+  <div class="card">
+    <h2>🛠️ Diagnóstico</h2>
+    <button class="btn-diag" onclick="fullDiagnosis()">Ejecutar diagnóstico completo</button>
+    <div class="result waiting" id="diagResult" style="margin-top:10px;font-size:0.76rem">Pendiente...</div>
+  </div>
+</div>
+
+<div class="server-info" id="serverInfo"></div>
+
+<script>
+let autoInterval = null;
+let attempts = 0;
+let currentMethod = 'auto';
+let lastState = 'unknown';
+
+const PROXIES = [
+  url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+  url => 'https://corsproxy.io/?' + encodeURIComponent(url)
+];
+
+function getUrl(){ return document.getElementById('webhookUrl').value.trim(); }
+
+function setMethod(m, el){
+  currentMethod = m;
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+
+async function tryFetch(url, label, timeout){
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeout || 8000);
+  try {
+    const r = await fetch(url, { method:'GET', headers:{'Accept':'application/json'}, signal:ac.signal });
+    clearTimeout(t);
+    const txt = await r.text();
+    let d = null;
+    try { d = JSON.parse(txt); } catch(e){}
+    return { ok:r.ok, status:r.status, data:d, text:txt, via:label, error:null };
+  } catch(e){
+    clearTimeout(t);
+    return { ok:false, status:0, data:null, text:'', via:label, error: e.name==='AbortError'?'Timeout':e.message };
+  }
+}
+
+function classify(res){
+  if(!res) return 'network-error';
+  if(res.error) return 'network-error';
+  if(res.ok && res.data && res.data.status === 'ok') return 'healthy';
+  if(res.status === 404 || (res.data && res.data.code === 404)) return 'no-workflow';
+  if(res.status === 500 || (res.data && res.data.code === 500)) return 'server-error';
+  if(res.ok) return 'unexpected-ok';
+  return 'unknown-error';
+}
+
+async function testWebhook(){
+  attempts++;
+  const btn = document.getElementById('btnTest');
+  const result = document.getElementById('result');
+  const statusBar = document.getElementById('statusBar');
+  const fixGuide = document.getElementById('fixGuide');
+  const time = new Date().toLocaleTimeString();
+  const url = getUrl();
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Verificando...';
+  result.className = 'result waiting';
+  result.textContent = '⏳ Conectando...';
+  fixGuide.innerHTML = '';
+
+  let res = null;
+  let tried = [];
+
+  const strategies = [];
+  if(currentMethod === 'auto' || currentMethod === 'direct')
+    strategies.push({ fn: () => tryFetch(url, 'Directo', 5000), label:'direct' });
+  if(currentMethod === 'auto' || currentMethod === 'proxy1')
+    strategies.push({ fn: () => tryFetch(PROXIES[0](url), 'Proxy allorigins', 8000), label:'proxy1' });
+  if(currentMethod === 'auto' || currentMethod === 'proxy2')
+    strategies.push({ fn: () => tryFetch(PROXIES[1](url), 'Proxy corsproxy.io', 8000), label:'proxy2' });
+
+  for(const s of strategies){
+    res = await s.fn();
+    tried.push(s.label);
+    const state = classify(res);
+    if(state !== 'network-error') break;
+  }
+
+  const state = classify(res);
+  lastState = state;
+
+  switch(state){
+    case 'healthy':
+      result.className = 'result ok';
+      result.textContent = '✅ WEBHOOK ACTIVO Y RESPONDIENDO\n\nVía: ' + res.via + '\nStatus: ' + res.status + '\n\n' + JSON.stringify(res.data, null, 2);
+      statusBar.className = 'status-bar online';
+      statusBar.textContent = '🟢 ONLINE — ' + (res.data.service||'avia') + ' vía ' + res.via;
+      addLog(time, '✅ OK vía ' + res.via);
+      break;
+
+    case 'no-workflow':
+      result.className = 'result warn';
+      const n8nMsg = (res.data && res.data.message) ? res.data.message : 'Webhook no registrado';
+      const n8nHint = (res.data && res.data.hint) ? res.data.hint : '';
+      result.textContent = '⚠️ SERVIDOR n8n ACTIVO — Webhook NO registrado\n\nVía: ' + res.via + '\nMensaje: ' + n8nMsg + (n8nHint ? '\nPista n8n: ' + n8nHint : '');
+      statusBar.className = 'status-bar needs-workflow';
+      statusBar.textContent = '🟡 SERVIDOR OK — FALTA WORKFLOW';
+      addLog(time, '⚠️ 404 workflow falta, vía ' + res.via);
+      fixGuide.innerHTML = '<div class="fix-box">' +
+        '<strong>🔧 Cómo solucionarlo:</strong>' +
+        '<ol>' +
+        '<li>Abre <code>https://studio.avia-global.com</code></li>' +
+        '<li>Menú → <strong>Workflows</strong> → <strong>Add Workflow</strong></li>' +
+        '<li>Botón ⋯ → <strong>Import from File</strong> → selecciona <code>avia-health-check.json</code></li>' +
+        '<li>⚡ <strong>ACTIVA el toggle</strong> (esquina superior derecha, debe quedar VERDE)</li>' +
+        '<li>Verifica con: <code>curl https://studio.avia-global.com/webhook/health</code></li>' +
+        '<li>Vuelve aquí y haz click en "Verificar"</li>' +
+        '</ol>' +
+        '<div style="margin-top:8px;font-size:0.75rem;color:#a8a29e">' +
+        'El workflow necesario tiene 4 nodos: Webhook GET + Respond OK + Webhook OPTIONS (CORS preflight) + Respond CORS.' +
+        '</div></div>';
+      break;
+
+    case 'server-error':
+      result.className = 'result fail';
+      result.textContent = '❌ Error del servidor (500)\n\nVía: ' + res.via + '\n\n' + (res.text || '').substring(0, 400);
+      statusBar.className = 'status-bar offline';
+      statusBar.textContent = '🔴 ERROR DEL SERVIDOR';
+      addLog(time, '❌ 500 vía ' + res.via);
+      break;
+
+    case 'network-error':
+      result.className = 'result fail';
+      result.textContent = '❌ No se pudo conectar por ninguna vía.\n\nIntentos: ' + tried.join(' → ') + '\nÚltimo error: ' + (res ? res.error : 'desconocido') + '\n\nPosibles causas:\n• Servidor n8n apagado\n• URL incorrecta\n• Red sin acceso a internet';
+      statusBar.className = 'status-bar server-down';
+      statusBar.textContent = '🟣 SERVIDOR NO ACCESIBLE';
+      addLog(time, '❌ Red: ' + (res ? res.error : '?'));
+      break;
+
+    case 'unexpected-ok':
+      result.className = 'result info';
+      result.textContent = '🔵 Respuesta OK pero formato inesperado\n\nVía: ' + res.via + '\nStatus: ' + res.status + '\n\nRespuesta:\n' + (res.text || '').substring(0, 500) + '\n\nEsperado: {"status":"ok",...}';
+      statusBar.className = 'status-bar needs-workflow';
+      statusBar.textContent = '🟡 RESPUESTA INESPERADA';
+      addLog(time, '🔵 Inesperado ' + res.status + ' vía ' + res.via);
+      break;
+
+    default:
+      result.className = 'result warn';
+      result.textContent = '⚠️ Estado desconocido\nStatus: ' + (res ? res.status : '?') + '\n' + (res ? (res.text||'').substring(0,300) : '');
+      statusBar.className = 'status-bar unknown';
+      statusBar.textContent = '⚠️ ESTADO DESCONOCIDO';
+      addLog(time, '⚠️ Unknown ' + (res ? res.status : '?'));
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔍 Verificar Webhook Ahora';
+}
+
+async function fullDiagnosis(){
+  const d = document.getElementById('diagResult');
+  d.className = 'result waiting';
+  d.textContent = '⏳ Ejecutando tests...\n';
+  const url = getUrl();
+  let r = '';
+
+  try {
+    const nc = await fetch(url, { mode:'no-cors' });
+    r += '1. Servidor accesible (no-cors):  ✅ type=' + nc.type + '\n';
+  } catch(e){
+    r += '1. Servidor accesible (no-cors):  ❌ ' + e.message + '\n';
+  }
+
+  const t2 = await tryFetch(url, 'directo', 6000);
+  if(t2.error){
+    r += '2. GET directo:                   ❌ ' + t2.error + ' (CORS)\n';
+  } else {
+    r += '2. GET directo:                   ' + (t2.ok?'✅':'⚠️') + ' status=' + t2.status + '\n';
+    if(t2.data) r += '   → ' + JSON.stringify(t2.data).substring(0,150) + '\n';
+  }
+
+  const t3 = await tryFetch(PROXIES[0](url), 'allorigins', 8000);
+  if(t3.error){
+    r += '3. Proxy allorigins:              ❌ ' + t3.error + '\n';
+  } else {
+    r += '3. Proxy allorigins:              ' + (t3.ok?'✅':'⚠️') + ' status=' + t3.status + '\n';
+    if(t3.data) r += '   → ' + JSON.stringify(t3.data).substring(0,150) + '\n';
+  }
+
+  const t4 = await tryFetch(PROXIES[1](url), 'corsproxy', 8000);
+  if(t4.error){
+    r += '4. Proxy corsproxy.io:            ❌ ' + t4.error + '\n';
+  } else {
+    r += '4. Proxy corsproxy.io:            ' + (t4.ok?'✅':'⚠️') + ' status=' + t4.status + '\n';
+    if(t4.data) r += '   → ' + JSON.stringify(t4.data).substring(0,150) + '\n';
+  }
+
+  r += '\n────── ANÁLISIS ──────\n';
+  const s2 = classify(t2), s3 = classify(t3), s4 = classify(t4);
+  const serverUp = r.includes('1. Servidor accesible (no-cors):  ✅');
+  const anyHealthy = [s2,s3,s4].includes('healthy');
+  const anyNoWorkflow = [s2,s3,s4].includes('no-workflow');
+  const allNetErr = [t2,t3,t4].every(t => t.error);
+
+  if(anyHealthy){
+    r += '✅ Webhook FUNCIONANDO correctamente.\n';
+    if(t2.error) r += '⚠️ CORS bloqueado para directo. Funciona con proxy.\n';
+    r += '→ Todo listo para usar.\n';
+    d.className = 'result ok';
+  } else if(serverUp && anyNoWorkflow){
+    r += '🟡 Servidor n8n ACTIVO pero webhook NO importado.\n';
+    r += '→ Importa avia-health-check.json y ACTIVA el toggle.\n';
+    r += '→ Luego verifica con: curl ' + url + '\n';
+    d.className = 'result warn';
+  } else if(serverUp && allNetErr){
+    r += '🟠 Servidor accesible pero CORS bloquea todo.\n';
+    r += '→ Añade CORS en nginx o N8N_ENDPOINT_WEBHOOK_CORS_ALLOW_ORIGINS=*\n';
+    d.className = 'result warn';
+  } else if(!serverUp){
+    r += '🔴 Servidor n8n NO accesible.\n';
+    r += '→ Verifica que n8n está corriendo en el servidor.\n';
+    d.className = 'result fail';
+  } else {
+    r += '🔵 Estado mixto. Revisa los tests individuales.\n';
+    d.className = 'result info';
+  }
+
+  d.textContent = r;
+}
+
+function addLog(time, msg){
+  const log = document.getElementById('logArea');
+  if(attempts === 1) log.textContent = '';
+  const line = document.createElement('div');
+  line.textContent = '[' + time + '] #' + attempts + ' ' + msg;
+  log.insertBefore(line, log.firstChild);
+}
+
+function toggleAutoCheck(){
+  const on = document.getElementById('autoCheck').checked;
+  const st = document.getElementById('autoStatus');
+  if(on){
+    testWebhook();
+    autoInterval = setInterval(testWebhook, 15000);
+    st.textContent = '🔄 Activo';
+    st.style.color = '#22c55e';
+  } else {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    st.textContent = '';
+  }
+}
+</script>
+</body>
+</html>

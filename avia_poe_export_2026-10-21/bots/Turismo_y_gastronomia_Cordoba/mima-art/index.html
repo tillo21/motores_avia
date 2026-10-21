@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arte Viva Córdoba — Artesanía con Alma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;0,6..96,900;1,6..96,400&family=Karla:wght@300;400;500;600;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#C45C26;--primary-light:#E07040;--primary-dark:#9E4A1F;
+  --secondary:#2C3E2D;--secondary-light:#4A6B4D;
+  --accent:#D4A853;--accent-light:#E8C06A;
+  --bg:#F5F0E8;--bg-alt:#EDE7DB;
+  --text:#2D2A26;--text-muted:#7A746D;--text-light:#A09A92;
+  --surface:#FFFFFF;--surface-alt:#FAF7F2;
+  --border:#D9D2C7;--border-light:#E8E2D8;
+  --shadow:0 4px 24px rgba(45,42,38,.08);
+  --shadow-lg:0 12px 48px rgba(45,42,38,.12);
+  --radius:12px;--radius-sm:8px;--radius-lg:20px;
+  --nav-height:72px;
+  --transition:0.35s cubic-bezier(.4,0,.2,1);
+}
+.dark{
+  --primary:#E07040;--primary-light:#F08050;--primary-dark:#C45C26;
+  --secondary:#5A8B5D;--secondary-light:#6BA06E;
+  --accent:#E8C06A;--accent-light:#F0D080;
+  --bg:#110F0D;--bg-alt:#1A1816;
+  --text:#F0EDE5;--text-muted:#A09A92;--text-light:#6B6560;
+  --surface:#1E1C18;--surface-alt:#262320;
+  --border:#3A3632;--border-light:#2E2B27;
+  --shadow:0 4px 24px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.4);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:'Karla',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:'Bodoni Moda',serif;font-weight:700;line-height:1.15}
+.handwritten{font-family:'Caveat',cursive}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;border:none;background:none;font-family:inherit;font-size:inherit}
+img{max-width:100%;display:block}
+input,textarea,select{font-family:inherit;font-size:16px}
+
+/* ============ SCROLLBAR ============ */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg-alt)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* ============ NAV ============ */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--nav-height);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(1rem,4vw,3rem);transition:background var(--transition),box-shadow var(--transition),backdrop-filter var(--transition)}
+nav.scrolled{background:rgba(245,240,232,.92);backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--border)}
+.dark nav.scrolled{background:rgba(17,15,13,.92)}
+.nav-logo{display:flex;align-items:center;gap:.6rem}
+.nav-logo-icon{width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;font-weight:700;font-family:'Bodoni Moda',serif}
+.nav-logo-text{font-family:'Bodoni Moda',serif;font-size:1.3rem;font-weight:700;color:var(--text);letter-spacing:-.02em}
+.nav-logo-text span{color:var(--primary)}
+.nav-links{display:flex;align-items:center;gap:2rem;list-style:none}
+.nav-links a{font-weight:500;color:var(--text-muted);transition:color var(--transition);font-size:.95rem;letter-spacing:.02em}
+.nav-links a:hover,.nav-links a.active{color:var(--primary)}
+.nav-actions{display:flex;align-items:center;gap:1rem}
+.nav-cart-btn{position:relative;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text);transition:background var(--transition),color var(--transition);font-size:1.15rem}
+.nav-cart-btn:hover{background:var(--surface-alt);color:var(--primary)}
+.cart-badge{position:absolute;top:2px;right:2px;width:20px;height:20px;background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;transform:scale(0);transition:transform .3s cubic-bezier(.68,-.55,.27,1.55)}
+.cart-badge.show{transform:scale(1)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;width:28px;padding:4px 0}
+.nav-hamburger span{display:block;height:2px;background:var(--text);border-radius:2px;transition:all var(--transition)}
+.mobile-menu{display:none;position:fixed;top:var(--nav-height);left:0;right:0;bottom:0;background:var(--bg);z-index:999;padding:2rem;flex-direction:column;gap:1.5rem}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:1.3rem;font-weight:600;color:var(--text);padding:.5rem 0;border-bottom:1px solid var(--border-light)}
+
+@media(max-width:768px){
+  .nav-links{display:none}
+  .nav-hamburger{display:flex}
+}
+
+/* ============ HERO ============ */
+#hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:calc(var(--nav-height) + 2rem) 1.5rem 4rem}
+.hero-bg{position:absolute;inset:0;z-index:0}
+.hero-bg::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#C45C26 0%,#D4A853 25%,#2C3E2D 50%,#C45C26 75%,#D4A853 100%);background-size:400% 400%;animation:heroGradient 15s ease infinite;opacity:.15}
+.dark .hero-bg::before{opacity:.1}
+.hero-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,transparent 0%,var(--bg) 70%)}
+.hero-shapes{position:absolute;inset:0;overflow:hidden;z-index:1}
+.hero-shape{position:absolute;border-radius:50%;opacity:.06;animation:floatShape 20s ease-in-out infinite}
+.dark .hero-shape{opacity:.04}
+.hero-shape:nth-child(1){width:400px;height:400px;background:var(--primary);top:-10%;right:-5%;animation-delay:0s}
+.hero-shape:nth-child(2){width:300px;height:300px;background:var(--accent);bottom:-5%;left:-8%;animation-delay:-5s}
+.hero-shape:nth-child(3){width:200px;height:200px;background:var(--secondary);top:30%;left:10%;animation-delay:-10s}
+.hero-shape:nth-child(4){width:150px;height:150px;background:var(--primary);bottom:20%;right:15%;animation-delay:-15s;border-radius:30% 70% 70% 30%/30% 30% 70% 70%}
+@keyframes heroGradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes floatShape{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-30px) rotate(5deg)}66%{transform:translateY(20px) rotate(-3deg)}}
+.hero-content{position:relative;z-index:2;max-width:800px}
+.hero-tag{display:inline-block;font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;color:var(--primary);font-weight:600;margin-bottom:1.5rem;opacity:0;animation:fadeUp .8s .2s forwards}
+.hero-title{font-size:clamp(2.8rem,8vw,6rem);font-weight:900;color:var(--text);margin-bottom:1rem;opacity:0;animation:fadeUp .8s .4s forwards;letter-spacing:-.03em}
+.hero-title span{color:var(--primary);display:inline}
+.hero-subtitle{font-size:clamp(1.05rem,2.5vw,1.35rem);color:var(--text-muted);max-width:550px;margin:0 auto 2.5rem;font-weight:300;line-height:1.7;opacity:0;animation:fadeUp .8s .6s forwards}
+.hero-cta{display:inline-flex;align-items:center;gap:.75rem;background:var(--primary);color:#fff;padding:1rem 2.5rem;border-radius:60px;font-weight:600;font-size:1.05rem;transition:all var(--transition);opacity:0;animation:fadeUp .8s .8s forwards;box-shadow:0 4px 20px rgba(196,92,38,.3)}
+.hero-cta:hover{background:var(--primary-dark);transform:translateY(-2px);box-shadow:0 8px 30px rgba(196,92,38,.4)}
+.hero-scroll{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);z-index:2;opacity:0;animation:fadeUp .8s 1.2s forwards}
+.hero-scroll i{font-size:1.5rem;color:var(--text-muted);animation:bounce 2s infinite}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+@keyframes bounce{0%,20%,50%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}60%{transform:translateY(-4px)}}
+.hero-tag,.hero-title,.hero-subtitle,.hero-cta,.hero-scroll{transform:translateY(30px)}
+
+/* ============ SECTIONS ============ */
+.section{padding:clamp(4rem,8vw,7rem) clamp(1rem,4vw,3rem)}
+.section-header{text-align:center;margin-bottom:3.5rem}
+.section-tag{font-family:'Caveat',cursive;font-size:1.3rem;color:var(--primary);margin-bottom:.5rem}
+.section-title{font-size:clamp(2rem,5vw,3rem);color:var(--text);letter-spacing:-.02em}
+.section-desc{font-size:1.05rem;color:var(--text-muted);max-width:550px;margin:.75rem auto 0;font-weight:300}
+
+/* ============ CATEGORIES ============ */
+#categories{background:var(--bg-alt)}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1.25rem;max-width:900px;margin:0 auto}
+.cat-card{background:var(--surface);border-radius:var(--radius);padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:all var(--transition);border:2px solid transparent;position:relative;overflow:hidden}
+.cat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--primary),var(--accent));opacity:0;transition:opacity var(--transition)}
+.cat-card:hover,.cat-card.active{border-color:var(--primary);transform:translateY(-4px);box-shadow:var(--shadow)}
+.cat-card .cat-icon{font-size:2rem;margin-bottom:.75rem;color:var(--primary);position:relative;z-index:1;transition:color var(--transition)}
+.cat-card .cat-name{font-weight:600;font-size:.95rem;color:var(--text);position:relative;z-index:1}
+.cat-card.active .cat-icon,.cat-card.active .cat-name{color:var(--primary)}
+
+/* ============ PRODUCTS ============ */
+.filter-bar{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-bottom:2.5rem;max-width:1200px;margin-left:auto;margin-right:auto}
+.search-box{position:relative;flex:1;min-width:220px;max-width:400px}
+.search-box input{width:100%;padding:.85rem 1rem .85rem 2.8rem;border:2px solid var(--border);border-radius:60px;background:var(--surface);color:var(--text);transition:border-color var(--transition);font-size:16px}
+.search-box input:focus{outline:none;border-color:var(--primary)}
+.search-box i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}
+.sort-select{padding:.85rem 1.5rem;border:2px solid var(--border);border-radius:60px;background:var(--surface);color:var(--text);font-size:16px;appearance:none;cursor:pointer;min-width:180px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.75rem;max-width:1200px;margin:0 auto}
+.product-card{background:var(--surface);border-radius:var(--radius-lg);overflow:hidden;transition:all var(--transition);cursor:pointer;border:1px solid var(--border-light)}
+.product-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg)}
+.product-art{height:240px;position:relative;overflow:hidden}
+.product-art-inner{width:100%;height:100%;transition:transform .6s ease}
+.product-card:hover .product-art-inner{transform:scale(1.05)}
+.product-tag{position:absolute;top:1rem;left:1rem;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);padding:.35rem .85rem;border-radius:60px;font-size:.78rem;font-weight:600;color:var(--secondary);z-index:1}
+.dark .product-tag{background:rgba(30,28,24,.85);color:var(--secondary-light)}
+.product-info{padding:1.25rem 1.5rem 1.5rem}
+.product-name{font-family:'Bodoni Moda',serif;font-size:1.2rem;font-weight:700;margin-bottom:.35rem;color:var(--text)}
+.product-artisan{font-size:.85rem;color:var(--text-muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem}
+.product-artisan i{color:var(--accent);font-size:.75rem}
+.product-bottom{display:flex;align-items:center;justify-content:space-between}
+.product-price{font-family:'Bodoni Moda',serif;font-size:1.4rem;font-weight:700;color:var(--primary)}
+.product-add{width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all var(--transition);flex-shrink:0}
+.product-add:hover{background:var(--primary-dark);transform:scale(1.1)}
+
+.no-results{text-align:center;padding:4rem 1rem;color:var(--text-muted)}
+.no-results i{font-size:3rem;margin-bottom:1rem;opacity:.4}
+.no-results p{font-size:1.1rem}
+
+/* ============ ARTISANS ============ */
+#artisans{background:var(--bg-alt)}
+.artisan-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.75rem;max-width:1200px;margin:0 auto}
+.artisan-card{background:var(--surface);border-radius:var(--radius-lg);padding:2rem;display:flex;gap:1.25rem;align-items:flex-start;transition:all var(--transition);border:1px solid var(--border-light)}
+.artisan-card:hover{box-shadow:var(--shadow);transform:translateY(-3px)}
+.artisan-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-family:'Bodoni Moda',serif;font-weight:700;color:#fff;flex-shrink:0}
+.artisan-info h3{font-size:1.15rem;margin-bottom:.25rem}
+.artisan-info .specialty{font-family:'Caveat',cursive;font-size:1.05rem;color:var(--primary);margin-bottom:.5rem}
+.artisan-info .bio{font-size:.9rem;color:var(--text-muted);line-height:1.6}
+.artisan-info .shop-link{display:inline-flex;align-items:center;gap:.4rem;font-size:.85rem;color:var(--primary);font-weight:600;margin-top:.75rem;transition:gap var(--transition)}
+.artisan-info .shop-link:hover{gap:.7rem}
+
+/* ============ MAP ============ */
+#map-section{background:var(--surface)}
+.map-wrapper{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 350px;gap:1.5rem;border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--border-light)}
+.map-container{height:500px;min-height:400px;border-radius:var(--radius) 0 0 var(--radius)}
+.map-sidebar{background:var(--surface-alt);padding:1.5rem;overflow-y:auto;max-height:500px}
+.map-sidebar h3{font-size:1.2rem;margin-bottom:1rem;color:var(--text)}
+.shop-list-item{padding:1rem;border-radius:var(--radius-sm);margin-bottom:.75rem;background:var(--surface);border:1px solid var(--border-light);cursor:pointer;transition:all var(--transition)}
+.shop-list-item:hover,.shop-list-item.active{border-color:var(--primary);box-shadow:0 2px 12px rgba(196,92,38,.1)}
+.shop-list-item h4{font-size:1rem;color:var(--text);margin-bottom:.25rem;font-family:'Bodoni Moda',serif}
+.shop-list-item p{font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem}
+.shop-list-item .shop-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn-sm{padding:.4rem .85rem;border-radius:60px;font-size:.78rem;font-weight:600;transition:all var(--transition);display:inline-flex;align-items:center;gap:.35rem}
+.btn-navigate{background:var(--primary);color:#fff}
+.btn-navigate:hover{background:var(--primary-dark)}
+.btn-call{background:var(--surface-alt);color:var(--text);border:1px solid var(--border)}
+.btn-call:hover{border-color:var(--primary);color:var(--primary)}
+@media(max-width:768px){
+  .map-wrapper{grid-template-columns:1fr}
+  .map-container{border-radius:var(--radius) var(--radius) 0 0;height:350px}
+  .map-sidebar{max-height:300px}
+}
+
+/* ============ CART SIDEBAR ============ */
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;opacity:0;visibility:hidden;transition:all var(--transition)}
+.cart-overlay.open{opacity:1;visibility:visible}
+.cart-sidebar{position:fixed;top:0;right:0;bottom:0;width:min(420px,90vw);background:var(--surface);z-index:2001;transform:translateX(100%);transition:transform var(--transition);display:flex;flex-direction:column;box-shadow:-4px 0 40px rgba(0,0,0,.1)}
+.cart-sidebar.open{transform:translateX(0)}
+.cart-header{display:flex;align-items:center;justify-content:space-between;padding:1.5rem;border-bottom:1px solid var(--border-light)}
+.cart-header h2{font-size:1.3rem}
+.cart-close{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all var(--transition)}
+.cart-close:hover{background:var(--bg-alt);color:var(--text)}
+.cart-items{flex:1;overflow-y:auto;padding:1rem 1.5rem}
+.cart-empty{text-align:center;padding:3rem 1rem;color:var(--text-muted)}
+.cart-empty i{font-size:3rem;margin-bottom:1rem;opacity:.3}
+.cart-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border-light);align-items:center}
+.cart-item-art{width:70px;height:70px;border-radius:var(--radius-sm);flex-shrink:0;overflow:hidden}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-info h4{font-size:.95rem;margin-bottom:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-item-info .cart-item-artisan{font-size:.8rem;color:var(--text-muted)}
+.cart-item-info .cart-item-price{font-weight:700;color:var(--primary);font-size:1rem;margin-top:.3rem}
+.cart-qty{display:flex;align-items:center;gap:.5rem}
+.cart-qty button{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text);font-size:.85rem;transition:all var(--transition)}
+.cart-qty button:hover{border-color:var(--primary);color:var(--primary)}
+.cart-qty span{font-weight:600;min-width:20px;text-align:center}
+.cart-item-remove{color:var(--text-light);font-size:.85rem;transition:color var(--transition);padding:.25rem}
+.cart-item-remove:hover{color:#e53e3e}
+.cart-footer{padding:1.5rem;border-top:1px solid var(--border-light)}
+.cart-total{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+.cart-total span:first-child{font-weight:600;color:var(--text-muted)}
+.cart-total span:last-child{font-family:'Bodoni Moda',serif;font-size:1.6rem;font-weight:700;color:var(--primary)}
+.btn-checkout{width:100%;padding:1rem;background:var(--primary);color:#fff;border-radius:60px;font-weight:600;font-size:1.05rem;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-checkout:hover{background:var(--primary-dark)}
+.btn-checkout:disabled{opacity:.5;cursor:not-allowed}
+
+/* ============ PRODUCT MODAL ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;visibility:hidden;transition:all var(--transition)}
+.modal-overlay.open{opacity:1;visibility:visible}
+.modal{background:var(--surface);border-radius:var(--radius-lg);max-width:700px;width:100%;max-height:90vh;overflow-y:auto;transform:translateY(20px) scale(.97);transition:transform var(--transition);box-shadow:var(--shadow-lg)}
+.modal-overlay.open .modal{transform:translateY(0) scale(1)}
+.modal-close{position:absolute;top:1rem;right:1rem;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;color:var(--text);z-index:1;transition:all var(--transition)}
+.dark .modal-close{background:rgba(30,28,24,.85)}
+.modal-close:hover{background:var(--primary);color:#fff}
+.modal-art{height:300px;position:relative}
+.modal-body{padding:2rem}
+.modal-body h2{font-size:1.8rem;margin-bottom:.5rem}
+.modal-body .modal-artisan{display:flex;align-items:center;gap:.5rem;color:var(--text-muted);margin-bottom:1rem}
+.modal-body .modal-artisan i{color:var(--accent)}
+.modal-body .modal-desc{color:var(--text-muted);line-height:1.8;margin-bottom:1.5rem}
+.modal-body .modal-shop{display:flex;align-items:center;gap:.5rem;color:var(--secondary);font-weight:500;margin-bottom:1.5rem}
+.modal-body .modal-shop i{color:var(--secondary)}
+.modal-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.modal-price{font-family:'Bodoni Moda',serif;font-size:2rem;font-weight:700;color:var(--primary)}
+.btn-add-cart{padding:1rem 2rem;background:var(--primary);color:#fff;border-radius:60px;font-weight:600;font-size:1rem;transition:all var(--transition);display:flex;align-items:center;gap:.5rem}
+.btn-add-cart:hover{background:var(--primary-dark);transform:translateY(-2px)}
+
+/* ============ CHECKOUT MODAL ============ */
+.checkout-modal .modal{max-width:600px}
+.checkout-form{padding:2rem}
+.checkout-form h2{font-size:1.5rem;margin-bottom:.25rem}
+.checkout-form .checkout-subtitle{color:var(--text-muted);margin-bottom:1.5rem;font-size:.95rem}
+.form-group{margin-bottom:1.25rem}
+.form-group label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.4rem;color:var(--text)}
+.form-group input,.form-group textarea{width:100%;padding:.85rem 1rem;border:2px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-alt);color:var(--text);transition:border-color var(--transition);font-size:16px}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--primary)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:500px){.form-row{grid-template-columns:1fr}}
+.order-summary{background:var(--bg-alt);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1.5rem}
+.order-summary h3{font-size:1rem;margin-bottom:.75rem}
+.order-summary-item{display:flex;justify-content:space-between;padding:.35rem 0;font-size:.9rem;color:var(--text-muted)}
+.order-summary-total{display:flex;justify-content:space-between;padding-top:.75rem;margin-top:.5rem;border-top:1px solid var(--border);font-weight:700;font-size:1.1rem;color:var(--text)}
+.btn-submit-order{width:100%;padding:1rem;background:var(--secondary);color:#fff;border-radius:60px;font-weight:600;font-size:1.05rem;transition:all var(--transition);margin-bottom:.75rem}
+.btn-submit-order:hover{background:var(--secondary-light)}
+.btn-whatsapp{width:100%;padding:1rem;background:#25D366;color:#fff;border-radius:60px;font-weight:600;font-size:1.05rem;display:flex;align-items:center;justify-content:center;gap:.5rem;transition:all var(--transition)}
+.btn-whatsapp:hover{background:#1da851}
+
+/* ============ CONFIRMATION ============ */
+.confirmation{text-align:center;padding:3rem 2rem}
+.confirmation .check-icon{width:80px;height:80px;border-radius:50%;background:var(--secondary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 1.5rem;animation:popIn .5s cubic-bezier(.68,-.55,.27,1.55)}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+.confirmation h2{margin-bottom:.5rem}
+.confirmation p{color:var(--text-muted);margin-bottom:.5rem}
+.confirmation .order-number{font-family:'Bodoni Moda',serif;font-size:1.3rem;color:var(--primary);font-weight:700;margin:1rem 0}
+.btn-continue{margin-top:1.5rem;padding:1rem 2rem;background:var(--primary);color:#fff;border-radius:60px;font-weight:600;transition:all var(--transition)}
+.btn-continue:hover{background:var(--primary-dark)}
+
+/* ============ TOAST ============ */
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--secondary);color:#fff;padding:.85rem 1.5rem;border-radius:60px;font-weight:500;font-size:.95rem;z-index:5000;transition:transform .4s cubic-bezier(.68,-.55,.27,1.55);display:flex;align-items:center;gap:.5rem;box-shadow:0 4px 20px rgba(0,0,0,.2);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast i{color:var(--accent-light)}
+
+/* ============ FOOTER ============ */
+footer{background:var(--bg-alt);padding:3rem clamp(1rem,4vw,3rem) 1.5rem;text-align:center;border-top:1px solid var(--border-light)}
+.footer-logo{font-family:'Bodoni Moda',serif;font-size:1.5rem;font-weight:700;margin-bottom:.5rem}
+.footer-logo span{color:var(--primary)}
+.footer-text{color:var(--text-muted);font-size:.9rem;margin-bottom:1rem}
+.footer-socials{display:flex;justify-content:center;gap:1rem;margin-bottom:1.5rem}
+.footer-socials a{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all var(--transition)}
+.footer-socials a:hover{border-color:var(--primary);color:var(--primary);background:rgba(196,92,38,.05)}
+.footer-copy{font-size:.8rem;color:var(--text-light)}
+
+/* ============ LEAFLET CUSTOM ============ */
+.leaflet-popup-content-wrapper{border-radius:var(--radius)!important;box-shadow:var(--shadow)!important}
+.leaflet-popup-content{margin:12px 16px!important;font-family:'Karla',sans-serif!important;font-size:.9rem!important;line-height:1.5!important}
+.leaflet-popup-content h4{font-family:'Bodoni Moda',serif;margin-bottom:4px;font-size:1.05rem}
+.leaflet-popup-content p{color:var(--text-muted);margin-bottom:8px}
+.popup-nav-btn{display:inline-flex;align-items:center;gap:4px;background:var(--primary);color:#fff;padding:6px 14px;border-radius:60px;font-size:.8rem;font-weight:600;text-decoration:none;transition:background .3s}
+.popup-nav-btn:hover{background:var(--primary-dark)}
+.custom-marker{width:36px;height:36px;background:var(--primary);border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+
+/* ============ UTIL ============ */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="mainNav">
+  <a href="#hero" class="nav-logo">
+    <div class="nav-logo-icon">AV</div>
+    <div class="nav-logo-text">Arte<span>Viva</span></div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#hero" class="active">Inicio</a></li>
+    <li><a href="#categories">Categorías</a></li>
+    <li><a href="#products">Artesanías</a></li>
+    <li><a href="#artisans">Artesanos</a></li>
+    <li><a href="#map-section">Mapa</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="nav-cart-btn" onclick="toggleCart()" aria-label="Abrir carrito">
+      <i class="fa-solid fa-bag-shopping"></i>
+      <span class="cart-badge" id="cartBadge">0</span>
+    </button>
+    <button class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#hero" onclick="closeMobileMenu()">Inicio</a>
+  <a href="#categories" onclick="closeMobileMenu()">Categorías</a>
+  <a href="#products" onclick="closeMobileMenu()">Artesanías</a>
+  <a href="#artisans" onclick="closeMobileMenu()">Artesanos</a>
+  <a href="#map-section" onclick="closeMobileMenu()">Mapa</a>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg">
+    <div class="hero-shapes">
+      <div class="hero-shape"></div>
+      <div class="hero-shape"></div>
+      <div class="hero-shape"></div>
+      <div class="hero-shape"></div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-tag">Artesanía Cordobesa · Hecha con Alma</div>
+    <h1 class="hero-title">Arte <span>Viva</span> Córdoba</h1>
+    <p class="hero-subtitle">Descubre la esencia de Córdoba a través de sus artesanos. Piezas únicas, tradición viva y el alma del sur en cada creación.</p>
+    <a href="#products" class="hero-cta"><i class="fa-solid fa-compass"></i> Explorar Artesanías</a>
+  </div>
+  <div class="hero-scroll"><i class="fa-solid fa-chevron-down"></i></div>
+</section>
+
+<!-- CATEGORIES -->
+<section id="categories" class="section">
+  <div class="section-header">
+    <div class="section-tag">Explora por oficio</div>
+    <h2 class="section-title">Categorías</h2>
+  </div>
+  <div class="cat-grid" id="catGrid"></div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products" class="section">
+  <div class="section-header">
+    <div class="section-tag">Piezas con historia</div>
+    <h2 class="section-title">Artesanías</h2>
+    <p class="section-desc">Cada pieza es única, elaborada por manos expertas siguiendo técnicas centenarias.</p>
+  </div>
+  <div class="filter-bar">
+    <div class="search-box">
+      <i class="fa-solid fa-search"></i>
+      <input type="text" id="searchInput" placeholder="Buscar artesanía…" oninput="filterProducts()">
+    </div>
+    <select class="sort-select" id="sortSelect" onchange="filterProducts()">
+      <option value="default">Ordenar por</option>
+      <option value="price-asc">Precio: menor a mayor</option>
+      <option value="price-desc">Precio: mayor a menor</option>
+      <option value="name">Nombre A-Z</option>
+    </select>
+  </div>
+  <div class="product-grid" id="productGrid"></div>
+</section>
+
+<!-- ARTISANS -->
+<section id="artisans" class="section">
+  <div class="section-header">
+    <div class="section-tag">Manos que crean</div>
+    <h2 class="section-title">Nuestros Artesanos</h2>
+    <p class="section-desc">Conoce a quienes mantienen viva la tradición artesanal de Córdoba.</p>
+  </div>
+  <div class="artisan-grid" id="artisanGrid"></div>
+</section>
+
+<!-- MAP -->
+<section id="map-section" class="section">
+  <div class="section-header">
+    <div class="section-tag">Encuentra el taller</div>
+    <h2 class="section-title">Dónde Comprar</h2>
+    <p class="section-desc">Localiza los talleres y comercios artesanales en el corazón de Córdoba.</p>
+  </div>
+  <div class="map-wrapper">
+    <div class="map-container" id="mapContainer"></div>
+    <div class="map-sidebar" id="mapSidebar"></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Arte<span>Viva</span></div>
+  <p class="footer-text">Artesanía con alma desde el corazón de Córdoba</p>
+  <div class="footer-socials">
+    <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+    <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+    <a href="https://twitter.com" target="_blank" rel="noopener" aria-label="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+  </div>
+  <p class="footer-copy">&copy; 2026 Arte Viva Córdoba. Todos los derechos reservados.</p>
+</footer>
+
+<!-- CART SIDEBAR -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-sidebar" id="cartSidebar">
+  <div class="cart-header">
+    <h2><i class="fa-solid fa-bag-shopping"></i> Tu Cesta</h2>
+    <button class="cart-close" onclick="toggleCart()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cartTotal">€0</span>
+    </div>
+    <button class="btn-checkout" id="btnCheckout" onclick="openCheckout()" disabled>
+      <i class="fa-solid fa-lock"></i> Finalizar Compra
+    </button>
+  </div>
+</div>
+
+<!-- PRODUCT DETAIL MODAL -->
+<div class="modal-overlay" id="productModal" onclick="closeIfOverlay(event, 'productModal')">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeModal('productModal')"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-art" id="modalArt"></div>
+    <div class="modal-body">
+      <h2 id="modalName"></h2>
+      <div class="modal-artisan"><i class="fa-solid fa-palette"></i><span id="modalArtisan"></span></div>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div class="modal-shop"><i class="fa-solid fa-location-dot"></i><span id="modalShop"></span></div>
+      <div class="modal-footer">
+        <div class="modal-price" id="modalPrice"></div>
+        <button class="btn-add-cart" id="modalAddBtn"><i class="fa-solid fa-bag-shopping"></i> Añadir a la Cesta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-overlay checkout-modal" id="checkoutModal" onclick="closeIfOverlay(event, 'checkoutModal')">
+  <div class="modal">
+    <div id="checkoutContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><i class="fa-solid fa-check-circle"></i><span id="toastMsg"></span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ============ DARK MODE ============ */
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+  if (e.matches) { document.documentElement.classList.add('dark'); }
+  else { document.documentElement.classList.remove('dark'); }
+});
+
+/* ============ DATA ============ */
+var shops = [
+  { id: 1, name: 'Zoco Municipal de Artesanía', address: 'C/ Judíos, s/n, 14004', lat: 37.8794, lng: -4.7839, phone: '+34 957 204 033' },
+  { id: 2, name: 'Meryan Cuero Artesanal', address: 'Calleja de las Flores, 2, 14003', lat: 37.8801, lng: -4.7810, phone: '+34 957 475 902' },
+  { id: 3, name: 'Artesanía Califal', address: 'C/ Deanes, 3, 14003', lat: 37.8786, lng: -4.7800, phone: '+34 957 487 611' },
+  { id: 4, name: 'Taller Platería García', address: 'C/ Lucano, 18, 14003', lat: 37.8827, lng: -4.7769, phone: '+34 957 491 225' },
+  { id: 5, name: 'Olivo Arte Córdoba', address: 'C/ Tomás Conde, 7, 14002', lat: 37.8815, lng: -4.7843, phone: '+34 957 483 110' },
+  { id: 6, name: 'Mosaicos del Sur', address: 'C/ Romero Barros, 4, 14003', lat: 37.8845, lng: -4.7765, phone: '+34 957 498 760' }
+];
+
+var artisans = [
+  { id: 1, name: 'María del Carmen Ruiz', specialty: 'Cerámica', bio: 'Tercera generación de ceramistas cordobeses. Sus piezas recrean motivos califales con técnicas ancestrales del siglo X.', shopId: 1, color: '#C45C26' },
+  { id: 2, name: 'Antonio López Moreno', specialty: 'Cuero Repujado', bio: 'Maestro del cuero cordobés con más de 30 años perfeccionando el arte del repujado y guadamecí.', shopId: 2, color: '#8B5E3C' },
+  { id: 3, name: 'Isabel Fernández García', specialty: 'Platería', bio: 'Orfebre de quinta generación. Cada pieza de filigrana refleja la herencia joyera de la Córdoba califal.', shopId: 4, color: '#7A8B99' },
+  { id: 4, name: 'Francisco Jiménez Vega', specialty: 'Madera de Olivo', bio: 'Transforma la madera centenaria de los olivos cordobeses en obras de arte funcionales y decorativas.', shopId: 5, color: '#6B8E4E' },
+  { id: 5, name: 'Carmen Vega Ortiz', specialty: 'Joyería Artesanal', bio: 'Combina piedras naturales del sur con diseños contemporáneos inspirados en la geometría islámica.', shopId: 3, color: '#B07DAA' },
+  { id: 6, name: 'Rafael Muñoz Díaz', specialty: 'Mosaicos y Azulejos', bio: 'Artista del azulejo que fusiona la tradición mudéjar con expresiones artísticas contemporáneas.', shopId: 6, color: '#2C7A7B' }
+];
+
+var categories = [
+  { id: 'Cerámica', name: 'Cerámica', icon: 'fa-solid fa-bowl-food' },
+  { id: 'Cuero', name: 'Cuero', icon: 'fa-solid fa-briefcase' },
+  { id: 'Platería', name: 'Platería', icon: 'fa-solid fa-gem' },
+  { id: 'Madera', name: 'Madera', icon: 'fa-solid fa-tree' },
+  { id: 'Joyería', name: 'Joyería', icon: 'fa-solid fa-ring' },
+  { id: 'Mosaicos', name: 'Mosaicos', icon: 'fa-solid fa-border-all' }
+];
+
+var products = [
+  { id: 1, name: 'Jarrón Califal', price: 65, category: 'Cerámica', artisanId: 1, shopId: 1, desc: 'Jarrón de cerámica pintado a mano con motivos geométricos califales. Cada pieza es única, inspirada en los diseños de Medina Azahara.', gradient: 'radial-gradient(circle at 30% 40%, #E8A87C, #C45C26 40%, #9E4A1F 70%, #6B3315)' },
+  { id: 2, name: 'Plato Medina Azahara', price: 45, category: 'Cerámica', artisanId: 1, shopId: 1, desc: 'Plato decorativo con la reproducción de los motivos vegetales del salón de Abd al-Rahman III. Ideal para coleccionistas.', gradient: 'radial-gradient(circle at 50% 50%, #F5E6D3, #D4A853 30%, #C45C26 60%, #8B4513)' },
+  { id: 3, name: 'Bolso Repujado Córdoba', price: 120, category: 'Cuero', artisanId: 2, shopId: 2, desc: 'Bolso de cuero repujado con diseños florales tradicionales cordobeses. Curtido natural y tintes vegetales.', gradient: 'linear-gradient(145deg, #A0724A, #8B5E3C 30%, #6B4226 60%, #4A2C15)' },
+  { id: 4, name: 'Cartera Artesanal', price: 85, category: 'Cuero', artisanId: 2, shopId: 2, desc: 'Cartera de cuero guadamecí con técnicas heredadas del al-Ándalus. Acabado dorado sobre piel curtida al vegetal.', gradient: 'linear-gradient(160deg, #C49A6C, #8B5E3C 40%, #5C3A1E 70%, #D4A853 95%)' },
+  { id: 5, name: 'Pendientes Filigrana', price: 55, category: 'Platería', artisanId: 3, shopId: 4, desc: 'Pendientes de plata de ley 925 trabajados en filigrana cordobesa. Diseño inspirado en la joyería califal.', gradient: 'linear-gradient(135deg, #E8E8E8, #B0B8C0 30%, #8A9AAA 60%, #CBD5DC 90%)' },
+  { id: 6, name: 'Collar Plata Cordobesa', price: 95, category: 'Platería', artisanId: 3, shopId: 4, desc: 'Collar de plata cordobesa con medallón central de filigrana. Cadena artesanal de eslabones hechos a mano.', gradient: 'linear-gradient(145deg, #D4D8DC, #9AA8B4 25%, #6B7B8B 55%, #E0E4E8 85%)' },
+  { id: 7, name: 'Cuenco de Olivo', price: 35, category: 'Madera', artisanId: 4, shopId: 5, desc: 'Cuenco torneado en madera de olivo centenaria. Cada veta cuenta una historia de siglos bajo el sol cordobés.', gradient: 'linear-gradient(130deg, #A8C68F, #6B8E4E 35%, #4A6B30 65%, #8BAA6C)' },
+  { id: 8, name: 'Tabla de Cortar Artesanal', price: 42, category: 'Madera', artisanId: 4, shopId: 5, desc: 'Tabla de cortar de olivo macizo con vetas naturales. Tratada con aceite de oliva virgen extra de la sierra.', gradient: 'linear-gradient(150deg, #C4A87C, #8B7B5E 30%, #6B5B3E 60%, #A8956C 90%)' },
+  { id: 9, name: 'Pulsera Cuero Trenzado', price: 40, category: 'Joyería', artisanId: 5, shopId: 3, desc: 'Pulsera de cuero trenzado con cierre de piedra natural engarzada en plata. Diseño exclusivo artesanal.', gradient: 'linear-gradient(135deg, #D4A0D0, #B07DAA 30%, #8A5B85 60%, #C490BE 90%)' },
+  { id: 10, name: 'Colgante Piedra Natural', price: 70, category: 'Joyería', artisanId: 5, shopId: 3, desc: 'Colgante de ágata natural engarzado en plata con motivos geométricos islámicos. Pieza única e irrepetible.', gradient: 'radial-gradient(circle at 40% 35%, #E0C8E0, #B07DAA 35%, #7A4E76 65%, #5A2E56)' },
+  { id: 11, name: 'Mosaico Floral Decorativo', price: 78, category: 'Mosaicos', artisanId: 6, shopId: 6, desc: 'Mosaico cerámico con diseño floral mudéjar. Montado sobre marco de madera reciclada. Listo para colgar.', gradient: 'linear-gradient(135deg, #4DB6AC, #2C7A7B 30%, #1A5C5D 60%, #80CBC4 90%)' },
+  { id: 12, name: 'Azulejo Pintado a Mano', price: 28, category: 'Mosaicos', artisanId: 6, shopId: 6, desc: 'Azulejo de 15x15cm pintado a mano con esmaltes tradicionales. Motivo estrella de ocho puntas.', gradient: 'linear-gradient(145deg, #81D4FA, #2C7A7B 25%, #1A5C5D 55%, #4DD0E1 85%)' }
+];
+
+/* ============ STATE ============ */
+var cart = [];
+var activeCategory = 'all';
+var map = null;
+var markers = [];
+
+/* ============ HELPERS ============ */
+function getArtisan(id) { return artisans.find(function(a) { return a.id === id; }); }
+function getShop(id) { return shops.find(function(s) { return s.id === id; }); }
+function escapeHtml(text) {
+  var div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* ============ ART GENERATION ============ */
+function createProductArt(product, size) {
+  size = size || 'normal';
+  var cat = product.category;
+  var seed = product.id;
+  var h = size === 'small' ? 70 : (size === 'modal' ? 300 : 240);
+  var el = document.createElement('div');
+  el.style.cssText = 'width:100%;height:' + h + 'px;position:relative;overflow:hidden;background:' + product.gradient + ';';
+
+  var svg = '';
+  if (cat === 'Cerámica') {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.15"><circle cx="100" cy="100" r="70" fill="none" stroke="#fff" stroke-width="2"/><circle cx="100" cy="100" r="50" fill="none" stroke="#fff" stroke-width="1.5"/><circle cx="100" cy="100" r="30" fill="none" stroke="#fff" stroke-width="1"/>' +
+      '<line x1="30" y1="100" x2="170" y2="100" stroke="#fff" stroke-width="1"/><line x1="100" y1="30" x2="100" y2="170" stroke="#fff" stroke-width="1"/>' +
+      '<line x1="50" y1="50" x2="150" y2="150" stroke="#fff" stroke-width=".8"/><line x1="150" y1="50" x2="50" y2="150" stroke="#fff" stroke-width=".8"/></svg>';
+  } else if (cat === 'Cuero') {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.12"><defs><pattern id="lp' + seed + '" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 10 Q5 0 10 10 Q15 20 20 10" fill="none" stroke="#fff" stroke-width="1"/></pattern></defs><rect width="200" height="200" fill="url(#lp' + seed + ')"/></svg>';
+  } else if (cat === 'Platería') {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.2"><polygon points="100,20 120,80 180,80 130,115 150,175 100,140 50,175 70,115 20,80 80,80" fill="none" stroke="#fff" stroke-width="1.5"/>' +
+      '<polygon points="100,45 112,80 150,80 120,100 130,140 100,118 70,140 80,100 50,80 88,80" fill="none" stroke="#fff" stroke-width="1"/></svg>';
+  } else if (cat === 'Madera') {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.12"><defs><pattern id="wp' + seed + '" width="40" height="10" patternUnits="userSpaceOnUse"><path d="M0 5 Q10 2 20 5 Q30 8 40 5" fill="none" stroke="#fff" stroke-width="1"/></pattern></defs><rect width="200" height="200" fill="url(#wp' + seed + ')"/></svg>';
+  } else if (cat === 'Joyería') {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.15"><circle cx="100" cy="90" r="35" fill="none" stroke="#fff" stroke-width="1.5"/><ellipse cx="100" cy="90" rx="25" ry="35" fill="none" stroke="#fff" stroke-width="1"/>' +
+      '<line x1="100" y1="125" x2="100" y2="170" stroke="#fff" stroke-width="2"/><circle cx="100" cy="175" r="5" fill="#fff" opacity=".3"/></svg>';
+  } else {
+    svg = '<svg viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;opacity:.15"><defs><pattern id="tp' + seed + '" width="30" height="30" patternUnits="userSpaceOnUse"><rect width="14" height="14" x="1" y="1" fill="none" stroke="#fff" stroke-width="1"/><rect width="14" height="14" x="16" y="16" fill="none" stroke="#fff" stroke-width="1"/></pattern></defs><rect width="200" height="200" fill="url(#tp' + seed + ')"/></svg>';
+  }
+  el.innerHTML = svg;
+  return el;
+}
+
+/* ============ RENDER CATEGORIES ============ */
+function renderCategories() {
+  var grid = document.getElementById('catGrid');
+  var html = '<div class="cat-card ' + (activeCategory === 'all' ? 'active' : '') + '" onclick="setCategory(\'all\')"><div class="cat-icon"><i class="fa-solid fa-border-all"></i></div><div class="cat-name">Todas</div></div>';
+  categories.forEach(function(c) {
+    html += '<div class="cat-card ' + (activeCategory === c.id ? 'active' : '') + '" onclick="setCategory(\'' + c.id + '\')">' +
+      '<div class="cat-icon"><i class="' + c.icon + '"></i></div><div class="cat-name">' + c.name + '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  renderCategories();
+  filterProducts();
+  document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ============ RENDER PRODUCTS ============ */
+function filterProducts() {
+  var query = document.getElementById('searchInput').value.toLowerCase();
+  var sort = document.getElementById('sortSelect').value;
+  var filtered = products.filter(function(p) {
+    var matchCat = activeCategory === 'all' || p.category === activeCategory;
+    var artisan = getArtisan(p.artisanId);
+    var matchSearch = !query || p.name.toLowerCase().indexOf(query) !== -1 ||
+      (artisan && artisan.name.toLowerCase().indexOf(query) !== -1) ||
+      p.category.toLowerCase().indexOf(query) !== -1;
+    return matchCat && matchSearch;
+  });
+
+  if (sort === 'price-asc') filtered.sort(function(a, b) { return a.price - b.price; });
+  else if (sort === 'price-desc') filtered.sort(function(a, b) { return b.price - a.price; });
+  else if (sort === 'name') filtered.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+  renderProductGrid(filtered);
+}
+
+function renderProductGrid(list) {
+  var grid = document.getElementById('productGrid');
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="no-results"><i class="fa-solid fa-magnifying-glass"></i><p>No se encontraron artesanías con ese criterio.</p></div>';
+    return;
+  }
+  grid.innerHTML = '';
+  list.forEach(function(p, i) {
+    var artisan = getArtisan(p.artisanId);
+    var card = document.createElement('div');
+    card.className = 'product-card';
+    card.style.animationDelay = (i * 0.05) + 's';
+    card.onclick = function() { openProductModal(p.id); };
+
+    var artDiv = document.createElement('div');
+    artDiv.className = 'product-art';
+    var artInner = document.createElement('div');
+    artInner.className = 'product-art-inner';
+    var artEl = createProductArt(p);
+    artInner.appendChild(artEl);
+    artDiv.innerHTML = '<span class="product-tag">' + escapeHtml(p.category) + '</span>';
+    artDiv.appendChild(artInner);
+
+    var info = document.createElement('div');
+    info.className = 'product-info';
+    info.innerHTML = '<div class="product-name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="product-artisan"><i class="fa-solid fa-palette"></i>' + escapeHtml(artisan ? artisan.name : '') + '</div>' +
+      '<div class="product-bottom"><div class="product-price">€' + p.price + '</div>' +
+      '<button class="product-add" onclick="event.stopPropagation();addToCart(' + p.id + ')" aria-label="Añadir al carrito"><i class="fa-solid fa-plus"></i></button></div>';
+
+    card.appendChild(artDiv);
+    card.appendChild(info);
+    grid.appendChild(card);
+  });
+}
+
+/* ============ RENDER ARTISANS ============ */
+function renderArtisans() {
+  var grid = document.getElementById('artisanGrid');
+  grid.innerHTML = '';
+  artisans.forEach(function(a) {
+    var shop = getShop(a.shopId);
+    var initials = a.name.split(' ').map(function(w) { return w[0]; }).slice(0, 2).join('');
+    grid.innerHTML += '<div class="artisan-card">' +
+      '<div class="artisan-avatar" style="background:' + a.color + '">' + initials + '</div>' +
+      '<div class="artisan-info"><h3>' + escapeHtml(a.name) + '</h3>' +
+      '<div class="specialty">' + escapeHtml(a.specialty) + '</div>' +
+      '<div class="bio">' + escapeHtml(a.bio) + '</div>' +
+      (shop ? '<a href="#map-section" class="shop-link" onclick="focusShop(' + a.shopId + ')"><i class="fa-solid fa-location-dot"></i> ' + escapeHtml(shop.name) + ' <i class="fa-solid fa-arrow-right"></i></a>' : '') +
+      '</div></div>';
+  });
+}
+
+/* ============ MAP ============ */
+function initMap() {
+  try {
+    map = L.map('mapContainer', { scrollWheelZoom: false }).setView([37.8815, -4.7810], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    shops.forEach(function(shop) {
+      var customIcon = L.divIcon({
+        className: '',
+        html: '<div class="custom-marker"><i class="fa-solid fa-store" style="font-size:14px"></i></div>',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20]
+      });
+
+      var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + shop.lat + ',' + shop.lng + '&travelmode=walking';
+      var popupContent = '<h4>' + escapeHtml(shop.name) + '</h4>' +
+        '<p>' + escapeHtml(shop.address) + '</p>' +
+        '<p style="margin-bottom:8px"><a href="tel:' + shop.phone + '" style="color:var(--primary)">' + shop.phone + '</a></p>' +
+        '<a href="' + mapsUrl + '" target="_blank" rel="noopener" class="popup-nav-btn"><i class="fa-solid fa-route"></i> Cómo llegar</a>';
+
+      var marker = L.marker([shop.lat, shop.lng], { icon: customIcon }).addTo(map).bindPopup(popupContent);
+      markers.push({ shopId: shop.id, marker: marker });
+    });
+  } catch (e) {
+    document.getElementById('mapContainer').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;color:var(--text-muted)"><div><i class="fa-solid fa-map-location-dot" style="font-size:3rem;margin-bottom:1rem;opacity:.3;display:block"></i><p>El mapa interactivo no está disponible en este momento.</p><p style="margin-top:.5rem;font-size:.9rem">Puedes encontrar las direcciones en la barra lateral.</p></div></div>';
+  }
+}
+
+function renderMapSidebar() {
+  var sidebar = document.getElementById('mapSidebar');
+  sidebar.innerHTML = '<h3><i class="fa-solid fa-store"></i> Comercios Artesanales</h3>';
+  shops.forEach(function(shop) {
+    var mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + shop.lat + ',' + shop.lng + '&travelmode=walking';
+    sidebar.innerHTML += '<div class="shop-list-item" id="shopItem' + shop.id + '" onclick="focusShop(' + shop.id + ')">' +
+      '<h4>' + escapeHtml(shop.name) + '</h4>' +
+      '<p><i class="fa-solid fa-location-dot"></i> ' + escapeHtml(shop.address) + '</p>' +
+      '<div class="shop-actions">' +
+      '<a href="' + mapsUrl + '" target="_blank" rel="noopener" class="btn-sm btn-navigate" onclick="event.stopPropagation()"><i class="fa-solid fa-route"></i> Cómo llegar</a>' +
+      '<a href="tel:' + shop.phone + '" class="btn-sm btn-call" onclick="event.stopPropagation()"><i class="fa-solid fa-phone"></i> Llamar</a>' +
+      '</div></div>';
+  });
+}
+
+function focusShop(shopId) {
+  var shop = getShop(shopId);
+  if (!shop) return;
+  document.querySelectorAll('.shop-list-item').forEach(function(el) { el.classList.remove('active'); });
+  var item = document.getElementById('shopItem' + shopId);
+  if (item) item.classList.add('active');
+  if (map) {
+    map.setView([shop.lat, shop.lng], 17, { animate: true });
+    var m = markers.find(function(mk) { return mk.shopId === shopId; });
+    if (m) m.marker.openPopup();
+  }
+}
+
+/* ============ CART ============ */
+function addToCart(productId) {
+  var existing = cart.find(function(c) { return c.productId === productId; });
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ productId: productId, qty: 1 });
+  }
+  updateCart();
+  showToast('Añadido a la cesta');
+}
+
+function removeFromCart(index) {
+  cart.splice(index, 1);
+  updateCart();
+}
+
+function updateQty(index, delta) {
+  cart[index].qty += delta;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  updateCart();
+}
+
+function updateCart() {
+  var count = cart.reduce(function(s, c) { return s + c.qty; }, 0);
+  var badge = document.getElementById('cartBadge');
+  badge.textContent = count;
+  badge.classList.toggle('show', count > 0);
+
+  var total = cart.reduce(function(s, c) {
+    var p = products.find(function(pr) { return pr.id === c.productId; });
+    return s + (p ? p.price * c.qty : 0);
+  }, 0);
+
+  document.getElementById('cartTotal').textContent = '€' + total.toFixed(2);
+  document.getElementById('btnCheckout').disabled = cart.length === 0;
+
+  var container = document.getElementById('cartItems');
+  if (cart.length === 0) {
+    container.innerHTML = '<div class="cart-empty"><i class="fa-solid fa-bag-shopping"></i><p>Tu cesta está vacía</p></div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  cart.forEach(function(item, i) {
+    var p = products.find(function(pr) { return pr.id === item.productId; });
+    if (!p) return;
+    var artisan = getArtisan(p.artisanId);
+    var row = document.createElement('div');
+    row.className = 'cart-item';
+
+    var artEl = document.createElement('div');
+    artEl.className = 'cart-item-art';
+    artEl.appendChild(createProductArt(p, 'small'));
+
+    row.innerHTML = '';
+    row.appendChild(artEl);
+
+    var infoDiv = document.createElement('div');
+    infoDiv.className = 'cart-item-info';
+    infoDiv.innerHTML = '<h4>' + escapeHtml(p.name) + '</h4>' +
+      '<div class="cart-item-artisan">' + escapeHtml(artisan ? artisan.name : '') + '</div>' +
+      '<div class="cart-item-price">€' + (p.price * item.qty).toFixed(2) + '</div>';
+    row.appendChild(infoDiv);
+
+    var qtyDiv = document.createElement('div');
+    qtyDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:.35rem';
+    qtyDiv.innerHTML = '<div class="cart-qty">' +
+      '<button onclick="updateQty(' + i + ',-1)"><i class="fa-solid fa-minus"></i></button>' +
+      '<span>' + item.qty + '</span>' +
+      '<button onclick="updateQty(' + i + ',1)"><i class="fa-solid fa-plus"></i></button></div>' +
+      '<button class="cart-item-remove" onclick="removeFromCart(' + i + ')"><i class="fa-solid fa-trash-can"></i></button>';
+    row.appendChild(qtyDiv);
+
+    container.appendChild(row);
+  });
+}
+
+function toggleCart() {
+  document.getElementById('cartOverlay').classList.toggle('open');
+  document.getElementById('cartSidebar').classList.toggle('open');
+}
+
+/* ============ PRODUCT MODAL ============ */
+function openProductModal(productId) {
+  var p = products.find(function(pr) { return pr.id === productId; });
+  if (!p) return;
+  var artisan = getArtisan(p.artisanId);
+  var shop = getShop(p.shopId);
+
+  var artArea = document.getElementById('modalArt');
+  artArea.innerHTML = '';
+  artArea.appendChild(createProductArt(p, 'modal'));
+
+  document.getElementById('modalName').textContent = p.name;
+  document.getElementById('modalArtisan').textContent = artisan ? artisan.name + ' — ' + artisan.specialty : '';
+  document.getElementById('modalDesc').textContent = p.desc;
+  document.getElementById('modalShop').textContent = shop ? shop.name + ', ' + shop.address : '';
+  document.getElementById('modalPrice').textContent = '€' + p.price;
+
+  var btn = document.getElementById('modalAddBtn');
+  btn.onclick = function() {
+    addToCart(p.id);
+    closeModal('productModal');
+  };
+  openModal('productModal');
+}
+
+/* ============ CHECKOUT ============ */
+function openCheckout() {
+  toggleCart();
+  setTimeout(function() {
+    renderCheckoutForm();
+    openModal('checkoutModal');
+  }, 300);
+}
+
+function renderCheckoutForm() {
+  var total = cart.reduce(function(s, c) {
+    var p = products.find(function(pr) { return pr.id === c.productId; });
+    return s + (p ? p.price * c.qty : 0);
+  }, 0);
+
+  var summaryHtml = '';
+  cart.forEach(function(item) {
+    var p = products.find(function(pr) { return pr.id === item.productId; });
+    if (p) {
+      summaryHtml += '<div class="order-summary-item"><span>' + escapeHtml(p.name) + ' × ' + item.qty + '</span><span>€' + (p.price * item.qty).toFixed(2) + '</span></div>';
+    }
+  });
+
+  document.getElementById('checkoutContent').innerHTML =
+    '<div class="checkout-form">' +
+    '<h2>Finalizar Pedido</h2>' +
+    '<p class="checkout-subtitle">Completa tus datos para realizar el pedido</p>' +
+    '<div class="order-summary"><h3><i class="fa-solid fa-receipt"></i> Resumen del Pedido</h3>' + summaryHtml +
+    '<div class="order-summary-total"><span>Total</span><span>€' + total.toFixed(2) + '</span></div></div>' +
+    '<div class="form-row"><div class="form-group"><label>Nombre *</label><input type="text" id="checkName" placeholder="Tu nombre completo" required></div>' +
+    '<div class="form-group"><label>Teléfono *</label><input type="tel" id="checkPhone" placeholder="+34 600 000 000" required></div></div>' +
+    '<div class="form-group"><label>Email *</label><input type="email" id="checkEmail" placeholder="tu@email.com" required></div>' +
+    '<div class="form-group"><label>Dirección de envío *</label><input type="text" id="checkAddress" placeholder="Calle, número, ciudad, CP" required></div>' +
+    '<div class="form-group"><label>Notas (opcional)</label><textarea id="checkNotes" placeholder="Instrucciones especiales…" rows="3"></textarea></div>' +
+    '<button class="btn-submit-order" onclick="submitOrder()"><i class="fa-solid fa-paper-plane"></i> Enviar Pedido — €' + total.toFixed(2) + '</button>' +
+    '<button class="btn-whatsapp" onclick="sendWhatsApp()"><i class="fa-brands fa-whatsapp"></i> Consultar por WhatsApp</button>' +
+    '</div>';
+}
+
+function submitOrder() {
+  var name = document.getElementById('checkName').value.trim();
+  var phone = document.getElementById('checkPhone').value.trim();
+  var email = document.getElementById('checkEmail').value.trim();
+  var address = document.getElementById('checkAddress').value.trim();
+
+  if (!name || !phone || !email || !address) {
+    showToast('Por favor completa todos los campos obligatorios');
+    return;
+  }
+
+  var orderNum = 'AVC-' + Date.now().toString(36).toUpperCase();
+  var total = cart.reduce(function(s, c) {
+    var p = products.find(function(pr) { return pr.id === c.productId; });
+    return s + (p ? p.price * c.qty : 0);
+  }, 0);
+
+  document.getElementById('checkoutContent').innerHTML =
+    '<div class="confirmation">' +
+    '<div class="check-icon"><i class="fa-solid fa-check"></i></div>' +
+    '<h2>¡Pedido Confirmado!</h2>' +
+    '<p>Gracias, ' + escapeHtml(name) + '. Hemos recibido tu pedido.</p>' +
+    '<div class="order-number">' + orderNum + '</div>' +
+    '<p>Total: <strong>€' + total.toFixed(2) + '</strong></p>' +
+    '<p style="font-size:.9rem;margin-top:1rem">Recibirás un email de confirmación en <strong>' + escapeHtml(email) + '</strong> con los detalles de envío. Nuestros artesanos prepararán tu pedido con todo el cuidado que merece.</p>' +
+    '<button class="btn-continue" onclick="closeModal(\'checkoutModal\');cart=[];updateCart();">Seguir Explorando</button></div>';
+}
+
+function sendWhatsApp() {
+  var msg = '¡Hola! Me interesa hacer un pedido en Arte Viva Córdoba:\n\n';
+  cart.forEach(function(item) {
+    var p = products.find(function(pr) { return pr.id === item.productId; });
+    if (p) msg += '• ' + p.name + ' × ' + item.qty + ' (€' + (p.price * item.qty).toFixed(2) + ')\n';
+  });
+  var total = cart.reduce(function(s, c) {
+    var p = products.find(function(pr) { return pr.id === c.productId; });
+    return s + (p ? p.price * c.qty : 0);
+  }, 0);
+  msg += '\nTotal: €' + total.toFixed(2);
+  window.open('https://wa.me/34957204033?text=' + encodeURIComponent(msg), '_blank');
+}
+
+/* ============ MODALS / TOAST / NAV ============ */
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (!document.querySelector('.modal-overlay.open')) {
+    document.body.style.overflow = '';
+  }
+}
+
+function closeIfOverlay(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+var toastTimer = null;
+function showToast(msg) {
+  var toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { toast.classList.remove('show'); }, 2500);
+}
+
+function toggleMobileMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+}
+
+/* ============ NAV SCROLL ============ */
+var navEl = document.getElementById('mainNav');
+var navLinks = document.querySelectorAll('.nav-links a');
+
+window.addEventListener('scroll', function() {
+  navEl.classList.toggle('scrolled', window.scrollY > 60);
+
+  var sections = ['hero', 'categories', 'products', 'artisans', 'map-section'];
+  var current = '';
+  sections.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 150) current = id;
+  });
+  navLinks.forEach(function(link) {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + current);
+  });
+});
+
+/* ============ INIT ============ */
+renderCategories();
+filterProducts();
+renderArtisans();
+renderMapSidebar();
+updateCart();
+
+/* Delay map init slightly */
+setTimeout(function() { initMap(); }, 200);
+
+/* Invalidate map size when section comes into view */
+var mapObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting && map) {
+      setTimeout(function() { map.invalidateSize(); }, 100);
+    }
+  });
+}, { threshold: 0.1 });
+var mapSection = document.getElementById('map-section');
+if (mapSection) mapObserver.observe(mapSection);
+</script>
+</body>
+</html>
+

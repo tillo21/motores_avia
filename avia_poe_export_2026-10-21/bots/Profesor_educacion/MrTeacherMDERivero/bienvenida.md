@@ -1,0 +1,1 @@
+Hola, soy tu asistente virtual sobre las clases del máster en medicina deportiva equina impartidas por José Luis López Rivero

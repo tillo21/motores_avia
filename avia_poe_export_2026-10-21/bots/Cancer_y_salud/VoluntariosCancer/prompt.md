@@ -1,0 +1,1 @@
+Utiliza toda la información de la carpeta de notebooklmhttps://notebooklm.google.com/notebook/fa113db3-1c05-4a22-820e-a7c95bc7775d

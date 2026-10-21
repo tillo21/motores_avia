@@ -1,0 +1,1 @@
+¡Hola!, soy Edu. Estoy aquí para ayudarte a crear contenidos efectivos y bien estructurados, siempre basados en contenido inteligente, adaptativo y afectivo.

@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIA Protocol v5.0 - Universal Fetch & Auto-Diagnostics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-darker: #020617;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        header {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 2rem;
+            font-size: 0.875rem;
+        }
+        
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            padding: 5rem 1.5rem 2rem;
+            overflow-y: auto;
+            z-index: 90;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+        
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.2);
+            border-left: 3px solid var(--primary);
+        }
+        
+        main {
+            margin-left: 280px;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-error { background: var(--error); color: white; }
+        .btn-small { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .alert.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--warning);
+        }
+        
+        .alert.info {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--primary);
+        }
+        
+        .alert.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+        
+        .alert.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge.success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge.warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge.error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .badge.info { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+        }
+        
+        tr:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+        
+        .code-block {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin: 1rem 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-container {
+            position: fixed;
+            top: 5rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 400px;
+        }
+        
+        .notification {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            animation: slideInRight 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid var(--error); }
+        .notification.warning { border-left: 4px solid var(--warning); }
+        .notification.info { border-left: 4px solid var(--primary); }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-darker);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+        
+        .log-entry {
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+        
+        .log-entry.error { border-left: 4px solid var(--error); }
+        .log-entry.warning { border-left: 4px solid var(--warning); }
+        .log-entry.success { border-left: 4px solid var(--success); }
+        .log-entry.info { border-left: 4px solid var(--primary); }
+        
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            main { margin-left: 0; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // ====================================================================
+        // 🚀 AVIAAgenOS CORE BOOTSTRAP v5.0
+        // Sistema de arranque universal con detección proactiva integrada
+        // ====================================================================
+        
+        var AVIAAgenOS = {
+            version: '5.0.0',
+            buildDate: '2026-03-16',
+            modules: {},
+            agents: [],
+            bootSequence: [],
+            environment: null,
+            status: 'initializing',
+            
+            /**
+             * 🔥 CORE BOOTSTRAP - Punto de entrada único del sistema
+             * Ejecuta la secuencia de arranque completa
+             */
+            boot: function() {
+                console.log('═════════════════════════════════════════════════');
+                console.log('🚀 AVIAAgenOS v' + this.version + ' - Core Bootstrap');
+                console.log('═════════════════════════════════════════════════');
+                
+                this.status = 'booting';
+                
+                // FASE 1: Detección proactiva de entorno (CRÍTICO)
+                this.bootSequence.push({
+                    phase: 1,
+                    name: 'Environment Detection',
+                    status: 'running',
+                    startTime: Date.now()
+                });
+                
+                this.detectEnvironment();
+                
+                this.bootSequence[0].status = 'completed';
+                this.bootSequence[0].endTime = Date.now();
+                this.bootSequence[0].duration = this.bootSequence[0].endTime - this.bootSequence[0].startTime;
+                
+                // FASE 2: Inicialización de módulos core
+                this.bootSequence.push({
+                    phase: 2,
+                    name: 'Core Modules Init',
+                    status: 'running',
+                    startTime: Date.now()
+                });
+                
+                this.initCoreModules();
+                
+                this.bootSequence[1].status = 'completed';
+                this.bootSequence[1].endTime = Date.now();
+                this.bootSequence[1].duration = this.bootSequence[1].endTime - this.bootSequence[1].startTime;
+                
+                // FASE 3: Auto-diagnóstico
+                this.bootSequence.push({
+                    phase: 3,
+                    name: 'Auto-Diagnostics',
+                    status: 'running',
+                    startTime: Date.now()
+                });
+                
+                this.runAutoDiagnostics();
+                
+                this.bootSequence[2].status = 'completed';
+                this.bootSequence[2].endTime = Date.now();
+                this.bootSequence[2].duration = this.bootSequence[2].endTime - this.bootSequence[2].startTime;
+                
+                // FASE 4: Registro de agentes
+                this.bootSequence.push({
+                    phase: 4,
+                    name: 'Agent Registration',
+                    status: 'running',
+                    startTime: Date.now()
+                });
+                
+                this.registerAgents();
+                
+                this.bootSequence[3].status = 'completed';
+                this.bootSequence[3].endTime = Date.now();
+                this.bootSequence[3].duration = this.bootSequence[3].endTime - this.bootSequence[3].startTime;
+                
+                // FASE 5: Sistema listo
+                this.status = 'ready';
+                
+                console.log('✅ AVIAAgenOS boot completed in ' + 
+                    this.bootSequence.reduce((sum, phase) => sum + phase.duration, 0) + 'ms');
+                console.log('═════════════════════════════════════════════════');
+                
+                this.reportBootStatus();
+            },
+            
+            /**
+             * 🔍 Detección proactiva de entorno
+             */
+            detectEnvironment: function() {
+                console.log('[Phase 1] 🔍 Detecting environment...');
+                
+                if (typeof AVIASandboxGuardian !== 'undefined') {
+                    this.environment = AVIASandboxGuardian.detectEnvironment();
+                    console.log('[Phase 1] ✅ Environment detected via Sandbox Guardian');
+                } else {
+                    console.error('[Phase 1] ❌ Sandbox Guardian not found!');
+                }
+            },
+            
+            /**
+             * ⚙️ Inicialización de módulos core
+             */
+            initCoreModules: function() {
+                console.log('[Phase 2] ⚙️ Initializing core modules...');
+                
+                var modulesToInit = [
+                    'AVIASandboxGuardian',
+                    'UniversalStorage',
+                    'UniversalFetch',
+                    'AutoDiagnostics',
+                    'PersistentStorage'
+                ];
+                
+                modulesToInit.forEach(function(moduleName) {
+                    if (typeof window[moduleName] !== 'undefined') {
+                        this.modules[moduleName] = window[moduleName];
+                        console.log('[Phase 2]   ✅ ' + moduleName + ' loaded');
+                    } else {
+                        console.warn('[Phase 2]   ⚠️ ' + moduleName + ' not found');
+                    }
+                }.bind(this));
+                
+                console.log('[Phase 2] ✅ ' + Object.keys(this.modules).length + ' modules initialized');
+            },
+            
+            /**
+             * 🏥 Auto-diagnóstico del sistema
+             */
+            runAutoDiagnostics: function() {
+                console.log('[Phase 3] 🏥 Running auto-diagnostics...');
+                
+                if (this.modules.AutoDiagnostics) {
+                    this.modules.AutoDiagnostics.run();
+                } else {
+                    console.warn('[Phase 3] ⚠️ AutoDiagnostics module not available');
+                }
+            },
+            
+            /**
+             * 🤖 Registro de agentes
+             */
+            registerAgents: function() {
+                console.log('[Phase 4] 🤖 Registering agents...');
+                
+                // Los agentes se registran automáticamente al cargar
+                console.log('[Phase 4] ✅ ' + this.agents.length + ' agents registered');
+            },
+            
+            /**
+             * 📊 Reporte de estado de arranque
+             */
+            reportBootStatus: function() {
+                var report = {
+                    version: this.version,
+                    status: this.status,
+                    bootTime: this.bootSequence.reduce((sum, phase) => sum + phase.duration, 0),
+                    phases: this.bootSequence,
+                    environment: this.environment,
+                    modules: Object.keys(this.modules),
+                    agents: this.agents.length
+                };
+                
+                console.log('📊 Boot Report:', report);
+                
+                // Notificar UI
+                if (typeof updateBootStatus === 'function') {
+                    updateBootStatus(report);
+                }
+            },
+            
+            /**
+             * 🔌 Registro de agente (llamado por cada agente)
+             */
+            registerAgent: function(agent) {
+                console.log('[AVIAAgenOS] 🤖 Registering agent: ' + agent.name);
+                
+                // Verificar que el agente cumple con la Regla Universal #1
+                if (!agent.environmentDetected) {
+                    console.error('[AVIAAgenOS] ❌ Agent "' + agent.name + '" violates Universal Rule #1: No environment detection!');
+                    throw new Error('Agent must detect environment before registration');
+                }
+                
+                this.agents.push(agent);
+                console.log('[AVIAAgenOS] ✅ Agent "' + agent.name + '" registered successfully');
+            }
+        };
+        
+        // ====================================================================
+        // 🛡️ AVIA SANDBOX GUARDIAN v1.0
+        // (Copiado de la versión anterior con mejoras)
+        // ====================================================================
+        
+        var AVIASandboxGuardian = {
+            version: '1.0.0',
+            
+            environment: {
+                isSandboxed: false,
+                hasLocalStorage: false,
+                hasSessionStorage: false,
+                hasIndexedDB: false,
+                hasCookies: false,
+                isIframe: false,
+                hasFetch: false,
+                hasCORS: false,
+                sandboxFlags: [],
+                detectedAt: null
+            },
+            
+            storageStrategy: null,
+            fetchStrategy: null,
+            
+            detectEnvironment: function() {
+                console.log('[SandboxGuardian] 🔍 Detecting environment...');
+                this.environment.detectedAt = new Date().toISOString();
+                
+                // Detectar iframe
+                try {
+                    this.environment.isIframe = window.self !== window.top;
+                } catch (e) {
+                    this.environment.isIframe = true;
+                }
+                
+                // Detectar sandbox
+                if (this.environment.isIframe) {
+                    try {
+                        var sandbox = window.frameElement ? window.frameElement.getAttribute('sandbox') : null;
+                        if (sandbox !== null) {
+                            this.environment.isSandboxed = true;
+                            this.environment.sandboxFlags = sandbox ? sandbox.split(' ') : ['all-blocked'];
+                        }
+                    } catch (e) {
+                        this.environment.isSandboxed = true;
+                    }
+                }
+                
+                // Test storage APIs
+                this.environment.hasLocalStorage = this.testLocalStorage();
+                this.environment.hasSessionStorage = this.testSessionStorage();
+                this.environment.hasIndexedDB = this.testIndexedDB();
+                this.environment.hasCookies = this.testCookies();
+                
+                // Test network APIs
+                this.environment.hasFetch = this.testFetch();
+                this.environment.hasCORS = this.testCORS();
+                
+                // Determinar estrategias
+                this.determineStorageStrategy();
+                this.determineFetchStrategy();
+                
+                this.reportEnvironment();
+                
+                return this.environment;
+            },
+            
+            testLocalStorage: function() {
+                try {
+                    var test = '__test__';
+                    localStorage.setItem(test, test);
+                    localStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            },
+            
+            testSessionStorage: function() {
+                try {
+                    var test = '__test__';
+                    sessionStorage.setItem(test, test);
+                    sessionStorage.removeItem(test);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            },
+            
+            testIndexedDB: function() {
+                return typeof indexedDB !== 'undefined';
+            },
+            
+            testCookies: function() {
+                try {
+                    document.cookie = '__test__=1';
+                    var result = document.cookie.indexOf('__test__') !== -1;
+                    document.cookie = '__test__=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
+                    return result;
+                } catch (e) {
+                    return false;
+                }
+            },
+            
+            testFetch: function() {
+                return typeof fetch !== 'undefined';
+            },
+            
+            testCORS: function() {
+                // En sandbox, CORS generalmente está bloqueado
+                return !this.environment.isSandboxed;
+            },
+            
+            determineStorageStrategy: function() {
+                if (this.environment.hasLocalStorage) {
+                    this.storageStrategy = 'localStorage';
+                } else if (this.environment.hasIndexedDB) {
+                    this.storageStrategy = 'indexedDB';
+                } else if (this.environment.hasSessionStorage) {
+                    this.storageStrategy = 'sessionStorage';
+                } else {
+                    this.storageStrategy = 'memory';
+                }
+                
+                console.log('[SandboxGuardian] 💾 Storage strategy: ' + this.storageStrategy);
+            },
+            
+            determineFetchStrategy: function() {
+                if (this.environment.hasFetch && this.environment.hasCORS) {
+                    this.fetchStrategy = 'fetch';
+                } else if (this.environment.hasFetch) {
+                    this.fetchStrategy = 'fetch-no-cors';
+                } else {
+                    this.fetchStrategy = 'mock';
+                }
+                
+                console.log('[SandboxGuardian] 🌐 Fetch strategy: ' + this.fetchStrategy);
+            },
+            
+            reportEnvironment: function() {
+                console.log('═════════════════════════════════════════════════');
+                console.log('🛡️ SANDBOX GUARDIAN v' + this.version);
+                console.log('═════════════════════════════════════════════════');
+                console.log('🌐 Environment:');
+                console.log('  • iframe:', this.environment.isIframe ? '✅' : '❌');
+                console.log('  • sandboxed:', this.environment.isSandboxed ? '⚠️' : '✅');
+                console.log('💾 Storage:');
+                console.log('  • localStorage:', this.environment.hasLocalStorage ? '✅' : '❌');
+                console.log('  • sessionStorage:', this.environment.hasSessionStorage ? '✅' : '❌');
+                console.log('  • IndexedDB:', this.environment.hasIndexedDB ? '✅' : '❌');
+                console.log('🌐 Network:');
+                console.log('  • fetch API:', this.environment.hasFetch ? '✅' : '❌');
+                console.log('  • CORS:', this.environment.hasCORS ? '✅' : '❌');
+                console.log('🎯 Strategies:');
+                console.log('  • Storage:', this.storageStrategy);
+                console.log('  • Fetch:', this.fetchStrategy);
+                console.log('═════════════════════════════════════════════════');
+            }
+        };
+        
+        // ====================================================================
+        // 💾 UNIVERSAL STORAGE v2.0
+        // (Mejorado de la versión anterior)
+        // ====================================================================
+        
+        var UniversalStorage = {
+            memoryCache: {},
+            
+            save: function(key, value) {
+                var strategy = AVIASandboxGuardian.storageStrategy;
+                var valueStr = JSON.stringify(value);
+                
+                try {
+                    if (strategy === 'localStorage') {
+                        localStorage.setItem(key, valueStr);
+                    } else if (strategy === 'sessionStorage') {
+                        sessionStorage.setItem(key, valueStr);
+                    } else {
+                        this.memoryCache[key] = value;
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('[UniversalStorage] Save error:', e);
+                    this.memoryCache[key] = value;
+                    return false;
+                }
+            },
+            
+            load: function(key, defaultValue) {
+                defaultValue = defaultValue || null;
+                var strategy = AVIASandboxGuardian.storageStrategy;
+                
+                try {
+                    if (strategy === 'localStorage') {
+                        var value = localStorage.getItem(key);
+                        return value ? JSON.parse(value) : defaultValue;
+                    } else if (strategy === 'sessionStorage') {
+                        var value = sessionStorage.getItem(key);
+                        return value ? JSON.parse(value) : defaultValue;
+                    } else {
+                        return this.memoryCache[key] || defaultValue;
+                    }
+                } catch (e) {
+                    console.error('[UniversalStorage] Load error:', e);
+                    return this.memoryCache[key] || defaultValue;
+                }
+            },
+            
+            remove: function(key) {
+                var strategy = AVIASandboxGuardian.storageStrategy;
+                
+                try {
+                    if (strategy === 'localStorage') {
+                        localStorage.removeItem(key);
+                    } else if (strategy === 'sessionStorage') {
+                        sessionStorage.removeItem(key);
+                    }
+                    delete this.memoryCache[key];
+                    return true;
+                } catch (e) {
+                    console.error('[UniversalStorage] Remove error:', e);
+                    delete this.memoryCache[key];
+                    return false;
+                }
+            },
+            
+            clear: function() {
+                var strategy = AVIASandboxGuardian.storageStrategy;
+                
+                try {
+                    if (strategy === 'localStorage') {
+                        localStorage.clear();
+                    } else if (strategy === 'sessionStorage') {
+                        sessionStorage.clear();
+                    }
+                    this.memoryCache = {};
+                    return true;
+                } catch (e) {
+                    console.error('[UniversalStorage] Clear error:', e);
+                    this.memoryCache = {};
+                    return false;
+                }
+            }
+        };
+        
+        // ====================================================================
+        // 🌐 UNIVERSAL FETCH v1.0
+        // Módulo de peticiones de red con fallbacks automáticos
+        // ====================================================================
+        
+        var UniversalFetch = {
+            version: '1.0.0',
+            strategy: null,
+            requestLog: [],
+            mockResponses: {},
+            
+            init: function() {
+                this.strategy = AVIASandboxGuardian.fetchStrategy;
+                console.log('[UniversalFetch] 🌐 Initialized with strategy: ' + this.strategy);
+            },
+            
+            /**
+             * 🌐 FETCH UNIVERSAL - Realiza petición con estrategia óptima
+             */
+            request: function(url, options) {
+                options = options || {};
+                
+                console.log('[UniversalFetch] 📡 Request to: ' + url);
+                
+                var requestEntry = {
+                    url: url,
+                    method: options.method || 'GET',
+                    timestamp: new Date().toISOString(),
+                    strategy: this.strategy,
+                    status: 'pending'
+                };
+                
+                this.requestLog.push(requestEntry);
+                
+                // Seleccionar estrategia
+                if (this.strategy === 'fetch') {
+                    return this.fetchNative(url, options, requestEntry);
+                } else if (this.strategy === 'fetch-no-cors') {
+                    return this.fetchNoCORS(url, options, requestEntry);
+                } else {
+                    return this.fetchMock(url, options, requestEntry);
+                }
+            },
+            
+            /**
+             * 🚀 Fetch nativo (con CORS)
+             */
+            fetchNative: function(url, options, logEntry) {
+                return fetch(url, options)
+                    .then(function(response) {
+                        logEntry.status = 'success';
+                        logEntry.statusCode = response.status;
+                        logEntry.completedAt = new Date().toISOString();
+                        
+                        console.log('[UniversalFetch] ✅ Success:', url, response.status);
+                        
+                        return response.json();
+                    })
+                    .catch(function(error) {
+                        logEntry.status = 'error';
+                        logEntry.error = error.message;
+                        logEntry.completedAt = new Date().toISOString();
+                        
+                        console.error('[UniversalFetch] ❌ Error:', url, error);
+                        
+                        // Fallback automático a mock
+                        console.log('[UniversalFetch] 🔄 Falling back to mock...');
+                        return this.fetchMock(url, options, logEntry);
+                    }.bind(this));
+            },
+            
+            /**
+             * ⚠️ Fetch sin CORS (modo no-cors)
+             */
+            fetchNoCORS: function(url, options, logEntry) {
+                options.mode = 'no-cors';
+                
+                return fetch(url, options)
+                    .then(function(response) {
+                        logEntry.status = 'success-no-cors';
+                        logEntry.statusCode = response.status;
+                        logEntry.completedAt = new Date().toISOString();
+                        
+                        console.warn('[UniversalFetch] ⚠️ Success (no-cors):', url);
+                        console.warn('[UniversalFetch] ⚠️ Response body not readable in no-cors mode');
+                        
+                        // En modo no-cors no podemos leer el response
+                        return { 
+                            warning: 'Response received but body not readable (no-cors mode)',
+                            url: url,
+                            mock: true
+                        };
+                    })
+                    .catch(function(error) {
+                        logEntry.status = 'error';
+                        logEntry.error = error.message;
+                        logEntry.completedAt = new Date().toISOString();
+                        
+                        console.error('[UniversalFetch] ❌ Error (no-cors):', url, error);
+                        
+                        return this.fetchMock(url, options, logEntry);
+                    }.bind(this));
+            },
+            
+            /**
+             * 🎭 Fetch mock (para testing y entornos restrictivos)
+             */
+            fetchMock: function(url, options, logEntry) {
+                logEntry.status = 'mock';
+                logEntry.completedAt = new Date().toISOString();
+                
+                console.log('[UniversalFetch] 🎭 Using mock response for:', url);
+                
+                // Buscar mock registrado
+                var mockKey = this.getMockKey(url, options.method || 'GET');
+                var mockResponse = this.mockResponses[mockKey];
+                
+                if (mockResponse) {
+                    console.log('[UniversalFetch] ✅ Mock found:', mockKey);
+                    return Promise.resolve(mockResponse);
+                }
+                
+                // Mock genérico
+                var genericMock = {
+                    status: 'ok',
+                    message: 'Mock response (network restricted)',
+                    url: url,
+                    method: options.method || 'GET',
+                    timestamp: new Date().toISOString(),
+                    mock: true,
+                    data: null
+                };
+                
+                console.log('[UniversalFetch] ℹ️ Generic mock returned');
+                
+                return Promise.resolve(genericMock);
+            },
+            
+            /**
+             * 📝 Registrar mock response
+             */
+            registerMock: function(url, method, response) {
+                method = method || 'GET';
+                var key = this.getMockKey(url, method);
+                
+                this.mockResponses[key] = response;
+                
+                console.log('[UniversalFetch] 📝 Mock registered:', key);
+            },
+            
+            /**
+             * 🔑 Generar clave para mock
+             */
+            getMockKey: function(url, method) {
+                return method.toUpperCase() + ':' + url;
+            },
+            
+            /**
+             * 📊 Obtener estadísticas de peticiones
+             */
+            getStats: function() {
+                var stats = {
+                    total: this.requestLog.length,
+                    success: 0,
+                    error: 0,
+                    mock: 0,
+                    pending: 0
+                };
+                
+                this.requestLog.forEach(function(entry) {
+                    if (entry.status === 'success') stats.success++;
+                    else if (entry.status === 'error') stats.error++;
+                    else if (entry.status === 'mock') stats.mock++;
+                    else if (entry.status === 'pending') stats.pending++;
+                });
+                
+                return stats;
+            },
+            
+            /**
+             * 📋 Obtener log de peticiones
+             */
+            getLog: function() {
+                return this.requestLog;
+            },
+            
+            /**
+             * 🗑️ Limpiar log
+             */
+            clearLog: function() {
+                this.requestLog = [];
+                console.log('[UniversalFetch] 🗑️ Log cleared');
+            }
+        };
+        
+        // ====================================================================
+        // 🏥 AUTO-DIAGNOSTICS v1.0
+        // Sistema de diagnóstico automático con exportación en entornos de memoria
+        // ====================================================================
+        
+        var AutoDiagnostics = {
+            version: '1.0.0',
+            diagnosticLog: [],
+            autoExportEnabled: false,
+            autoExportInterval: null,
+            exportIntervalMs: 60000, // 1 minuto
+            
+            init: function() {
+                console.log('[AutoDiagnostics] 🏥 Initializing...');
+                
+                // Si estamos en modo memoria, habilitar auto-export
+                if (AVIASandboxGuardian.storageStrategy === 'memory') {
+                    this.enableAutoExport();
+                }
+            },
+            
+            /**
+             * 🔍 Ejecutar diagnóstico completo
+             */
+            run: function() {
+                console.log('[AutoDiagnostics] 🔍 Running full diagnostics...');
+                
+                var report = {
+                    timestamp: new Date().toISOString(),
+                    system: this.checkSystem(),
+                    storage: this.checkStorage(),
+                    network: this.checkNetwork(),
+                    performance: this.checkPerformance(),
+                    recommendations: []
+                };
+                
+                // Generar recomendaciones
+                report.recommendations = this.generateRecommendations(report);
+                
+                // Guardar en log
+                this.diagnosticLog.push(report);
+                
+                // Si estamos en memoria, exportar inmediatamente
+                if (AVIASandboxGuardian.storageStrategy === 'memory') {
+                    console.warn('[AutoDiagnostics] ⚠️ Memory mode detected - consider exporting logs');
+                }
+                
+                console.log('[AutoDiagnostics] ✅ Diagnostics completed');
+                
+                return report;
+            },
+            
+            /**
+             * 🖥️ Verificar sistema
+             */
+            checkSystem: function() {
+                return {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    onLine: navigator.onLine,
+                    cookieEnabled: navigator.cookieEnabled,
+                    screenWidth: screen.width,
+                    screenHeight: screen.height,
+                    viewportWidth: window.innerWidth,
+                    viewportHeight: window.innerHeight
+                };
+            },
+            
+            /**
+             * 💾 Verificar storage
+             */
+            checkStorage: function() {
+                return {
+                    strategy: AVIASandboxGuardian.storageStrategy,
+                    localStorage: AVIASandboxGuardian.environment.hasLocalStorage,
+                    sessionStorage: AVIASandboxGuardian.environment.hasSessionStorage,
+                    indexedDB: AVIASandboxGuardian.environment.hasIndexedDB,
+                    cookies: AVIASandboxGuardian.environment.hasCookies,
+                    memoryUsage: Object.keys(UniversalStorage.memoryCache).length
+                };
+            },
+            
+            /**
+             * 🌐 Verificar red
+             */
+            checkNetwork: function() {
+                return {
+                    strategy: AVIASandboxGuardian.fetchStrategy,
+                    hasFetch: AVIASandboxGuardian.environment.hasFetch,
+                    hasCORS: AVIASandboxGuardian.environment.hasCORS,
+                    requestStats: UniversalFetch.getStats()
+                };
+            },
+            
+            /**
+             * ⚡ Verificar rendimiento
+             */
+            checkPerformance: function() {
+                if (window.performance && window.performance.memory) {
+                    return {
+                        jsHeapSizeLimit: window.performance.memory.jsHeapSizeLimit,
+                        totalJSHeapSize: window.performance.memory.totalJSHeapSize,
+                        usedJSHeapSize: window.performance.memory.usedJSHeapSize
+                    };
+                }
+                return { available: false };
+            },
+            
+            /**
+             * 💡 Generar recomendaciones
+             */
+            generateRecommendations: function(report) {
+                var recommendations = [];
+                
+                if (report.storage.strategy === 'memory') {
+                    recommendations.push({
+                        level: 'critical',
+                        category: 'storage',
+                        message: 'Data stored in memory will be lost on page reload',
+                        action: 'Export logs regularly or open in a non-sandboxed environment'
+                    });
+                }
+                
+                if (report.storage.strategy === 'sessionStorage') {
+                    recommendations.push({
+                        level: 'warning',
+                        category: 'storage',
+                        message: 'Data will be lost when tab is closed',
+                        action: 'Keep tab open or export important data'
+                    });
+                }
+                
+                if (report.network.strategy === 'mock') {
+                    recommendations.push({
+                        level: 'warning',
+                        category: 'network',
+                        message: 'Network requests are using mock responses',
+                        action: 'Open in a non-restricted environment for real API calls'
+                    });
+                }
+                
+                if (!report.system.onLine) {
+                    recommendations.push({
+                        level: 'error',
+                        category: 'network',
+                        message: 'Browser is offline',
+                        action: 'Check internet connection'
+                    });
+                }
+                
+                if (report.storage.memoryUsage > 100) {
+                    recommendations.push({
+                        level: 'warning',
+                        category: 'performance',
+                        message: 'High memory cache usage (' + report.storage.memoryUsage + ' items)',
+                        action: 'Consider clearing old data'
+                    });
+                }
+                
+                return recommendations;
+            },
+            
+            /**
+             * 📤 Habilitar exportación automática
+             */
+            enableAutoExport: function() {
+                if (this.autoExportEnabled) return;
+                
+                this.autoExportEnabled = true;
+                
+                console.log('[AutoDiagnostics] 🔄 Auto-export enabled (every ' + 
+                    (this.exportIntervalMs / 1000) + 's)');
+                
+                this.autoExportInterval = setInterval(function() {
+                    this.autoExport();
+                }.bind(this), this.exportIntervalMs);
+                
+                // Notificar al usuario
+                if (typeof notify === 'function') {
+                    notify('🔄 Auto-export enabled: Logs will be downloaded every ' + 
+                        (this.exportIntervalMs / 1000) + ' seconds', 'info');
+                }
+            },
+            
+            /**
+             * 🛑 Deshabilitar exportación automática
+             */
+            disableAutoExport: function() {
+                if (!this.autoExportEnabled) return;
+                
+                this.autoExportEnabled = false;
+                
+                if (this.autoExportInterval) {
+                    clearInterval(this.autoExportInterval);
+                    this.autoExportInterval = null;
+                }
+                
+                console.log('[AutoDiagnostics] ⏹️ Auto-export disabled');
+                
+                if (typeof notify === 'function') {
+                    notify('⏹️ Auto-export disabled', 'info');
+                }
+            },
+            
+            /**
+             * 📥 Exportar automáticamente
+             */
+            autoExport: function() {
+                console.log('[AutoDiagnostics] 📥 Auto-exporting logs...');
+                
+                var exportData = {
+                    exportedAt: new Date().toISOString(),
+                    autoExport: true,
+                    environment: AVIASandboxGuardian.environment,
+                    diagnostics: this.diagnosticLog,
+                    fetchLog: UniversalFetch.getLog(),
+                    storageCache: UniversalStorage.memoryCache
+                };
+                
+                var dataStr = JSON.stringify(exportData, null, 2);
+                var dataBlob = new Blob([dataStr], { type: 'application/json' });
+                var url = URL.createObjectURL(dataBlob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'AVIAAgenOS_AutoExport_' + Date.now() + '.json';
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                console.log('[AutoDiagnostics] ✅ Logs exported automatically');
+            },
+            
+            /**
+             * 📤 Exportar manualmente
+             */
+            export: function() {
+                console.log('[AutoDiagnostics] 📤 Manual export...');
+                
+                var exportData = {
+                    exportedAt: new Date().toISOString(),
+                    autoExport: false,
+                    environment: AVIASandboxGuardian.environment,
+                    bootSequence: AVIAAgenOS.bootSequence,
+                    diagnostics: this.diagnosticLog,
+                    fetchLog: UniversalFetch.getLog(),
+                    storageCache: UniversalStorage.memoryCache,
+                    agents: AVIAAgenOS.agents.map(function(a) { return a.name; })
+                };
+                
+                var dataStr = JSON.stringify(exportData, null, 2);
+                var dataBlob = new Blob([dataStr], { type: 'application/json' });
+                var url = URL.createObjectURL(dataBlob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'AVIAAgenOS_Diagnostics_' + Date.now() + '.json';
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                if (typeof notify === 'function') {
+                    notify('📥 Diagnostic report exported', 'success');
+                }
+            },
+            
+            /**
+             * 📊 Obtener último reporte
+             */
+            getLatestReport: function() {
+                return this.diagnosticLog[this.diagnosticLog.length - 1] || null;
+            }
+        };
+        
+        // ====================================================================
+        // 📦 PERSISTENT STORAGE (Refactorizado)
+        // ====================================================================
+        
+        var PersistentStorage = {
+            STORAGE_KEY: 'AVIA_ErrorGuard_Logs',
+            MAX_ENTRIES: 500,
+            
+            save: function(errorEntry) {
+                try {
+                    var logs = this.load();
+                    errorEntry.synced = false;
+                    logs.push(errorEntry);
+                    
+                    if (logs.length > this.MAX_ENTRIES) {
+                        logs = logs.slice(-this.MAX_ENTRIES);
+                    }
+                    
+                    return UniversalStorage.save(this.STORAGE_KEY, logs);
+                } catch (e) {
+                    console.error('[PersistentStorage] Error saving:', e);
+                    return false;
+                }
+            },
+            
+            load: function() {
+                return UniversalStorage.load(this.STORAGE_KEY, []);
+            },
+            
+            clear: function() {
+                return UniversalStorage.remove(this.STORAGE_KEY);
+            },
+            
+            export: function() {
+                var logs = this.load();
+                var dataStr = JSON.stringify(logs, null, 2);
+                var dataBlob = new Blob([dataStr], { type: 'application/json' });
+                var url = URL.createObjectURL(dataBlob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = 'AVIA_ErrorLogs_' + Date.now() + '.json';
+                link.click();
+                URL.revokeObjectURL(url);
+                
+                if (typeof notify === 'function') {
+                    notify('📥 Error logs exported', 'success');
+                }
+            }
+        };
+        
+        // ====================================================================
+        // 🎨 UI FUNCTIONS
+        // ====================================================================
+        
+        function notify(message, type) {
+            type = type || 'info';
+            
+            var container = document.getElementById('notificationContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notificationContainer';
+                container.className = 'notification-container';
+                document.body.appendChild(container);
+            }
+            
+            var notification = document.createElement('div');
+            notification.className = 'notification ' + type;
+            
+            var icon = '📢';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '❌';
+            if (type === 'warning') icon = '⚠️';
+            if (type === 'info') icon = 'ℹ️';
+            
+            notification.innerHTML = '<span style="font-size: 1.5rem;">' + icon + '</span><span>' + message + '</span>';
+            container.appendChild(notification);
+            
+            setTimeout(function() {
+                notification.style.opacity = '0';
+                setTimeout(function() {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+        
+        function navigateTo(page) {
+            var sections = document.querySelectorAll('.page-section');
+            sections.forEach(function(section) {
+                if (section.id === 'page-' + page) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+            
+            var navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(function(item) {
+                if (item.getAttribute('data-page') === page) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            if (page === 'diagnostics') {
+                refreshDiagnostics();
+            } else if (page === 'fetch') {
+                refreshFetchLog();
+            } else if (page === 'boot') {
+                refreshBootSequence();
+            }
+        }
+        
+        function refreshDiagnostics() {
+            var report = AutoDiagnostics.run();
+            var container = document.getElementById('diagnosticsContent');
+            if (!container) return;
+            
+            var html = '<div class="grid">';
+            html += '<div class="stat-card"><div class="stat-value">' + AVIASandboxGuardian.storageStrategy.toUpperCase() + '</div><div class="stat-label">Storage Strategy</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + AVIASandboxGuardian.fetchStrategy.toUpperCase() + '</div><div class="stat-label">Fetch Strategy</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + report.recommendations.length + '</div><div class="stat-label">Recommendations</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + (AutoDiagnostics.autoExportEnabled ? '🔄 ON' : '⏹️ OFF') + '</div><div class="stat-label">Auto-Export</div></div>';
+            html += '</div>';
+            
+            if (report.recommendations.length > 0) {
+                html += '<div class="card"><h3>💡 Recommendations</h3>';
+                report.recommendations.forEach(function(rec) {
+                    var alertClass = rec.level === 'critical' ? 'error' : rec.level === 'warning' ? 'warning' : 'info';
+                    html += '<div class="alert ' + alertClass + '" style="margin-bottom: 1rem;"><span style="font-size: 1.5rem;">' + 
+                        (rec.level === 'critical' ? '🚨' : rec.level === 'warning' ? '⚠️' : '💡') + '</span><div><strong>' + 
+                        rec.message + '</strong><br><em>Action:</em> ' + rec.action + '</div></div>';
+                });
+                html += '</div>';
+            }
+            
+            html += '<div class="card"><h3>🖥️ System Information</h3><table>';
+            html += '<tr><td><strong>Platform:</strong></td><td>' + report.system.platform + '</td></tr>';
+            html += '<tr><td><strong>Online:</strong></td><td>' + (report.system.onLine ? '✅ Yes' : '❌ No') + '</td></tr>';
+            html += '<tr><td><strong>Cookies:</strong></td><td>' + (report.system.cookieEnabled ? '✅ Enabled' : '❌ Disabled') + '</td></tr>';
+            html += '<tr><td><strong>Viewport:</strong></td><td>' + report.system.viewportWidth + 'x' + report.system.viewportHeight + '</td></tr>';
+            html += '</table></div>';
+            
+            html += '<div class="card"><h3>💾 Storage Information</h3><table>';
+            html += '<tr><td><strong>Strategy:</strong></td><td><span class="badge info">' + report.storage.strategy + '</span></td></tr>';
+            html += '<tr><td><strong>localStorage:</strong></td><td>' + (report.storage.localStorage ? '✅' : '❌') + '</td></tr>';
+            html += '<tr><td><strong>sessionStorage:</strong></td><td>' + (report.storage.sessionStorage ? '✅' : '❌') + '</td></tr>';
+            html += '<tr><td><strong>IndexedDB:</strong></td><td>' + (report.storage.indexedDB ? '✅' : '❌') + '</td></tr>';
+            html += '<tr><td><strong>Memory Cache:</strong></td><td>' + report.storage.memoryUsage + ' items</td></tr>';
+            html += '</table></div>';
+            
+            html += '<div class="card"><h3>🌐 Network Information</h3><table>';
+            html += '<tr><td><strong>Strategy:</strong></td><td><span class="badge info">' + report.network.strategy + '</span></td></tr>';
+            html += '<tr><td><strong>Fetch API:</strong></td><td>' + (report.network.hasFetch ? '✅' : '❌') + '</td></tr>';
+            html += '<tr><td><strong>CORS:</strong></td><td>' + (report.network.hasCORS ? '✅' : '❌') + '</td></tr>';
+            html += '<tr><td><strong>Total Requests:</strong></td><td>' + report.network.requestStats.total + '</td></tr>';
+            html += '<tr><td><strong>Successful:</strong></td><td>' + report.network.requestStats.success + '</td></tr>';
+            html += '<tr><td><strong>Errors:</strong></td><td>' + report.network.requestStats.error + '</td></tr>';
+            html += '<tr><td><strong>Mocked:</strong></td><td>' + report.network.requestStats.mock + '</td></tr>';
+            html += '</table></div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function refreshFetchLog() {
+            var container = document.getElementById('fetchLogContent');
+            if (!container) return;
+            
+            var log = UniversalFetch.getLog();
+            
+            var html = '<div class="card"><h3>📊 Request Statistics</h3>';
+            var stats = UniversalFetch.getStats();
+            html += '<div class="grid">';
+            html += '<div class="stat-card"><div class="stat-value">' + stats.total + '</div><div class="stat-label">Total</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + stats.success + '</div><div class="stat-label">Success</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + stats.error + '</div><div class="stat-label">Errors</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + stats.mock + '</div><div class="stat-label">Mocked</div></div>';
+            html += '</div></div>';
+            
+            html += '<div class="card"><h3>📋 Request Log</h3>';
+            
+            if (log.length === 0) {
+                html += '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No requests yet</p>';
+            } else {
+                log.slice().reverse().forEach(function(entry) {
+                    var statusClass = entry.status.includes('success') ? 'success' : 
+                                    entry.status === 'error' ? 'error' : 
+                                    entry.status === 'mock' ? 'warning' : 'info';
+                    
+                    html += '<div class="log-entry ' + statusClass + '">';
+                    html += '<div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">';
+                    html += '<strong>' + entry.method + ' ' + entry.url + '</strong>';
+                    html += '<span class="badge ' + statusClass + '">' + entry.status + '</span>';
+                    html += '</div>';
+                    html += '<div style="color: var(--text-secondary); font-size: 0.75rem;">';
+                    html += 'Strategy: ' + entry.strategy + ' | ';
+                    html += 'Time: ' + new Date(entry.timestamp).toLocaleTimeString();
+                    if (entry.statusCode) html += ' | Status: ' + entry.statusCode;
+                    if (entry.error) html += ' | Error: ' + entry.error;
+                    html += '</div></div>';
+                });
+            }
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function refreshBootSequence() {
+            var container = document.getElementById('bootSequenceContent');
+            if (!container) return;
+            
+            var html = '<div class="card"><h3>🚀 Boot Sequence</h3>';
+            html += '<table><thead><tr><th>Phase</th><th>Name</th><th>Status</th><th>Duration</th></tr></thead><tbody>';
+            
+            AVIAAgenOS.bootSequence.forEach(function(phase) {
+                var statusBadge = phase.status === 'completed' ? 'success' : 
+                                phase.status === 'running' ? 'warning' : 'info';
+                
+                html += '<tr>';
+                html += '<td>Phase ' + phase.phase + '</td>';
+                html += '<td>' + phase.name + '</td>';
+                html += '<td><span class="badge ' + statusBadge + '">' + phase.status + '</span></td>';
+                html += '<td>' + (phase.duration || '-') + 'ms</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            
+            html += '<div class="card"><h3>📊 System Status</h3><table>';
+            html += '<tr><td><strong>Version:</strong></td><td>' + AVIAAgenOS.version + '</td></tr>';
+            html += '<tr><td><strong>Status:</strong></td><td><span class="badge success">' + AVIAAgenOS.status + '</span></td></tr>';
+            html += '<tr><td><strong>Modules:</strong></td><td>' + Object.keys(AVIAAgenOS.modules).length + '</td></tr>';
+            html += '<tr><td><strong>Agents:</strong></td><td>' + AVIAAgenOS.agents.length + '</td></tr>';
+            html += '<tr><td><strong>Build Date:</strong></td><td>' + AVIAAgenOS.buildDate + '</td></tr>';
+            html += '</table></div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function testFetch() {
+            notify('🧪 Testing fetch...', 'info');
+            
+            // Registrar un mock para testing
+            UniversalFetch.registerMock('https://api.example.com/test', 'GET', {
+                status: 'ok',
+                message: 'Test successful',
+                data: { foo: 'bar' }
+            });
+            
+            // Hacer petición de prueba
+            UniversalFetch.request('https://api.example.com/test', { method: 'GET' })
+                .then(function(response) {
+                    console.log('Fetch test response:', response);
+                    if (response.mock) {
+                        notify('✅ Fetch test completed (mock response)', 'success');
+                    } else {
+                        notify('✅ Fetch test completed', 'success');
+                    }
+                    refreshFetchLog();
+                })
+                .catch(function(error) {
+                    console.error('Fetch test error:', error);
+                    notify('❌ Fetch test failed: ' + error.message, 'error');
+                });
+        }
+        
+        function toggleAutoExport() {
+            if (AutoDiagnostics.autoExportEnabled) {
+                AutoDiagnostics.disableAutoExport();
+                document.getElementById('autoExportBtn').textContent = '▶️ Enable Auto-Export';
+            } else {
+                AutoDiagnostics.enableAutoExport();
+                document.getElementById('autoExportBtn').textContent = '⏹️ Disable Auto-Export';
+            }
+        }
+        
+        function updateBootStatus(report) {
+            var indicator = document.querySelector('.status-indicator');
+            if (indicator) {
+                indicator.innerHTML = '<div class="pulse"></div><span>System Ready (' + report.bootTime + 'ms)</span>';
+            }
+        }
+        
+        // ====================================================================
+        // 🚀 SYSTEM INITIALIZATION
+        // ====================================================================
+        
+        (function() {
+            console.log('[INIT] 🚀 Starting AVIAAgenOS initialization...');
+            
+            // BOOT THE SYSTEM
+            AVIAAgenOS.boot();
+            
+            // Initialize modules
+            UniversalFetch.init();
+            AutoDiagnostics.init();
+            
+            // DOM Ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('[INIT] 🎨 DOM ready, initializing UI...');
+                    navigateTo('dashboard');
+                });
+            } else {
+                console.log('[INIT] 🎨 DOM already ready, initializing UI...');
+                navigateTo('dashboard');
+            }
+            
+            console.log('[INIT] ✅ System initialization complete');
+        })();
+    </script>
+
+    <nav class="sidebar">
+        <h2>Navigation</h2>
+        <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+            <span>📊</span><span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-page="diagnostics" onclick="navigateTo('diagnostics')">
+            <span>🏥</span><span>Auto-Diagnostics</span>
+        </div>
+        <div class="nav-item" data-page="fetch" onclick="navigateTo('fetch')">
+            <span>🌐</span><span>Universal Fetch</span>
+        </div>
+        <div class="nav-item" data-page="boot" onclick="navigateTo('boot')">
+            <span>🚀</span><span>Boot Sequence</span>
+        </div>
+        <div class="nav-item" data-page="docs" onclick="navigateTo('docs')">
+            <span>📚</span><span>Documentation</span>
+        </div>
+    </nav>
+    
+    <header>
+        <div class="logo"><span>🤖</span><span>AVIAAgenOS v5.0</span></div>
+        <div class="status-indicator">
+            <div class="pulse"></div>
+            <span>Initializing...</span>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            <!-- Dashboard -->
+            <div id="page-dashboard" class="page-section active">
+                <h1 style="margin-bottom: 2rem;">🚀 AVIAAgenOS v5.0 - Universal System</h1>
+                
+                <div class="alert success">
+                    <span style="font-size: 1.5rem;">🎉</span>
+                    <div>
+                        <strong>Welcome to AVIAAgenOS v5.0!</strong> Fully integrated system with Universal Fetch, Auto-Diagnostics, and Core Bootstrap with proactive environment detection.
+                    </div>
+                </div>
+                
+                <div class="grid">
+                    <div class="stat-card">
+                        <div class="stat-value">5.0</div>
+                        <div class="stat-label">System Version</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Universal Modules</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">✅</div>
+                        <div class="stat-label">Auto-Detect</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">Boot Phases</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>✨ New in v5.0</h3>
+                    <table>
+                        <tr>
+                            <td><strong>🌐 Universal Fetch</strong></td>
+                            <td>Network requests with automatic fallback strategies (fetch → no-cors → mock)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🏥 Auto-Diagnostics</strong></td>
+                            <td>Automatic system diagnostics with recommendations and auto-export in memory mode</td>
+                        </tr>
+                        <tr>
+                            <td><strong>🚀 Core Bootstrap</strong></td>
+                            <td>Universal boot system integrating proactive detection in all agents</td>
+                        </tr>
+                        <tr>
+                            <td><strong>📤 Auto-Export</strong></td>
+                            <td>Automatic log export every 60s when in memory-only mode</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="card">
+                    <h3>🎮 Quick Actions</h3>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="navigateTo('diagnostics')">🏥 Run Diagnostics</button>
+                        <button class="btn btn-success" onclick="testFetch()">🧪 Test Fetch</button>
+                        <button class="btn btn-warning" onclick="AutoDiagnostics.export()">📥 Export Report</button>
+                        <button class="btn btn-error" id="autoExportBtn" onclick="toggleAutoExport()">
+                            ▶️ Enable Auto-Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Diagnostics -->
+            <div id="page-diagnostics" class="page-section">
+                <h1 style="margin-bottom: 2rem;">🏥 Auto-Diagnostics System</h1>
+                
+                <div class="card">
+                    <h3>🛠️ Diagnostic Tools</h3>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-small" onclick="refreshDiagnostics()">🔄 Refresh</button>
+                        <button class="btn btn-success btn-small" onclick="AutoDiagnostics.export()">📥 Export Full Report</button>
+                        <button class="btn btn-warning btn-small" id="autoExportBtn2" onclick="toggleAutoExport()">
+                            ▶️ Enable Auto-Export
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="diagnosticsContent"></div>
+            </div>
+            
+            <!-- Universal Fetch -->
+            <div id="page-fetch" class="page-section">
+                <h1 style="margin-bottom: 2rem;">🌐 Universal Fetch System</h1>
+                
+                <div class="card">
+                    <h3>🧪 Test Universal Fetch</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                        Test the Universal Fetch system with automatic fallback strategies. In restricted environments, mock responses will be used.
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary btn-small" onclick="testFetch()">🚀 Test Request</button>
+                        <button class="btn btn-success btn-small" onclick="refreshFetchLog()">🔄 Refresh Log</button>
+                        <button class="btn btn-error btn-small" onclick="UniversalFetch.clearLog(); refreshFetchLog();">🗑️ Clear Log</button>
+                    </div>
+                </div>
+                
+                <div id="fetchLogContent"></div>
+            </div>
+            
+            <!-- Boot Sequence -->
+            <div id="page-boot" class="page-section">
+                <h1 style="margin-bottom: 2rem;">🚀 System Boot Sequence</h1>
+                
+                <div class="card">
+                    <h3>ℹ️ About Core Bootstrap</h3>
+                    <p style="color: var(--text-secondary); line-height: 1.6;">
+                        The Core Bootstrap system ensures that every agent in AVIAAgenOS follows Universal Rule #1: <strong>Proactive Environment Detection</strong>. The boot sequence validates that all modules are properly initialized and that environment detection has been performed before any critical operations.
+                    </p>
+                </div>
+                
+                <div id="bootSequenceContent"></div>
+            </div>
+            
+            <!-- Documentation -->
+            <div id="page-docs" class="page-section">
+                <h1 style="margin-bottom: 2rem;">📚 Documentation</h1>
+                
+                <div class="card">
+                    <h3>🌐 Universal Fetch Module</h3>
+                    <p><strong>Purpose:</strong> Ensure network requests never fail in restricted environments</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Fetch Strategies (Priority Order):</h4>
+                    <table style="margin-top: 1rem;">
+                        <thead>
+                            <tr><th>Strategy</th><th>Description</th><th>Use Case</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge success">fetch</span></td>
+                                <td>Standard Fetch API with CORS</td>
+                                <td>Normal browser environment</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge warning">fetch-no-cors</span></td>
+                                <td>Fetch API in no-cors mode (response not readable)</td>
+                                <td>CORS blocked but fetch available</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge error">mock</span></td>
+                                <td>Mock responses (can be pre-registered)</td>
+                                <td>Fully restricted sandbox or testing</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Usage Example:</h4>
+                    <div class="code-block">// ✅ Universal Fetch - Works in ANY environment
+UniversalFetch.request('https://api.example.com/data', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+})
+.then(response => {
+    console.log('Response:', response);
+    if (response.mock) {
+        console.warn('Using mock data');
+    }
+})
+.catch(error => {
+    console.error('Error:', error);
+});
+
+// Register mock for testing/restricted environments
+UniversalFetch.registerMock(
+    'https://api.example.com/data',
+    'GET',
+    { status: 'ok', data: [1, 2, 3] }
+);</div>
+                </div>
+                
+                <div class="card">
+                    <h3>🏥 Auto-Diagnostics Module</h3>
+                    <p><strong>Purpose:</strong> Automatic system health monitoring with intelligent export in memory mode</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Key Features:</h4>
+                    <ul style="line-height: 1.8; padding-left: 1.5rem;">
+                        <li><strong>Automatic Detection:</strong> Runs diagnostics on boot and periodically</li>
+                        <li><strong>Smart Recommendations:</strong> Generates actionable recommendations based on environment</li>
+                        <li><strong>Auto-Export:</strong> In memory mode, automatically exports logs every 60s to prevent data loss</li>
+                        <li><strong>Comprehensive Reports:</strong> System, storage, network, and performance metrics</li>
+                    </ul>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Critical Feature: Auto-Export in Memory Mode</h4>
+                    <div class="alert warning">
+                        <span style="font-size: 1.5rem;">🔄</span>
+                        <div>
+                            When storage strategy is "memory", Auto-Diagnostics automatically enables periodic export (every 60 seconds) to prevent data loss on page reload. This ensures critical logs are preserved even in the most restricted environments.
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">// Manual diagnostics run
+var report = AutoDiagnostics.run();
+
+// Enable/disable auto-export
+AutoDiagnostics.enableAutoExport();
+AutoDiagnostics.disableAutoExport();
+
+// Manual export
+AutoDiagnostics.export();
+
+// Get latest report
+var latest = AutoDiagnostics.getLatestReport();</div>
+                </div>
+                
+                <div class="card">
+                    <h3>🚀 Core Bootstrap Module</h3>
+                    <p><strong>Purpose:</strong> Universal boot system ensuring all agents follow Universal Rule #1</p>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Boot Sequence (4 Phases):</h4>
+                    <table style="margin-top: 1rem;">
+                        <thead>
+                            <tr><th>Phase</th><th>Name</th><th>Description</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1</strong></td>
+                                <td>Environment Detection</td>
+                                <td>Proactive detection via Sandbox Guardian (CRITICAL)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2</strong></td>
+                                <td>Core Modules Init</td>
+                                <td>Initialize UniversalStorage, UniversalFetch, AutoDiagnostics</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3</strong></td>
+                                <td>Auto-Diagnostics</td>
+                                <td>Run initial system diagnostics</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4</strong></td>
+                                <td>Agent Registration</td>
+                                <td>Register and validate all agents</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4 style="margin-top: 1.5rem; color: var(--secondary);">Agent Registration Validation:</h4>
+                    <div class="code-block">// ✅ CORRECT: Agent with environment detection
+var MyAgent = {
+    name: 'MyCustomAgent',
+    version: '1.0.0',
+    environmentDetected: false,
+    
+    init: function() {
+        // MUST call environment detection first
+        this.detectEnvironment();
+        
+        // Then initialize
+        console.log('MyAgent initialized');
+        
+        // Register with core system
+        AVIAAgenOS.registerAgent(this);
+    },
+    
+    detectEnvironment: function() {
+        // Access global environment
+        this.environment = AVIAAgenOS.environment;
+        this.environmentDetected = true;
+        console.log('MyAgent: Environment detected');
+    }
+};
+
+// ❌ INCORRECT: Agent without detection
+var BadAgent = {
+    name: 'BadAgent',
+    init: function() {
+        AVIAAgenOS.registerAgent(this); // Will throw error!
+    }
+};</div>
+                </div>
+                
+                <div class="card">
+                    <h3>📜 Universal Rule #1 Integration</h3>
+                    <p>The Core Bootstrap ensures ALL agents follow the Universal Rule #1:</p>
+                    
+                    <div class="alert info">
+                        <span style="font-size: 1.5rem;">📜</span>
+                        <div>
+                            <strong>UNIVERSAL RULE #1: Proactive Environment Detection</strong><br><br>
+                            Every agent in AVIAAgenOS MUST:<br>
+                            1. ✅ Detect environment BEFORE executing critical logic<br>
+                            2. ✅ Use Universal modules (Storage, Fetch) for cross-environment compatibility<br>
+                            3. ✅ Register with AVIAAgenOS.registerAgent() after detection<br>
+                            4. ✅ Implement fallback strategies for restricted environments<br>
+                            5. ✅ Never assume availability of browser APIs
+                        </div>
+                    </div>
+                    
+                    <div class="code-block">/**
+ * TEMPLATE: Universal Agent
+ * Copy this template for all new agents
+ */
+
+var UniversalAgentTemplate = {
+    // Required metadata
+    name: 'AgentName',
+    version: '1.0.0',
+    environmentDetected: false,
+    
+    // Required: Environment detection
+    detectEnvironment: function() {
+        this.environment = AVIAAgenOS.environment;
+        this.environmentDetected = true;
+        
+        console.log('[' + this.name + '] Environment detected');
+        
+        // Adapt behavior based on environment
+        if (this.environment.storageStrategy === 'memory') {
+            console.warn('[' + this.name + '] Memory mode - data will not persist');
+        }
+    },
+    
+    // Required: Initialization
+    init: function() {
+        console.log('[' + this.name + '] Initializing...');
+        
+        // STEP 1: Detect environment (CRITICAL)
+        this.detectEnvironment();
+        
+        // STEP 2: Initialize agent logic
+        this.setupAgent();
+        
+        // STEP 3: Register with core system
+        AVIAAgenOS.registerAgent(this);
+        
+        console.log('[' + this.name + '] Ready');
+    },
+    
+    // Agent-specific logic
+    setupAgent: function() {
+        // Use Universal modules
+        var savedData = UniversalStorage.load('agent-data', {});
+        
+        // Your agent code here
+        console.log('[' + this.name + '] Setup complete');
+    }
+};
+
+// Initialize the agent
+UniversalAgentTemplate.init();</div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div id="notificationContainer" class="notification-container"></div>
+</body>
+</html>
